@@ -55,20 +55,23 @@ export type TokenValue =
   | number
   | [number, number, number, number];
 
-export type TokenType =
-  | 'color'
-  | 'dimension'
-  | 'fontFamily'
-  | 'fontWeight'
-  | 'duration'
-  | 'cubicBezier'
-  | 'number'
-  | 'strokeStyle'
-  | 'border'
-  | 'transition'
-  | 'shadow'
-  | 'gradient'
-  | 'typography';
+export const TOKEN_TYPES = [
+  'color',
+  'dimension',
+  'fontFamily',
+  'fontWeight',
+  'duration',
+  'cubicBezier',
+  'number',
+  'strokeStyle',
+  'border',
+  'transition',
+  'shadow',
+  'gradient',
+  'typography',
+] as const;
+
+export type TokenType = (typeof TOKEN_TYPES)[number];
 
 export type TokenExtensions = Record<string, unknown>;
 
@@ -138,7 +141,10 @@ export type ResolverDocument = {
 export type ValidationIssue = { path: string; reason: string };
 
 export class TokenValidationError extends Error {
-  constructor(readonly issues: ValidationIssue[]) {
+  constructor(
+    readonly issues: ValidationIssue[],
+    readonly sourceOwned = false,
+  ) {
     super(issues.map((issue) => `${issue.path}: ${issue.reason}`).join('\n'));
     this.name = 'TokenValidationError';
   }

@@ -5,26 +5,12 @@ import type {
   TokenType,
   ValidationIssue,
 } from './types.ts';
-import { TokenValidationError } from './types.ts';
+import { TOKEN_TYPES, TokenValidationError } from './types.ts';
 import { validateResolverDocumentSchema, validateTokenDocumentSchema } from './validate-schema.ts';
 
 const TOKEN_NAME_PATTERN = /^[^${}.][^{}.]*$/;
 const VENDOR_EXTENSION_PATTERN = /^(?:[a-z0-9-]+\.)+[a-z0-9-]+$/i;
-const TOKEN_TYPES = new Set<string>([
-  'color',
-  'dimension',
-  'fontFamily',
-  'fontWeight',
-  'duration',
-  'cubicBezier',
-  'number',
-  'strokeStyle',
-  'border',
-  'transition',
-  'shadow',
-  'gradient',
-  'typography',
-]);
+const TOKEN_TYPE_SET = new Set<string>(TOKEN_TYPES);
 const COLOR_SPACES = new Set([
   'srgb',
   'srgb-linear',
@@ -220,18 +206,9 @@ function validateValue(
     case 'strokeStyle':
       if (
         typeof value === 'string' &&
-        [
-          'none',
-          'hidden',
-          'dotted',
-          'dashed',
-          'solid',
-          'double',
-          'groove',
-          'ridge',
-          'inset',
-          'outset',
-        ].includes(value)
+        ['dotted', 'dashed', 'solid', 'double', 'groove', 'ridge', 'inset', 'outset'].includes(
+          value,
+        )
       )
         return;
       if (
@@ -901,6 +878,8 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
 export function assertValidTokenDocument(
   document: unknown,
   source?: string,
+  lookupDocuments: readonly unknown[] = [],
+  sourceByDocument?: ReadonlyMap<object, string>,
 ): asserts document is TokenDocument {
   const issues: ValidationIssue[] = [];
   if (!isObject(document)) addIssue(issues, source ?? '$', 'document must be an object');
@@ -908,8 +887,13 @@ export function assertValidTokenDocument(
   // First-pass gate: the official DTCG 2025.10 format JSON Schema catches shape
   // violations structurally, before the semantic checks below run. See
   // validate-schema.ts for why this precedes (rather than replaces) validateTokenDocument.
-  validateTokenDocumentSchema(document, source ?? '$');
-  validateTokenDocument(document, source);
+  const projected = validateTokenDocumentSchema(
+    document,
+    source ?? '$',
+    lookupDocuments,
+    sourceByDocument,
+  );
+  validateTokenDocument(projected, source);
 }
 
 export function assertValidResolverDocument(
@@ -947,5 +931,5 @@ function isString(value: unknown): value is string {
 }
 
 function isTokenType(value: unknown): value is TokenType {
-  return typeof value === 'string' && TOKEN_TYPES.has(value);
+  return typeof value === 'string' && TOKEN_TYPE_SET.has(value);
 }

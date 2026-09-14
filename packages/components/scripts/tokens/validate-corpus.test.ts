@@ -1,16 +1,19 @@
 import { describe, expect, test } from 'bun:test';
-import type { ResolverDocument } from './types.ts';
+import { TokenValidationError, type ResolverDocument, type TokenDocument } from './types.ts';
 import {
   buildContextSourcesIndex,
   combinations,
   expandContextSources,
   expandSetSources,
   normalizeSourcePath,
+  orderedTokenValidationContexts,
   parseResolutionOrder,
   sourcesForEntry,
+  validateLoadedTokenDocuments,
   validateModifierSetExpansionOrder,
   validateModifierTokenPaths,
 } from './validate-corpus.ts';
+import { assertValidTokenDocument } from './validate.ts';
 
 const resolver: ResolverDocument = {
   version: '2025.10',
@@ -43,6 +46,358 @@ const resolver: ResolverDocument = {
 };
 
 describe('token corpus validation', () => {
+  test('rejects a missing expanded set source at the shared loading boundary', () => {
+    const missingBase: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'sets/missing.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/base' }],
+    };
+
+    let caught: unknown;
+    try {
+      validateLoadedTokenDocuments(missingBase, []);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(TokenValidationError);
+    expect((caught as TokenValidationError).issues).toEqual([
+      {
+        path: '$.sets.base.sources',
+        reason: 'source does not exist: sets/missing.tokens.json',
+      },
+    ]);
+  });
+
+  test('rejects a missing unselected modifier source before context resolution', () => {
+    const missingModifier: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'base.tokens.json' }] } },
+      modifiers: {
+        theme: {
+          contexts: {
+            light: [{ $ref: 'light.tokens.json' }],
+            dark: [{ $ref: 'themes/missing.tokens.json' }],
+          },
+          default: 'light',
+        },
+      },
+      resolutionOrder: [{ $ref: '#/sets/base' }, { $ref: '#/modifiers/theme' }],
+    };
+
+    let caught: unknown;
+    try {
+      validateLoadedTokenDocuments(missingModifier, [
+        { path: 'base.tokens.json', document: { token: { $value: 0 } } },
+        { path: 'light.tokens.json', document: { token: { $value: 1 } } },
+      ]);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(TokenValidationError);
+    expect((caught as TokenValidationError).issues).toEqual([
+      {
+        path: '$.modifiers.theme.contexts.dark',
+        reason: 'source does not exist: themes/missing.tokens.json',
+      },
+    ]);
+  });
+
+  test('matches normalized source references to loaded document paths', () => {
+    const normalized: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: './base.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/base' }],
+    };
+    const document = { $type: 'number', token: { $value: 0 } } satisfies TokenDocument;
+
+    expect(
+      validateLoadedTokenDocuments(normalized, [{ path: 'base.tokens.json', document }]),
+    ).toEqual([{ path: 'base.tokens.json', document }]);
+  });
+
+  test('matches normalized loaded paths and preserves the authored source record', () => {
+    const normalized: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'base.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/base' }],
+    };
+    const document = { $type: 'number', token: { $value: 0 } } satisfies TokenDocument;
+    const loaded = [{ path: './base.tokens.json', document }];
+
+    expect(validateLoadedTokenDocuments(normalized, loaded)).toEqual(loaded);
+    expect(validateLoadedTokenDocuments(normalized, loaded)[0]?.document).toBe(document);
+  });
+
+  test('rejects duplicate loaded paths after normalization', () => {
+    const normalized: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'base.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/base' }],
+    };
+    const first = { $type: 'number', first: { $value: 0 } } satisfies TokenDocument;
+    const second = { $type: 'number', second: { $value: 1 } } satisfies TokenDocument;
+
+    expect(() =>
+      validateLoadedTokenDocuments(normalized, [
+        { path: './base.tokens.json', document: first },
+        { path: 'base.tokens.json', document: second },
+      ]),
+    ).toThrow('duplicate loaded token document path after normalization: base.tokens.json');
+  });
+
+  test('validates loaded cross-document inheritance without changing source objects', () => {
+    const inherited: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'base.tokens.json' }, { $ref: 'derived.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/base' }],
+    };
+    const base = { base: { $type: 'strokeStyle', token: { $value: 'solid' } } };
+    const derived = {
+      derived: {
+        $extends: '{base}',
+        child: { $value: '{base.token}', $extensions: { 'example.metadata': { preserved: true } } },
+      },
+    };
+    const loaded = [
+      { path: 'base.tokens.json', document: base },
+      { path: 'derived.tokens.json', document: derived },
+    ];
+    const before = JSON.stringify(loaded);
+    const validated = validateLoadedTokenDocuments(inherited, loaded);
+    expect(validated.map(({ path }) => path)).toEqual(['base.tokens.json', 'derived.tokens.json']);
+    expect(validated[0]!.document).toBe(base);
+    expect(validated[1]!.document).toBe(derived);
+    expect(JSON.stringify(loaded)).toBe(before);
+    expect(Object.hasOwn(derived.derived.child, '$type')).toBe(false);
+  });
+
+  test('reports malformed extension metadata at the owning source path', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'a.tokens.json' }, { $ref: 'b.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/base' }],
+    };
+    const loaded = [
+      { path: 'a.tokens.json', document: { token: { $type: 'number', $value: 1 } } },
+      { path: 'b.tokens.json', document: { broken: { $extends: 42 } } },
+    ];
+    let caught: unknown;
+    try {
+      validateLoadedTokenDocuments(resolver, loaded);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(TokenValidationError);
+    expect((caught as TokenValidationError).issues).toEqual([
+      { path: 'b.tokens.json.broken.$extends', reason: '$extends must be a token reference' },
+    ]);
+  });
+
+  test('loads value-only token overrides using the ordered source type without rewriting source', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'a.tokens.json' }, { $ref: 'b.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/base' }],
+    };
+    const base = { token: { $type: 'strokeStyle', $value: 'solid' } };
+    const override = { token: { $value: 'dashed' } };
+    const result = validateLoadedTokenDocuments(resolver, [
+      { path: 'a.tokens.json', document: base },
+      { path: 'b.tokens.json', document: override },
+    ]);
+    expect(result[0]?.document).toBe(base);
+    expect(result[1]?.document).toBe(override);
+    expect(Object.hasOwn(override.token, '$type')).toBe(false);
+  });
+
+  test('validates each authored value against its effective ordered-prefix type', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'a.tokens.json' }, { $ref: 'b.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/base' }],
+    };
+    const earlier = { group: { $type: 'number', token: { $value: 1 } } };
+    const later = { group: { token: { $type: 'strokeStyle', $value: 'solid' } } };
+    const loaded = [
+      { path: 'a.tokens.json', document: earlier },
+      { path: 'b.tokens.json', document: later },
+    ];
+
+    expect(validateLoadedTokenDocuments(resolver, loaded)).toEqual(loaded);
+  });
+
+  test('attributes unresolved and cyclic extensions to the later authored source', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'a.tokens.json' }, { $ref: 'b.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/base' }],
+    };
+    const earlier = { token: { $type: 'number', $value: 1 } };
+
+    for (const later of [
+      { derived: { $extends: '{missing}', child: { $value: 'solid' } } },
+      {
+        first: { $extends: '{second}', child: { $value: 'solid' } },
+        second: { $extends: '{first}' },
+      },
+    ]) {
+      let caught: unknown;
+      try {
+        validateLoadedTokenDocuments(resolver, [
+          { path: 'a.tokens.json', document: earlier },
+          { path: 'b.tokens.json', document: later },
+        ]);
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught).toBeInstanceOf(TokenValidationError);
+      expect((caught as TokenValidationError).issues[0]?.path).toStartWith('b.tokens.json.');
+    }
+  });
+
+  test('attributes an overridden extension failure to the source that adds it', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'a.tokens.json' }, { $ref: 'b.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/base' }],
+    };
+    const earlier = { derived: { $type: 'strokeStyle', child: { $value: 'solid' } } };
+    const later = { derived: { $extends: '{missing}' } };
+
+    let caught: unknown;
+    try {
+      validateLoadedTokenDocuments(resolver, [
+        { path: 'a.tokens.json', document: earlier },
+        { path: 'b.tokens.json', document: later },
+      ]);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(TokenValidationError);
+    expect((caught as TokenValidationError).issues[0]?.path).toBe('b.tokens.json.derived.$extends');
+  });
+
+  test('attributes a forward-chain extension failure to the terminal authored edge', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'a.tokens.json' }, { $ref: 'b.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/base' }],
+    };
+    const earlier = {
+      derived: { $extends: '{base}', token: { $type: 'number', $value: 1 } },
+    };
+    const later = {
+      base: { $extends: '{missing}', token: { $type: 'number', $value: 1 } },
+    };
+
+    let caught: unknown;
+    try {
+      validateLoadedTokenDocuments(resolver, [
+        { path: 'a.tokens.json', document: earlier },
+        { path: 'b.tokens.json', document: later },
+      ]);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(TokenValidationError);
+    expect((caught as TokenValidationError).issues[0]?.path).toBe('b.tokens.json.base.$extends');
+
+    const cyclicLater = {
+      base: { $extends: '{derived}', token: { $type: 'number', $value: 1 } },
+    };
+    caught = undefined;
+    try {
+      validateLoadedTokenDocuments(resolver, [
+        { path: 'a.tokens.json', document: earlier },
+        { path: 'b.tokens.json', document: cyclicLater },
+      ]);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(TokenValidationError);
+    expect((caught as TokenValidationError).issues[0]?.path).toBe('b.tokens.json.base.$extends');
+  });
+
+  test('keeps an earlier extension owner when a later source overrides the same group', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'a.tokens.json' }, { $ref: 'b.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/base' }],
+    };
+    for (const reference of ['{missing}', '#/invalid~3pointer']) {
+      const earlier = { derived: { $extends: reference, token: { $type: 'number', $value: 1 } } };
+      const later = {
+        derived: { $extends: '{base}' },
+        base: { $type: 'number', token: { $value: 1 } },
+      };
+      let caught: unknown;
+      try {
+        validateLoadedTokenDocuments(resolver, [
+          { path: 'a.tokens.json', document: earlier },
+          { path: 'b.tokens.json', document: later },
+        ]);
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught).toBeInstanceOf(TokenValidationError);
+      expect((caught as TokenValidationError).issues[0]?.path).toBe(
+        'a.tokens.json.derived.$extends',
+      );
+    }
+  });
+
+  test('isolates cross-document extension types by ordered resolver context', () => {
+    const contextResolver: ResolverDocument = {
+      version: '2025.10',
+      sets: {
+        derived: { sources: [{ $ref: 'derived.tokens.json' }] },
+      },
+      modifiers: {
+        theme: {
+          contexts: {
+            stroke: [{ $ref: 'stroke.tokens.json' }],
+            number: [{ $ref: 'number.tokens.json' }],
+          },
+          default: 'stroke',
+        },
+      },
+      resolutionOrder: [{ $ref: '#/sets/derived' }, { $ref: '#/modifiers/theme' }],
+    };
+    const derived = { derived: { $extends: '{base}', child: { $value: 'solid' } } };
+    const documents = new Map<string, unknown>([
+      ['derived.tokens.json', derived],
+      ['stroke.tokens.json', { base: { $type: 'strokeStyle', token: { $value: 'solid' } } }],
+      ['number.tokens.json', { base: { $type: 'number', token: { $value: 1 } } }],
+    ]);
+
+    const contexts = orderedTokenValidationContexts(contextResolver, documents).get(
+      'derived.tokens.json',
+    );
+    expect(contexts).toHaveLength(2);
+    expect(() =>
+      assertValidTokenDocument(derived, 'derived.tokens.json', contexts![0]),
+    ).not.toThrow();
+    expect(() => assertValidTokenDocument(derived, 'derived.tokens.json', contexts![1])).toThrow();
+    expect(() =>
+      validateLoadedTokenDocuments(
+        contextResolver,
+        [...documents].map(([path, document]) => ({ path, document })),
+      ),
+    ).toThrow('derived.tokens.json.derived.child');
+  });
+
   test('decodes RFC 6901 tilde escapes so the decoded name still finds its set', () => {
     const escaped: ResolverDocument = {
       version: '2025.10',
