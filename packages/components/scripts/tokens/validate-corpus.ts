@@ -551,6 +551,37 @@ export function buildContextSourcesIndex(
   return index;
 }
 
+function validateExpandedSources(
+  expandedSets: ReadonlyArray<{ setName: string; sources: ResolverReference[] }>,
+  expandedContexts: ReadonlyArray<{
+    modifierName: string;
+    contextName: string;
+    sources: ResolverReference[];
+  }>,
+  documentsByPath: Map<string, unknown>,
+): void {
+  const knownPaths = new Set([...documentsByPath.keys()].map(normalizeSourcePath));
+  const missingSources = [
+    ...expandedSets.flatMap(({ setName, sources }) =>
+      sources
+        .filter((source) => !knownPaths.has(normalizeSourcePath(source.$ref)))
+        .map((source) => ({
+          path: `$.sets.${setName}.sources`,
+          reason: `source does not exist: ${source.$ref}`,
+        })),
+    ),
+    ...expandedContexts.flatMap(({ modifierName, contextName, sources }) =>
+      sources
+        .filter((source) => !knownPaths.has(normalizeSourcePath(source.$ref)))
+        .map((source) => ({
+          path: `$.modifiers.${modifierName}.contexts.${contextName}`,
+          reason: `source does not exist: ${source.$ref}`,
+        })),
+    ),
+  ];
+  if (missingSources.length > 0) throw new TokenValidationError(missingSources);
+}
+
 /**
  * Returns the concrete ordered document scopes in which each source participates.
  * `$extends` targets are resolved against these scopes only; unrelated sets and
@@ -572,6 +603,7 @@ export function orderedTokenValidationContexts(
     })),
   );
   const resolutionOrder = parseResolutionOrder(resolver);
+  validateExpandedSources(expandedSets, expandedContexts, documentsByPath);
   const setSourcesByName = new Map(expandedSets.map((entry) => [entry.setName, entry.sources]));
   const contextSourcesByModifier = buildContextSourcesIndex(expandedContexts);
   const pathByDocument = new Map(
@@ -633,8 +665,6 @@ async function main(): Promise<void> {
   const loaded = await loadRawTokenDocuments();
   validateResolverDocument(resolver);
 
-  const knownPaths = new Set(loaded.map(({ path }) => path));
-
   const expandedSets = Object.keys(resolver.sets).map((setName) => ({
     setName,
     sources: expandSetSources(resolver, setName),
@@ -646,26 +676,6 @@ async function main(): Promise<void> {
       sources: expandContextSources(resolver, modifierName, contextName),
     })),
   );
-
-  const missingSources = [
-    ...expandedSets.flatMap(({ setName, sources }) =>
-      sources
-        .filter((source) => !knownPaths.has(normalizeSourcePath(source.$ref)))
-        .map((source) => ({
-          path: `$.sets.${setName}.sources`,
-          reason: `source does not exist: ${source.$ref}`,
-        })),
-    ),
-    ...expandedContexts.flatMap(({ modifierName, contextName, sources }) =>
-      sources
-        .filter((source) => !knownPaths.has(normalizeSourcePath(source.$ref)))
-        .map((source) => ({
-          path: `$.modifiers.${modifierName}.contexts.${contextName}`,
-          reason: `source does not exist: ${source.$ref}`,
-        })),
-    ),
-  ];
-  if (missingSources.length > 0) throw new TokenValidationError(missingSources);
 
   const referencedPaths = new Set<string>([
     ...expandedSets.flatMap(({ sources }) =>

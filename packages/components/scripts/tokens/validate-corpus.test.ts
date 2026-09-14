@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import type { ResolverDocument } from './types.ts';
+import { TokenValidationError, type ResolverDocument } from './types.ts';
 import {
   buildContextSourcesIndex,
   combinations,
@@ -46,6 +46,77 @@ const resolver: ResolverDocument = {
 };
 
 describe('token corpus validation', () => {
+  test('rejects a missing expanded set source at the shared loading boundary', () => {
+    const missingBase: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'sets/missing.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/base' }],
+    };
+
+    let caught: unknown;
+    try {
+      validateLoadedTokenDocuments(missingBase, []);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(TokenValidationError);
+    expect((caught as TokenValidationError).issues).toEqual([
+      {
+        path: '$.sets.base.sources',
+        reason: 'source does not exist: sets/missing.tokens.json',
+      },
+    ]);
+  });
+
+  test('rejects a missing unselected modifier source before context resolution', () => {
+    const missingModifier: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'base.tokens.json' }] } },
+      modifiers: {
+        theme: {
+          contexts: {
+            light: [{ $ref: 'light.tokens.json' }],
+            dark: [{ $ref: 'themes/missing.tokens.json' }],
+          },
+          default: 'light',
+        },
+      },
+      resolutionOrder: [{ $ref: '#/sets/base' }, { $ref: '#/modifiers/theme' }],
+    };
+
+    let caught: unknown;
+    try {
+      validateLoadedTokenDocuments(missingModifier, [
+        { path: 'base.tokens.json', document: { token: { $value: 0 } } },
+        { path: 'light.tokens.json', document: { token: { $value: 1 } } },
+      ]);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(TokenValidationError);
+    expect((caught as TokenValidationError).issues).toEqual([
+      {
+        path: '$.modifiers.theme.contexts.dark',
+        reason: 'source does not exist: themes/missing.tokens.json',
+      },
+    ]);
+  });
+
+  test('matches normalized source references to loaded document paths', () => {
+    const normalized: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: './base.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/base' }],
+    };
+    const document = { $type: 'number', token: { $value: 0 } };
+
+    expect(
+      validateLoadedTokenDocuments(normalized, [{ path: 'base.tokens.json', document }]),
+    ).toEqual([{ path: 'base.tokens.json', document }]);
+  });
+
   test('validates loaded cross-document inheritance without changing source objects', () => {
     const inherited: ResolverDocument = {
       version: '2025.10',
