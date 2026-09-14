@@ -4,6 +4,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { readJsonFile } from './lib/read-json-file.ts';
+import { assertReleaseProvenance, readTarballManifest } from './lib/release-provenance.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const defaultPackageRoot = join(scriptDirectory, '..');
@@ -23,6 +24,7 @@ type PublishReleaseDependencies = {
   artifactExists: (path: string) => boolean;
   validateConsumerArtifact: () => Promise<void>;
   spawnPublish: (publishArguments: string[]) => PublishResult;
+  validateReleaseProvenance: (tarballPath: string, identity: PackageManifest) => void;
   writeOutput: (message: string) => void;
 };
 
@@ -140,6 +142,7 @@ export async function runPublishRelease(input: {
   if (!dependencies.artifactExists(tarballPath)) {
     throw new Error(`validated package artifact not found at ${tarballPath}`);
   }
+  dependencies.validateReleaseProvenance(tarballPath, manifest);
 
   const publishArguments = getPublishArguments(tarballPath, dryRun);
   dependencies.writeOutput(
@@ -183,6 +186,8 @@ async function main(): Promise<void> {
           },
         });
       },
+      validateReleaseProvenance: (tarballPath, identity) =>
+        assertReleaseProvenance(packageRoot, identity, readTarballManifest(tarballPath)),
       writeOutput: (message) => {
         process.stdout.write(message);
       },

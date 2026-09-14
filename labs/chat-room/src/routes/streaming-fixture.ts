@@ -38,20 +38,13 @@
  * on screen while the response is still open" stops being a timing claim and
  * becomes a causal one.
  *
- * WHY `playwright.config.ts` OWNS THE PROCESS. `page.svelte.e2e.ts` runs in
- * three browser engines, including Playwright's bounded WebKit project shards. A
- * server started from the spec would be started once per worker and every copy
- * after the first would fail to bind. It runs as a `webServer` entry instead —
- * one process for the whole run — and every piece of per-test state below is
- * keyed by a marker the test generates, so the concurrent engines cannot see
- * each other's gates or counters.
- *
- * Run directly (`bun src/routes/streaming-fixture.ts`) to listen; importing it
- * only reads the shared constants, which is what the spec does.
+ * The fixture runs as a Playwright `webServer` entry keyed by generated markers.
  */
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { pathToFileURL } from 'node:url';
+
+import { earlyReleases, gate, heldGates, requestCounts } from './streaming-fixture-gates';
 
 /**
  * Fixed, and deliberately not one of the ports the rest of the suite uses
@@ -87,6 +80,7 @@ export type FixtureScenario =
 	| 'tool'
 	| 'ratelimited'
 	| 'unauthorized'
+	| 'fail-once401'
 	| 'midstream';
 
 export const GATED_FIRST_CHUNK = 'Streaming first half.';
@@ -135,21 +129,7 @@ const MARKER_PATTERN =
 	// shorter name would match its prefix, leave `-long` unconsumed, and fail
 	// the whole pattern — which reads as the fixture serving a default reply
 	// rather than as a marker it could not parse.
-	/\[fixture (gated|hold|approval-long|approval|stepped|tool|ratelimited|unauthorized|midstream) ([A-Za-z0-9-]+)\]/;
-
-/** How many `/v1/messages` requests each marker has produced. */
-const requestCounts = new Map<string, number>();
-
-/** Markers whose response is currently parked mid-stream, and how to resume it. */
-const heldGates = new Map<string, () => void>();
-
-/**
- * Releases that arrived before the request they belong to. The spec never
- * intends to hit this — it releases only after seeing the first chunk rendered,
- * by which time the gate is registered — but recording it means a mis-sequenced
- * test fails on its `released` assertion instead of hanging until timeout.
- */
-const earlyReleases = new Set<string>();
+	/\[fixture (gated|hold|approval-long|approval|stepped|tool|ratelimited|unauthorized|fail-once401|midstream) ([A-Za-z0-9-]+)\]/;
 
 function jsonResponse(res: ServerResponse, status: number, payload: unknown): void {
 	const body = JSON.stringify(payload);
@@ -225,36 +205,6 @@ function textBlock(res: ServerResponse, chunks: readonly string[]): void {
 	sse(res, 'content_block_stop', { type: 'content_block_stop', index: 0 });
 }
 
-/**
- * Parks the response until the test releases this marker or the client hangs
- * up. The gate is registered synchronously, in the same tick as the write that
- * precedes it, so a release that follows an observation of that write can never
- * arrive too early.
- */
-function gate(marker: string, res: ServerResponse): Promise<'released' | 'disconnected'> {
-	if (earlyReleases.delete(marker)) return Promise.resolve('released');
-
-	return new Promise((resolve) => {
-		let settled = false;
-
-		const onClose = () => {
-			if (settled) return;
-			settled = true;
-			heldGates.delete(marker);
-			resolve('disconnected');
-		};
-
-		heldGates.set(marker, () => {
-			if (settled) return;
-			settled = true;
-			res.off('close', onClose);
-			resolve('released');
-		});
-
-		res.on('close', onClose);
-	});
-}
-
 async function respondToMessages(res: ServerResponse, body: string): Promise<void> {
 	const match = MARKER_PATTERN.exec(body);
 	const scenario = match?.[1] as FixtureScenario | undefined;
@@ -268,7 +218,11 @@ async function respondToMessages(res: ServerResponse, body: string): Promise<voi
 	// offering. The two codes are chosen to land on opposite sides of that
 	// split — 429 is retryable, 401 never is — so a spec can tell a rendered
 	// classification from a rendered guess.
-	if (scenario === 'ratelimited' || scenario === 'unauthorized') {
+	if (
+		scenario === 'ratelimited' ||
+		scenario === 'unauthorized' ||
+		(scenario === 'fail-once401' && attempt === 1)
+	) {
 		const rateLimited = scenario === 'ratelimited';
 		res.writeHead(rateLimited ? 429 : 401, {
 			'Content-Type': 'application/json',
@@ -535,11 +489,7 @@ export function createStreamingFixture(): Server {
 	});
 }
 
-/**
- * Only when run as a program. The spec imports this module for the constants
- * above, and an import that also bound a port would fail in every Playwright
- * worker after the first.
- */
+/** Bind only when invoked as the fixture process, never when imported by specs. */
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
 	createStreamingFixture().listen(FIXTURE_PORT, '127.0.0.1', () => {
 		console.log(`streaming fixture listening on ${FIXTURE_ORIGIN}`);

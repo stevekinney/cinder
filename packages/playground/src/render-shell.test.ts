@@ -18,6 +18,7 @@ import {
   documentationMetadataTags,
   documentationPageMetadata,
   jsonForScriptTag,
+  PRE_PAINT_THEME_SCRIPT,
   renderShell,
 } from './render-shell.ts';
 
@@ -58,6 +59,15 @@ describe('jsonForScriptTag', () => {
 });
 
 describe('renderShell', () => {
+  it('uses data-theme scopes and removes explicit theme signals in system mode', () => {
+    expect(PRE_PAINT_THEME_SCRIPT).toContain(
+      "document.documentElement.dataset['theme'] = override",
+    );
+    expect(PRE_PAINT_THEME_SCRIPT).toContain("removeAttribute('data-theme')");
+    expect(PRE_PAINT_THEME_SCRIPT).toContain("style.colorScheme = ''");
+    expect(PRE_PAINT_THEME_SCRIPT).not.toContain('data-cinder-theme');
+    expect(renderShell('button', [])).toContain('html:not([data-theme])');
+  });
   it('embeds the active component and component list in the data island', () => {
     const html = renderShell('button', ['button', 'avatar']);
     const match = /<script type="application\/json" id="cinder-initial">([^<]+)<\/script>/.exec(

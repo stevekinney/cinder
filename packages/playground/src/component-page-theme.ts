@@ -30,20 +30,21 @@ export const PREVIEW_WIDTHS = [
 export const NAV_FILTER_STORAGE_KEY = 'cinder-playground-nav-filter';
 
 /**
- * Cinder tokens switch on `color-scheme` (via `light-dark()`); the playground
- * bridge mirrors the same value onto `data-cinder-theme` for bookkeeping.
- * Server rendering has no `document`, so the SSR tree seeds `light` —
- * matching the base `color-scheme: light dark` first argument — and the
- * real preference is adopted in an `$effect` after hydration. Seeding from
+ * Cinder tokens switch on the scoped `data-theme` attribute.
+ * Server rendering has no `document`, so the SSR tree seeds `light`.
+ * The real preference is adopted in an `$effect` after hydration. Seeding from
  * the document during init would make the server and client first render
  * disagree (a hydration mismatch); deferring the read is the same
  * discipline `shell.svelte` uses for its persisted theme.
  */
 export function readInitialTheme(): 'light' | 'dark' {
   if (typeof document === 'undefined') return 'light';
-  const scheme = document.documentElement.style.colorScheme;
-  if (scheme === 'dark' || scheme === 'light') return scheme;
-  return document.documentElement.dataset['cinderTheme'] === 'dark' ? 'dark' : 'light';
+  const explicitTheme = document.documentElement.dataset['theme'];
+  if (explicitTheme === 'light' || explicitTheme === 'dark') return explicitTheme;
+  return typeof window !== 'undefined' &&
+    window.matchMedia?.('(prefers-color-scheme: dark)').matches
+    ? 'dark'
+    : 'light';
 }
 
 /*
@@ -71,12 +72,11 @@ export function readStoredNavFilter(): string {
 }
 
 /**
- * Write the resolved theme to the DOM and persist it to `localStorage`. Used
+ * Write the explicit Cinder theme scope and persist it to `localStorage`. Used
  * by `toggleTheme` — never assign the theme's DOM/storage targets directly.
  */
 export function applyTheme(theme: 'light' | 'dark'): void {
-  document.documentElement.style.colorScheme = theme;
-  document.documentElement.dataset['cinderTheme'] = theme;
+  document.documentElement.dataset['theme'] = theme;
   try {
     // Same key the pre-paint script in render-shell.ts reads. It previously
     // wrote `cinder-docs-theme`, which nothing read, so the choice was lost on

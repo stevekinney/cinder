@@ -38,6 +38,11 @@ import ts from 'typescript';
 import { orderedExportEntry } from './generate-exports.ts';
 import { BUILD_INPUT_HASH_MARKER } from './lib/build-cache.ts';
 import { readJsonFile } from './lib/read-json-file.ts';
+import {
+  resolvePackProvenance,
+  withReleaseProvenance,
+  type ReleaseProvenance,
+} from './lib/release-provenance.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(scriptDirectory, '..');
@@ -58,6 +63,7 @@ type ExportsMap = Record<string, ExportConditional | string>;
 type SourceManifest = {
   name: string;
   version: string;
+  gitHead?: string;
   bin?: Record<string, string>;
   svelte?: string;
   files?: string[];
@@ -206,7 +212,10 @@ function rewriteComponentMetadataNodeEntry(
 /**
  * Build the transformed manifest written into staging.
  */
-function buildPublishedManifest(source: SourceManifest): SourceManifest {
+function buildPublishedManifest(
+  source: SourceManifest,
+  provenance?: ReleaseProvenance,
+): SourceManifest {
   const transformedExports: ExportsMap = {};
   for (const [key, entry] of Object.entries(source.exports)) {
     transformedExports[key] =
@@ -259,7 +268,7 @@ function buildPublishedManifest(source: SourceManifest): SourceManifest {
   // ships test infra.
   published.files = [...PUBLISHED_SOURCE_FILES_GLOBS];
   published.exports = transformedExports;
-  return published;
+  return withReleaseProvenance(published, provenance ?? {});
 }
 
 /**
@@ -615,7 +624,10 @@ export async function packForPublish(): Promise<PackForPublishResult> {
   const sourceHashBefore = await fileHash(sourceManifestPath);
 
   const sourceManifest = await readSourceManifest();
-  const publishedManifest = buildPublishedManifest(sourceManifest);
+  const publishedManifest = buildPublishedManifest(
+    sourceManifest,
+    resolvePackProvenance(packageRoot),
+  );
 
   // Stage from the PUBLISHED manifest's `files` list, not the source's.
   await stageFiles(publishedManifest);

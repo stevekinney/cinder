@@ -482,10 +482,7 @@ async function renderComponentPage(
         font-family: var(--cinder-font-sans);
         font-size: var(--cinder-text-base);
         line-height: var(--cinder-leading-normal);
-        /* Scale the preview gutter with the viewport: a comfortable space-6
-           (24px) on wide screens collapses to a thin space-1 (4px) on phones so
-           example components get almost the full width and look realistic. */
-        padding: clamp(var(--cinder-space-1), 2.5vw, var(--cinder-space-6));
+        padding: ${snapshotMode || previewOnly ? 'clamp(var(--cinder-space-1), 2.5vw, var(--cinder-space-6))' : '0'};
       }
       /* Guard the background/color crossfade behind a reduced-motion opt-out so
          users who prefer no motion get an instant theme swap, not a transition. */
@@ -921,7 +918,8 @@ export const ROUTES: RouteDefinition[] = [
   {
     method: 'GET',
     pattern: /^\/playground-styles\/(documentation|landing)\.css$/,
-    handler: ({ match }) => handlePlaygroundStylesRoute(match[1]! as 'documentation' | 'landing'),
+    handler: ({ match }) =>
+      handlePlaygroundStylesRoute(match[1] === 'landing' ? 'landing' : 'documentation'),
   },
   {
     method: 'GET',

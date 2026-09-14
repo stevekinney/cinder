@@ -12,18 +12,26 @@ import {
 } from '@lostgradient/operative';
 import { withEnhancedStreaming } from '@lostgradient/operative/streaming';
 import { createTool, createToolbox, type AnyToolbox, type ToolRequestContext } from 'armorer';
-import { appendUserMessage, createConversationHistory } from '@lostgradient/chat';
+import {
+	appendUserMessage,
+	createConversationHistory,
+	decodeChatStreamEvent
+} from '@lostgradient/chat';
 import { z } from 'zod';
 
 import {
 	classifyChatRunFailure,
 	createChatAgent,
 	createChatStreamWriter,
-	pumpChatRun,
 	startChatRun
 } from './chat-agent.ts';
+import { pumpChatRun } from './chat-run-pump.ts';
 
 import type { ChatStreamEvent } from '@lostgradient/chat';
+import {
+	parseServerOwnedPersistenceFailureHint,
+	serverOwnedPersistenceFailureHint
+} from './server-owned-snapshot.ts';
 
 /**
  * Deterministic unit tests for the Operative-backed agent loop. Every
@@ -62,7 +70,7 @@ const TERMINAL_TYPES = new Set(['run.completed', 'run.error', 'run.tripwire', 'r
 function decodeLines(lines: string[]): ChatStreamEvent[] {
 	return lines.map((line) => {
 		if (!line.endsWith('\n')) throw new Error(`frame is not newline-terminated: ${line}`);
-		return JSON.parse(line) as ChatStreamEvent;
+		return decodeChatStreamEvent(JSON.parse(line));
 	});
 }
 
@@ -120,17 +128,19 @@ async function runAndCollect(
 	generate: StreamingGenerateFunction,
 	toolbox: AnyToolbox = createToolbox([]),
 	lines: string[] = [],
-	beforeToolExecution?: BeforeToolExecutionHook[]
+	beforeToolExecution?: BeforeToolExecutionHook[],
+	beforeFailure?: NonNullable<Parameters<typeof pumpChatRun>[2]>['beforeFailure'],
+	conversation = conversationWith('hello')
 ): Promise<{ frames: ChatStreamEvent[]; envelope: Awaited<ReturnType<typeof pumpChatRun>> }> {
 	// Mirrors the route exactly: one request-local writer feeds both the
 	// `stream:*` forwarding `createChatAgent` installs and the `tool.*`/`run.*`
 	// frames `pumpChatRun` emits, so this collects the same bytes the wire sees.
 	const writer = createChatStreamWriter((line) => lines.push(line));
 	const agent = createChatAgent({ generate, toolbox, requestContext, writer, beforeToolExecution });
-	const run = startChatRun(agent, conversationWith('hello'));
+	const run = startChatRun(agent, conversation);
 	// Disposed like the route disposes it, so a run's listeners cannot outlive
 	// the test that made it and leak into the next one.
-	const envelope = await pumpChatRun(run, writer).finally(() => disposeRun(run));
+	const envelope = await pumpChatRun(run, writer, { beforeFailure }).finally(() => disposeRun(run));
 	const frames = decodeLines(lines);
 	expectWellFormedWire(frames);
 	return { frames, envelope };
@@ -218,6 +228,140 @@ describe('pumpChatRun: completed success', () => {
 });
 
 describe('pumpChatRun: provider failure', () => {
+	test.each(['failure', 'abort'] as const)(
+		'handles a rejected result as %s without inventing a conversation',
+		async (outcome) => {
+			const lines: string[] = [];
+			const cause =
+				outcome === 'abort'
+					? new DOMException('Stopped', 'AbortError')
+					: new Error('credential-canary');
+			const run = {
+				async *[Symbol.asyncIterator]() {},
+				result: async () => {
+					throw cause;
+				}
+			} as unknown as AgentRun;
+			let persistenceCalls = 0;
+			await pumpChatRun(
+				run,
+				createChatStreamWriter((line) => lines.push(line)),
+				{
+					beforeFailure: async () => {
+						persistenceCalls += 1;
+					}
+				}
+			);
+			const frames = decodeLines(lines);
+			expect(persistenceCalls).toBe(0);
+			expect(frames).toHaveLength(1);
+			if (outcome === 'abort') {
+				expect(frames[0]).toMatchObject({ type: 'run.aborted', reason: 'Stopped' });
+			} else {
+				expect(frames[0]).toMatchObject({
+					type: 'run.error',
+					error: {
+						name: 'Error',
+						kind: 'generate',
+						code: 'UNKNOWN',
+						message: 'The turn outcome could not be saved.',
+						retryable: false
+					}
+				});
+				expect(lines.join('')).not.toContain('credential-canary');
+			}
+		}
+	);
+
+	test('awaits failure persistence before writing the terminal frame', async () => {
+		const lines: string[] = [];
+		let release!: () => void;
+		const persisted = new Promise<void>((resolve) => (release = resolve));
+		let startedResolve!: () => void;
+		const started = new Promise<void>((resolve) => (startedResolve = resolve));
+		const pending = runAndCollect(
+			async () => {
+				throw new Error('provider failed');
+			},
+			createToolbox([]),
+			lines,
+			[],
+			async () => {
+				startedResolve();
+				expect(lines.some((line) => line.includes('run.error'))).toBe(false);
+				await persisted;
+			}
+		);
+		await started;
+		expect(lines.some((line) => line.includes('run.error'))).toBe(false);
+		release();
+		await pending;
+	});
+
+	test('emits one safe terminal when failure persistence rejects', async () => {
+		const { frames, envelope } = await runAndCollect(
+			async () => {
+				throw new Error('provider exploded');
+			},
+			createToolbox([]),
+			[],
+			[],
+			async () => {
+				throw new Error('storage unavailable');
+			}
+		);
+		expect(envelope).toMatchObject({
+			ok: false,
+			error: { code: 'UNKNOWN', message: 'The turn outcome could not be saved.', retryable: false }
+		});
+		expect(ofType(frames, 'run.error')).toHaveLength(1);
+		expect(ofType(frames, 'run.error')[0]?.error).toMatchObject({
+			name: 'Error',
+			code: 'UNKNOWN',
+			message: 'The turn outcome could not be saved.'
+		});
+		const hint = ofType(frames, 'stream:error')
+			.map((frame) => frame.error)
+			.find((error) => parseServerOwnedPersistenceFailureHint(error) !== undefined);
+		expect(parseServerOwnedPersistenceFailureHint(hint)).toBeDefined();
+		expect(frames.findIndex((frame) => frame.type === 'stream:error')).toBeLessThan(
+			frames.findIndex((frame) => frame.type === 'run.error')
+		);
+		expect(
+			parseServerOwnedPersistenceFailureHint({
+				...serverOwnedPersistenceFailureHint('test-user'),
+				extra: true
+			})
+		).toBeUndefined();
+		expect(
+			parseServerOwnedPersistenceFailureHint({
+				...serverOwnedPersistenceFailureHint('test-user'),
+				userMessageId: ''
+			})
+		).toBeUndefined();
+	});
+
+	test('does not emit an unsaved hint when the run has no user identity', async () => {
+		const { frames } = await runAndCollect(
+			async () => {
+				throw new Error('provider exploded');
+			},
+			createToolbox([]),
+			[],
+			[],
+			async () => {
+				throw new Error('storage unavailable');
+			},
+			createConversationHistory({ id: 'no-user' })
+		);
+		expect(
+			ofType(frames, 'stream:error').filter((frame) =>
+				parseServerOwnedPersistenceFailureHint(frame.error)
+			)
+		).toHaveLength(0);
+		expect(ofType(frames, 'run.error')).toHaveLength(1);
+	});
+
 	test('surfaces kind: "generate" when the provider throws', async () => {
 		const generate: StreamingGenerateFunction = async () => {
 			throw new Error('simulated provider failure');
@@ -237,7 +381,8 @@ describe('pumpChatRun: provider failure', () => {
 		// it, since it can carry a credential-bearing provider response.
 		const [terminal] = ofType(frames, 'run.error');
 		expect(terminal?.error.kind).toBe('generate');
-		expect(terminal?.error.message).toContain('simulated provider failure');
+		expect(terminal?.error.message).toBe('The assistant could not complete this turn.');
+		expect(JSON.stringify(frames)).not.toContain('simulated provider failure');
 		expect(terminal?.error).not.toHaveProperty('cause');
 		expect(ofType(frames, 'run.completed')).toHaveLength(0);
 	});
@@ -256,10 +401,43 @@ describe('pumpChatRun: provider failure', () => {
 		const { frames } = await runAndCollect(generate);
 
 		const [streamError] = ofType(frames, 'stream:error');
-		expect(streamError?.error).toEqual({ name: 'Error', message: 'provider exploded' });
+		expect(streamError?.error).toEqual({
+			name: 'Error',
+			message: 'The assistant could not complete this turn.'
+		});
 		expect(JSON.stringify(frames)).not.toContain('sk-secret');
+		expect(JSON.stringify(frames)).not.toContain('provider exploded');
 		expect(ofType(frames, 'run.error')).toHaveLength(1);
 	});
+
+	test.each(['classified', 'plain'] as const)(
+		'redacts credential canaries from every emitted frame for a %s provider error',
+		async (shape) => {
+			const canary = 'CredentialInProviderMessageCanary';
+			const cause = { authorization: canary, stack: canary };
+			const error =
+				shape === 'classified'
+					? new AgentRunError(canary, { kind: 'generate', code: 'UNKNOWN', cause })
+					: { name: canary, message: canary, cause, response: { headers: cause } };
+			if (error instanceof Error) error.name = canary;
+			const lines: string[] = [];
+			const { frames } = await runAndCollect(
+				async () => {
+					throw error;
+				},
+				createToolbox([]),
+				lines
+			);
+			expect(lines.join('')).not.toContain(canary);
+			expect(ofType(frames, 'stream:error')).toHaveLength(1);
+			expect(ofType(frames, 'run.error')[0]?.error).toMatchObject({
+				name: 'Error',
+				kind: 'generate',
+				message: 'The assistant could not complete this turn.'
+			});
+			expectWellFormedWire(frames);
+		}
+	);
 });
 
 describe('pumpChatRun: aborted request', () => {

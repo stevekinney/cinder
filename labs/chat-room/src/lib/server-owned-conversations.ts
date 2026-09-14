@@ -1,11 +1,24 @@
 import { createAgentSession } from '@lostgradient/operative';
 import type { AgentSession } from '@lostgradient/operative';
-import { appendUserMessage, createConversationHistory, getMessages } from '@lostgradient/chat';
+import {
+	appendUserMessage,
+	createConversationHistory,
+	decodeChatStreamEvent,
+	getMessages,
+	markMessageDeliveryFailed
+} from '@lostgradient/chat';
+import type { ChatSerializedRunError, ConversationHistory } from '@lostgradient/chat';
 
 import { serverOwnedRuntime } from './server-owned-runtime.ts';
+import type {
+	ServerOwnedConversationSnapshot,
+	ServerOwnedTurnFailure
+} from './server-owned-snapshot.ts';
 
 /** The agent identity every conversation in this variant is filed under. */
 export const AGENT_NAME = 'chat-room-server-owned';
+
+const SAFE_TURN_FAILURE_MESSAGE = 'The assistant could not complete this turn.';
 
 /**
  * What the conversation list renders. Deliberately narrower than
@@ -192,4 +205,107 @@ export function orphanedRunsOf(metadata: AgentSession['metadata']): readonly str
 /** Message count for one conversation, for assertions and the list fallback. */
 export function messageCountOf(session: AgentSession): number {
 	return getMessages(session.conversationHistory).length;
+}
+
+/** Returns the persisted classified failures, keeping malformed old metadata out of the wire. */
+export function turnFailuresOf(
+	metadata: AgentSession['metadata']
+): Record<string, ServerOwnedTurnFailure> {
+	const value = metadata?.turnFailures;
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) return {};
+	const safe: Record<string, ServerOwnedTurnFailure> = {};
+	for (const [id, candidate] of Object.entries(value)) {
+		if (
+			candidate === null ||
+			typeof candidate !== 'object' ||
+			!('message' in candidate) ||
+			typeof candidate.message !== 'string'
+		)
+			continue;
+		try {
+			// Use Chat's existing classified-error boundary so its kind/code
+			// unions remain authoritative without duplicating an allowed-value list.
+			const frame = decodeChatStreamEvent({
+				type: 'run.error',
+				wireVersion: 1,
+				sequence: 0,
+				error: { ...candidate, name: 'Error', message: SAFE_TURN_FAILURE_MESSAGE }
+			});
+			if (frame.type !== 'run.error') continue;
+			safe[id] = {
+				message: frame.error.message,
+				kind: frame.error.kind,
+				code: frame.error.code,
+				...(frame.error.retryable !== undefined ? { retryable: frame.error.retryable } : {})
+			};
+		} catch {
+			// Malformed stored metadata is neither a classified failure nor safe
+			// diagnostic text. Keep it out of GET and SSR.
+		}
+	}
+	return safe;
+}
+
+/** Projects a full session into the browser-safe server-owned synchronization contract. */
+export function serverOwnedSnapshot(session: AgentSession): ServerOwnedConversationSnapshot {
+	return {
+		id: session.id,
+		title: titleOf(session.metadata),
+		conversation: session.conversationHistory,
+		turnFailures: turnFailuresOf(session.metadata)
+	};
+}
+
+/** Persist one failure exactly once, keyed by this run's authoritative last user message. */
+export async function rememberTurnFailure(
+	id: string,
+	conversation: ConversationHistory,
+	error: ChatSerializedRunError
+): Promise<void> {
+	const userMessageId = [...conversation.ids]
+		.reverse()
+		.find((messageId) => conversation.messages[messageId]?.role === 'user');
+	if (userMessageId === undefined) throw new Error('The failed turn has no user message.');
+	const persistedError: ServerOwnedTurnFailure = {
+		message: SAFE_TURN_FAILURE_MESSAGE,
+		kind: error.kind,
+		code: error.code,
+		...(typeof error.retryable === 'boolean' ? { retryable: error.retryable } : {})
+	};
+
+	const { sessions } = serverOwnedRuntime();
+	await sessions.update(
+		id,
+		(session) => {
+			if (
+				session === undefined ||
+				session.conversationHistory.messages[userMessageId] === undefined
+			) {
+				throw new Error('The failed turn is not present in the persisted conversation.');
+			}
+			const failures = turnFailuresOf(session.metadata);
+			const conversationHistory = markMessageDeliveryFailed(
+				session.conversationHistory,
+				userMessageId
+			);
+			if (
+				failures[userMessageId] !== undefined &&
+				conversationHistory === session.conversationHistory
+			) {
+				return undefined;
+			}
+			return {
+				...session,
+				conversationHistory,
+				metadata: {
+					...session.metadata,
+					turnFailures:
+						failures[userMessageId] === undefined
+							? { ...failures, [userMessageId]: persistedError }
+							: failures
+				}
+			};
+		},
+		{ refreshActivity: false }
+	);
 }

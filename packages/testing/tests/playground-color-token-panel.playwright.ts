@@ -71,10 +71,10 @@ type ColorTokenRowLayoutState = {
  * group. Read the current theme and click only when a change is needed.
  */
 async function selectTheme(page: Page, theme: 'light' | 'dark'): Promise<void> {
-  const current = await page.evaluate(() => document.documentElement.dataset['cinderTheme']);
+  const current = await page.evaluate(() => document.documentElement.dataset['theme']);
   if (current === theme) return;
   await page.getByRole('button', { name: `Preview theme: switch to ${theme}` }).click();
-  await expect(page.locator('html')).toHaveAttribute('data-cinder-theme', theme);
+  await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
 }
 
 async function waitForPlayground(page: Page): Promise<void> {
@@ -540,11 +540,11 @@ test.describe('playground color token panel', () => {
   test('supports visual color editing with correct swatches, focus, theme isolation, and reset UX', async ({
     page,
   }) => {
-    await page.goto('/', { waitUntil: 'load' });
+    await page.goto('/?theme=light', { waitUntil: 'load' });
     await waitForPlayground(page);
 
     await selectTheme(page, 'light');
-    await expect(page.locator('html')).toHaveAttribute('data-cinder-theme', 'light');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 
     const panel = await openColorTokenPanel(page);
     await expect(page.locator('#color-token-filter')).toBeFocused();
@@ -674,7 +674,7 @@ test.describe('playground color token panel', () => {
     await expect.poll(() => iframeTokenValue(page, SUCCESS_TOKEN_NAME)).toBe(LIGHT_BULK_OVERRIDE);
 
     await selectTheme(page, 'dark');
-    await expect(page.locator('html')).toHaveAttribute('data-cinder-theme', 'dark');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     await expect.poll(() => shellTokenValue(page, TOKEN_NAME)).not.toBe(visualPickerValue);
     await expect.poll(() => iframeTokenValue(page, TOKEN_NAME)).not.toBe(visualPickerValue);
     await fillTokenCssValue(page, DANGER_TOKEN_NAME, DARK_BULK_OVERRIDE);
@@ -720,7 +720,7 @@ test.describe('playground color token panel', () => {
 
   test('keeps token row actions and value input usable at narrow widths', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/', { waitUntil: 'load' });
+    await page.goto('/?theme=light', { waitUntil: 'load' });
     await waitForPlayground(page);
 
     await selectTheme(page, 'light');
@@ -766,7 +766,7 @@ test.describe('playground color token panel', () => {
     page,
   }) => {
     await page.emulateMedia({ forcedColors: 'active' });
-    await page.goto('/', { waitUntil: 'load' });
+    await page.goto('/?theme=light', { waitUntil: 'load' });
     await waitForPlayground(page);
 
     await selectTheme(page, 'light');

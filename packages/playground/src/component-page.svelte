@@ -90,8 +90,6 @@
       __CINDER_EXAMPLES__?: CinderExampleDescriptor[];
       __CINDER_SNAPSHOT_READY__?: Promise<void>;
     };
-  type BadgeVariant = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'accent';
-  type StatusDotStatus = 'online' | 'warning' | 'danger' | 'pending' | 'neutral' | 'accent';
 
   // The bare component's module namespace is loaded by the page-bundle entry
   // only after a reader opens Playground. Keeping the loader as a prop rather
@@ -256,11 +254,8 @@
   }
 
   // --- Theme toggle -----------------------------------------------------
-  // Cinder tokens switch on `color-scheme` (via `light-dark()`); the playground
-  // bridge mirrors the same value onto `data-cinder-theme` for bookkeeping. We
-  // read the active scheme on mount and, on toggle, write BOTH `color-scheme`
-  // (the real switch) and `data-cinder-theme` so we stay consistent with the
-  // bridge, plus persist to localStorage under the pre-paint key.
+  // Cinder tokens switch on the scoped `data-theme` attribute. The real
+  // preference is adopted on mount, and toggles persist under the pre-paint key.
   // Server rendering has no `document`, so the SSR tree seeds `light` — matching
   // the base `color-scheme: light dark` first argument — and the real preference
   // is adopted in `onMount`. Seeding from the document during init would make the
@@ -300,6 +295,23 @@
     const search = new URLSearchParams(window.location.search);
     isFocusMode = readFocusModeFromSearch(search);
     activeView = readViewFromSearch(search);
+  });
+
+  // Keep the visible control and the shared preview store in sync while the
+  // page is following System mode. Explicit `data-theme` scopes remain pinned;
+  // an OS change is adopted only while that scope is absent.
+  $effect(() => {
+    if (!isHydrated || typeof window === 'undefined') return;
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const syncSystemTheme = (): void => {
+      if (document.documentElement.dataset['theme'] !== undefined) return;
+      const nextTheme = media.matches ? 'dark' : 'light';
+      if (theme === nextTheme) return;
+      theme = nextTheme;
+      onThemeChange?.(nextTheme);
+    };
+    media.addEventListener('change', syncSystemTheme);
+    return () => media.removeEventListener('change', syncSystemTheme);
   });
 
   /**
@@ -601,32 +613,6 @@
    * policy for type complexity, not two.
    */
   const SINGLE_TYPE_PREVIEW_CHARS = 160;
-
-  function statusDotStatus(status: string): StatusDotStatus {
-    switch (status) {
-      case 'stable':
-        return 'online';
-      case 'beta':
-        return 'accent';
-      case 'alpha':
-        return 'warning';
-      default:
-        return 'neutral';
-    }
-  }
-
-  function statusBadgeVariant(status: string): BadgeVariant {
-    switch (status) {
-      case 'stable':
-        return 'success';
-      case 'beta':
-        return 'info';
-      case 'alpha':
-        return 'warning';
-      default:
-        return 'neutral';
-    }
-  }
 
   // --- Import line copy --------------------------------------------------
   let importCopied = $state(false);
@@ -1117,42 +1103,6 @@
                   {/if}
                 </div>
               </div>
-
-              <aside class="dx-spec" aria-label="Component facts">
-                <div class="dx-spec__row">
-                  <span class="dx-spec__key">Status</span>
-                  <span class="dx-spec__val">
-                    <!-- The adjacent Badge is the accessible status text. The dot
-                       is a redundant color cue, so mark it decorative — otherwise
-                       its role="img" name re-announces the same word the Badge
-                       already speaks (the audible half of #388). -->
-                    <StatusDot status={statusDotStatus(component.status)} aria-hidden="true" />
-                    <Badge variant={statusBadgeVariant(component.status)} size="sm">
-                      {component.status}
-                    </Badge>
-                  </span>
-                </div>
-                <div class="dx-spec__row">
-                  <span class="dx-spec__key">Category</span>
-                  <span class="dx-spec__val">{component.categoryLabel}</span>
-                </div>
-                {#if component.a11y?.pattern !== undefined}
-                  <div class="dx-spec__row">
-                    <span class="dx-spec__key">A11y pattern</span>
-                    <span class="dx-spec__val">{component.a11y.pattern}</span>
-                  </div>
-                {/if}
-                <div class="dx-spec__row">
-                  <span class="dx-spec__key">Export</span>
-                  <span class="dx-spec__val dx-spec__val--monospace">{component.exportName}</span>
-                </div>
-                <div class="dx-spec__row">
-                  <span class="dx-spec__key">Version</span>
-                  <span class="dx-spec__val dx-spec__val--monospace"
-                    >v{component.packageVersion}</span
-                  >
-                </div>
-              </aside>
             </div>
           </div>
         </div>
@@ -2179,7 +2129,6 @@
        page is expressed as a `calc()` against it. */
     --dx-topbar-h: 0rem;
     min-height: 100vh;
-    border: 1px solid var(--cinder-border);
     background: light-dark(oklch(100% 0 0), var(--cinder-surface-canvas));
   }
 
@@ -2406,10 +2355,7 @@
     border-block-end: 1px solid var(--cinder-border-muted);
   }
   .dx-hero__grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 19rem;
-    gap: clamp(1.5rem, 4vw, 3.5rem);
-    align-items: end;
+    display: block;
   }
   .dx-eyebrow {
     display: flex;
@@ -2458,42 +2404,6 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--cinder-space-1-5, 0.375rem);
-  }
-
-  .dx-spec {
-    border: 1px solid var(--cinder-border);
-    border-radius: var(--cinder-radius-lg);
-    background: var(--cinder-surface-raised);
-    box-shadow: var(--cinder-shadow-sm);
-    overflow: hidden;
-  }
-  .dx-spec__row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--cinder-space-4);
-    padding: var(--cinder-space-3) var(--cinder-space-4);
-    font-size: var(--cinder-text-sm);
-  }
-  .dx-spec__row + .dx-spec__row {
-    border-block-start: 1px solid var(--cinder-border-muted);
-  }
-  .dx-spec__key {
-    color: var(--cinder-text-subtle);
-    font-size: var(--cinder-text-xs);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-  .dx-spec__val {
-    color: var(--cinder-text-default);
-    font-weight: var(--cinder-font-medium);
-    display: inline-flex;
-    align-items: center;
-    gap: var(--cinder-space-2);
-  }
-  .dx-spec__val--monospace {
-    font-family: var(--cinder-font-mono);
-    font-weight: var(--cinder-font-normal);
   }
 
   .dx-import {
@@ -3090,7 +3000,10 @@
     font-size: var(--cinder-text-sm);
   }
   .readme-content :global(table) {
+    display: block;
     width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
     border-collapse: collapse;
   }
   .readme-content :global(blockquote) {
@@ -3842,16 +3755,6 @@
     margin: 0 0 var(--cinder-space-2);
   }
   /* ===== Responsive ===== */
-  @media (max-width: 1080px) {
-    .dx-hero__grid {
-      grid-template-columns: minmax(0, 1fr);
-      align-items: start;
-    }
-    .dx-spec {
-      max-width: 26rem;
-    }
-  }
-
   @media (max-width: 920px) {
     .dx-layout {
       grid-template-columns: minmax(0, 1fr);
@@ -3867,9 +3770,6 @@
   @media (max-width: 640px) {
     .dx-guide {
       grid-template-columns: minmax(0, 1fr);
-    }
-    .dx-spec {
-      max-width: none;
     }
   }
   @media (prefers-reduced-motion: reduce) {

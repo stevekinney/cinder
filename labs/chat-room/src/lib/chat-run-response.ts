@@ -1,7 +1,8 @@
-import { createChatStreamWriter, pumpChatRun } from './chat-agent.ts';
+import { createChatStreamWriter } from './chat-agent.ts';
+import { pumpChatRun } from './chat-run-pump.ts';
 
-import type { ChatStreamWriter } from './chat-agent.ts';
-import type { AgentRun } from '@lostgradient/operative';
+import type { ChatSerializedRunError, ChatStreamWriter } from './chat-agent.ts';
+import type { AgentRun, ConversationHistory } from '@lostgradient/operative';
 
 /**
  * One NDJSON streaming response for one agent run, shared by every route
@@ -24,6 +25,11 @@ export function chatRunResponse(options: {
 	signal: AbortSignal;
 	/** Builds and starts the run, writing its frames to `writer`. */
 	start: (writer: ChatStreamWriter) => AgentRun;
+	/** Persists a classified failure before its terminal frame reaches the client. */
+	beforeFailure?: (input: {
+		conversation: ConversationHistory;
+		error: ChatSerializedRunError;
+	}) => Promise<void>;
 }): Response {
 	const encoder = new TextEncoder();
 
@@ -151,7 +157,7 @@ export function chatRunResponse(options: {
 					// The envelope is no longer read here: `pumpChatRun` has already
 					// written the terminal frame that carries it, and every
 					// outcome now closes the stream the same way.
-					await pumpChatRun(activeRun, writer);
+					await pumpChatRun(activeRun, writer, { beforeFailure: options.beforeFailure });
 
 					if (settled) return;
 					settled = true;
