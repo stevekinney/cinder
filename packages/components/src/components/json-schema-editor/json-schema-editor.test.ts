@@ -366,7 +366,7 @@ describe('JsonSchemaEditor — JSON view draft validity', () => {
   }
 
   // Regression: json-view.svelte's draft meta-schema check runs async
-  // (validateMetaSchema dynamically imports Ajv). It used to leave the
+  // (validateMetaSchema loads the interpreted runtime). It used to leave the
   // *previous* draft's result in place until the new one resolved — so
   // typing a valid draft, then quickly typing something invalid, could
   // report Apply as available (and show no error) for content that was

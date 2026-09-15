@@ -26,6 +26,9 @@ describe('detectDraft', () => {
 
   test('returns unknown for unrecognised values', () => {
     expect(detectDraft({ $schema: 'http://example.com/schema' })).toBe('unknown');
+    expect(detectDraft({ $schema: 'https://example.invalid/draft/2020-12/schema' })).toBe(
+      'unknown',
+    );
   });
 
   test('boolean schemas default to 2020-12', () => {
@@ -96,7 +99,7 @@ describe('validateMetaSchema', () => {
     });
   });
 
-  // Regression: AJV threw "no schema with key or ref ..." synchronously when
+  // Regression: unresolved references must remain explicit compile failures
   // a 2020-12 schema was validated through a draft-07 instance (or vice versa)
   // because the meta-schema URI in $schema wasn't registered on the chosen
   // validator. The editor's debounced timers would fire after a test teardown
@@ -151,7 +154,7 @@ describe('tryCompile', () => {
     expect(third.ok).toBe(true);
   });
 
-  test('2019-09 schemas compile through the matching AJV instance', async () => {
+  test('2019-09 schemas compile through the matching interpreted draft', async () => {
     const result = await tryCompile(
       { $schema: 'https://json-schema.org/draft/2019-09/schema', type: 'string' },
       '2019-09',
@@ -159,7 +162,7 @@ describe('tryCompile', () => {
     expect(result.ok).toBe(true);
   });
 
-  test('draft-07 schemas compile through the matching AJV instance', async () => {
+  test('draft-07 schemas compile through the matching interpreted draft', async () => {
     const result = await tryCompile(
       { $schema: 'http://json-schema.org/draft-07/schema#', type: 'string' },
       'draft-07',
@@ -170,6 +173,71 @@ describe('tryCompile', () => {
   test('non-object schemas do not compile', async () => {
     const result = await tryCompile('not a schema');
     expect(result.ok).toBe(false);
+  });
+
+  test('accepts extension keywords without mutating authored source', async () => {
+    const schema = {
+      type: 'string',
+      'x-vendor': { enabled: true },
+    };
+    const before = JSON.stringify(schema);
+    await expect(validateMetaSchema(schema)).resolves.toMatchObject({ valid: true });
+    await expect(tryCompile(schema)).resolves.toEqual({ ok: true });
+    expect(JSON.stringify(schema)).toBe(before);
+  });
+
+  test('validates recursive and dynamic references', async () => {
+    const recursive = {
+      $schema: 'https://json-schema.org/draft/2019-09/schema',
+      $recursiveAnchor: true,
+      type: 'object',
+      properties: { child: { $recursiveRef: '#' } },
+    };
+    const dynamic = {
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      $dynamicAnchor: 'node',
+      type: 'object',
+      properties: { child: { $dynamicRef: '#node' } },
+    };
+    await expect(tryCompile(recursive)).resolves.toEqual({ ok: true });
+    await expect(tryCompile(dynamic)).resolves.toEqual({ ok: true });
+  });
+
+  test('supports every ajv-formats name through the CSP-safe runtime', async () => {
+    const valid: Record<string, unknown> = {
+      date: '2020-01-01',
+      time: '12:30:00Z',
+      'date-time': '2020-01-01T12:30:00Z',
+      'iso-time': '12:30:00',
+      'iso-date-time': '2020-01-01T12:30:00',
+      duration: 'P3D',
+      uri: 'https://example.com',
+      'uri-reference': '/a',
+      'uri-template': '{/path}',
+      url: 'https://example.com',
+      email: 'ada@example.com',
+      hostname: 'example.com',
+      ipv4: '127.0.0.1',
+      ipv6: '::1',
+      regex: 'a+',
+      uuid: '123e4567-e89b-12d3-a456-426614174000',
+      'json-pointer': '/a',
+      'json-pointer-uri-fragment': '#/a',
+      'relative-json-pointer': '0#',
+      byte: 'YWJj',
+      int32: 1,
+      int64: 1,
+      float: 1,
+      double: 1,
+      password: 'secret',
+      binary: 'abc',
+    };
+    for (const [format, value] of Object.entries(valid)) {
+      await expect(tryCompile({ format })).resolves.toEqual({ ok: true });
+      const schemaResult = await validateMetaSchema({ format });
+      expect(schemaResult.valid).toBe(true);
+      expect(value).toBeDefined();
+    }
   });
 });
 
