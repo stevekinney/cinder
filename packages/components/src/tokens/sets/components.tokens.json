@@ -1089,7 +1089,19 @@
           "cssRecipe": "light-dark(oklch(45% 0.14 245), oklch(78% 0.15 245))",
           "usageContracts": [
             {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "border-color",
+              "profile": "color"
+            },
+            {
               "property": "box-shadow",
+              "profile": "color"
+            },
+            {
+              "property": "color",
               "profile": "color"
             }
           ]

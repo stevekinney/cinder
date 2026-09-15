@@ -1,10 +1,21 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import {
+  compositionCandidates,
+  compositionElements,
+  createCompositionCaches,
+  declarationIdentityKey,
+  importedStylesheets,
+  reachableStylesheets,
+  terminalElements,
+  type CompositionSource,
+  type ElementEvidence,
+} from './css-usage-composition';
 import type { DeclarationIdentity, DeclarationRecord } from './css-usage-inventory-extraction';
 import { extractSource } from './css-usage-inventory-extraction';
 
-export type Source = { path: string; content: string; globalDefinitions?: boolean };
+export type Source = CompositionSource & { globalDefinitions?: boolean };
 export type DynamicRecord = {
   file: string;
   line: number;
@@ -63,6 +74,9 @@ function identity(record: DeclarationRecord): DeclarationIdentity {
 function key(value: unknown): string {
   return JSON.stringify(value);
 }
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
 function declarationComparator(left: DeclarationRecord, right: DeclarationRecord): number {
   return compareCodePoint(key(identity(left)), key(identity(right)));
 }
@@ -100,6 +114,11 @@ export function inventoryFromSources(
   const globals = declarations.filter(
     (record) => sources.find((source) => source.path === record.sourceFile)?.globalDefinitions,
   );
+  const reachable = new Set(reachableStylesheets(sources));
+  const elements = compositionElements(sources);
+  const compositionCaches = createCompositionCaches();
+  for (const element of elements)
+    for (const stylesheet of element.ownerStylesheets) reachable.add(stylesheet);
   const uses: UseRecord[] = [];
   const addUse = (terminal: DeclarationRecord, tokenProperty: string, chain: ChainNode[]): void => {
     uses.push({
@@ -116,14 +135,18 @@ export function inventoryFromSources(
   };
   for (const terminal of declarations.filter((record) => !record.property.startsWith('--')))
     for (const reference of terminal.refs) {
+      const terminalContexts = terminalElements(terminal, elements, reachable, compositionCaches);
       const walk = (
         name: string,
         contextFile: string,
         chain: ChainNode[],
         visited: Set<string>,
         candidates: DeclarationRecord[],
+        element: ElementEvidence | undefined,
       ): void => {
-        if (visited.has(name)) {
+        const definitionKey = candidates.map(declarationIdentityKey).sort().join(',');
+        const visitKey = `${name}|${element?.sourceFile ?? contextFile}|${element?.offset ?? 0}|${definitionKey}`;
+        if (visited.has(visitKey)) {
           diagnostics.push({
             file: terminal.file,
             line: terminal.line,
@@ -143,7 +166,7 @@ export function inventoryFromSources(
               addUse(terminal, name, [...chain, { name, definition: identity(definition) }]);
         }
         const nextVisited = new Set(visited);
-        nextVisited.add(name);
+        nextVisited.add(visitKey);
         for (const definition of candidates)
           for (const dependency of definition.refs) {
             const local = declarations
@@ -154,19 +177,31 @@ export function inventoryFromSources(
                   record.property.startsWith('--'),
               )
               .sort(declarationComparator);
+            const composed = element
+              ? compositionCandidates(
+                  dependency,
+                  element,
+                  declarations,
+                  reachable,
+                  compositionCaches,
+                )
+              : [];
             const next = local.length
               ? local
-              : publicProperties.has(dependency)
-                ? globals
-                    .filter((record) => record.property === dependency)
-                    .sort(declarationComparator)
-                : [];
+              : composed.length
+                ? composed.sort(declarationComparator)
+                : publicProperties.has(dependency)
+                  ? globals
+                      .filter((record) => record.property === dependency)
+                      .sort(declarationComparator)
+                  : [];
             walk(
               dependency,
               contextFile,
               [...chain, { name, definition: identity(definition) }],
               nextVisited,
               next,
+              element,
             );
           }
       };
@@ -178,17 +213,27 @@ export function inventoryFromSources(
             record.property.startsWith('--'),
         )
         .sort(declarationComparator);
-      walk(
-        reference,
-        terminal.sourceFile,
-        [],
-        new Set(),
-        local.length
-          ? local
-          : publicProperties.has(reference)
-            ? globals.filter((record) => record.property === reference).sort(declarationComparator)
-            : [],
-      );
+      for (const element of terminalContexts.length ? terminalContexts : [undefined]) {
+        const composed = element
+          ? compositionCandidates(reference, element, declarations, reachable, compositionCaches)
+          : [];
+        walk(
+          reference,
+          terminal.sourceFile,
+          [],
+          new Set(),
+          local.length
+            ? local
+            : composed.length
+              ? composed.sort(declarationComparator)
+              : publicProperties.has(reference)
+                ? globals
+                    .filter((record) => record.property === reference)
+                    .sort(declarationComparator)
+                : [],
+          element,
+        );
+      }
     }
   const stableUses = [...new Map(uses.map((use) => [key(use), use])).values()].sort(
     (left, right) => locationComparator(left, right) || compareCodePoint(key(left), key(right)),
@@ -246,5 +291,76 @@ export async function loadRepositorySources(root: string): Promise<Source[]> {
     }
   if (!sources.some((source) => source.globalDefinitions))
     throw new Error('Missing packages/components/src/styles/tokens-base.css');
+  const entryPaths = await stylesheetEntryPaths(root, sources);
+  const sourcePaths = new Set(sources.map((source) => source.path));
+  for (const source of sources)
+    for (const imported of importedStylesheets(source, sourcePaths)) entryPaths.add(imported);
+  for (const source of sources) source.stylesheetEntry = entryPaths.has(source.path);
   return sources.sort((left, right) => compareCodePoint(left.path, right.path));
+}
+
+function exportTarget(value: unknown): string | undefined {
+  if (typeof value === 'string') return value;
+  if (!value || typeof value !== 'object') return undefined;
+  if (!isRecord(value)) return undefined;
+  for (const condition of ['browser', 'svelte', 'import', 'default'])
+    if (typeof value[condition] === 'string') return value[condition];
+  return undefined;
+}
+
+async function stylesheetEntryPaths(
+  root: string,
+  sources: readonly Source[],
+): Promise<Set<string>> {
+  const packageRoots = [
+    'packages/components',
+    'packages/chat',
+    'packages/editor',
+    'packages/markdown',
+  ];
+  const sourcePaths = new Set(sources.map((source) => source.path));
+  const entries = new Set<string>();
+  for (const packageRoot of packageRoots) {
+    const packageFile = resolve(root, packageRoot, 'package.json');
+    let manifest: Record<string, unknown>;
+    try {
+      const parsed: unknown = JSON.parse(await readFile(packageFile, 'utf8'));
+      if (!isRecord(parsed)) continue;
+      manifest = parsed;
+    } catch {
+      continue;
+    }
+    const exports = manifest['exports'];
+    if (!exports || typeof exports !== 'object') continue;
+    if (!isRecord(exports)) continue;
+    const exportEntries = Object.entries(exports);
+    const targetSources = new Map<string, string>();
+    for (const [name, value] of exportEntries) {
+      if (!name.endsWith('/styles') && name !== './styles') continue;
+      const target = exportTarget(value);
+      if (!target || !target.endsWith('.css')) continue;
+      if (target.startsWith('./src/')) {
+        const relative = `${packageRoot}/${target.slice(2)}`;
+        if (sourcePaths.has(relative)) targetSources.set(target, relative);
+        continue;
+      }
+      const componentName = name.slice(2, -'/styles'.length);
+      const componentExport = exports[`./${componentName}`];
+      const sourceTarget = exportTarget(componentExport);
+      if (!sourceTarget) continue;
+      const sourceDirectory = sourceTarget.startsWith('./')
+        ? `${packageRoot}/${sourceTarget.slice(2)}`.split('/').slice(0, -1).join('/')
+        : undefined;
+      if (!sourceDirectory) continue;
+      const relative = `${sourceDirectory}/${target.split('/').at(-1)}`;
+      if (sourcePaths.has(relative)) targetSources.set(target, relative);
+    }
+    for (const [name, value] of exportEntries) {
+      if (!name.endsWith('/styles') && name !== './styles') continue;
+      const target = exportTarget(value);
+      const relative = target ? targetSources.get(target) : undefined;
+      if (relative) entries.add(relative);
+    }
+  }
+  return entries;
 }

@@ -47,6 +47,10 @@
             "cssRecipe": "light-dark(oklch(40% 0.127 145), oklch(88% 0.11 145))",
             "usageContracts": [
               {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
                 "property": "color",
                 "profile": "color"
               }
@@ -70,6 +74,10 @@
             "usageContracts": [
               {
                 "property": "background",
+                "profile": "color"
+              },
+              {
+                "property": "background-color",
                 "profile": "color"
               },
               {
@@ -98,6 +106,10 @@
             "category": "color",
             "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-text-default) 36%) l min(c, 0.05) h )",
             "usageContracts": [
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
               {
                 "property": "color",
                 "profile": "color"
@@ -173,6 +185,10 @@
             "cssRecipe": "light-dark(oklch(40% 0.085 75), oklch(90% 0.08 75))",
             "usageContracts": [
               {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
                 "property": "color",
                 "profile": "color"
               }
@@ -194,6 +210,10 @@
             "category": "color",
             "cssRecipe": "light-dark(oklch(80% 0.06 75), oklch(50% 0.1 75))",
             "usageContracts": [
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
               {
                 "property": "border-bottom",
                 "profile": "color"
@@ -220,6 +240,10 @@
             "category": "color",
             "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-text-default) 36%) l min(c, 0.05) h )",
             "usageContracts": [
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
               {
                 "property": "color",
                 "profile": "color"
@@ -271,6 +295,10 @@
               {
                 "property": "background",
                 "profile": "color"
+              },
+              {
+                "property": "background-color",
+                "profile": "color"
               }
             ]
           }
@@ -287,6 +315,10 @@
             "category": "color",
             "cssRecipe": null,
             "usageContracts": [
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
               {
                 "property": "color",
                 "profile": "color"
@@ -306,6 +338,10 @@
             "category": "color",
             "cssRecipe": null,
             "usageContracts": [
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
               {
                 "property": "border-block",
                 "profile": "color"
@@ -361,6 +397,10 @@
             "cssRecipe": "light-dark(oklch(42% 0.16 25), oklch(90% 0.05 25))",
             "usageContracts": [
               {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
                 "property": "color",
                 "profile": "color"
               }
@@ -384,6 +424,10 @@
             "usageContracts": [
               {
                 "property": "background",
+                "profile": "color"
+              },
+              {
+                "property": "background-color",
                 "profile": "color"
               },
               {
@@ -428,6 +472,10 @@
             "category": "color",
             "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-text-default) 36%) l min(c, 0.05) h )",
             "usageContracts": [
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
               {
                 "property": "color",
                 "profile": "color"
@@ -479,6 +527,10 @@
               {
                 "property": "background",
                 "profile": "color"
+              },
+              {
+                "property": "background-color",
+                "profile": "color"
               }
             ]
           }
@@ -498,6 +550,10 @@
             "category": "color",
             "cssRecipe": "light-dark(oklch(40% 0.079 230), oklch(88% 0.071 230))",
             "usageContracts": [
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
               {
                 "property": "color",
                 "profile": "color"
@@ -521,6 +577,10 @@
             "cssRecipe": "light-dark(oklch(80% 0.05 230), oklch(45% 0.08 230))",
             "usageContracts": [
               {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
                 "property": "border-color",
                 "profile": "color"
               }
@@ -542,6 +602,10 @@
             "category": "color",
             "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-text-default) 36%) l min(c, 0.05) h )",
             "usageContracts": [
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
               {
                 "property": "color",
                 "profile": "color"
@@ -594,6 +658,10 @@
             {
               "property": "background",
               "profile": "color"
+            },
+            {
+              "property": "background-color",
+              "profile": "color"
             }
           ],
           "recipeInputs": ["accent.solid", "surface.base"]
@@ -615,6 +683,10 @@
           "category": "color",
           "cssRecipe": "color-mix(in oklch, var(--cinder-accent-solid), transparent 60%)",
           "usageContracts": [
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
             {
               "property": "border-color",
               "profile": "color"

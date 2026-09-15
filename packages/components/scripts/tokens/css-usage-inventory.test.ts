@@ -280,6 +280,33 @@ describe('css usage inventory', () => {
     ).toHaveLength(3);
   });
 
+  test('ignores ordinary property assignments while retaining style evidence', () => {
+    const report = inventoryFromSources(
+      [
+        source(
+          'ordinary-properties.ts',
+          `function update(panel: HTMLElement, input: HTMLInputElement, state: unknown) {
+  panel.style.maxBlockSize = 'var(--public-a)';
+  input.value = '';
+  state.usage = 1;
+  console.warn('changed');
+  element.scrollTop = 10;
+  const style = panel.style;
+  style = unknownValue;
+  style.backgroundColor = 'var(--public-b)';
+}`,
+        ),
+      ],
+      publicProperties,
+    );
+    expect(report.uses.map((use) => use.tokenProperty)).toEqual(['--public-a']);
+    expect(report.dynamic).toHaveLength(1);
+    expect(report.dynamic[0]).toMatchObject({ property: 'background-color' });
+    expect(report.diagnostics).toContainEqual(
+      expect.objectContaining({ kind: 'unsupported-surface', property: 'background-color' }),
+    );
+  });
+
   test('walks snippet, await then, catch, and else branches with exact locations', () => {
     const report = inventoryFromSources(
       [
@@ -351,7 +378,7 @@ describe('css usage inventory', () => {
       [
         source(
           'scripts.svelte',
-          '<script>let node; node?.style.setProperty("color", "var(--public-a)");</script><script context="module">element.style.setProperty("background", "var(--public-b)");</script>',
+          '<script>const node = document.body; node?.style.setProperty("color", "var(--public-a)");</script><script context="module">element.style.setProperty("background", "var(--public-b)");</script>',
         ),
       ],
       publicProperties,
@@ -385,6 +412,99 @@ describe('css usage inventory', () => {
       publicProperties,
     );
     expect(report.uses.map((use) => use.tokenProperty)).toEqual(['--public-a']);
+  });
+
+  test('keeps DOM and style evidence within lexical bindings', () => {
+    const report = inventoryFromSources(
+      [
+        source(
+          'scoped-aliases.ts',
+          `const element: HTMLElement = document.body;
+const style = element.style;
+style.cssText = 'color: var(--public-a)';
+function unrelated(style: unknown) { style.cssText = 'color: var(--public-b)'; }
+{ const style = unknownValue; style.cssText = 'color: var(--public-c)'; }
+style.cssText = 'color: var(--public-d)';
+function shadowed(element: unknown) { element.style.cssText = 'color: var(--public-b)'; }
+element.style.cssText = 'color: var(--public-c)';
+const actual = document.body;
+actual.style.cssText = 'color: var(--public-a)';`,
+        ),
+      ],
+      publicProperties,
+    );
+    expect(report.uses.map((use) => use.tokenProperty)).toEqual([
+      '--public-a',
+      '--public-d',
+      '--public-c',
+      '--public-a',
+    ]);
+  });
+
+  test('invalidates shadowed and reassigned evidence and rejects DOM cssText writes', () => {
+    const report = inventoryFromSources(
+      [
+        source(
+          'invalidated-evidence.ts',
+          `const element: HTMLElement = document.body;
+const style = element.style;
+style = unknownValue;
+style.backgroundColor = 'var(--public-a)';
+{
+  let element;
+  element.style.cssText = 'color: var(--public-b)';
+}
+element.cssText = 'color: var(--public-c)';`,
+        ),
+      ],
+      publicProperties,
+    );
+    expect(report.uses).toHaveLength(0);
+    expect(
+      report.diagnostics.filter((diagnostic) => diagnostic.kind === 'unsupported-surface'),
+    ).toHaveLength(2);
+  });
+
+  test('extracts named DOM style assignments using canonical CSS property names', () => {
+    const report = inventoryFromSources(
+      [
+        source(
+          'named-style-assignments.ts',
+          "function resize(panel: HTMLElement, size: string) { panel.style.maxBlockSize = size; } const probe = document.createElement('div'); probe.style.backgroundColor = 'var(--public-a)'; const unrelated = { style: {} }; unrelated.style.backgroundColor = 'var(--public-b)';",
+        ),
+      ],
+      publicProperties,
+    );
+    expect(report.uses).toMatchObject([
+      { tokenProperty: '--public-a', property: 'background-color' },
+    ]);
+    expect(report.dynamic).toMatchObject([
+      { kind: 'runtime-style-sink', property: 'max-block-size' },
+      { kind: 'runtime-style-sink', property: 'background-color' },
+    ]);
+    expect(report.uses.some((use) => use.tokenProperty === '--public-b')).toBe(false);
+    expect(report.diagnostics).toContainEqual(
+      expect.objectContaining({
+        kind: 'unsupported-surface',
+        property: 'background-color',
+      }),
+    );
+  });
+
+  test('extracts assignments through style aliases and canonicalizes CSSOM names', () => {
+    const report = inventoryFromSources(
+      [
+        source(
+          'style-aliases.ts',
+          "function apply(panel: HTMLElement, value: string, floatValue: string) { const styles = panel.style; styles.backgroundColor = value; styles.cssFloat = floatValue; panel.style.WebkitTransform = 'var(--public-a)'; }",
+        ),
+      ],
+      publicProperties,
+    );
+    expect(report.dynamic).toMatchObject([{ property: 'background-color' }, { property: 'float' }]);
+    expect(report.uses).toMatchObject([
+      { property: '-webkit-transform', tokenProperty: '--public-a' },
+    ]);
   });
 
   test('accepts setAttribute only with explicit DOM annotation', () => {

@@ -1668,7 +1668,10 @@
         "cssProperty": "--cinder-surface-raised-hover",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "background", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     },
     "$description": "Hover state of the raised surface. Light mode washes toward the accent; dark mode mixes toward white.",
@@ -1683,7 +1686,10 @@
         "cssProperty": "--cinder-surface-raised-pressed",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "background", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     },
     "$description": "Pressed state of the raised surface. Light mode washes toward the accent; dark mode mixes toward white.",
@@ -1734,7 +1740,10 @@
         "cssProperty": "--cinder-surface-pressed",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "background", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     },
     "$description": "Pressed state of the default surface. Same accent-wash rationale as `surface.hover`, at a stronger mix percentage.",
@@ -1748,7 +1757,10 @@
         "cssProperty": "--cinder-surface-inverse",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "background", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1791,9 +1803,10 @@
         "public": true,
         "category": "color",
         "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
           { "property": "color", "profile": "color" },
-          { "property": "scrollbar-color", "profile": "color" },
-          { "property": "background", "profile": "color" }
+          { "property": "scrollbar-color", "profile": "color" }
         ]
       }
     },
@@ -1873,6 +1886,7 @@
         "category": "color",
         "usageContracts": [
           { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
           { "property": "border", "profile": "color" },
           { "property": "border-block-end", "profile": "color" },
           { "property": "border-block-start", "profile": "color" },
@@ -1940,7 +1954,10 @@
         "cssProperty": "--cinder-border-inverse",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "border", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "border", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1955,6 +1972,7 @@
         "category": "color",
         "usageContracts": [
           { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
           { "property": "border", "profile": "color" },
           { "property": "color", "profile": "color" },
           { "property": "fill", "profile": "color" }
@@ -1971,7 +1989,10 @@
         "cssProperty": "--cinder-text-subtle",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "color", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1984,7 +2005,10 @@
         "cssProperty": "--cinder-text-disabled",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "color", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1998,6 +2022,7 @@
         "public": true,
         "category": "color",
         "usageContracts": [
+          { "property": "background-color", "profile": "color" },
           { "property": "color", "profile": "color" },
           { "property": "fill", "profile": "color" }
         ]
@@ -2016,6 +2041,7 @@
         "category": "color",
         "usageContracts": [
           { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
           { "property": "border-top-color", "profile": "color" },
           { "property": "box-shadow", "profile": "color" },
           { "property": "caret-color", "profile": "color" },
@@ -2049,6 +2075,7 @@
         "public": true,
         "category": "color",
         "usageContracts": [
+          { "property": "background-color", "profile": "color" },
           { "property": "box-shadow", "profile": "color" },
           { "property": "color", "profile": "color" }
         ]
@@ -2064,7 +2091,10 @@
         "cssProperty": "--cinder-accent-text",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "color", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -2078,7 +2108,10 @@
         "cssProperty": "--cinder-accent-text-hover",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "color", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     },
     "$description": "Hover step for text/icon links, derived as a darker step of `accent.text` (not the bright fill-derived `accent.solid.hover`, which is lighter than the resting text color and drops below WCAG AA on near-white).",
@@ -2122,7 +2155,10 @@
         "cssProperty": "--cinder-accent-solid-active",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "background", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     },
     "$description": "Active/pressed step for solid accent fills, derived as a darker step of `accent.solid` (l - 0.15, c and h held constant).",
@@ -2138,7 +2174,10 @@
         "cssProperty": "--cinder-accent-solid-active-on-fill",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "background", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     },
     "$description": "Pressed fill for solid accent surfaces that carry the `accent.contrast` label (primary Button, FloatingAction). Kept distinct from `accent.solid.active` so label-bearing and non-label consumers can diverge if ever needed."
@@ -2172,7 +2211,10 @@
         "cssProperty": "--cinder-accent-background",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "background", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     },
     "$description": "Soft accent-tinted background, mixed 88% toward the current surface."
@@ -2187,7 +2229,10 @@
         "cssProperty": "--cinder-accent-border",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "border-color", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "border-color", "profile": "color" }
+        ]
       }
     },
     "$description": "Soft accent-tinted border, the accent color mixed 60% toward transparent."
@@ -2243,6 +2288,7 @@
         "public": true,
         "category": "color",
         "usageContracts": [
+          { "property": "background-color", "profile": "color" },
           { "property": "box-shadow", "profile": "color" },
           { "property": "stroke", "profile": "color" }
         ]
@@ -2260,6 +2306,7 @@
         "public": true,
         "category": "color",
         "usageContracts": [
+          { "property": "background-color", "profile": "color" },
           { "property": "border-color", "profile": "color" },
           { "property": "box-shadow", "profile": "color" },
           { "property": "outline", "profile": "color" },
@@ -2278,7 +2325,10 @@
         "cssProperty": "--cinder-ring-on-accent",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "box-shadow", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "box-shadow", "profile": "color" }
+        ]
       }
     }
   },
@@ -2311,6 +2361,7 @@
         "category": "color",
         "usageContracts": [
           { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
           { "property": "scrollbar-color", "profile": "color" }
         ]
       }
@@ -2329,6 +2380,7 @@
         "category": "color",
         "usageContracts": [
           { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
           { "property": "scrollbar-color", "profile": "color" }
         ]
       }
@@ -2345,7 +2397,10 @@
         "cssProperty": "--cinder-scrollbar-thumb-hover",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "background", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     },
     "$description": "Scrollbar thumb hover color."
@@ -2625,7 +2680,10 @@
         "cssProperty": "--cinder-status-success-contrast",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "color", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     }
   },
@@ -2639,10 +2697,12 @@
         "category": "color",
         "usageContracts": [
           { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
           { "property": "border-color", "profile": "color" },
+          { "property": "border-inline-start-color", "profile": "color" },
+          { "property": "box-shadow", "profile": "color" },
           { "property": "color", "profile": "color" },
-          { "property": "text-decoration-color", "profile": "color" },
-          { "property": "box-shadow", "profile": "color" }
+          { "property": "text-decoration-color", "profile": "color" }
         ]
       }
     },
@@ -2657,7 +2717,10 @@
         "cssProperty": "--cinder-status-success-solid-active",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "background", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     }
   },
@@ -2670,7 +2733,10 @@
         "cssProperty": "--cinder-status-success-solid-hover",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "background", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     }
   },
@@ -2699,7 +2765,10 @@
         "cssProperty": "--cinder-status-success-text",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "color", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     }
   },
@@ -2714,6 +2783,7 @@
         "category": "color",
         "usageContracts": [
           { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
           { "property": "border-color", "profile": "color" },
           { "property": "box-shadow", "profile": "color" }
         ]
@@ -2730,7 +2800,10 @@
         "cssProperty": "--cinder-status-success-subtle",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "color", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     },
     "$description": "Success color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors."
@@ -2759,7 +2832,10 @@
         "cssProperty": "--cinder-status-warning-contrast",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "color", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     }
   },
@@ -2773,11 +2849,13 @@
         "category": "color",
         "usageContracts": [
           { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
           { "property": "border-color", "profile": "color" },
           { "property": "border-inline-start", "profile": "color" },
+          { "property": "border-inline-start-color", "profile": "color" },
+          { "property": "box-shadow", "profile": "color" },
           { "property": "color", "profile": "color" },
-          { "property": "text-decoration", "profile": "color" },
-          { "property": "box-shadow", "profile": "color" }
+          { "property": "text-decoration", "profile": "color" }
         ]
       }
     },
@@ -2792,7 +2870,10 @@
         "cssProperty": "--cinder-status-warning-solid-active",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "background", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     }
   },
@@ -2805,7 +2886,10 @@
         "cssProperty": "--cinder-status-warning-solid-hover",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "background", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     }
   },
@@ -2834,7 +2918,10 @@
         "cssProperty": "--cinder-status-warning-text",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "color", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     }
   },
@@ -2848,6 +2935,7 @@
         "public": true,
         "category": "color",
         "usageContracts": [
+          { "property": "background-color", "profile": "color" },
           { "property": "border-bottom", "profile": "color" },
           { "property": "border-color", "profile": "color" }
         ]
@@ -2864,7 +2952,10 @@
         "cssProperty": "--cinder-status-warning-subtle",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "color", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     },
     "$description": "Warning color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors."
@@ -2893,7 +2984,10 @@
         "cssProperty": "--cinder-status-danger-contrast",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "color", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     }
   },
@@ -2907,6 +3001,7 @@
         "category": "color",
         "usageContracts": [
           { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
           { "property": "border", "profile": "color" },
           { "property": "border-color", "profile": "color" },
           { "property": "border-inline-start-color", "profile": "color" },
@@ -2927,7 +3022,10 @@
         "cssProperty": "--cinder-status-danger-solid-active",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "background", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     }
   },
@@ -2940,7 +3038,10 @@
         "cssProperty": "--cinder-status-danger-solid-hover",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "background", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     }
   },
@@ -2969,7 +3070,10 @@
         "cssProperty": "--cinder-status-danger-text",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "color", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     }
   },
@@ -2984,6 +3088,7 @@
         "category": "color",
         "usageContracts": [
           { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
           { "property": "border", "profile": "color" },
           { "property": "border-bottom-color", "profile": "color" },
           { "property": "border-color", "profile": "color" },
@@ -3004,7 +3109,10 @@
         "cssProperty": "--cinder-status-danger-subtle",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "color", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     },
     "$description": "Danger color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors."
@@ -3033,7 +3141,10 @@
         "cssProperty": "--cinder-status-info-contrast",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "color", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     }
   },
@@ -3047,9 +3158,11 @@
         "category": "color",
         "usageContracts": [
           { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
           { "property": "border-color", "profile": "color" },
-          { "property": "color", "profile": "color" },
-          { "property": "box-shadow", "profile": "color" }
+          { "property": "border-inline-start-color", "profile": "color" },
+          { "property": "box-shadow", "profile": "color" },
+          { "property": "color", "profile": "color" }
         ]
       }
     },
@@ -3064,7 +3177,10 @@
         "cssProperty": "--cinder-status-info-solid-active",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "background", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     }
   },
@@ -3077,7 +3193,10 @@
         "cssProperty": "--cinder-status-info-solid-hover",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "background", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     }
   },
@@ -3090,7 +3209,10 @@
         "cssProperty": "--cinder-status-info-background",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "background", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     }
   },
@@ -3103,7 +3225,10 @@
         "cssProperty": "--cinder-status-info-text",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "color", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     }
   },
@@ -3116,7 +3241,10 @@
         "cssProperty": "--cinder-status-info-border",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "border-color", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "border-color", "profile": "color" }
+        ]
       }
     }
   },
@@ -3130,7 +3258,10 @@
         "cssProperty": "--cinder-status-info-subtle",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "color", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     },
     "$description": "Info color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors."
@@ -3159,7 +3290,10 @@
         "cssProperty": "--cinder-status-neutral-background",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "background", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     }
   },
@@ -3172,7 +3306,10 @@
         "cssProperty": "--cinder-status-neutral-text",
         "public": true,
         "category": "color",
-        "usageContracts": [{ "property": "color", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     }
   },
@@ -3186,6 +3323,7 @@
         "public": true,
         "category": "color",
         "usageContracts": [
+          { "property": "background-color", "profile": "color" },
           { "property": "border-block", "profile": "color" },
           { "property": "border-color", "profile": "color" }
         ]
@@ -4237,7 +4375,12 @@
         "public": true,
         "category": "color",
         "component": "alert",
-        "usageContracts": [{ "property": "box-shadow", "profile": "color" }]
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "border-color", "profile": "color" },
+          { "property": "box-shadow", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     }
   },

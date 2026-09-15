@@ -6569,6 +6569,665 @@
         ]
       },
       "reviewStatus": "reviewed"
+    },
+    {
+      "identity": {
+        "file": "packages/components/src/_internal/anchored-overlay.svelte.ts",
+        "line": 87,
+        "column": 3,
+        "kind": "runtime-style-sink",
+        "property": "max-block-size",
+        "expression": "panel.style.maxBlockSize = value"
+      },
+      "category": "caller-controlled-style-color-input",
+      "reason": "`maximumBlockSize` is a public string option interpolated into the owned `min(...)` max-block-size value; the available height is numeric geometry, while the caller-controlled size string may retain a public var() reference.",
+      "mappings": [],
+      "producer": {
+        "path": "packages/components/src/_internal/anchored-overlay.svelte.ts",
+        "line": 86,
+        "description": "applyAnchoredOverlayMaxBlockSize formats availableHeight with maximumBlockSize before assigning panel.style.maxBlockSize.",
+        "emitsPublicVar": true,
+        "status": "reviewed",
+        "chain": [
+          {
+            "path": "packages/components/src/_internal/anchored-overlay.svelte.ts",
+            "line": 221,
+            "description": "The owned default sizeMaxBlockSize is 100 percent; the supplied option is a caller-controlled string."
+          },
+          {
+            "path": "packages/components/src/components/command-menu/command-menu.svelte",
+            "line": 134,
+            "description": "The shipped CommandMenu caller supplies the fixed 20rem value, with no public var expression."
+          }
+        ]
+      },
+      "reviewStatus": "reviewed"
+    },
+    {
+      "identity": {
+        "file": "packages/components/src/_internal/overlay.ts",
+        "line": 192,
+        "column": 7,
+        "kind": "runtime-style-sink",
+        "property": "overflow",
+        "expression": "document.body.style.overflow = originalBodyOverflow ?? ''"
+      },
+      "category": "caller-controlled-style-color-input",
+      "reason": "`lockBodyScroll` restores the exact inline overflow string captured from the document body. It is caller/document-controlled style input and can preserve a public var() reference if one was authored there.",
+      "mappings": [],
+      "producer": {
+        "path": "packages/components/src/_internal/overlay.ts",
+        "line": 179,
+        "description": "lockBodyScroll captures document.body.style.overflow and restores that exact string when the final lock releases.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "reviewStatus": "reviewed"
+    },
+    {
+      "identity": {
+        "file": "packages/components/src/components/command-menu/caret-rect.svelte.ts",
+        "line": 67,
+        "column": 3,
+        "kind": "runtime-style-sink",
+        "property": "white-space",
+        "expression": "mirror.style.whiteSpace = field instanceof HTMLTextAreaElement ? 'pre-wrap' : 'pre'"
+      },
+      "category": "geometric-numeric-runtime-value",
+      "reason": "The owned caret mirror selects the fixed literals pre-wrap or pre from the field element kind; it emits no public token reference.",
+      "mappings": [],
+      "producer": {
+        "path": "packages/components/src/components/command-menu/caret-rect.svelte.ts",
+        "line": 47,
+        "description": "getCaretRect creates a hidden mirror and assigns white-space from the input versus textarea branch.",
+        "emitsPublicVar": false,
+        "status": "reviewed"
+      },
+      "reviewStatus": "reviewed"
+    },
+    {
+      "identity": {
+        "file": "packages/components/src/components/command-menu/caret-rect.svelte.ts",
+        "line": 68,
+        "column": 3,
+        "kind": "runtime-style-sink",
+        "property": "overflow",
+        "expression": "mirror.style.overflow = computedStyle.overflow"
+      },
+      "category": "caller-controlled-style-color-input",
+      "reason": "The mirror copies computedStyle.overflow from the caller-controlled field. getComputedStyle supplies a resolved value, so this boundary cannot retain a public var() expression.",
+      "mappings": [],
+      "producer": {
+        "path": "packages/components/src/components/command-menu/caret-rect.svelte.ts",
+        "line": 58,
+        "description": "getCaretRect reads the field computed style and copies its resolved overflow value to the mirror.",
+        "emitsPublicVar": false,
+        "status": "reviewed"
+      },
+      "reviewStatus": "reviewed"
+    },
+    {
+      "identity": {
+        "file": "packages/components/src/components/command-menu/caret-rect.svelte.ts",
+        "line": 69,
+        "column": 3,
+        "kind": "runtime-style-sink",
+        "property": "left",
+        "expression": "mirror.style.left = `${fieldRect.left}px`"
+      },
+      "category": "geometric-numeric-runtime-value",
+      "reason": "The mirror left position is fieldRect.left in pixels from DOM geometry; it emits no public token reference.",
+      "mappings": [],
+      "producer": {
+        "path": "packages/components/src/components/command-menu/caret-rect.svelte.ts",
+        "line": 55,
+        "description": "getCaretRect serializes the field bounding rect left coordinate as pixel geometry.",
+        "emitsPublicVar": false,
+        "status": "reviewed"
+      },
+      "reviewStatus": "reviewed"
+    },
+    {
+      "identity": {
+        "file": "packages/components/src/components/command-menu/caret-rect.svelte.ts",
+        "line": 70,
+        "column": 3,
+        "kind": "runtime-style-sink",
+        "property": "top",
+        "expression": "mirror.style.top = `${fieldRect.top}px`"
+      },
+      "category": "geometric-numeric-runtime-value",
+      "reason": "The mirror top position is fieldRect.top in pixels from DOM geometry; it emits no public token reference.",
+      "mappings": [],
+      "producer": {
+        "path": "packages/components/src/components/command-menu/caret-rect.svelte.ts",
+        "line": 55,
+        "description": "getCaretRect serializes the field bounding rect top coordinate as pixel geometry.",
+        "emitsPublicVar": false,
+        "status": "reviewed"
+      },
+      "reviewStatus": "reviewed"
+    },
+    {
+      "identity": {
+        "file": "packages/components/src/utilities/use-drag-scroll.svelte.ts",
+        "line": 112,
+        "column": 7,
+        "kind": "runtime-style-sink",
+        "property": "scroll-snap-type",
+        "expression": "node.style.scrollSnapType = originalSnapType"
+      },
+      "category": "caller-controlled-style-color-input",
+      "reason": "useDragScroll restores the exact scrollSnapType captured from the attached node. It is caller-controlled style input and may preserve a public var() reference present in the original inline value.",
+      "mappings": [],
+      "producer": {
+        "path": "packages/components/src/utilities/use-drag-scroll.svelte.ts",
+        "line": 35,
+        "description": "useDragScroll captures node.style.scrollSnapType before suppressing snapping and restores it after momentum settles.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "reviewStatus": "reviewed"
+    },
+    {
+      "identity": {
+        "file": "packages/editor/src/lib/editor/template-completion-plugin.ts",
+        "line": 435,
+        "column": 3,
+        "kind": "runtime-style-sink",
+        "property": "left",
+        "expression": "popup.style.left = `${coordinates.left - parentRect.left}px`"
+      },
+      "category": "geometric-numeric-runtime-value",
+      "reason": "The completion popup left value is the numeric difference between ProseMirror coordinates and the parent DOMRect, serialized in pixels.",
+      "mappings": [],
+      "producer": {
+        "path": "packages/editor/src/lib/editor/template-completion-plugin.ts",
+        "line": 428,
+        "description": "positionPopup computes popup placement from coordsAtPos and parent getBoundingClientRect.",
+        "emitsPublicVar": false,
+        "status": "reviewed"
+      },
+      "reviewStatus": "reviewed"
+    },
+    {
+      "identity": {
+        "file": "packages/editor/src/lib/editor/template-completion-plugin.ts",
+        "line": 436,
+        "column": 3,
+        "kind": "runtime-style-sink",
+        "property": "top",
+        "expression": "popup.style.top = `${coordinates.bottom - parentRect.top + 4}px`"
+      },
+      "category": "geometric-numeric-runtime-value",
+      "reason": "The completion popup top value is the numeric cursor bottom plus a fixed four-pixel gap, serialized in pixels.",
+      "mappings": [],
+      "producer": {
+        "path": "packages/editor/src/lib/editor/template-completion-plugin.ts",
+        "line": 428,
+        "description": "positionPopup computes popup placement from coordsAtPos and parent getBoundingClientRect.",
+        "emitsPublicVar": false,
+        "status": "reviewed"
+      },
+      "reviewStatus": "reviewed"
+    },
+    {
+      "identity": {
+        "file": "packages/editor/src/lib/editor/template-completion-plugin.ts",
+        "line": 702,
+        "column": 13,
+        "kind": "runtime-style-sink",
+        "property": "display",
+        "expression": "popup.style.display = 'none'"
+      },
+      "category": "geometric-numeric-runtime-value",
+      "reason": "The owned completion state uses the fixed display literals none and empty string to show or hide the popup; it emits no public token reference.",
+      "mappings": [],
+      "producer": {
+        "path": "packages/editor/src/lib/editor/template-completion-plugin.ts",
+        "line": 697,
+        "description": "updatePopup assigns display from whether plugin state is active and has suggestions.",
+        "emitsPublicVar": false,
+        "status": "reviewed"
+      },
+      "reviewStatus": "reviewed"
+    },
+    {
+      "identity": {
+        "file": "packages/editor/src/lib/editor/template-completion-plugin.ts",
+        "line": 706,
+        "column": 11,
+        "kind": "runtime-style-sink",
+        "property": "display",
+        "expression": "popup.style.display = ''"
+      },
+      "category": "geometric-numeric-runtime-value",
+      "reason": "The owned completion state uses the fixed display literals none and empty string to show or hide the popup; it emits no public token reference.",
+      "mappings": [],
+      "producer": {
+        "path": "packages/editor/src/lib/editor/template-completion-plugin.ts",
+        "line": 697,
+        "description": "updatePopup assigns display from whether plugin state is active and has suggestions.",
+        "emitsPublicVar": false,
+        "status": "reviewed"
+      },
+      "reviewStatus": "reviewed"
+    },
+    {
+      "identity": {
+        "file": "packages/playground/src/component-page-theme.ts",
+        "line": 78,
+        "column": 3,
+        "kind": "runtime-style-sink",
+        "property": "color-scheme",
+        "expression": "document.documentElement.style.colorScheme = theme"
+      },
+      "category": "caller-controlled-style-color-input",
+      "reason": "applyTheme receives the selected light or dark theme and writes that fixed choice to color-scheme; it is an application-controlled style input and emits no public var() reference.",
+      "mappings": [],
+      "producer": {
+        "path": "packages/playground/src/component-page-theme.ts",
+        "line": 77,
+        "description": "applyTheme writes the selected ThemeChoice literal to document.documentElement.style.colorScheme.",
+        "emitsPublicVar": false,
+        "status": "reviewed"
+      },
+      "reviewStatus": "reviewed"
+    },
+    {
+      "identity": {
+        "file": "packages/playground/src/shell-app/color-token-panel.svelte",
+        "line": 275,
+        "column": 5,
+        "kind": "runtime-style-sink",
+        "property": "background-color",
+        "expression": "probe.style.backgroundColor = value"
+      },
+      "category": "shipped-public-token-mapping",
+      "reason": "pickerValueFor has a finite shipped token boundary: COLOR_TOKEN_GROUPS from the generated registry supplies each tokenName, and resolvedBackgroundColorToHex(`var(${tokenName})`) probes that public token as a background-color fallback. User overrides are still caller-controlled for the primary value, but these deterministic fallback paths are shipped public-token mappings.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-accent-solid",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-accent-contrast",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-accent-text",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-accent-text-hover",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-accent-solid-hover",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-accent-solid-active",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-accent-solid-active-on-fill",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-info-solid",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-success-solid",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-warning-solid",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-danger-solid",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-info-contrast",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-success-contrast",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-warning-contrast",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-danger-contrast",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-danger-solid-hover",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-danger-solid-active",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-info-solid-hover",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-info-solid-active",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-success-solid-hover",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-success-solid-active",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-warning-solid-hover",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-warning-solid-active",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-chart-series-1",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-chart-series-2",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-chart-series-3",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-chart-series-4",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-chart-series-5",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-chart-series-6",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-chart-series-7",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-chart-series-8",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-info-background",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-info-text",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-info-border",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-success-background",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-success-text",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-success-border",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-warning-background",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-warning-text",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-warning-border",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-danger-background",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-danger-text",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-danger-border",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-neutral-background",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-neutral-text",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-neutral-border",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-accent-background",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-accent-border",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-info-muted",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-info-subtle",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-success-muted",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-success-subtle",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-warning-muted",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-warning-subtle",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-danger-muted",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-status-danger-subtle",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-surface-canvas",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-surface",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-surface-raised",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-surface-raised-hover",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-surface-raised-pressed",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-surface-inset",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-surface-hover",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-surface-pressed",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-surface-inverse",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-polarity-ink",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-text-default",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-text-muted",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-text-subtle",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-text-disabled",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-fill-disabled",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-text-inverse",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-border-ink",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-border",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-border-faint",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-border-muted",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-border-strong",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-border-inverse",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-ring-offset-color",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-ring-color",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-ring-on-accent",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-overlay-backdrop",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-scrollbar-track",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-scrollbar-thumb",
+          "property": "background-color"
+        },
+        {
+          "tokenProperty": "--cinder-scrollbar-thumb-hover",
+          "property": "background-color"
+        }
+      ],
+      "producer": {
+        "path": "packages/playground/src/shell-app/color-token-panel.svelte",
+        "line": 308,
+        "description": "pickerValueFor resolves the supplied value and uses resolvedBackgroundColorToHex(`var(${tokenName})`) as the deterministic fallback for each generated COLOR_TOKEN_GROUPS token.",
+        "emitsPublicVar": true,
+        "status": "reviewed",
+        "chain": [
+          {
+            "path": "packages/playground/src/shell-app/color-token-panel.svelte",
+            "line": 315,
+            "description": "syncDraftsFromSnapshot calls pickerValueFor for every token in every generated COLOR_TOKEN_GROUPS group."
+          },
+          {
+            "path": "packages/playground/src/shell-app/color-token-registry.generated.ts",
+            "line": 22,
+            "description": "COLOR_TOKEN_GROUPS is the generated finite list of 85 public color token names."
+          }
+        ]
+      },
+      "reviewStatus": "reviewed"
+    },
+    {
+      "identity": {
+        "file": "packages/playground/src/shell-app/preview-store.svelte.ts",
+        "line": 91,
+        "column": 3,
+        "kind": "runtime-style-sink",
+        "property": "color-scheme",
+        "expression": "doc.documentElement.style.colorScheme = override ?? ''"
+      },
+      "category": "caller-controlled-style-color-input",
+      "reason": "applyThemeToDocument receives the application override or resolved light/dark theme and writes that fixed choice to color-scheme; it emits no public var() reference.",
+      "mappings": [],
+      "producer": {
+        "path": "packages/playground/src/shell-app/preview-store.svelte.ts",
+        "line": 86,
+        "description": "applyThemeToDocument writes the explicit override or resolved ThemeChoice to the document root.",
+        "emitsPublicVar": false,
+        "status": "reviewed"
+      },
+      "reviewStatus": "reviewed"
     }
   ],
   "sourceFiles": [
@@ -6603,6 +7262,14 @@
     {
       "path": "packages/components/src/_internal/chart/chart-model-utilities.ts",
       "sha256": "b7ac74e7c3d77ef7e3cb933ab5bfc48058c4be504f933a72db7b27ca9c0a75f8"
+    },
+    {
+      "path": "packages/components/src/_internal/chart/heatmap-utilities.ts",
+      "sha256": "314010d55ecf57ef87181888a191d510dcf5d39f4b7c671352f96ec36e04ae14"
+    },
+    {
+      "path": "packages/components/src/_internal/overlay.ts",
+      "sha256": "b04efed3bcfed109a4256bf1d6b26872e744ff9b3d87f50d9baf1ac5a4c2db4d"
     },
     {
       "path": "packages/components/src/components/_internal/chart-tooltip.svelte",
@@ -6877,6 +7544,10 @@
       "sha256": "af90fb5a4d79d54e6da193a69c182109770e2c0d8be05640952971104e53f22f"
     },
     {
+      "path": "packages/components/src/utilities/use-drag-scroll.svelte.ts",
+      "sha256": "6e80efc5049b5dbea6499cebe22cba1e91125d76ffa20dbf105e13b2cb720f01"
+    },
+    {
       "path": "packages/editor/src/lib/_internal/anchored-overlay.svelte.ts",
       "sha256": "ef11cf37231793bd20808301e122994d4fe233415ec6b039f7ddcc7def33ae94"
     },
@@ -6897,8 +7568,16 @@
       "sha256": "5d11429939a68f416b074a22cf24093a305da01e9a8aa62e5d7b0846fcb5f0c2"
     },
     {
+      "path": "packages/editor/src/lib/editor/template-completion-plugin.ts",
+      "sha256": "1597d7ccbdd6a0b1e3ab60ff33d1ebb67f83e9ee55dbb8864f7b062b7a879dd9"
+    },
+    {
       "path": "packages/playground/src/component-page-skeleton-mock.svelte",
       "sha256": "6c84b93ecfa5c9d7723f1c858cb3193a3dbee3baa3ec21ca61197d366762eac7"
+    },
+    {
+      "path": "packages/playground/src/component-page-theme.ts",
+      "sha256": "b48b14edbc758a569c52b48b930e2001e89de0eecd055bedfebbb58e9c5bd3d3"
     },
     {
       "path": "packages/playground/src/examples/command-palette/search-recent-actions.example.svelte",
@@ -6937,12 +7616,12 @@
       "sha256": "e76f535329a07244b7771cb6f39a85ecafd2603d86d41dad074328801b65116b"
     },
     {
-      "path": "packages/playground/src/shell-app/token-inspector-panel.svelte",
-      "sha256": "5beac31596d34365ce586dfc5740412cccf988350ca62d427202a00ed002dfe3"
+      "path": "packages/playground/src/shell-app/preview-store.svelte.ts",
+      "sha256": "a07af484a69c05ffba58bade0c1ba31ea11e312ab18d2a8cb6d903b8d99cefcf"
     },
     {
-      "path": "packages/components/src/_internal/chart/heatmap-utilities.ts",
-      "sha256": "314010d55ecf57ef87181888a191d510dcf5d39f4b7c671352f96ec36e04ae14"
+      "path": "packages/playground/src/shell-app/token-inspector-panel.svelte",
+      "sha256": "5beac31596d34365ce586dfc5740412cccf988350ca62d427202a00ed002dfe3"
     }
   ],
   "producerEvidence": [
@@ -7450,6 +8129,10 @@
       "path": "packages/playground/src/shell-app/color-token-panel.svelte",
       "sha256": "e76f535329a07244b7771cb6f39a85ecafd2603d86d41dad074328801b65116b",
       "role": "owned runtime-style producer inspected for this dynamic boundary"
+    },
+    {
+      "path": "packages/playground/src/shell-app/color-token-registry.generated.ts",
+      "sha256": "f404efaeb871b525c4386a72ec38496e0191ea94efc4e4a19cb136181802ff12"
     },
     {
       "path": "packages/playground/src/shell-app/token-inspector-panel.svelte",

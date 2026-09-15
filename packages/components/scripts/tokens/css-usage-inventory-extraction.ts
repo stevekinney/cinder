@@ -1,14 +1,9 @@
 import { parse as parseCss, type Declaration } from 'postcss';
 import valueParser from 'postcss-value-parser';
 import { parse as parseSvelte } from 'svelte/compiler';
-import ts from 'typescript';
-import {
-  dynamicRecord,
-  isRecord,
-  numberField,
-  reportUnsupported,
-} from './css-inventory-diagnostics';
+import { dynamicRecord, isRecord, numberField } from './css-inventory-diagnostics';
 import type { Diagnostic, DynamicRecord, Source } from './css-usage-inventory';
+import { runtimeExtract } from './css-usage-inventory-runtime';
 import {
   extractSvelteStyleAttribute,
   extractSvelteSvgAttribute,
@@ -93,7 +88,7 @@ function declarationIdentity(
     sourceFile: file,
   };
 }
-function parseSurface(
+export function parseSurface(
   file: string,
   source: string,
   text: string,
@@ -267,207 +262,12 @@ function svelteExtract(source: Source): ExtractedSource {
       source,
       content['start'],
       source.content.slice(content['start'], content['end']),
+      parseSurface,
     );
     result.declarations.push(...scriptResult.declarations);
     result.dynamic.push(...scriptResult.dynamic);
     result.diagnostics.push(...scriptResult.diagnostics);
   }
-  return result;
-}
-function runtimeExtract(
-  source: Source,
-  baseOffset = 0,
-  parsedContent = source.content,
-): ExtractedSource {
-  const result: ExtractedSource = { declarations: [], dynamic: [], diagnostics: [] };
-  const domReceivers = new Set(['element', 'node', 'el', '$el']);
-  const styleReceivers = new Set<string>();
-  const file = ts.createSourceFile(
-    source.path,
-    parsedContent,
-    ts.ScriptTarget.Latest,
-    true,
-    /\.tsx?$/.test(source.path) ? ts.ScriptKind.TSX : ts.ScriptKind.JSX,
-  );
-  const receiverName = (expression: ts.Expression): string | null =>
-    ts.isIdentifier(expression) ? expression.text : null;
-  const isDomReceiver = (expression: ts.Expression): boolean => {
-    const name = receiverName(expression);
-    return name !== null && domReceivers.has(name);
-  };
-  const visit = (node: ts.Node): void => {
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
-      const annotation = node.type?.getText(file);
-      if (
-        annotation &&
-        /^(?:HTMLElement|Element|SVGElement|HTML[A-Za-z]+Element)$/.test(annotation)
-      )
-        domReceivers.add(node.name.text);
-      if (
-        ts.isPropertyAccessExpression(node.initializer) &&
-        node.initializer.name.text === 'style'
-      ) {
-        const receiver = node.initializer.expression;
-        if (isDomReceiver(receiver) || styleReceivers.has(receiverName(receiver) ?? ''))
-          styleReceivers.add(node.name.text);
-      }
-      if (
-        ts.isCallExpression(node.initializer) &&
-        ts.isPropertyAccessExpression(node.initializer.expression)
-      ) {
-        const name = node.initializer.expression.name.text;
-        if (name === 'querySelector' || name === 'getElementById' || name === 'createElement')
-          domReceivers.add(node.name.text);
-      }
-    }
-    if (
-      ts.isCallExpression(node) &&
-      ts.isPropertyAccessExpression(node.expression) &&
-      node.expression.name.text === 'setProperty'
-    ) {
-      const [property, value] = node.arguments;
-      const propertyText = property && ts.isStringLiteral(property) ? property.text : null;
-      const valueText =
-        value && ts.isStringLiteral(value)
-          ? value.text
-          : value && ts.isNoSubstitutionTemplateLiteral(value)
-            ? value.text
-            : null;
-      const expression = parsedContent.slice(node.getStart(file), node.end);
-      const receiver = node.expression.expression;
-      const isStyleSink = ts.isPropertyAccessExpression(receiver) && receiver.name.text === 'style';
-      const isAliasedStyleSink = ts.isIdentifier(receiver) && styleReceivers.has(receiver.text);
-      if (isStyleSink || isAliasedStyleSink) {
-        if (propertyText && valueText !== null) {
-          result.declarations.push(
-            ...parseSurface(
-              source.path,
-              source.content,
-              `${propertyText}: ${valueText};`,
-              node.getStart(file) + baseOffset,
-              'runtime-style',
-              result.diagnostics,
-            ),
-          );
-        } else
-          result.dynamic.push(
-            dynamicRecord(
-              source,
-              node.getStart(file) + baseOffset,
-              'runtime-style-sink',
-              propertyText,
-              expression,
-            ),
-          );
-      } else {
-        reportUnsupported(
-          result,
-          source,
-          node.getStart(file) + baseOffset,
-          propertyText,
-          expression,
-          'Runtime style receiver lacks DOM/style evidence',
-        );
-      }
-    }
-    if (
-      ts.isBinaryExpression(node) &&
-      node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
-      ts.isPropertyAccessExpression(node.left) &&
-      node.left.name.text === 'cssText'
-    ) {
-      const value = node.right;
-      const receiver = node.left.expression;
-      const cssReceiver =
-        ts.isPropertyAccessExpression(receiver) && receiver.name.text === 'style'
-          ? receiver.expression
-          : receiver;
-      if (
-        isDomReceiver(cssReceiver) &&
-        (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value))
-      )
-        result.declarations.push(
-          ...parseSurface(
-            source.path,
-            source.content,
-            value.text,
-            value.getStart(file) + baseOffset,
-            'runtime-style',
-            result.diagnostics,
-          ),
-        );
-      else if (isDomReceiver(cssReceiver))
-        result.dynamic.push(
-          dynamicRecord(
-            source,
-            node.getStart(file) + baseOffset,
-            'runtime-style-sink',
-            null,
-            parsedContent.slice(node.getStart(file), node.end),
-          ),
-        );
-      else {
-        const expression = parsedContent.slice(node.getStart(file), node.end);
-        reportUnsupported(
-          result,
-          source,
-          node.getStart(file) + baseOffset,
-          null,
-          expression,
-          'Runtime style receiver lacks DOM evidence',
-        );
-      }
-    }
-    if (
-      ts.isCallExpression(node) &&
-      ts.isPropertyAccessExpression(node.expression) &&
-      node.expression.name.text === 'setAttribute' &&
-      node.arguments[0] &&
-      ts.isStringLiteral(node.arguments[0]) &&
-      node.arguments[0].text === 'style'
-    ) {
-      const value = node.arguments[1];
-      const receiver = node.expression.expression;
-      if (
-        isDomReceiver(receiver) &&
-        value &&
-        (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value))
-      )
-        result.declarations.push(
-          ...parseSurface(
-            source.path,
-            source.content,
-            value.text,
-            value.getStart(file) + baseOffset,
-            'runtime-style',
-            result.diagnostics,
-          ),
-        );
-      else if (isDomReceiver(receiver))
-        result.dynamic.push(
-          dynamicRecord(
-            source,
-            node.getStart(file) + baseOffset,
-            'runtime-style-sink',
-            null,
-            parsedContent.slice(node.getStart(file), node.end),
-          ),
-        );
-      else {
-        const expression = parsedContent.slice(node.getStart(file), node.end);
-        reportUnsupported(
-          result,
-          source,
-          node.getStart(file) + baseOffset,
-          null,
-          expression,
-          'Runtime style receiver lacks DOM evidence',
-        );
-      }
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(file);
   return result;
 }
 export function extractSource(source: Source): ExtractedSource {
@@ -487,6 +287,7 @@ export function extractSource(source: Source): ExtractedSource {
     };
   }
   if (source.path.endsWith('.svelte')) return svelteExtract(source);
-  if (/[.]tsx?$|[.](jsx?|mjs|cjs)$/.test(source.path)) return runtimeExtract(source);
+  if (/[.]tsx?$|[.](jsx?|mjs|cjs)$/.test(source.path))
+    return runtimeExtract(source, 0, source.content, parseSurface);
   return { declarations: [], dynamic: [], diagnostics: [] };
 }
