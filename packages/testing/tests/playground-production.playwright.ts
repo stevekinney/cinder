@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import PlaywrightAxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 
 type Report = { routes: string[] };
 const reportPath = process.env['PLAYGROUND_STATIC_REPORT'];
@@ -13,6 +13,35 @@ const viewports = [
   { name: 'desktop', width: 1440, height: 1000 },
   { name: 'mobile', width: 390, height: 844 },
 ] as const;
+
+async function exerciseSchemaValidation(route: string, preview: Locator): Promise<void> {
+  if (route === '/page/json-schema-editor') {
+    const editor = preview.getByRole('region', { name: 'JSON Schema editor', exact: true });
+    await expect(editor.getByText('Valid (2020-12)', { exact: true })).toBeVisible();
+    await editor.getByRole('tab', { name: 'JSON', exact: true }).click();
+    await editor.getByRole('button', { name: 'Edit JSON', exact: true }).click();
+    const input = editor.getByRole('textbox', { name: 'JSON', exact: true });
+    const validSchema = await input.inputValue();
+    await input.fill(JSON.stringify({ type: 42 }));
+    await expect(editor.locator('.cinder-jse-json-view__errors')).toBeVisible();
+    await expect(editor.getByRole('button', { name: 'Apply', exact: true })).toBeDisabled();
+    await input.fill(validSchema);
+    await expect(editor.locator('.cinder-jse-json-view__errors')).toHaveCount(0);
+    await expect(editor.getByText('Compile warning', { exact: true })).toHaveCount(0);
+  } else if (route === '/page/schema-form') {
+    const name = preview.getByRole('textbox', { name: 'Name', exact: true });
+    const submit = preview.getByRole('button', { name: 'Save schedule', exact: true });
+    const submission = preview.locator('section').filter({ hasText: 'Last valid submission' });
+    await name.fill('');
+    await submit.click();
+    await expect(name).toHaveAttribute('aria-invalid', 'true');
+    await expect(submission).toContainText('No payload submitted yet.');
+    await name.fill('CSP verified schedule');
+    await submit.click();
+    await expect(submission).toContainText('CSP verified schedule');
+    await expect(name).not.toHaveAttribute('aria-invalid', 'true');
+  }
+}
 
 for (const route of routes) {
   for (const viewport of viewports) {
@@ -79,6 +108,7 @@ for (const route of routes) {
           ),
         ).toHaveCount(1);
         await expect(preview).not.toContainText('failed to render');
+        await exerciseSchemaValidation(route, preview);
         if (viewport.name === 'mobile') {
           expect(
             await page.evaluate(() => document.documentElement.scrollWidth),
