@@ -70,49 +70,10 @@ export const COMPOUND_COMPONENT_PARENTS: Readonly<Record<string, string>> = {
 };
 
 /**
- * Compound parts that read a STRICT context getter at instance-init scope: with
- * no provider ancestor the read throws `missing_context` during `mount()`.
- *
- * This is a strict SUBSET of {@link COMPOUND_COMPONENT_PARENTS}, and the subset
- * is the point. Most family members (`table-row`, `side-navigation-item`,
- * `statistic`, the `chat-*` leaves, …) read context through the optional
- * `tryGet*` accessors and bare-mount perfectly well — gating on family
- * membership alone would take a working live preview away from ~17 components
- * that currently have one, and since compose-only leaves ship no
- * `*.example.svelte` files there is no featured example to fall back to.
- *
- * The playground uses this to skip the bare mount for these parts (see
- * `canBareMount` in `../component-page-live-preview.ts`), which is chosen over
- * auto-wrapping them in a synthesized provider: several need a nesting depth
- * greater than two (`Table > Table.Header > Table.Row > Table.HeaderCell`),
- * their roots have their own required props, and `tab`/`segment`/`choice-grid-item`
- * need registration values matching the root's selection state — a generic
- * `<Root><Part/></Root>` wrapper renders blank or misleading for most of them.
- */
-export const CONTEXT_REQUIRED_PARTS: ReadonlySet<string> = new Set([
-  'accordion-item',
-  'choice-grid-item',
-  'command-item',
-  'context-menu-trigger',
-  'dropdown-item',
-  'dropdown-menu',
-  'dropdown-trigger',
-  'segment',
-  'speed-dial-action',
-  'tab',
-  'tab-list',
-  'tab-panel',
-  'table-header-cell',
-  'tree-item',
-]);
-
-/**
- * Resolve the component whose authored examples should back a documentation
- * preview. Strict-context parts have no standalone examples, so their parent
- * is the only truthful source for the mounted composition. Every other
- * component keeps its own source and therefore its existing preview behavior.
+ * Compound parts need their parent's authored composition to supply children,
+ * ancestors, and selection state. Documentation identity stays with the part;
+ * only its preview examples come from the parent.
  */
 export function previewSourceComponentName(componentName: string): string {
-  if (!CONTEXT_REQUIRED_PARTS.has(componentName)) return componentName;
   return COMPOUND_COMPONENT_PARENTS[componentName] ?? componentName;
 }

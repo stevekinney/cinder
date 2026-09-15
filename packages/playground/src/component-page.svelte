@@ -785,11 +785,9 @@
   // `undefined` when the module wasn't provided or the export isn't a component,
   // in which case the section degrades to the static featured-example mount.
   //
-  // Compound ROOTS (Accordion, Tabs, …) and context-requiring PARTS
-  // (accordion-item, tab, table-header-cell, …) both resolve to `undefined` here
-  // on purpose — see `canBareMount` for why neither can be mounted alone. Roots
-  // take the featured-example fallback; parts have no examples of their own and
-  // take the compose-guidance branch below.
+  // Compound roots and parts use authored examples that supply their complete
+  // composition. A part keeps its documentation identity and previews its
+  // parent's example; see `canBareMount` and `previewSourceComponentName`.
   const canMountBare = $derived(
     documentation !== null &&
       canBareMount(documentation.propsManifest.kebabName, documentation.propsManifest.isCompound),
@@ -2991,6 +2989,7 @@
    * sample. The component owns its frame; the prose rule applies only to bare
    * <pre> in README markdown. */
   .readme-content :global(.cinder-code-block pre) {
+    overflow-x: clip;
     border: 0;
     border-radius: 0;
     background: transparent;

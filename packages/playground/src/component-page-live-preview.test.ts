@@ -53,6 +53,20 @@ import { previewRecipeFor } from './component-page-preview-recipes.ts';
 
 setupHappyDom();
 
+describe('LocaleProvider authored preview', () => {
+  test('renders and updates a descendant using the inherited locale', async () => {
+    const { default: LocaleExample } =
+      await import('./examples/locale-provider/basic.example.svelte');
+    const { render, fireEvent } = await import('@testing-library/svelte');
+    const view = render(LocaleExample);
+    const amount = view.getByLabelText('Amount');
+    expect(Reflect.get(amount, 'value')).toBe('1.234,50');
+    await fireEvent.click(view.getByRole('button', { name: 'English' }));
+    expect(Reflect.get(amount, 'value')).toBe('1,234.50');
+    view.unmount();
+  });
+});
+
 describe('toMountProps', () => {
   test('passes non-children controls through unchanged', () => {
     const controls: PlaygroundControl[] = [

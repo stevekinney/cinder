@@ -32,17 +32,18 @@ for (const route of routes) {
         if (response.status() >= 400)
           diagnostics.push(`response ${response.status()}: ${response.url()}`);
       });
+      const viewTabs = page.getByRole('tablist', { name: 'Component views', exact: true });
+      const playgroundPanel = page.locator('#view-panel-playground');
       try {
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
         const response = await page.goto(route, { waitUntil: 'networkidle' });
         expect(response?.status(), `${route} documentation HTTP status`).toBe(200);
-        await expect(page.locator('[role="tab"][aria-selected="true"]')).toHaveText(
+        await expect(viewTabs.locator('[role="tab"][aria-selected="true"]')).toHaveText(
           'Documentation',
         );
-        await expect(page.getByRole('tab', { name: 'Playground' })).toHaveAttribute(
-          'aria-selected',
-          'false',
-        );
+        await expect(
+          viewTabs.getByRole('tab', { name: 'Playground', exact: true }),
+        ).toHaveAttribute('aria-selected', 'false');
         await expect(page.locator('#view-panel-documentation')).toBeVisible();
         await expect(page.locator('#view-panel-playground')).toBeHidden();
         await expect(page.locator('h1')).toHaveCount(1);
@@ -58,25 +59,23 @@ for (const route of routes) {
             await page.evaluate(() => document.documentElement.scrollWidth),
           ).toBeLessThanOrEqual(viewport.width);
         }
-        await page.getByRole('tab', { name: 'Playground' }).click();
-        await expect(page.getByRole('tab', { name: 'Playground' })).toHaveAttribute(
-          'aria-selected',
-          'true',
-        );
+        await viewTabs.getByRole('tab', { name: 'Playground', exact: true }).click();
+        await expect(
+          viewTabs.getByRole('tab', { name: 'Playground', exact: true }),
+        ).toHaveAttribute('aria-selected', 'true');
         await expect(page).toHaveURL(
           new RegExp(`${route.replaceAll('/', '\\/')}\\?view=playground$`),
         );
         await expect(page.locator('#view-panel-playground')).toBeVisible();
-        await expect(page.getByRole('tab', { name: 'Documentation' })).toHaveAttribute(
-          'aria-selected',
-          'false',
-        );
+        await expect(
+          viewTabs.getByRole('tab', { name: 'Documentation', exact: true }),
+        ).toHaveAttribute('aria-selected', 'false');
         await expect(page.locator('#view-panel-documentation')).toBeHidden();
-        await expect(page.locator('.dx-stage__canvas').first()).toBeVisible();
-        const preview = page.locator('.dx-stage__canvas').first();
+        await expect(playgroundPanel.locator('.dx-stage__canvas').first()).toBeVisible();
+        const preview = playgroundPanel.locator('.dx-stage__canvas').first();
         await expect(
           preview.locator(
-            '.example-preview[data-live-preview-ready], .example-preview[data-example-preview-ready]',
+            ':scope > .example-preview[data-live-preview-ready], :scope > .example-preview[data-example-preview-ready]',
           ),
         ).toHaveCount(1);
         await expect(preview).not.toContainText('failed to render');
@@ -92,17 +91,15 @@ for (const route of routes) {
           accessibility.violations,
           `${route} ${viewport.name} accessibility violations`,
         ).toHaveLength(0);
-        await page.getByRole('tab', { name: 'Documentation' }).click();
-        await expect(page.getByRole('tab', { name: 'Documentation' })).toHaveAttribute(
-          'aria-selected',
-          'true',
-        );
+        await viewTabs.getByRole('tab', { name: 'Documentation', exact: true }).click();
+        await expect(
+          viewTabs.getByRole('tab', { name: 'Documentation', exact: true }),
+        ).toHaveAttribute('aria-selected', 'true');
         await expect(page).toHaveURL(new RegExp(`${route.replaceAll('/', '\\/')}$`));
         await expect(page.locator('#view-panel-documentation')).toBeVisible();
-        await expect(page.getByRole('tab', { name: 'Playground' })).toHaveAttribute(
-          'aria-selected',
-          'false',
-        );
+        await expect(
+          viewTabs.getByRole('tab', { name: 'Playground', exact: true }),
+        ).toHaveAttribute('aria-selected', 'false');
         await expect(page.locator('#view-panel-playground')).toBeHidden();
         expect(diagnostics, `${route} ${viewport.name} browser diagnostics`).toEqual([]);
       } finally {

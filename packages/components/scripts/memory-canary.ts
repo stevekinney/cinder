@@ -72,7 +72,9 @@ export async function measureSubprocess(
   command: readonly string[],
   cwd: string = packageRoot,
 ): Promise<CanaryResult> {
-  const child = Bun.spawn(command, {
+  // Bun's spawn type accepts a mutable argv array; copy the readonly public
+  // input at the process boundary without changing its arguments or ordering.
+  const child = Bun.spawn([...command], {
     cwd,
     stdio: ['inherit', 'inherit', 'inherit'],
     env: { ...process.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },

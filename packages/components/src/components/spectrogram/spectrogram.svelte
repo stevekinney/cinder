@@ -132,12 +132,6 @@
     );
   }
 
-  // Convert a bin index to a y-coordinate. Frequency increases UPWARD (the audio
-  // convention): bin 0 (lowest frequency) sits at the BOTTOM of the plot.
-  function binY(binIndex: number): number {
-    return plotHeight - (binIndex + 1) * cellHeight;
-  }
-
   // Frequency axis labels, one per bin index. A PARTIAL `frequencyLabels` is
   // honoured per-index — a provided label is used where present, and bins beyond
   // its length fall back to the numeric index (rather than discarding all of the
@@ -171,6 +165,12 @@
   // Cell dimensions
   const cellWidth = $derived(frames.length > 0 ? plotWidth / frames.length : 0);
   const cellHeight = $derived(binCount > 0 ? plotHeight / binCount : 0);
+
+  // Convert a bin index to a y-coordinate. Frequency increases UPWARD (the audio
+  // convention): bin 0 (lowest frequency) sits at the BOTTOM of the plot.
+  function binY(binIndex: number): number {
+    return plotHeight - (binIndex + 1) * cellHeight;
+  }
 
   const hasDataTable = $derived(dataTableVisibility !== 'hidden');
 

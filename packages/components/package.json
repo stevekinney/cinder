@@ -3305,6 +3305,10 @@
       "import": "./src/components/locale-provider/locale-provider.variables.ts",
       "default": "./dist/components/locale-provider/locale-provider.variables.js"
     },
+    "./locale-provider/examples": {
+      "import": "./src/components/locale-provider/locale-provider.examples.json",
+      "default": "./src/components/locale-provider/locale-provider.examples.json"
+    },
     "./marquee": {
       "types": "./dist/components/marquee/index.d.ts",
       "browser": "./src/components/marquee/index.ts",

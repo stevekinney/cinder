@@ -271,6 +271,7 @@ const SIDEBAR_BASELINE = [
   'line-chart',
   'link',
   'load-more',
+  'locale-provider',
   'markdown-editor',
   'marquee',
   'masonry',
@@ -502,8 +503,8 @@ describe('discoverSidebarComponents', () => {
     // SubscriptionBadge later folded into Badge and ConnectionIndicator folded
     // into StatusDot, reducing the measured sidebar count by two.
     // TimeField adds one standalone internationalized time-entry family with
-    // examples, bringing the measured ceiling to 137. LocaleProvider is
-    // context-only and does not add a playground sidebar entry.
+    // examples, bringing the measured ceiling to 137. LocaleProvider adds a
+    // context-backed formatting example, bringing the measured ceiling to 138.
     // Stardust agent-ops adds approval-card as a standalone approval family with
     // examples, bringing the combined measured sidebar ceiling to 138.
     // BentoGrid adds one standalone layout family with examples. BentoCell is a

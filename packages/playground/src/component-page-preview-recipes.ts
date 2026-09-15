@@ -115,9 +115,6 @@ export const PREVIEW_RECIPES: Readonly<Record<string, PreviewRecipe>> = {
   'focus-trap': { prefersFeaturedExample: true },
   'click-away-listener': { prefersFeaturedExample: true },
   portal: { prefersFeaturedExample: true },
-  // LocaleProvider renders a bare `{@render children?.()}` and ships no example,
-  // so there is nothing to show either way. Marking it keeps the stage from
-  // reserving a frame that never fills.
   'locale-provider': { prefersFeaturedExample: true },
 };
 
