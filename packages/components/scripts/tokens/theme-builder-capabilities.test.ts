@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { isToken, isTokenGroup } from './resolve-merge.ts';
-import { resolveDocuments } from './resolve.ts';
+import { resolveDocuments, resolveDocumentsWithTrace } from './resolve.ts';
 import { TokenValidationError, type ResolverDocument, type TokenDocument } from './types.ts';
 import {
   combinations,
@@ -196,6 +196,66 @@ describe('theme-builder capability fixtures', () => {
         expectedMotions[selection['motion'] as keyof typeof expectedMotions],
       );
       expect(resolved['fixture']!.$value).toBe(100);
+    }
+    expect(JSON.stringify(loaded)).toBe(before);
+  });
+
+  test('preserves an unbound imported source token and its provenance in all six contexts', () => {
+    const profile = readJson(
+      join(themeBuilderDirectory, 'profile.resolver.json'),
+    ) as ResolverDocument;
+    const importedPath = 'imports/source-only.tokens.json';
+    profile.sets['base']!.sources.push({ $ref: importedPath });
+    const imported = {
+      imported: {
+        'source-only': {
+          $type: 'number',
+          $value: 0.5,
+          $description: 'An imported value without a public CSS binding',
+          $extensions: { 'com.example.editor': { preserve: true } },
+        },
+      },
+    } satisfies TokenDocument;
+    const loaded = [
+      'base.tokens.json',
+      'light.tokens.json',
+      'dark.tokens.json',
+      'motion-default.tokens.json',
+      'motion-reduced.tokens.json',
+      'motion-forced-reduced-motion.tokens.json',
+    ].map((name) => ({ path: name, document: readJson(join(themeBuilderDirectory, name)) }));
+    loaded.push({ path: importedPath, document: imported });
+    const before = JSON.stringify(loaded);
+    const validated = validateLoadedTokenDocuments(profile, loaded);
+    const documentsByPath = new Map(validated.map(({ path, document }) => [path, document]));
+    const order = parseResolutionOrder(profile);
+    const selections = combinations(profile);
+    expect(selections).toHaveLength(6);
+    for (const selection of selections) {
+      const sourceIds = order.flatMap((entry) =>
+        sourcesForEntry(profile, entry, selection).map((source) => source.$ref),
+      );
+      const documents = sourceIds.map((path) => documentsByPath.get(path)!);
+      const sourceByDocument = new Map(
+        documents.map((document, index) => [document, sourceIds[index]!]),
+      );
+      const result = resolveDocumentsWithTrace(documents, sourceByDocument, sourceIds);
+      const token = result.resolved['imported.source-only']!;
+      expect(token.$type).toBe('number');
+      expect(token.$value).toBe(0.5);
+      expect(token.$extensions).toEqual({ 'com.example.editor': { preserve: true } });
+      expect(token.$extensions?.['com.lostgradient.cinder']).toBeUndefined();
+      expect(result.traces.get('imported.source-only')).toMatchObject({
+        winningLocation: {
+          documentId: importedPath,
+          tokenPath: 'imported.source-only',
+          sourcePointer: '/imported/source-only',
+          sourceIndex: 1,
+        },
+        typeOrigin: { documentId: importedPath, sourcePointer: '/imported/source-only/$type' },
+        directDependencies: [],
+      });
+      expect(() => assertValidTokenDocument({ imported: { 'source-only': token } })).not.toThrow();
     }
     expect(JSON.stringify(loaded)).toBe(before);
   });

@@ -44,6 +44,8 @@ Each positive and negative path below is a real fixture. Negative entries record
 
 The resolver fixture coverage also includes `$root`, inherited types, two-hop aliases, `$extends`, references, shared/theme/motion precedence, repeated sources and reset. `profile.resolver.json` exercises the six concrete theme/motion combinations through the production load, validation, and context-expansion primitives; the test asserts independent theme and motion fields and source preservation. `css-only.tokens.json` exercises authored CSS recipes without presenting their source values as substituted CSS keywords or claiming those recipes are portable DTCG values. Unsupported profile behavior is an explicit disposition rather than a standards conformance failure.
 
+The unbound imported-source fixture in `theme-builder-capabilities.test.ts` runs schema validation and traced resolution in all six contexts. It preserves the token's typed value, source identity and unknown extensions without inventing a CSS binding. This proves source evaluation, not an imported-draft catalogue or export command. The shipped-corpus registry currently requires a `cssProperty` for every base token; CIN-572 owns evaluating unbound draft tokens and public aliases to them through explicit public bindings. CIN-581 owns source-envelope and portable export products.
+
 ## CSS-only defaults
 
 The catalogue preserves the authored source value and the real CSS recipe for these four public entries. CSS output remains supported. Complete portable DTCG export is omitted with a reason, and subset export reports the same paths:
