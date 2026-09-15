@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 
-import { isToken, mergeDocuments } from './resolve-merge.ts';
+import { isToken, mergeDocuments, mergeTraceMetadata } from './resolve-merge.ts';
 import { resolveDocuments, resolveDocumentsWithTrace } from './resolve.ts';
+import type { TraceMetadata } from './trace.ts';
 import { TokenValidationError, type TokenDocument } from './types.ts';
 
 function traced(documents: TokenDocument[], identifiers: string[]) {
@@ -11,6 +12,63 @@ function traced(documents: TokenDocument[], identifiers: string[]) {
 }
 
 describe('resolver provenance', () => {
+  test('deeply isolates merged dependency locations', () => {
+    const location = (documentId: string, tokenPath: string) => ({
+      documentId,
+      tokenPath,
+      sourcePointer: `/${tokenPath}`,
+      sourceIndex: 0,
+    });
+    const base: TraceMetadata = {
+      location: location('base.json', 'base'),
+      contributions: [],
+      typeOrigin: null,
+      dependencies: [
+        {
+          kind: 'alias',
+          source: location('base.json', 'base'),
+          targetPath: 'target',
+          target: location('base.json', 'target'),
+        },
+      ],
+    };
+    const override: TraceMetadata = {
+      location: location('override.json', 'override'),
+      contributions: [],
+      typeOrigin: null,
+      dependencies: [
+        {
+          kind: 'reference',
+          source: location('override.json', 'override'),
+          targetPath: 'reference',
+        },
+      ],
+    };
+
+    const merged = mergeTraceMetadata(base, override);
+    merged.dependencies[0]!.source.documentId = 'merged-base.json';
+    merged.dependencies[0]!.target!.tokenPath = 'merged-target';
+    merged.dependencies[1]!.source.documentId = 'merged-override.json';
+    base.dependencies[0]!.source.tokenPath = 'mutated-base';
+    override.dependencies[0]!.source.tokenPath = 'mutated-override';
+
+    expect(base.dependencies[0]).toMatchObject({
+      source: { documentId: 'base.json', tokenPath: 'mutated-base' },
+      target: { tokenPath: 'target' },
+    });
+    expect(override.dependencies[0]).toMatchObject({
+      source: { documentId: 'override.json', tokenPath: 'mutated-override' },
+    });
+    expect(merged.dependencies[0]).toMatchObject({
+      source: { documentId: 'merged-base.json', tokenPath: 'base' },
+      target: { tokenPath: 'merged-target' },
+    });
+    expect(merged.dependencies[1]).toMatchObject({
+      source: { documentId: 'merged-override.json', tokenPath: 'override' },
+    });
+    expect(merged.dependencies[1]).not.toHaveProperty('target');
+  });
+
   test('preserves authored extension diagnostic locations after source preparation', () => {
     for (const reference of ['{missing}', '#/invalid~3pointer']) {
       try {

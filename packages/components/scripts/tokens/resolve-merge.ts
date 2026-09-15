@@ -76,8 +76,16 @@ export function mergeTraceMetadata(base: TraceMetadata, override: TraceMetadata)
       ? { ...base.typeOrigin }
       : null;
   merged.dependencies = [
-    ...base.dependencies.map((dependency) => ({ ...dependency })),
-    ...override.dependencies.map((dependency) => ({ ...dependency })),
+    ...base.dependencies.map((dependency) => ({
+      ...dependency,
+      source: { ...dependency.source },
+      ...(dependency.target ? { target: { ...dependency.target } } : {}),
+    })),
+    ...override.dependencies.map((dependency) => ({
+      ...dependency,
+      source: { ...dependency.source },
+      ...(dependency.target ? { target: { ...dependency.target } } : {}),
+    })),
   ];
   return merged;
 }
