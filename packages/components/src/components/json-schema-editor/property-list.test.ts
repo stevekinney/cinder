@@ -131,18 +131,10 @@ describe('PropertyList', () => {
       onValueChange: () => {},
     });
 
-    expect(
-      screen.getByRole('row', { name: /tags/ }).textContent,
-    ).toContain('array of string');
-    expect(
-      screen.getByRole('row', { name: /addresses/ }).textContent,
-    ).toContain('array of object');
-    expect(
-      screen.getByRole('row', { name: /codes/ }).textContent,
-    ).toContain('array of enum');
-    expect(
-      screen.getByRole('row', { name: /^untyped/ }).textContent,
-    ).toContain('array of any');
+    expect(screen.getByRole('row', { name: /tags/ }).textContent).toContain('array of string');
+    expect(screen.getByRole('row', { name: /addresses/ }).textContent).toContain('array of object');
+    expect(screen.getByRole('row', { name: /codes/ }).textContent).toContain('array of enum');
+    expect(screen.getByRole('row', { name: /^untyped/ }).textContent).toContain('array of any');
   });
 
   test('a multi-type schema including array does not get an "of <items>" suffix', () => {
