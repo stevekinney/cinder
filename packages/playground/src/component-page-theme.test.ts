@@ -41,6 +41,7 @@ afterEach(() => {
   });
   document.documentElement.style.colorScheme = '';
   delete document.documentElement.dataset['theme'];
+  delete document.documentElement.dataset['cinderTheme'];
 });
 
 describe('readInitialTheme', () => {
@@ -124,6 +125,7 @@ describe('applyTheme', () => {
     applyTheme('dark');
     expect(document.documentElement.style.colorScheme).toBe('');
     expect(document.documentElement.dataset['theme']).toBe('dark');
+    expect(document.documentElement.dataset['cinderTheme']).toBe('dark');
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
     localStorage.removeItem(THEME_STORAGE_KEY);
   });
@@ -132,6 +134,7 @@ describe('applyTheme', () => {
     applyTheme('light');
     expect(document.documentElement.style.colorScheme).toBe('');
     expect(document.documentElement.dataset['theme']).toBe('light');
+    expect(document.documentElement.dataset['cinderTheme']).toBe('light');
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
     localStorage.removeItem(THEME_STORAGE_KEY);
   });
@@ -150,6 +153,7 @@ describe('applyTheme', () => {
       expect(() => applyTheme('dark')).not.toThrow();
       expect(document.documentElement.style.colorScheme).toBe('');
       expect(document.documentElement.dataset['theme']).toBe('dark');
+      expect(document.documentElement.dataset['cinderTheme']).toBe('dark');
     } finally {
       Object.defineProperty(globalThis, 'localStorage', {
         configurable: true,

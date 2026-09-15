@@ -2,15 +2,20 @@ import { spawn, spawnSync } from 'node:child_process';
 import { dirname, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  type BaselineComponentScope,
   createBaselineProvenance,
   dockerImageTagForPlaywrightVersion,
   normalizeProvenanceComponentScope,
   readOsCodename,
   writeBaselineProvenance,
+  type BaselineComponentScope,
 } from './baseline-provenance.ts';
 import { checkDockerAuthenticity, formatFailures } from './docker-authenticity.ts';
-import { installSignalCleanupHandlers, terminateChildProcess } from './process-lifecycle.ts';
+import {
+  installSignalCleanupHandlers,
+  manageChildProcess,
+  terminateChildProcess,
+  type ManagedChildProcess,
+} from './process-lifecycle.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolvePath(here, '..');
@@ -86,13 +91,10 @@ async function main(): Promise<void> {
     // than writing legacy review screenshots under screenshots/.
     env: snapshotUpdateEnvironment(process.env),
   });
+  let activeChild: ManagedChildProcess | null = manageChildProcess(child, 'start-server.ts');
 
   installSignalCleanupHandlers(() =>
-    terminateChildProcess({
-      childProcess: child,
-      name: 'start-server.ts',
-      killProcessGroup: false,
-    }),
+    activeChild === null ? Promise.resolve() : terminateChildProcess(activeChild),
   );
 
   const exitCode = await new Promise<number>((resolve) => {
@@ -102,6 +104,7 @@ async function main(): Promise<void> {
       resolve(1);
     });
   });
+  activeChild = null;
 
   if (exitCode === 0) {
     const shard = provenanceShard(process.env['CINDER_TEST_SHARD']);

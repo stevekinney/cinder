@@ -1,15 +1,24 @@
-import { spawnSync, type ChildProcess } from 'node:child_process';
+import { type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
 import { rmSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
+import {
+  captureProcessSnapshot,
+  snapshotIdentities,
+  snapshotIsComplete,
+  type ProcessIdentity,
+  type ProcessSnapshot,
+  type ProcessSnapshotReader,
+} from './process-identity.ts';
 
 const CHILD_PROCESS_TERMINATION_GRACE_MS = 5_000;
 
 export type ManagedChildProcess = {
   childProcess: ChildProcess;
   name: string;
-  killProcessGroup: boolean;
-  ownedProcessIds?: Set<number>;
+  ownedProcessIdentities?: Map<number, ProcessIdentity>;
+  processSnapshot?: ProcessSnapshotReader;
+  rootProcessIdentity?: ProcessIdentity;
   ownershipTimer?: ReturnType<typeof setInterval>;
   ownedProcessGroupId?: number;
 };
@@ -72,31 +81,72 @@ export function descendantProcessIds(
   return descendants;
 }
 
-function captureDescendantProcessIds(rootPid: number): number[] {
-  if (process.platform === 'win32') return [];
-  const result = spawnSync('ps', ['-A', '-o', 'pid=,ppid='], { encoding: 'utf8' });
-  return result.status === 0
-    ? descendantProcessIds(rootPid, parseProcessTreeSnapshot(result.stdout))
-    : [];
-}
-
-function captureProcessGroupIds(groupId: number): number[] {
-  if (process.platform === 'win32') return [];
-  const result = spawnSync('ps', ['-A', '-o', 'pid=,pgid='], { encoding: 'utf8' });
-  return result.status === 0
-    ? parseProcessGroupSnapshot(result.stdout)
-        .filter((entry) => entry.groupId === groupId && entry.pid !== groupId)
-        .map((entry) => entry.pid)
-    : [];
-}
-
-function processIsAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
+function descendantProcessIdentities(
+  rootPid: number,
+  snapshot: readonly ProcessIdentity[],
+): ProcessIdentity[] {
+  const childrenByParent = new Map<number, ProcessIdentity[]>();
+  for (const identity of snapshot)
+    childrenByParent.set(identity.parentPid, [
+      ...(childrenByParent.get(identity.parentPid) ?? []),
+      identity,
+    ]);
+  const descendants: ProcessIdentity[] = [];
+  const pending = [...(childrenByParent.get(rootPid) ?? [])];
+  while (pending.length > 0) {
+    const identity = pending.shift()!;
+    descendants.push(identity);
+    pending.push(...(childrenByParent.get(identity.pid) ?? []));
   }
+  return descendants;
+}
+
+function processGroupIdentities(
+  groupId: number,
+  snapshot: readonly ProcessIdentity[],
+): ProcessIdentity[] {
+  return snapshot.filter((identity) => identity.groupId === groupId && identity.pid !== groupId);
+}
+
+function identityMatches(current: ProcessIdentity, expected: ProcessIdentity): boolean {
+  return current.pid === expected.pid && current.startTime === expected.startTime;
+}
+
+function rootIdentityIsAnchored(
+  snapshot: readonly ProcessIdentity[],
+  rootIdentity: ProcessIdentity | undefined,
+): boolean {
+  return (
+    rootIdentity !== undefined &&
+    snapshot.some((identity) => identityMatches(identity, rootIdentity))
+  );
+}
+
+function snapshotObservedProcess(
+  snapshot: readonly ProcessIdentity[] | { observedPids: readonly number[] },
+  pid: number,
+): boolean {
+  return !('observedPids' in snapshot) || snapshot.observedPids.includes(pid);
+}
+
+type IdentityState = 'alive' | 'gone' | 'unknown';
+
+function classifyIdentity(
+  snapshot: readonly ProcessIdentity[] | ProcessSnapshot,
+  expected: ProcessIdentity,
+): IdentityState {
+  const current = snapshotIdentities(snapshot).find((identity) => identity.pid === expected.pid);
+  if (current !== undefined) return identityMatches(current, expected) ? 'alive' : 'gone';
+  if (snapshotIsComplete(snapshot) || !snapshotObservedProcess(snapshot, expected.pid))
+    return 'gone';
+  return 'unknown';
+}
+
+function classifyIdentities(
+  snapshot: readonly ProcessIdentity[] | ProcessSnapshot,
+  expected: readonly ProcessIdentity[],
+): IdentityState[] {
+  return expected.map((identity) => classifyIdentity(snapshot, identity));
 }
 
 function signalProcessId(pid: number, signal: NodeJS.Signals): void {
@@ -111,13 +161,26 @@ function signalProcessId(pid: number, signal: NodeJS.Signals): void {
   }
 }
 
-async function waitForProcessIdsToExit(
-  processIds: readonly number[],
+async function waitForProcessIdentitiesToExit(
+  processIdentities: readonly ProcessIdentity[],
+  snapshotReader: ProcessSnapshotReader,
   timeoutMs: number,
 ): Promise<boolean> {
   const deadline = Date.now() + timeoutMs;
-  while (processIds.some(processIsAlive) && Date.now() < deadline) await delay(25);
-  return processIds.every((pid) => !processIsAlive(pid));
+  while (Date.now() < deadline) {
+    const snapshot = snapshotReader();
+    if (snapshot === null) return false;
+    const states = classifyIdentities(snapshot, processIdentities);
+    if (states.every((state) => state === 'gone')) return true;
+    if (states.some((state) => state === 'alive')) {
+      await delay(25);
+      continue;
+    }
+    return false;
+  }
+  const snapshot = snapshotReader();
+  if (snapshot === null) return false;
+  return classifyIdentities(snapshot, processIdentities).every((state) => state === 'gone');
 }
 
 function isAbortError(error: unknown): boolean {
@@ -177,14 +240,20 @@ async function waitForStdioCloseOrTimeout(
 export function manageChildProcess(
   childProcess: ChildProcess,
   name: string,
-  killProcessGroup: boolean,
   ownsProcessGroup = false,
+  processSnapshot: ProcessSnapshotReader = captureProcessSnapshot,
 ): ManagedChildProcess {
+  const initialSnapshot = childProcess.pid === undefined ? null : processSnapshot();
+  const rootProcessIdentity =
+    initialSnapshot === null
+      ? undefined
+      : snapshotIdentities(initialSnapshot).find((identity) => identity.pid === childProcess.pid);
   const managedChildProcess: ManagedChildProcess = {
     childProcess,
     name,
-    killProcessGroup,
-    ownedProcessIds: new Set<number>(),
+    ownedProcessIdentities: new Map<number, ProcessIdentity>(),
+    processSnapshot,
+    ...(rootProcessIdentity === undefined ? {} : { rootProcessIdentity }),
     ...(ownsProcessGroup && process.platform !== 'win32' && childProcess.pid !== undefined
       ? { ownedProcessGroupId: childProcess.pid }
       : {}),
@@ -192,10 +261,23 @@ export function manageChildProcess(
   if (childProcess.pid === undefined) return managedChildProcess;
   const trackDescendants = (): void => {
     if (childProcess.pid === undefined || childProcessHasFinished(childProcess)) return;
-    for (const pid of captureDescendantProcessIds(childProcess.pid))
-      managedChildProcess.ownedProcessIds!.add(pid);
+    const snapshot = processSnapshot();
+    if (snapshot === null) return;
+    const identities = snapshotIdentities(snapshot);
+    const observedRoot = identities.find((identity) => identity.pid === childProcess.pid);
+    if (managedChildProcess.rootProcessIdentity === undefined && observedRoot !== undefined)
+      managedChildProcess.rootProcessIdentity = observedRoot;
+    if (!rootIdentityIsAnchored(identities, managedChildProcess.rootProcessIdentity)) return;
+    for (const identity of descendantProcessIdentities(childProcess.pid, identities))
+      managedChildProcess.ownedProcessIdentities!.set(identity.pid, identity);
+    if (managedChildProcess.ownedProcessGroupId !== undefined)
+      for (const identity of processGroupIdentities(
+        managedChildProcess.ownedProcessGroupId,
+        identities,
+      ))
+        managedChildProcess.ownedProcessIdentities!.set(identity.pid, identity);
   };
-  trackDescendants();
+  if (initialSnapshot !== null) trackDescendants();
   managedChildProcess.ownershipTimer = setInterval(trackDescendants, 25);
   return managedChildProcess;
 }
@@ -228,40 +310,74 @@ export async function terminateChildProcess(
   const { childProcess, name } = managedChildProcess;
   const processId = childProcess.pid;
   if (processId === undefined) return;
-  const childFinished = childProcessHasFinished(childProcess);
-  const descendantPids = [
-    ...new Set([
-      ...(managedChildProcess.ownedProcessIds ?? []),
-      ...captureDescendantProcessIds(processId),
-      ...(managedChildProcess.ownedProcessGroupId === undefined
-        ? []
-        : captureProcessGroupIds(managedChildProcess.ownedProcessGroupId)),
-    ]),
-  ];
+  const processSnapshot = managedChildProcess.processSnapshot ?? captureProcessSnapshot;
+  const childFinishedAtStart = childProcessHasFinished(childProcess);
+  const cachedIdentities = new Map(managedChildProcess.ownedProcessIdentities ?? []);
+  const initialProcessSnapshot = processSnapshot();
+  let snapshotUnavailable = initialProcessSnapshot === null;
+  if (initialProcessSnapshot !== null) {
+    const identities = snapshotIdentities(initialProcessSnapshot);
+    const rootIsAnchored = rootIdentityIsAnchored(
+      identities,
+      managedChildProcess.rootProcessIdentity,
+    );
+    if (!childFinishedAtStart && rootIsAnchored)
+      for (const identity of descendantProcessIdentities(processId, identities))
+        cachedIdentities.set(identity.pid, identity);
+    if (
+      !childFinishedAtStart &&
+      managedChildProcess.ownedProcessGroupId !== undefined &&
+      rootIsAnchored
+    )
+      for (const identity of processGroupIdentities(
+        managedChildProcess.ownedProcessGroupId,
+        identities,
+      ))
+        cachedIdentities.set(identity.pid, identity);
+  }
+  const descendantIdentities = [...cachedIdentities.values()];
   if (managedChildProcess.ownershipTimer !== undefined) {
     clearInterval(managedChildProcess.ownershipTimer);
     delete managedChildProcess.ownershipTimer;
   }
-  const signalOwnedProcessGroup = (signal: NodeJS.Signals): void => {
-    const groupId = managedChildProcess.ownedProcessGroupId;
-    if (groupId === undefined || process.platform === 'win32' || childFinished) return;
-    try {
-      process.kill(-groupId, signal);
-    } catch (error) {
-      const code =
-        typeof error === 'object' && error !== null && 'code' in error
-          ? (error as { code?: unknown }).code
-          : undefined;
-      if (code !== 'ESRCH') console.error(`Failed to send ${signal} to ${name} group:`, error);
+  if (snapshotUnavailable && childFinishedAtStart)
+    throw new Error(`${name} cleanup cannot verify process identity: snapshot unavailable.`);
+  if (
+    initialProcessSnapshot !== null &&
+    !snapshotIsComplete(initialProcessSnapshot) &&
+    childFinishedAtStart
+  ) {
+    const hasUnknownCachedIdentity = descendantIdentities.some(
+      (expected) => classifyIdentity(initialProcessSnapshot, expected) === 'unknown',
+    );
+    if (hasUnknownCachedIdentity)
+      throw new Error(`${name} cleanup cannot verify cached process identity.`);
+  }
+  const signalDescendants = (signal: NodeJS.Signals): void => {
+    for (const expected of descendantIdentities.toReversed()) {
+      const signalSnapshot = processSnapshot();
+      if (signalSnapshot === null) {
+        snapshotUnavailable = true;
+        continue;
+      }
+      const current = snapshotIdentities(signalSnapshot).find(
+        (identity) => identity.pid === expected.pid,
+      );
+      if (current !== undefined && identityMatches(current, expected))
+        signalProcessId(expected.pid, signal);
+      else if (
+        current !== undefined ||
+        snapshotIsComplete(signalSnapshot) ||
+        !snapshotObservedProcess(signalSnapshot, expected.pid)
+      )
+        managedChildProcess.ownedProcessIdentities?.delete(expected.pid);
     }
   };
-  for (const pid of [...descendantPids].reverse()) signalProcessId(pid, 'SIGTERM');
-  signalOwnedProcessGroup('SIGTERM');
-  if (!childFinished) {
+  signalDescendants('SIGTERM');
+  const rootFinishedBeforeTermination = childProcessHasFinished(childProcess);
+  if (!rootFinishedBeforeTermination) {
     try {
-      if (managedChildProcess.killProcessGroup && process.platform !== 'win32')
-        process.kill(-processId, 'SIGTERM');
-      else childProcess.kill('SIGTERM');
+      childProcess.kill('SIGTERM');
     } catch (error) {
       const code =
         typeof error === 'object' && error !== null && 'code' in error
@@ -271,23 +387,29 @@ export async function terminateChildProcess(
     }
   }
   const [rootExited, descendantsExited] = await Promise.all([
-    childFinished
+    rootFinishedBeforeTermination
       ? Promise.resolve(true)
       : waitForExitOrTimeout(childProcess, CHILD_PROCESS_TERMINATION_GRACE_MS),
-    waitForProcessIdsToExit(descendantPids, CHILD_PROCESS_TERMINATION_GRACE_MS),
+    waitForProcessIdentitiesToExit(
+      descendantIdentities,
+      processSnapshot,
+      CHILD_PROCESS_TERMINATION_GRACE_MS,
+    ),
   ]);
-  if (rootExited && descendantsExited) {
-    await waitForStdioCloseOrTimeout(childProcess, CHILD_PROCESS_TERMINATION_GRACE_MS);
+  if (rootExited && descendantsExited && !snapshotUnavailable) {
+    const stdioClosed = await waitForStdioCloseOrTimeout(
+      childProcess,
+      CHILD_PROCESS_TERMINATION_GRACE_MS,
+    );
+    if (!stdioClosed) throw new Error(`${name} cleanup could not verify stdio closure.`);
     return;
   }
   console.error(`${name} did not exit after SIGTERM; sending SIGKILL.`);
-  for (const pid of descendantPids) if (processIsAlive(pid)) signalProcessId(pid, 'SIGKILL');
-  signalOwnedProcessGroup('SIGKILL');
-  if (!childFinished) {
+  signalDescendants('SIGKILL');
+  const rootFinishedBeforeKill = childProcessHasFinished(childProcess);
+  if (!rootFinishedBeforeKill) {
     try {
-      if (managedChildProcess.killProcessGroup && process.platform !== 'win32')
-        process.kill(-processId, 'SIGKILL');
-      else childProcess.kill('SIGKILL');
+      childProcess.kill('SIGKILL');
     } catch (error) {
       const code =
         typeof error === 'object' && error !== null && 'code' in error
@@ -298,11 +420,18 @@ export async function terminateChildProcess(
   }
   const [killedRoot, killedDescendants] = await Promise.all([
     waitForExitOrTimeout(childProcess, CHILD_PROCESS_TERMINATION_GRACE_MS),
-    waitForProcessIdsToExit(descendantPids, CHILD_PROCESS_TERMINATION_GRACE_MS),
+    waitForProcessIdentitiesToExit(
+      descendantIdentities,
+      processSnapshot,
+      CHILD_PROCESS_TERMINATION_GRACE_MS,
+    ),
   ]);
-  if (!(killedRoot && killedDescendants))
-    console.error(`${name} did not exit after SIGKILL; continuing cleanup.`);
-  await waitForStdioCloseOrTimeout(childProcess, CHILD_PROCESS_TERMINATION_GRACE_MS);
+  const stdioClosed = await waitForStdioCloseOrTimeout(
+    childProcess,
+    CHILD_PROCESS_TERMINATION_GRACE_MS,
+  );
+  if (!(killedRoot && killedDescendants && stdioClosed && !snapshotUnavailable))
+    throw new Error(`${name} cleanup could not verify process termination.`);
 }
 
 export async function cleanupManagedChildren(

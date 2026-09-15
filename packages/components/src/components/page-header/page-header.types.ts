@@ -29,7 +29,10 @@ export type PageHeaderProps = Omit<
 export interface PageHeaderSchemaProps {
   /** Page-level heading text rendered inside the configured heading level; the runtime API also accepts a template-only snippet. */
   title: string;
-  /** Heading level for the title element. Default 1. */
+  /**
+   * Heading level for the title element. Default 1.
+   * @default 1
+   */
   headingLevel?: PageHeaderHeadingLevel;
   /** Optional supporting text rendered below the title; the runtime API also accepts a template-only snippet. */
   description?: string;

@@ -8,7 +8,7 @@ type Report = { routes: string[] };
 const reportPath = process.env['PLAYGROUND_STATIC_REPORT'];
 if (!reportPath) throw new Error('PLAYGROUND_STATIC_REPORT is required');
 const report = JSON.parse(readFileSync(resolve(reportPath), 'utf8')) as Report;
-const routes = report.routes.filter((route) => route !== '/');
+const routes = report.routes;
 const viewports = [
   { name: 'desktop', width: 1440, height: 1000 },
   { name: 'mobile', width: 390, height: 844 },
@@ -43,6 +43,67 @@ async function exerciseSchemaValidation(route: string, preview: Locator): Promis
   }
 }
 
+async function exerciseLanding(
+  page: import('@playwright/test').Page,
+  diagnostics: string[],
+): Promise<void> {
+  await expect(page.locator('#landing-title')).toHaveText('cinder');
+  const navigation = page.getByRole('navigation', { name: 'Components', exact: true });
+  await expect(navigation).toBeVisible();
+
+  const filter = page.getByRole('searchbox', { name: 'Filter components', exact: true });
+  await filter.fill('Button');
+  await expect(navigation.getByRole('link', { name: 'Button', exact: true })).toBeVisible();
+  await filter.fill('');
+
+  expect(diagnostics, 'landing page browser diagnostics').toEqual([]);
+
+  const themeToggle = page.getByRole('button', { name: /Preview theme: switch to/ });
+  const before = await page.locator('html').getAttribute('data-theme');
+  await themeToggle.click();
+  const after = await page.locator('html').getAttribute('data-theme');
+  expect(after, 'landing theme toggle should update the explicit theme signal').not.toBe(before);
+  // Theme changes hydrate the deferred shell and load its split chunks after
+  // the landing page's initial network-idle boundary. Let that owned work
+  // settle before navigating away so a real lazy chunk is not aborted by the
+  // test's next action.
+  await page.waitForLoadState('networkidle');
+
+  const scrollRegions = page.locator('.readme-table-scroll');
+  const overflowingIndex = await scrollRegions.evaluateAll((elements) =>
+    elements.findIndex((element) => element.scrollWidth > element.clientWidth),
+  );
+  if (overflowingIndex >= 0) {
+    const overflowingRegion = scrollRegions.nth(overflowingIndex);
+    await overflowingRegion.focus();
+    await page.keyboard.press('Shift+Tab');
+    await expect(overflowingRegion).not.toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(overflowingRegion).toBeFocused();
+    await expect
+      .poll(() => overflowingRegion.evaluate((element) => document.activeElement === element))
+      .toBe(true);
+    const beforeScroll = await overflowingRegion.evaluate((element) => element.scrollLeft);
+    await page.keyboard.press('ArrowRight');
+    await expect
+      .poll(() => overflowingRegion.evaluate((element) => element.scrollLeft))
+      .toBeGreaterThan(beforeScroll);
+  }
+}
+
+async function exerciseLandingNavigation(
+  page: import('@playwright/test').Page,
+  diagnostics: string[],
+): Promise<void> {
+  const browse = page.getByRole('link', { name: 'Browse components', exact: true });
+  await expect(browse).toHaveAttribute('href', /\/page\//);
+  await browse.click();
+  await expect(page).toHaveURL(/\/page\//);
+  await page.waitForLoadState('networkidle');
+  await expect(page.locator('h1')).toHaveCount(1);
+  expect(diagnostics, 'component navigation browser diagnostics').toEqual([]);
+}
+
 for (const route of routes) {
   for (const viewport of viewports) {
     test(`${route} documentation and playground at ${viewport.name}`, async ({
@@ -61,12 +122,30 @@ for (const route of routes) {
         if (response.status() >= 400)
           diagnostics.push(`response ${response.status()}: ${response.url()}`);
       });
-      const viewTabs = page.getByRole('tablist', { name: 'Component views', exact: true });
-      const playgroundPanel = page.locator('#view-panel-playground');
       try {
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
         const response = await page.goto(route, { waitUntil: 'networkidle' });
         expect(response?.status(), `${route} documentation HTTP status`).toBe(200);
+        if (route === '/') {
+          await exerciseLanding(page, diagnostics);
+          if (viewport.name === 'mobile') {
+            expect(
+              await page.evaluate(() => document.documentElement.scrollWidth),
+            ).toBeLessThanOrEqual(viewport.width);
+          }
+          const accessibility = await new PlaywrightAxeBuilder({ page })
+            .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+            .analyze();
+          expect(
+            accessibility.violations,
+            `${route} ${viewport.name} accessibility violations`,
+          ).toHaveLength(0);
+          expect(diagnostics, `${route} ${viewport.name} browser diagnostics`).toEqual([]);
+          await exerciseLandingNavigation(page, diagnostics);
+          return;
+        }
+        const viewTabs = page.getByRole('tablist', { name: 'Component views', exact: true });
+        const playgroundPanel = page.locator('#view-panel-playground');
         await expect(viewTabs.locator('[role="tab"][aria-selected="true"]')).toHaveText(
           'Documentation',
         );

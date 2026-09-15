@@ -821,6 +821,8 @@ describe('/', () => {
     expect(html).toContain('id="cinder-initial"');
     expect(html).toContain('/shell-bundle/shell.js');
     expect(html).toContain('Components for product interfaces.');
+    expect(html).toContain('class="readme-table-scroll"');
+    expect(html).toContain('aria-label="README table"');
     expect(html).toContain('readmeHtml');
     expect(html).not.toContain('http-equiv="refresh"');
   });

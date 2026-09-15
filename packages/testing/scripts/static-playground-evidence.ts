@@ -41,8 +41,8 @@ export function expectedCases(routes: readonly string[]): Set<string> {
   if (routes.length < 2 || routes[0] !== '/' || new Set(routes).size !== routes.length)
     throw new Error('[static-playground] producer route inventory is invalid');
   const cases = new Set<string>();
-  for (const route of routes.slice(1)) {
-    if (route === '/' || !route.startsWith('/'))
+  for (const route of routes) {
+    if (!route.startsWith('/'))
       throw new Error('[static-playground] producer route inventory is invalid');
     for (const viewport of ['desktop', 'mobile']) cases.add(`${route}\u0000${viewport}`);
   }
@@ -159,7 +159,7 @@ export function caseIdentities(report: unknown, format: 'shard' | 'merged' = 'sh
       throw new Error(
         `[static-playground] Playwright JSON contains an unknown or malformed spec: ${JSON.stringify({ file, title, tests: Array.isArray(tests) ? tests.length : null })}`,
       );
-    const match = title.match(/^(\/[^ ]+) documentation and playground at (desktop|mobile)$/);
+    const match = title.match(/^(\/(?:[^ ]+)?) documentation and playground at (desktop|mobile)$/);
     if (!match) throw new Error(`[static-playground] unknown Playwright test title: ${title}`);
     const [route, viewport] = [match[1]!, match[2]!];
     const test = tests[0];

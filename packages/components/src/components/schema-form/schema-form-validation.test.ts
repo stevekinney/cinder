@@ -282,6 +282,22 @@ describe('schema-form validation', () => {
     }
   });
 
+  test('accepts a nullable formatted field when its value is null', async () => {
+    const schema = {
+      type: 'object',
+      properties: {
+        reviewedOn: { type: ['string', 'null'], format: 'date' },
+      },
+    } as const;
+
+    await expect(validateSchemaValue(schema, { reviewedOn: null })).resolves.toMatchObject({
+      valid: true,
+    });
+    await expect(validateSchemaValue(schema, { reviewedOn: '2020-02-30' })).resolves.toMatchObject({
+      valid: false,
+    });
+  });
+
   test('groups issues by path without overwriting the first field message', () => {
     expect(
       issuesByPath([

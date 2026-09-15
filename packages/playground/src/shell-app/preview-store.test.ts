@@ -268,6 +268,7 @@ describe('applyThemeToDocument', () => {
       const doc = makeFakeDocument();
       applyThemeToDocument(doc, override);
       expect(doc.documentElement.dataset['theme']).toBe(override);
+      expect(doc.documentElement.dataset['cinderTheme']).toBe(override);
       expect(doc.documentElement.style.colorScheme).toBe('');
     }
   });
@@ -279,6 +280,7 @@ describe('applyThemeToDocument', () => {
     applyThemeToDocument(doc, null);
     expect(doc.documentElement.style.colorScheme).toBe('');
     expect(doc.documentElement.dataset['theme']).toBeUndefined();
+    expect(doc.documentElement.dataset['cinderTheme']).toBe('system');
   });
 });
 

@@ -77,6 +77,7 @@ export function readStoredNavFilter(): string {
  */
 export function applyTheme(theme: 'light' | 'dark'): void {
   document.documentElement.dataset['theme'] = theme;
+  document.documentElement.dataset['cinderTheme'] = theme;
   try {
     // Same key the pre-paint script in render-shell.ts reads. It previously
     // wrote `cinder-docs-theme`, which nothing read, so the choice was lost on

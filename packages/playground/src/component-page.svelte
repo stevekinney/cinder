@@ -3030,11 +3030,18 @@
     font-size: var(--cinder-text-sm);
   }
   .readme-content :global(table) {
-    display: block;
     width: 100%;
+    border-collapse: collapse;
+  }
+  .readme-content :global(.readme-table-scroll) {
     max-width: 100%;
     overflow-x: auto;
-    border-collapse: collapse;
+    overscroll-behavior-x: contain;
+    border-radius: var(--cinder-radius-sm);
+  }
+  .readme-content :global(.readme-table-scroll):focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
   }
   .readme-content :global(blockquote) {
     padding-inline-start: var(--cinder-space-4);

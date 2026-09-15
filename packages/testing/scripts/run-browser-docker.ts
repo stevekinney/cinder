@@ -1,7 +1,11 @@
-import type { ChildProcess } from 'node:child_process';
 import { dirname, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { installSignalCleanupHandlers, terminateChildProcess } from './process-lifecycle.ts';
+import {
+  installSignalCleanupHandlers,
+  manageChildProcess,
+  terminateChildProcess,
+  type ManagedChildProcess,
+} from './process-lifecycle.ts';
 import {
   buildPlaywrightDockerImage,
   dockerBrowserCommand,
@@ -52,14 +56,10 @@ export function dockerBrowserEnvironment(
  * cinder-playwright Docker image used to author committed baselines.
  */
 async function main(): Promise<void> {
-  let activeChild: ChildProcess | null = null;
+  let activeChild: ManagedChildProcess | null = null;
   installSignalCleanupHandlers(async () => {
     if (activeChild !== null) {
-      await terminateChildProcess({
-        childProcess: activeChild,
-        name: 'docker',
-        killProcessGroup: false,
-      });
+      await terminateChildProcess(activeChild);
     }
   });
 
@@ -70,7 +70,7 @@ async function main(): Promise<void> {
   const buildExit = await buildPlaywrightDockerImage(
     playwrightVersion,
     imageTag,
-    (child) => (activeChild = child),
+    (child) => (activeChild = manageChildProcess(child, 'docker build')),
   );
   activeChild = null;
   if (buildExit !== 0) {
@@ -95,7 +95,10 @@ async function main(): Promise<void> {
         ...gitMetadataEnvironment(metadataMounts),
       },
     }),
-    { cwd: repoRoot, onSpawn: (child) => (activeChild = child) },
+    {
+      cwd: repoRoot,
+      onSpawn: (child) => (activeChild = manageChildProcess(child, 'docker run')),
+    },
   );
   activeChild = null;
 

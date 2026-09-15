@@ -116,6 +116,8 @@ export function planForChanges(changedFiles: readonly string[], decision: Decisi
     files.every(
       (file) => file.startsWith('packages/components/src/styles/') || staticGuardPattern.test(file),
     );
+  const stylesOnly =
+    staticOnly && files.some((file) => file.startsWith('packages/components/src/styles/'));
   const browserRelevant = files.some(
     (file) =>
       !file.startsWith('packages/components/scripts/') &&
@@ -126,9 +128,16 @@ export function planForChanges(changedFiles: readonly string[], decision: Decisi
     mode: 'filtered',
     components: decision.components,
     cinderComponents,
-    unitLanes: staticOnly
-      ? ['static', 'package']
-      : ['static', 'package', 'playground', ...(cinderComponents.length > 0 ? ['components'] : [])],
+    unitLanes: stylesOnly
+      ? ['static', 'package', 'playground']
+      : staticOnly
+        ? ['static', 'package']
+        : [
+            'static',
+            'package',
+            'playground',
+            ...(cinderComponents.length > 0 ? ['components'] : []),
+          ],
     browserRelevant,
     reason: null,
   };

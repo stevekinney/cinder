@@ -30,10 +30,19 @@ const runtimeDrafts = [draft07, draft2019, draft2020] as RuntimeDraft[];
 addFormats(runtimeDrafts);
 
 const customFormats: Record<string, RuntimeDraft['formats'][string]> = {};
+type FormatDefinition = Exclude<(typeof fullFormats)[keyof typeof fullFormats], boolean>;
+
+function formatApplies(definition: FormatDefinition, data: unknown): boolean {
+  if (typeof definition === 'object' && definition !== null && 'type' in definition) {
+    return typeof data === definition.type;
+  }
+  return typeof data === 'string';
+}
 
 for (const [name, definition] of Object.entries(fullFormats)) {
   if (definition === true) continue;
   customFormats[name] = ({ node, pointer, data }) => {
+    if (!formatApplies(definition, data)) return undefined;
     const valid =
       definition instanceof RegExp
         ? typeof data === 'string' && definition.test(data)

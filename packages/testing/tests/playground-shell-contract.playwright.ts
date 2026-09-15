@@ -90,6 +90,7 @@ for (const theme of ['light', 'dark'] as const) {
         if (target.name === 'home') {
           homeGutters = { left: metrics.contentLeft, right: metrics.contentRight };
         } else {
+          expect(homeGutters, 'home gutter measurements must be captured first').toBeDefined();
           expect(metrics.contentLeft, `${target.name} left gutter`).toBe(homeGutters?.left);
           expect(metrics.contentRight, `${target.name} right gutter`).toBe(homeGutters?.right);
         }

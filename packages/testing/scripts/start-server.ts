@@ -128,24 +128,25 @@ async function ping(playgroundUrl: string = targetPlaygroundUrl): Promise<boolea
 
 const PLAYGROUND_FINGERPRINT_HEADER = 'X-Cinder-Playground-Fingerprint';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isPlaygroundFreshnessFingerprint(value: unknown): value is PlaygroundFreshnessFingerprint {
+  return (
+    isRecord(value) &&
+    typeof value['startedAtMs'] === 'number' &&
+    (typeof value['newestSourceMtimeMs'] === 'number' || value['newestSourceMtimeMs'] === null)
+  );
+}
+
 export function parsePlaygroundFingerprintHeader(
   headerValue: string | null,
 ): PlaygroundFreshnessFingerprint | null {
   if (headerValue === null) return null;
   try {
     const parsed: unknown = JSON.parse(headerValue);
-    if (
-      typeof parsed === 'object' &&
-      parsed !== null &&
-      'startedAtMs' in parsed &&
-      'newestSourceMtimeMs' in parsed &&
-      typeof (parsed as { startedAtMs: unknown }).startedAtMs === 'number' &&
-      (typeof (parsed as { newestSourceMtimeMs: unknown }).newestSourceMtimeMs === 'number' ||
-        (parsed as { newestSourceMtimeMs: unknown }).newestSourceMtimeMs === null)
-    ) {
-      return parsed as PlaygroundFreshnessFingerprint;
-    }
-    return null;
+    return isPlaygroundFreshnessFingerprint(parsed) ? parsed : null;
   } catch {
     return null;
   }
@@ -290,15 +291,9 @@ export function playgroundBundleDependencyBuildArguments(packageName: string): s
 export function playgroundBundleDependencyBuildProcess(
   childProcess: ChildProcess,
   packageName: string,
-  killProcessGroup = process.platform !== 'win32',
   ownsProcessGroup = false,
 ): ManagedChildProcess {
-  return manageChildProcess(
-    childProcess,
-    `${packageName} build`,
-    killProcessGroup,
-    ownsProcessGroup,
-  );
+  return manageChildProcess(childProcess, `${packageName} build`, ownsProcessGroup);
 }
 
 export function playgroundBundleDependencySourceDirectories(packageName: string): string[] {
@@ -418,7 +413,6 @@ async function buildPlaygroundBundleDependencies(
         buildProcess,
         packageName,
         process.platform !== 'win32',
-        process.platform !== 'win32',
       ),
     );
     const buildCode = await waitForExit(buildProcess);
@@ -522,7 +516,6 @@ function startPlaygroundBundleDependencyWatchers(
         playgroundBundleDependencyBuildProcess(
           currentBuild,
           packageName,
-          process.platform !== 'win32',
           process.platform !== 'win32',
         ),
       );
@@ -708,12 +701,7 @@ async function main(): Promise<void> {
       env: { ...process.env, PLAYGROUND_PORT_FILE: playgroundPortFile },
     });
     children.push(
-      manageChildProcess(
-        serverProcess,
-        'playground server',
-        process.platform !== 'win32',
-        process.platform !== 'win32',
-      ),
+      manageChildProcess(serverProcess, 'playground server', process.platform !== 'win32'),
     );
 
     let serverOutputBuffer = '';
@@ -867,14 +855,7 @@ async function main(): Promise<void> {
       PLAYGROUND_URL: targetPlaygroundUrl,
     },
   });
-  children.push(
-    manageChildProcess(
-      playwright,
-      'Playwright',
-      process.platform !== 'win32',
-      process.platform !== 'win32',
-    ),
-  );
+  children.push(manageChildProcess(playwright, 'Playwright', process.platform !== 'win32'));
   // A dead playground cannot serve the rest of the suite, and every test that
   // follows would spend its full timeout proving it. Stop here instead.
   const stopSuiteForDeadPlayground = (): void => {

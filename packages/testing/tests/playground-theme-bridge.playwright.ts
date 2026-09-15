@@ -70,6 +70,64 @@ async function tokenState(page: Page, selector: string, expectedTheme: 'light' |
 test.describe('CIN-592 semantic theme bridge', () => {
   const explicitStates = new Map<string, { surface: string; text: string }>();
 
+  for (const operatingSystem of ['light', 'dark'] as const) {
+    for (const choice of ['light', 'dark', 'system'] as const) {
+      test(`CodeBlock colors follow ${choice} with ${operatingSystem} OS preference`, async ({
+        page,
+      }) => {
+        await page.emulateMedia({ colorScheme: operatingSystem });
+        await page.addInitScript(() => localStorage.removeItem('cinder-playground-theme'));
+        const query = choice === 'system' ? '' : `?theme=${choice}`;
+        await page.goto(`/page/code-block${query}`, { waitUntil: 'load' });
+        const example = page.locator('#example-mount-with-language');
+        await example.scrollIntoViewIfNeeded();
+        await expect(example).toBeVisible();
+        const spans = page.locator(
+          '#example-mount-with-language .cinder-code-block pre.shiki span[style*="--shiki-dark"]',
+        );
+        await expect(spans.first()).toBeVisible();
+        const effectiveTheme = choice === 'system' ? operatingSystem : choice;
+        const readColors = () =>
+          spans.evaluateAll((elements) => {
+            const probe = document.createElement('span');
+            document.body.append(probe);
+            try {
+              return elements.map((element) => {
+                const style = (element as HTMLElement).style;
+                probe.style.color = style.color;
+                const light = getComputedStyle(probe).color;
+                probe.style.color = style.getPropertyValue('--shiki-dark');
+                return {
+                  light,
+                  dark: getComputedStyle(probe).color,
+                  actual: getComputedStyle(element).color,
+                };
+              });
+            } finally {
+              probe.remove();
+            }
+          });
+        const colors = await readColors();
+        expect(colors.length).toBeGreaterThan(0);
+        expect(colors.some(({ light, dark }) => light !== dark)).toBe(true);
+        expect(colors.map(({ actual }) => actual)).toEqual(
+          colors.map((entry) => entry[effectiveTheme]),
+        );
+        await expect(page.locator('html')).toHaveAttribute('data-cinder-theme', choice);
+
+        const nextTheme = effectiveTheme === 'light' ? 'dark' : 'light';
+        await page.getByRole('button', { name: `Preview theme: switch to ${nextTheme}` }).click();
+        await expect(page.locator('html')).toHaveAttribute('data-cinder-theme', nextTheme);
+        await expect
+          .poll(async () => {
+            const currentColors = await readColors();
+            return currentColors.map(({ actual }) => actual);
+          })
+          .toEqual(colors.map((entry) => entry[nextTheme]));
+      });
+    }
+  }
+
   test('explicit theme scopes the documentation canvas independently of OS preference', async ({
     browser,
   }) => {
@@ -246,7 +304,7 @@ test.describe('CIN-592 semantic theme bridge', () => {
       // pre-paint script, so this observes the actual pre-hydration DOM state.
       await expect.poll(() => interceptionStarted).toBe(true);
       await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-      await expect(page.locator('html')).not.toHaveAttribute('data-cinder-theme');
+      await expect(page.locator('html')).toHaveAttribute('data-cinder-theme', 'light');
     } finally {
       releaseRequests = true;
       heldRequests.forEach((release) => release());

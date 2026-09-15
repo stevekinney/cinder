@@ -71,8 +71,8 @@ export function jsonForScriptTag(value: unknown): string {
  *
  * The only persisted/shareable values are explicit overrides — `light` or
  * `dark`. With no override the playground follows the browser's
- * `prefers-color-scheme`: both explicit theme signals are removed so the base
- * stylesheet and OS preference govern system mode.
+ * `prefers-color-scheme`: remove the explicit token scope and give CodeBlock
+ * its system signal so both consumers follow the OS preference.
  */
 export const PRE_PAINT_THEME_SCRIPT = `
       (function () {
@@ -91,10 +91,12 @@ export const PRE_PAINT_THEME_SCRIPT = `
         if (override) {
           // Explicit Cinder scope wins over the OS setting.
           document.documentElement.dataset['theme'] = override;
+          document.documentElement.dataset['cinderTheme'] = override;
         } else {
           // System mode follows the browser. Remove stale explicit signals.
           document.documentElement.style.colorScheme = '';
           document.documentElement.removeAttribute('data-theme');
+          document.documentElement.dataset['cinderTheme'] = 'system';
         }
       })();
     `;

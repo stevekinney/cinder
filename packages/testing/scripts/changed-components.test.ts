@@ -30,7 +30,19 @@ describe('shared workflow scope plan', () => {
       mode: 'filtered',
       components: [],
     });
-    expect(plan.unitLanes).toEqual(['static', 'package']);
+    expect(plan.unitLanes).toEqual(['static', 'package', 'playground']);
+    expect(plan.browserRelevant).toBe(false);
+  });
+
+  it('keeps production coverage for styles mixed with a static guard change', () => {
+    const plan = planForChanges(
+      [
+        'packages/components/src/styles/tokens-base.css',
+        'packages/components/scripts/check-css-duplication.ts',
+      ],
+      { mode: 'filtered', components: [] },
+    );
+    expect(plan.unitLanes).toEqual(['static', 'package', 'playground']);
     expect(plan.browserRelevant).toBe(false);
   });
 

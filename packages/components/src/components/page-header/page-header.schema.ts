@@ -12,6 +12,7 @@ const schema = {
     headingLevel: {
       enum: [1, 2, 3, 4, 5, 6],
       description: 'Heading level for the title element. Default 1.',
+      default: 1,
     },
     description: {
       type: 'string',

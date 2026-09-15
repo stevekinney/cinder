@@ -13,7 +13,7 @@ import {
 const producer = {
   sourceSha: 'a'.repeat(40),
   artifactDigest: 'b'.repeat(64),
-  routes: ['/', '/one', '/two', '/three', '/four'],
+  routes: ['/', '/one', '/two', '/three'],
   manifest: [],
 };
 
@@ -71,6 +71,11 @@ async function evidence(
 }
 
 describe('static playground evidence', () => {
+  test('includes both landing viewport cases in the expected inventory', () => {
+    expect(expectedCases(producer.routes)).toContain('/\u0000desktop');
+    expect(expectedCases(producer.routes)).toContain('/\u0000mobile');
+  });
+
   test('preserves strict shard identity while accepting the installed merged-report schema', () => {
     const merged = report('/one', 'desktop');
     Reflect.deleteProperty(merged.suites[0]!.specs[0]!.tests[0]!, 'projectId');
@@ -162,7 +167,7 @@ describe('static playground evidence', () => {
 
   test('accepts a complete eight-shard union', async () => {
     const root = await mkdtemp(join(tmpdir(), 'cinder-static-evidence-'));
-    const entries = producer.routes.slice(1).flatMap(
+    const entries = producer.routes.flatMap(
       (route) =>
         [
           ['' + route, 'desktop' as const],

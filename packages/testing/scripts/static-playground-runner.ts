@@ -73,12 +73,7 @@ export async function runStaticPlaywright(
     stdio: 'inherit',
     detached: process.platform !== 'win32',
   });
-  const managed = manageChildProcess(
-    child,
-    'static-playwright',
-    false,
-    process.platform !== 'win32',
-  );
+  const managed = manageChildProcess(child, 'static-playwright', process.platform !== 'win32');
   let cleanupPromise: Promise<void> | undefined;
   const cleanup = (): Promise<void> => {
     cleanupPromise ??= cleanupManagedChildren([managed], null).then(() => server.close());

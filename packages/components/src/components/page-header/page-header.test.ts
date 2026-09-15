@@ -27,7 +27,7 @@ describe('PageHeader', () => {
     expect(pageHeaderSchema.properties).toMatchObject({
       title: { type: 'string' },
       description: { type: 'string' },
-      headingLevel: { enum: [1, 2, 3, 4, 5, 6] },
+      headingLevel: { enum: [1, 2, 3, 4, 5, 6], default: 1 },
     });
     expect(pageHeaderSchema.metadata?.unsupportedProps?.map((prop) => prop.name)).toEqual([
       'actions',
