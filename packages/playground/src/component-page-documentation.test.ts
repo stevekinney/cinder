@@ -478,6 +478,120 @@ describe('component-page single-scroll layout', () => {
     await tick();
   });
 
+  test('holds the preview in loading state until the lazy bare module settles', async () => {
+    let resolveBareModule: ((module: unknown) => void) | undefined;
+    const bareModule = new Promise<unknown>((resolve) => {
+      resolveBareModule = resolve;
+    });
+    const { unmount } = render(ComponentPage, {
+      props: {
+        examples: [{ scenario: 'basic', title: 'Basic', featured: true }],
+        loadBareComponentModule: () => bareModule,
+      },
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+
+    await showPlayground();
+    expect(screen.getByText('Loading preview…')).toBeTruthy();
+    expect(screen.queryByText('Featured example')).toBeNull();
+    expect(document.querySelector('[id^="playground-mount-"]')).toBeNull();
+
+    resolveBareModule?.({ Button: ButtonMock });
+    await Promise.resolve();
+    await tick();
+
+    expect(screen.queryByText('Loading preview…')).toBeNull();
+    expect(screen.getByText('Live preview')).toBeTruthy();
+    expect(document.querySelector('#playground-live-mount')).toBeTruthy();
+    expect(document.querySelector('[id^="playground-mount-"]')).toBeNull();
+
+    unmount();
+    await tick();
+  });
+
+  test('uses the featured fallback after a lazy bare module rejects', async () => {
+    const { unmount } = render(ComponentPage, {
+      props: {
+        examples: [{ scenario: 'basic', title: 'Basic', featured: true }],
+        loadBareComponentModule: async () => {
+          throw new Error('load failed');
+        },
+      },
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await showPlayground();
+    await waitFor(() => expect(screen.getByText('Featured example')).toBeTruthy());
+
+    expect(screen.getByText('Featured example')).toBeTruthy();
+    expect(document.querySelector('[id^="playground-mount-"]')).toBeTruthy();
+    expect(document.querySelector('#playground-live-mount')).toBeNull();
+
+    unmount();
+    await tick();
+  });
+
+  test('cancels a pending bare-module load when the page unmounts', async () => {
+    let resolveBareModule: ((module: unknown) => void) | undefined;
+    const bareModule = new Promise<unknown>((resolve) => {
+      resolveBareModule = resolve;
+    });
+    const { unmount } = render(ComponentPage, {
+      props: { loadBareComponentModule: () => bareModule },
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await showPlayground();
+    unmount();
+
+    resolveBareModule?.({ Button: ButtonMock });
+    await Promise.resolve();
+    await tick();
+    expect(document.querySelector('#playground-live-mount')).toBeNull();
+    expect(document.querySelector('[id^="playground-mount-"]')).toBeNull();
+  });
+
+  test('holds a retried lazy import in loading state after reopening Playground', async () => {
+    let resolveRetry: ((module: unknown) => void) | undefined;
+    const retryModule = new Promise<unknown>((resolve) => {
+      resolveRetry = resolve;
+    });
+    let attempts = 0;
+    const { unmount } = render(ComponentPage, {
+      props: {
+        examples: [{ scenario: 'basic', title: 'Basic', featured: true }],
+        loadBareComponentModule: () =>
+          ++attempts === 1 ? Promise.reject(new Error('first load failed')) : retryModule,
+      },
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await showPlayground();
+    await waitFor(() => expect(screen.getByText('Featured example')).toBeTruthy());
+    await fireEvent.click(screen.getByRole('tab', { name: 'Documentation' }));
+    await showPlayground();
+    expect(screen.getByText('Loading preview…')).toBeTruthy();
+    expect(screen.queryByText('Featured example')).toBeNull();
+    resolveRetry?.({ Button: ButtonMock });
+    await waitFor(() => expect(screen.getByText('Live preview')).toBeTruthy());
+    expect(attempts).toBe(2);
+    unmount();
+  });
+
+  test('does not delay authored compound previews for an unused bare import', async () => {
+    const fixture = baseFixture();
+    fixture.propsManifest.isCompound = true;
+    installDocumentationDataIsland(fixture);
+    const { unmount } = render(ComponentPage, {
+      props: {
+        examples: [{ scenario: 'basic', title: 'Basic', featured: true }],
+        loadBareComponentModule: () => new Promise<unknown>(() => {}),
+      },
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await showPlayground();
+    expect(screen.queryByText('Loading preview…')).toBeNull();
+    expect(screen.getByText('Featured example')).toBeTruthy();
+    unmount();
+  });
+
   test('makes the active view linkable through the URL', async () => {
     const { unmount } = render(ComponentPage);
     await screen.findByRole('heading', { level: 1, name: 'Button' });

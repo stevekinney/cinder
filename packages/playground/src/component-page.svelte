@@ -160,6 +160,7 @@
   }: Props = $props();
 
   let bareComponentModule = $state(bareComponentModuleProp);
+  let bareComponentLoadState = $state<'pending' | 'settled'>('pending');
 
   /** True on `/`, which renders the README through this same chrome. */
   const isLanding = $derived(readmeHtml !== undefined);
@@ -339,6 +340,7 @@
       return;
     }
     let cancelled = false;
+    bareComponentLoadState = 'pending';
     void loadBareComponentModule()
       .then((module) => {
         if (!cancelled) bareComponentModule = module;
@@ -347,6 +349,9 @@
         if (!cancelled) {
           console.error('[cinder playground] failed to load bare component:', error);
         }
+      })
+      .finally(() => {
+        if (!cancelled) bareComponentLoadState = 'settled';
       });
     return () => {
       cancelled = true;
@@ -792,6 +797,16 @@
     documentation !== null &&
       canBareMount(documentation.propsManifest.kebabName, documentation.propsManifest.isCompound),
   );
+  const bareComponentPending = $derived(
+    isHydrated &&
+      activeView === 'playground' &&
+      canGenerateFromProps &&
+      canMountBare &&
+      previewRecipe?.prefersFeaturedExample !== true &&
+      loadBareComponentModule !== undefined &&
+      bareComponentModule === undefined &&
+      bareComponentLoadState === 'pending',
+  );
   const hasFocusablePreview = $derived(
     overviewExample !== undefined || (canGenerateFromProps && canMountBare),
   );
@@ -1213,9 +1228,22 @@
                needs `bareComponentModule`, which only the client bundle
                supplies. Without the gate the server would render the
                featured-example branch and the client the live branch on
-               its hydration pass — a mismatch. The live preview swaps in
-               immediately after mount. -->
-                {#if isHydrated && bareComponent !== undefined && !snapshotMode && canGenerateFromProps && (!liveMountFailed || overviewExample === undefined)}
+               its hydration pass — a mismatch. A pending lazy load shows a
+               stable loading stage until the bare module settles. -->
+                {#if bareComponentPending && !snapshotMode}
+                  <div class="dx-stage">
+                    <div class="dx-stage__bar">
+                      <span class="dx-stage__dot" aria-hidden="true"></span>
+                      <span class="dx-stage__label">Loading preview</span>
+                    </div>
+                    <div class="dx-stage__canvas" role="region" aria-label="Preview" tabindex="0">
+                      <div class="preview-loading" role="status">
+                        <StatusDot status="pending" />
+                        <span>Loading preview…</span>
+                      </div>
+                    </div>
+                  </div>
+                {:else if isHydrated && bareComponent !== undefined && !snapshotMode && canGenerateFromProps && (!liveMountFailed || overviewExample === undefined)}
                   {#snippet previewChildren()}
                     {#if previewRecipe?.childrenHtml !== undefined}
                       <!-- eslint-disable-next-line svelte/no-at-html-tags -->
