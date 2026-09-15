@@ -22,7 +22,8 @@
         },
         "$extensions": {
           "com.lostgradient.cinder": {
-            "cssRecipe": "color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 2.5%)"
+            "cssRecipe": "color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 2.5%)",
+            "recipeInputs": ["surface.raised"]
           }
         }
       },
@@ -33,7 +34,8 @@
         },
         "$extensions": {
           "com.lostgradient.cinder": {
-            "cssRecipe": "color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 6%)"
+            "cssRecipe": "color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 6%)",
+            "recipeInputs": ["surface.raised"]
           }
         }
       }
@@ -51,7 +53,8 @@
       },
       "$extensions": {
         "com.lostgradient.cinder": {
-          "cssRecipe": "color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 2.5%)"
+          "cssRecipe": "color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 2.5%)",
+          "recipeInputs": ["surface.base"]
         }
       }
     },
@@ -62,7 +65,8 @@
       },
       "$extensions": {
         "com.lostgradient.cinder": {
-          "cssRecipe": "color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 6%)"
+          "cssRecipe": "color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 6%)",
+          "recipeInputs": ["surface.base"]
         }
       }
     },
@@ -105,7 +109,8 @@
       },
       "$extensions": {
         "com.lostgradient.cinder": {
-          "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 52%)"
+          "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 52%)",
+          "recipeInputs": ["border.ink"]
         }
       }
     },
@@ -123,7 +128,8 @@
       },
       "$extensions": {
         "com.lostgradient.cinder": {
-          "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 81%)"
+          "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 81%)",
+          "recipeInputs": ["border.ink"]
         }
       }
     },
@@ -135,7 +141,8 @@
       },
       "$extensions": {
         "com.lostgradient.cinder": {
-          "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 42%)"
+          "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 42%)",
+          "recipeInputs": ["border.ink"]
         }
       }
     },
@@ -206,7 +213,8 @@
         },
         "$extensions": {
           "com.lostgradient.cinder": {
-            "cssRecipe": "oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)"
+            "cssRecipe": "oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)",
+            "recipeInputs": ["accent.text"]
           }
         }
       }
@@ -219,7 +227,8 @@
       },
       "$extensions": {
         "com.lostgradient.cinder": {
-          "cssRecipe": "color-mix(in oklch, var(--cinder-accent-solid), var(--cinder-surface) 88%)"
+          "cssRecipe": "color-mix(in oklch, var(--cinder-accent-solid), var(--cinder-surface) 88%)",
+          "recipeInputs": ["accent.solid", "surface.base"]
         }
       }
     },
@@ -240,7 +249,8 @@
           },
           "$extensions": {
             "com.lostgradient.cinder": {
-              "cssRecipe": "oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h)"
+              "cssRecipe": "oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h)",
+              "recipeInputs": ["accent.solid"]
             }
           }
         },
@@ -252,7 +262,8 @@
           },
           "$extensions": {
             "com.lostgradient.cinder": {
-              "cssRecipe": "oklch(from var(--cinder-accent-solid) calc(l - 0.11) c h)"
+              "cssRecipe": "oklch(from var(--cinder-accent-solid) calc(l - 0.11) c h)",
+              "recipeInputs": ["accent.solid"]
             }
           }
         }
@@ -265,7 +276,8 @@
         },
         "$extensions": {
           "com.lostgradient.cinder": {
-            "cssRecipe": "oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h)"
+            "cssRecipe": "oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h)",
+            "recipeInputs": ["accent.solid"]
           }
         }
       }
@@ -279,7 +291,8 @@
       },
       "$extensions": {
         "com.lostgradient.cinder": {
-          "cssRecipe": "color-mix(in oklch, var(--cinder-accent-solid), transparent 60%)"
+          "cssRecipe": "color-mix(in oklch, var(--cinder-accent-solid), transparent 60%)",
+          "recipeInputs": ["accent.solid"]
         }
       }
     }
@@ -305,7 +318,8 @@
       },
       "$extensions": {
         "com.lostgradient.cinder": {
-          "cssRecipe": "oklch(from var(--cinder-accent-solid) 0.7 0.14 h)"
+          "cssRecipe": "oklch(from var(--cinder-accent-solid) 0.7 0.14 h)",
+          "recipeInputs": ["accent.solid"]
         }
       }
     },
@@ -331,7 +345,8 @@
       },
       "$extensions": {
         "com.lostgradient.cinder": {
-          "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 96%)"
+          "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 96%)",
+          "recipeInputs": ["polarity.ink"]
         }
       }
     },
@@ -344,7 +359,8 @@
       },
       "$extensions": {
         "com.lostgradient.cinder": {
-          "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 55%)"
+          "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 55%)",
+          "recipeInputs": ["polarity.ink"]
         }
       }
     },
@@ -357,7 +373,8 @@
       },
       "$extensions": {
         "com.lostgradient.cinder": {
-          "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 35%)"
+          "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 35%)",
+          "recipeInputs": ["polarity.ink"]
         }
       }
     }
@@ -693,7 +710,8 @@
         },
         "$extensions": {
           "com.lostgradient.cinder": {
-            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-text-default) 36%) l min(c, 0.05) h )"
+            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-text-default) 36%) l min(c, 0.05) h )",
+            "recipeInputs": ["status.success.solid", "text.default"]
           }
         }
       },
@@ -705,7 +723,8 @@
         },
         "$extensions": {
           "com.lostgradient.cinder": {
-            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-surface) 36%) l min(c, 0.05) h )"
+            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-surface) 36%) l min(c, 0.05) h )",
+            "recipeInputs": ["status.success.solid", "surface.base"]
           }
         }
       },
@@ -770,7 +789,8 @@
         },
         "$extensions": {
           "com.lostgradient.cinder": {
-            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-text-default) 36%) l min(c, 0.05) h )"
+            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-text-default) 36%) l min(c, 0.05) h )",
+            "recipeInputs": ["status.warning.solid", "text.default"]
           }
         }
       },
@@ -782,7 +802,8 @@
         },
         "$extensions": {
           "com.lostgradient.cinder": {
-            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-surface) 36%) l min(c, 0.05) h )"
+            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-surface) 36%) l min(c, 0.05) h )",
+            "recipeInputs": ["status.warning.solid", "surface.base"]
           }
         }
       },
@@ -864,7 +885,8 @@
         },
         "$extensions": {
           "com.lostgradient.cinder": {
-            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-text-default) 36%) l min(c, 0.05) h )"
+            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-text-default) 36%) l min(c, 0.05) h )",
+            "recipeInputs": ["status.danger.solid", "text.default"]
           }
         }
       },
@@ -876,7 +898,8 @@
         },
         "$extensions": {
           "com.lostgradient.cinder": {
-            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-surface) 36%) l min(c, 0.05) h )"
+            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-surface) 36%) l min(c, 0.05) h )",
+            "recipeInputs": ["status.danger.solid", "surface.base"]
           }
         }
       },
@@ -941,7 +964,8 @@
         },
         "$extensions": {
           "com.lostgradient.cinder": {
-            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-text-default) 36%) l min(c, 0.05) h )"
+            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-text-default) 36%) l min(c, 0.05) h )",
+            "recipeInputs": ["status.info.solid", "text.default"]
           }
         }
       },
@@ -953,7 +977,8 @@
         },
         "$extensions": {
           "com.lostgradient.cinder": {
-            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-surface) 36%) l min(c, 0.05) h )"
+            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-surface) 36%) l min(c, 0.05) h )",
+            "recipeInputs": ["status.info.solid", "surface.base"]
           }
         }
       },

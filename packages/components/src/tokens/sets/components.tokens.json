@@ -12,7 +12,13 @@
           "public": true,
           "category": "color",
           "component": "button",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -26,7 +32,13 @@
           "public": true,
           "category": "color",
           "component": "button",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -43,7 +55,18 @@
           "public": true,
           "category": "color",
           "component": "button",
-          "cssRecipe": "light-dark(var(--cinder-border), var(--cinder-border-strong))"
+          "cssRecipe": "light-dark(var(--cinder-border), var(--cinder-border-strong))",
+          "usageContracts": [
+            {
+              "property": "border",
+              "profile": "color"
+            },
+            {
+              "property": "border-color",
+              "profile": "color"
+            }
+          ],
+          "recipeInputs": ["border.control", "border.strong"]
         }
       }
     },
@@ -58,7 +81,13 @@
             "public": true,
             "category": "radius",
             "component": "button",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "border-radius",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -71,7 +100,13 @@
             "public": true,
             "category": "radius",
             "component": "button",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "border-radius",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -84,7 +119,13 @@
             "public": true,
             "category": "radius",
             "component": "button",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "border-radius",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -97,7 +138,13 @@
             "public": true,
             "category": "radius",
             "component": "button",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "border-radius",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -110,7 +157,13 @@
             "public": true,
             "category": "radius",
             "component": "button",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "border-radius",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -123,7 +176,13 @@
             "public": true,
             "category": "radius",
             "component": "button",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "border-radius",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       }
@@ -140,7 +199,17 @@
             "public": true,
             "category": "size",
             "component": "button",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "min-height",
+                "profile": "nonnegative-length"
+              },
+              {
+                "property": "min-width",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -156,7 +225,17 @@
             "public": true,
             "category": "size",
             "component": "button",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "min-height",
+                "profile": "nonnegative-length"
+              },
+              {
+                "property": "min-width",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -172,7 +251,21 @@
             "public": true,
             "category": "size",
             "component": "button",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "min-block-size",
+                "profile": "nonnegative-length"
+              },
+              {
+                "property": "min-height",
+                "profile": "nonnegative-length"
+              },
+              {
+                "property": "min-width",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -188,7 +281,17 @@
             "public": true,
             "category": "size",
             "component": "button",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "min-height",
+                "profile": "nonnegative-length"
+              },
+              {
+                "property": "min-width",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -204,7 +307,17 @@
             "public": true,
             "category": "size",
             "component": "button",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "min-height",
+                "profile": "nonnegative-length"
+              },
+              {
+                "property": "min-width",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       }
@@ -221,7 +334,13 @@
               "public": true,
               "category": "spacing",
               "component": "button",
-              "cssRecipe": null
+              "cssRecipe": null,
+              "usageContracts": [
+                {
+                  "property": "padding",
+                  "profile": "nonnegative-length"
+                }
+              ]
             }
           }
         },
@@ -234,7 +353,13 @@
               "public": true,
               "category": "spacing",
               "component": "button",
-              "cssRecipe": null
+              "cssRecipe": null,
+              "usageContracts": [
+                {
+                  "property": "padding",
+                  "profile": "nonnegative-length"
+                }
+              ]
             }
           }
         },
@@ -247,7 +372,17 @@
               "public": true,
               "category": "spacing",
               "component": "button",
-              "cssRecipe": null
+              "cssRecipe": null,
+              "usageContracts": [
+                {
+                  "property": "padding",
+                  "profile": "nonnegative-length"
+                },
+                {
+                  "property": "padding-inline",
+                  "profile": "nonnegative-length"
+                }
+              ]
             }
           }
         },
@@ -260,7 +395,13 @@
               "public": true,
               "category": "spacing",
               "component": "button",
-              "cssRecipe": null
+              "cssRecipe": null,
+              "usageContracts": [
+                {
+                  "property": "padding",
+                  "profile": "nonnegative-length"
+                }
+              ]
             }
           }
         },
@@ -273,7 +414,13 @@
               "public": true,
               "category": "spacing",
               "component": "button",
-              "cssRecipe": null
+              "cssRecipe": null,
+              "usageContracts": [
+                {
+                  "property": "padding",
+                  "profile": "nonnegative-length"
+                }
+              ]
             }
           }
         }
@@ -288,7 +435,13 @@
               "public": true,
               "category": "spacing",
               "component": "button",
-              "cssRecipe": null
+              "cssRecipe": null,
+              "usageContracts": [
+                {
+                  "property": "padding",
+                  "profile": "nonnegative-length"
+                }
+              ]
             }
           }
         },
@@ -301,7 +454,13 @@
               "public": true,
               "category": "spacing",
               "component": "button",
-              "cssRecipe": null
+              "cssRecipe": null,
+              "usageContracts": [
+                {
+                  "property": "padding",
+                  "profile": "nonnegative-length"
+                }
+              ]
             }
           }
         },
@@ -314,7 +473,17 @@
               "public": true,
               "category": "spacing",
               "component": "button",
-              "cssRecipe": null
+              "cssRecipe": null,
+              "usageContracts": [
+                {
+                  "property": "padding",
+                  "profile": "nonnegative-length"
+                },
+                {
+                  "property": "padding-block",
+                  "profile": "nonnegative-length"
+                }
+              ]
             }
           }
         },
@@ -327,7 +496,13 @@
               "public": true,
               "category": "spacing",
               "component": "button",
-              "cssRecipe": null
+              "cssRecipe": null,
+              "usageContracts": [
+                {
+                  "property": "padding",
+                  "profile": "nonnegative-length"
+                }
+              ]
             }
           }
         },
@@ -340,7 +515,13 @@
               "public": true,
               "category": "spacing",
               "component": "button",
-              "cssRecipe": null
+              "cssRecipe": null,
+              "usageContracts": [
+                {
+                  "property": "padding",
+                  "profile": "nonnegative-length"
+                }
+              ]
             }
           }
         }
@@ -358,7 +539,13 @@
               "public": true,
               "category": "typography",
               "component": "button",
-              "cssRecipe": null
+              "cssRecipe": null,
+              "usageContracts": [
+                {
+                  "property": "font-size",
+                  "profile": "positive-font-size"
+                }
+              ]
             }
           }
         },
@@ -371,7 +558,13 @@
               "public": true,
               "category": "typography",
               "component": "button",
-              "cssRecipe": null
+              "cssRecipe": null,
+              "usageContracts": [
+                {
+                  "property": "font-size",
+                  "profile": "positive-font-size"
+                }
+              ]
             }
           }
         },
@@ -384,7 +577,13 @@
               "public": true,
               "category": "typography",
               "component": "button",
-              "cssRecipe": null
+              "cssRecipe": null,
+              "usageContracts": [
+                {
+                  "property": "font-size",
+                  "profile": "positive-font-size"
+                }
+              ]
             }
           }
         },
@@ -397,7 +596,13 @@
               "public": true,
               "category": "typography",
               "component": "button",
-              "cssRecipe": null
+              "cssRecipe": null,
+              "usageContracts": [
+                {
+                  "property": "font-size",
+                  "profile": "positive-font-size"
+                }
+              ]
             }
           }
         },
@@ -410,7 +615,13 @@
               "public": true,
               "category": "typography",
               "component": "button",
-              "cssRecipe": null
+              "cssRecipe": null,
+              "usageContracts": [
+                {
+                  "property": "font-size",
+                  "profile": "positive-font-size"
+                }
+              ]
             }
           }
         }
@@ -433,7 +644,14 @@
             "public": true,
             "category": "color",
             "component": "toggle",
-            "cssRecipe": "light-dark(var(--cinder-border-muted), oklch(45% 0.02 245))"
+            "cssRecipe": "light-dark(var(--cinder-border-muted), oklch(45% 0.02 245))",
+            "usageContracts": [
+              {
+                "property": "background",
+                "profile": "color"
+              }
+            ],
+            "recipeInputs": ["border.muted"]
           }
         }
       },
@@ -449,7 +667,14 @@
             "public": true,
             "category": "color",
             "component": "toggle",
-            "cssRecipe": "light-dark(var(--cinder-border), oklch(52% 0.02 245))"
+            "cssRecipe": "light-dark(var(--cinder-border), oklch(52% 0.02 245))",
+            "usageContracts": [
+              {
+                "property": "background",
+                "profile": "color"
+              }
+            ],
+            "recipeInputs": ["border.control"]
           }
         }
       }
@@ -468,7 +693,13 @@
             "public": true,
             "category": "spacing",
             "component": "accordion-item",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "gap",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -482,7 +713,13 @@
             "public": true,
             "category": "spacing",
             "component": "accordion-item",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "padding",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -496,7 +733,13 @@
             "public": true,
             "category": "spacing",
             "component": "accordion-item",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "padding",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -510,7 +753,13 @@
             "public": true,
             "category": "typography",
             "component": "accordion-item",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "font-size",
+                "profile": "positive-font-size"
+              }
+            ]
           }
         }
       },
@@ -524,7 +773,13 @@
             "public": true,
             "category": "typography",
             "component": "accordion-item",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "font-weight",
+                "profile": "font-weight"
+              }
+            ]
           }
         }
       }
@@ -540,7 +795,13 @@
             "public": true,
             "category": "spacing",
             "component": "accordion-item",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "padding",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -554,7 +815,13 @@
             "public": true,
             "category": "spacing",
             "component": "accordion-item",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "padding",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -568,7 +835,13 @@
             "public": true,
             "category": "spacing",
             "component": "accordion-item",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "padding",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -582,7 +855,13 @@
             "public": true,
             "category": "typography",
             "component": "accordion-item",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "font-size",
+                "profile": "positive-font-size"
+              }
+            ]
           }
         }
       },
@@ -596,7 +875,13 @@
             "public": true,
             "category": "typography",
             "component": "accordion-item",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "line-height",
+                "profile": "line-height"
+              }
+            ]
           }
         }
       }
@@ -614,7 +899,13 @@
           "public": true,
           "category": "spacing",
           "component": "action-row",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -628,7 +919,13 @@
           "public": true,
           "category": "spacing",
           "component": "action-row",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -643,7 +940,13 @@
             "public": true,
             "category": "spacing",
             "component": "action-row",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "column-gap",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -657,7 +960,13 @@
             "public": true,
             "category": "spacing",
             "component": "action-row",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "row-gap",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       }
@@ -672,7 +981,13 @@
           "public": true,
           "category": "spacing",
           "component": "action-row",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -686,7 +1001,13 @@
           "public": true,
           "category": "typography",
           "component": "action-row",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "font-size",
+              "profile": "positive-font-size"
+            }
+          ]
         }
       }
     },
@@ -700,7 +1021,13 @@
           "public": true,
           "category": "typography",
           "component": "action-row",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "font-size",
+              "profile": "positive-font-size"
+            }
+          ]
         }
       }
     },
@@ -714,7 +1041,13 @@
           "public": true,
           "category": "typography",
           "component": "action-row",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "font-size",
+              "profile": "positive-font-size"
+            }
+          ]
         }
       }
     },
@@ -728,7 +1061,13 @@
           "public": true,
           "category": "spacing",
           "component": "action-row",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     }
@@ -747,7 +1086,13 @@
           "public": true,
           "category": "color",
           "component": "alert",
-          "cssRecipe": "light-dark(oklch(45% 0.14 245), oklch(78% 0.15 245))"
+          "cssRecipe": "light-dark(oklch(45% 0.14 245), oklch(78% 0.15 245))",
+          "usageContracts": [
+            {
+              "property": "box-shadow",
+              "profile": "color"
+            }
+          ]
         }
       }
     }
@@ -763,7 +1108,13 @@
           "public": true,
           "category": "spacing",
           "component": "avatar-group",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "margin-inline-start",
+              "profile": "signed-length"
+            }
+          ]
         }
       }
     }
@@ -779,7 +1130,17 @@
           "public": true,
           "category": "spacing",
           "component": "card",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "inline-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "margin-inline",
+              "profile": "signed-length"
+            }
+          ]
         }
       }
     }
@@ -797,7 +1158,18 @@
           "category": "layout",
           "component": "carousel",
           "nonRepresentableValue": true,
-          "cssRecipe": "100%"
+          "cssRecipe": "100%",
+          "usageContracts": [
+            {
+              "property": "flex",
+              "profile": "percentage-size"
+            },
+            {
+              "property": "min-inline-size",
+              "profile": "percentage-size"
+            }
+          ],
+          "portabilityReason": "CSS percentage sizing has no faithful DTCG dimension representation."
         }
       }
     },
@@ -811,7 +1183,13 @@
           "public": true,
           "category": "spacing",
           "component": "carousel",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -826,7 +1204,14 @@
           "category": "layout",
           "component": "carousel",
           "nonRepresentableValue": true,
-          "cssRecipe": "16 / 9"
+          "cssRecipe": "16 / 9",
+          "usageContracts": [
+            {
+              "property": "aspect-ratio",
+              "profile": "ratio"
+            }
+          ],
+          "portabilityReason": "The shipped CSS ratio syntax is retained; its placeholder number is not a portable replacement."
         }
       }
     },
@@ -843,7 +1228,17 @@
           "public": true,
           "category": "size",
           "component": "carousel",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "height",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "width",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     }
@@ -859,7 +1254,14 @@
           "public": true,
           "category": "color",
           "component": "code-block",
-          "cssRecipe": "light-dark(var(--cinder-surface-raised), var(--cinder-surface-inset))"
+          "cssRecipe": "light-dark(var(--cinder-surface-raised), var(--cinder-surface-inset))",
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            }
+          ],
+          "recipeInputs": ["surface.inset", "surface.raised"]
         }
       }
     },
@@ -873,7 +1275,13 @@
           "public": true,
           "category": "typography",
           "component": "code-block",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "font-size",
+              "profile": "positive-font-size"
+            }
+          ]
         }
       }
     },
@@ -891,7 +1299,14 @@
           "category": "size",
           "component": "code-block",
           "nonRepresentableValue": true,
-          "cssRecipe": "auto"
+          "cssRecipe": "auto",
+          "usageContracts": [
+            {
+              "property": "block-size",
+              "profile": "auto-size"
+            }
+          ],
+          "portabilityReason": "DTCG dimensions cannot represent the intrinsic size keyword auto."
         }
       }
     },
@@ -905,7 +1320,13 @@
           "public": true,
           "category": "typography",
           "component": "code-block",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "line-height",
+              "profile": "line-height"
+            }
+          ]
         }
       }
     },
@@ -919,7 +1340,13 @@
           "public": true,
           "category": "spacing",
           "component": "code-block",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     }
@@ -938,7 +1365,13 @@
           "public": true,
           "category": "size",
           "component": "data-table",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "block-size",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     }
@@ -954,7 +1387,25 @@
           "public": true,
           "category": "size",
           "component": "feed-event",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "block-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "inline-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "inset-block-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "inset-inline-start",
+              "profile": "signed-length"
+            }
+          ]
         }
       }
     }
@@ -970,7 +1421,13 @@
           "public": true,
           "category": "color",
           "component": "file-upload",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -984,7 +1441,13 @@
           "public": true,
           "category": "color",
           "component": "file-upload",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "border",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -999,7 +1462,13 @@
             "public": true,
             "category": "color",
             "component": "file-upload",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "background",
+                "profile": "color"
+              }
+            ]
           }
         }
       },
@@ -1013,7 +1482,13 @@
             "public": true,
             "category": "color",
             "component": "file-upload",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "background",
+                "profile": "color"
+              }
+            ]
           }
         }
       }
@@ -1035,7 +1510,13 @@
             "public": true,
             "category": "size",
             "component": "kanban-board",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "grid-auto-columns",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -1049,7 +1530,13 @@
             "public": true,
             "category": "spacing",
             "component": "kanban-board",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "gap",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -1063,7 +1550,13 @@
             "public": true,
             "category": "color",
             "component": "kanban-board",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "background",
+                "profile": "color"
+              }
+            ]
           }
         }
       }
@@ -1079,7 +1572,13 @@
             "public": true,
             "category": "color",
             "component": "kanban-board",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "background",
+                "profile": "color"
+              }
+            ]
           }
         }
       }
@@ -1099,7 +1598,14 @@
             "public": true,
             "category": "color",
             "component": "kanban-board",
-            "cssRecipe": "color-mix(in oklch, var(--cinder-text-default), transparent 88%)"
+            "cssRecipe": "color-mix(in oklch, var(--cinder-text-default), transparent 88%)",
+            "usageContracts": [
+              {
+                "property": "background",
+                "profile": "color"
+              }
+            ],
+            "recipeInputs": ["text.default"]
           }
         }
       }
@@ -1120,7 +1626,13 @@
           "public": true,
           "category": "motion",
           "component": "marquee",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "animation",
+              "profile": "duration"
+            }
+          ]
         }
       }
     },
@@ -1134,7 +1646,17 @@
           "public": true,
           "category": "spacing",
           "component": "marquee",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "transform",
+              "profile": "signed-length"
+            }
+          ]
         }
       }
     }
@@ -1150,7 +1672,13 @@
           "public": true,
           "category": "color",
           "component": "modal",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "background-color",
+              "profile": "color"
+            }
+          ]
         }
       }
     }
@@ -1167,7 +1695,13 @@
           "public": true,
           "category": "spacing",
           "component": "selectable-row",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -1181,7 +1715,17 @@
           "public": true,
           "category": "spacing",
           "component": "selectable-row",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline-end",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -1195,7 +1739,13 @@
           "public": true,
           "category": "spacing",
           "component": "selectable-row",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -1209,7 +1759,13 @@
           "public": true,
           "category": "spacing",
           "component": "selectable-row",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -1223,7 +1779,13 @@
           "public": true,
           "category": "spacing",
           "component": "selectable-row",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -1237,7 +1799,13 @@
           "public": true,
           "category": "spacing",
           "component": "selectable-row",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     }
@@ -1253,7 +1821,13 @@
           "public": true,
           "category": "spacing",
           "component": "side-navigation",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     }
@@ -1271,7 +1845,18 @@
           "category": "color",
           "component": "spinner",
           "nonRepresentableValue": true,
-          "cssRecipe": "currentColor"
+          "cssRecipe": "currentColor",
+          "usageContracts": [
+            {
+              "property": "border-top-color",
+              "profile": "color"
+            },
+            {
+              "property": "stroke",
+              "profile": "color"
+            }
+          ],
+          "portabilityReason": "DTCG colors cannot preserve context-inherited currentColor."
         }
       }
     },
@@ -1288,7 +1873,17 @@
           "public": true,
           "category": "size",
           "component": "spinner",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "height",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "width",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     }
@@ -1304,7 +1899,13 @@
           "public": true,
           "category": "spacing",
           "component": "statistic",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "row-gap",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -1318,7 +1919,13 @@
           "public": true,
           "category": "spacing",
           "component": "statistic",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "column-gap",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -1332,7 +1939,13 @@
           "public": true,
           "category": "typography",
           "component": "statistic",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "font-size",
+              "profile": "positive-font-size"
+            }
+          ]
         }
       }
     },
@@ -1347,7 +1960,13 @@
             "public": true,
             "category": "typography",
             "component": "statistic",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "font-size",
+                "profile": "positive-font-size"
+              }
+            ]
           }
         }
       },
@@ -1361,7 +1980,13 @@
             "public": true,
             "category": "typography",
             "component": "statistic",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "font-weight",
+                "profile": "font-weight"
+              }
+            ]
           }
         }
       },
@@ -1375,7 +2000,13 @@
             "public": true,
             "category": "typography",
             "component": "statistic",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "line-height",
+                "profile": "line-height"
+              }
+            ]
           }
         }
       }
@@ -1391,7 +2022,13 @@
             "public": true,
             "category": "spacing",
             "component": "statistic",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "gap",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -1405,7 +2042,13 @@
             "public": true,
             "category": "typography",
             "component": "statistic",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "font-size",
+                "profile": "positive-font-size"
+              }
+            ]
           }
         }
       }
@@ -1423,7 +2066,13 @@
           "public": true,
           "category": "spacing",
           "component": "statistic-group",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -1437,7 +2086,13 @@
           "public": true,
           "category": "spacing",
           "component": "statistic-group",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -1451,7 +2106,13 @@
           "public": true,
           "category": "spacing",
           "component": "statistic-group",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     }
@@ -1468,7 +2129,13 @@
           "public": true,
           "category": "color",
           "component": "status-dot",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -1485,7 +2152,17 @@
           "public": true,
           "category": "size",
           "component": "status-dot",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "block-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "inline-size",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     }
@@ -1502,7 +2179,13 @@
             "public": true,
             "category": "color",
             "component": "table-of-contents",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "color",
+                "profile": "color"
+              }
+            ]
           }
         }
       },
@@ -1516,7 +2199,13 @@
             "public": true,
             "category": "color",
             "component": "table-of-contents",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "color",
+                "profile": "color"
+              }
+            ]
           }
         }
       },
@@ -1530,7 +2219,13 @@
             "public": true,
             "category": "spacing",
             "component": "table-of-contents",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "margin-inline-start",
+                "profile": "signed-length"
+              }
+            ]
           }
         }
       }
@@ -1548,7 +2243,17 @@
           "public": true,
           "category": "color",
           "component": "tree",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            },
+            {
+              "property": "box-shadow",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -1565,7 +2270,21 @@
           "public": true,
           "category": "size",
           "component": "tree",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "block-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "border-radius",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "box-shadow",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -1579,7 +2298,13 @@
           "public": true,
           "category": "opacity",
           "component": "tree",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "opacity",
+              "profile": "opacity"
+            }
+          ]
         }
       }
     }
@@ -1598,7 +2323,17 @@
           "public": true,
           "category": "size",
           "component": "virtual-list",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "block-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "inline-size",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     }

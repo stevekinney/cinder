@@ -13,7 +13,22 @@
           "cssProperty": "--cinder-space-0",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "scale": "spacing",
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "margin",
+              "profile": "signed-length"
+            },
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -28,7 +43,42 @@
           "cssProperty": "--cinder-space-0-5",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "scale": "spacing",
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "bottom",
+              "profile": "signed-length"
+            },
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "margin",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-block-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-inline-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-top",
+              "profile": "signed-length"
+            },
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-block",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -43,7 +93,122 @@
           "cssProperty": "--cinder-space-1",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "scale": "spacing",
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "border-radius",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "bottom",
+              "profile": "signed-length"
+            },
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "inset-block-end",
+              "profile": "signed-length"
+            },
+            {
+              "property": "inset-block-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "left",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-block",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-block-end",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-block-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-bottom",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-inline",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-inline-end",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-inline-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-top",
+              "profile": "signed-length"
+            },
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-block",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-block-start",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline-end",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline-start",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-left",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-right",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-top",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "right",
+              "profile": "signed-length"
+            },
+            {
+              "property": "row-gap",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "top",
+              "profile": "signed-length"
+            },
+            {
+              "property": "width",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -58,7 +223,38 @@
           "cssProperty": "--cinder-space-1-5",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "scale": "spacing",
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "margin",
+              "profile": "signed-length"
+            },
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-block",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-block-end",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "margin-block-end",
+              "profile": "signed-length"
+            }
+          ]
         }
       }
     },
@@ -73,7 +269,158 @@
           "cssProperty": "--cinder-space-2",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "scale": "spacing",
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "block-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "border-radius",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "bottom",
+              "profile": "signed-length"
+            },
+            {
+              "property": "column-gap",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "inline-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "inset",
+              "profile": "signed-length"
+            },
+            {
+              "property": "inset-block-end",
+              "profile": "signed-length"
+            },
+            {
+              "property": "inset-block-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "inset-inline",
+              "profile": "signed-length"
+            },
+            {
+              "property": "inset-inline-end",
+              "profile": "signed-length"
+            },
+            {
+              "property": "left",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-block",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-block-end",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-block-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-bottom",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-inline",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-inline-end",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-inline-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-top",
+              "profile": "signed-length"
+            },
+            {
+              "property": "min-inline-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "min-width",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-block",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-block-end",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-block-start",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-bottom",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline-end",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline-start",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-right",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-top",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "right",
+              "profile": "signed-length"
+            },
+            {
+              "property": "row-gap",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "top",
+              "profile": "signed-length"
+            },
+            {
+              "property": "width",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -88,7 +435,26 @@
           "cssProperty": "--cinder-space-2-5",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "scale": "spacing",
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-block",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -103,7 +469,90 @@
           "cssProperty": "--cinder-space-3",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "scale": "spacing",
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "column-gap",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "inline-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "inset-block-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "inset-inline-end",
+              "profile": "signed-length"
+            },
+            {
+              "property": "inset-inline-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-block",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-block-end",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-block-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-top",
+              "profile": "signed-length"
+            },
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-block",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline-end",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline-start",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-top",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "right",
+              "profile": "signed-length"
+            },
+            {
+              "property": "padding-block-end",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "margin-inline-start",
+              "profile": "signed-length"
+            }
+          ]
         }
       }
     },
@@ -118,7 +567,14 @@
           "cssProperty": "--cinder-space-3-5",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "scale": "spacing",
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -133,7 +589,130 @@
           "cssProperty": "--cinder-space-4",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "scale": "spacing",
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "block-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "bottom",
+              "profile": "signed-length"
+            },
+            {
+              "property": "column-gap",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "inline-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "inset-block-end",
+              "profile": "signed-length"
+            },
+            {
+              "property": "inset-block-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "inset-inline-end",
+              "profile": "signed-length"
+            },
+            {
+              "property": "left",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-block",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-block-end",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-block-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-inline",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-inline-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-top",
+              "profile": "signed-length"
+            },
+            {
+              "property": "max-block-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "max-height",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "max-inline-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "min-inline-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-block",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-bottom",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline-end",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline-start",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "right",
+              "profile": "signed-length"
+            },
+            {
+              "property": "row-gap",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "top",
+              "profile": "signed-length"
+            },
+            {
+              "property": "width",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -148,7 +727,42 @@
           "cssProperty": "--cinder-space-5",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "scale": "spacing",
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "inline-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "margin",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-block-end",
+              "profile": "signed-length"
+            },
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline-end",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline-start",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -163,7 +777,82 @@
           "cssProperty": "--cinder-space-6",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "scale": "spacing",
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "block-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "inline-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "margin",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-block-end",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-block-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-inline-end",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-inline-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "max-block-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "max-inline-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "min-height",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-block",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline-start",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "inset-block-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "inset-inline-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "transform",
+              "profile": "signed-length"
+            }
+          ]
         }
       }
     },
@@ -178,7 +867,34 @@
           "cssProperty": "--cinder-space-7",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "scale": "spacing",
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "height",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "margin-block-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline-end",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline-start",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "width",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -193,7 +909,46 @@
           "cssProperty": "--cinder-space-8",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "scale": "spacing",
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "max-block-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "max-height",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-block",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline-end",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline-start",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "width",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -208,7 +963,30 @@
           "cssProperty": "--cinder-space-10",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "scale": "spacing",
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "block-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "inline-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "max-inline-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-block",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-inline-end",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -223,7 +1001,26 @@
           "cssProperty": "--cinder-space-12",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "scale": "spacing",
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "block-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "inline-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "min-block-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "padding-block",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -238,7 +1035,18 @@
           "cssProperty": "--cinder-space-16",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "scale": "spacing",
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "block-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "inline-size",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -253,7 +1061,22 @@
           "cssProperty": "--cinder-space-20",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "scale": "spacing",
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "margin",
+              "profile": "signed-length"
+            },
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -268,7 +1091,22 @@
           "cssProperty": "--cinder-space-24",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "scale": "spacing",
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "margin",
+              "profile": "signed-length"
+            },
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -283,7 +1121,22 @@
           "cssProperty": "--cinder-space-32",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "scale": "spacing",
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "margin",
+              "profile": "signed-length"
+            },
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     }
@@ -302,7 +1155,13 @@
           "cssProperty": "--cinder-radius-sm",
           "public": true,
           "category": "radius",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "border-radius",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -317,7 +1176,25 @@
           "cssProperty": "--cinder-radius-md",
           "public": true,
           "category": "radius",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "border-end-end-radius",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "border-end-start-radius",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "border-radius",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "border-start-start-radius",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -332,7 +1209,37 @@
           "cssProperty": "--cinder-radius-lg",
           "public": true,
           "category": "radius",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "border-end-end-radius",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "border-end-start-radius",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "border-radius",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "border-start-end-radius",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "border-start-start-radius",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "border-top-left-radius",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "border-top-right-radius",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -347,7 +1254,13 @@
           "cssProperty": "--cinder-radius-full",
           "public": true,
           "category": "radius",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "border-radius",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     }
@@ -410,7 +1323,13 @@
           "cssProperty": "--cinder-shadow-sm",
           "public": true,
           "category": "shadow",
-          "cssRecipe": "0 1px 2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.09)), 0 1px 1px light-dark(oklch(0% 0 0 / 0.06), oklch(100% 0 0 / 0.05))"
+          "cssRecipe": "0 1px 2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.09)), 0 1px 1px light-dark(oklch(0% 0 0 / 0.06), oklch(100% 0 0 / 0.05))",
+          "usageContracts": [
+            {
+              "property": "box-shadow",
+              "profile": "shadow"
+            }
+          ]
         }
       }
     },
@@ -469,7 +1388,13 @@
           "cssProperty": "--cinder-shadow-md",
           "public": true,
           "category": "shadow",
-          "cssRecipe": "0 4px 6px -1px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.09)), 0 2px 4px -2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.06))"
+          "cssRecipe": "0 4px 6px -1px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.09)), 0 2px 4px -2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.06))",
+          "usageContracts": [
+            {
+              "property": "box-shadow",
+              "profile": "shadow"
+            }
+          ]
         }
       }
     },
@@ -528,7 +1453,13 @@
           "cssProperty": "--cinder-shadow-lg",
           "public": true,
           "category": "shadow",
-          "cssRecipe": "0 10px 15px -3px light-dark(oklch(0% 0 0 / 0.14), oklch(100% 0 0 / 0.11)), 0 4px 6px -4px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.07))"
+          "cssRecipe": "0 10px 15px -3px light-dark(oklch(0% 0 0 / 0.14), oklch(100% 0 0 / 0.11)), 0 4px 6px -4px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.07))",
+          "usageContracts": [
+            {
+              "property": "box-shadow",
+              "profile": "shadow"
+            }
+          ]
         }
       }
     },
@@ -587,7 +1518,13 @@
           "cssProperty": "--cinder-shadow-overlay",
           "public": true,
           "category": "shadow",
-          "cssRecipe": "0 10px 15px -3px light-dark(oklch(0% 0 0 / 0.14), oklch(0% 0 0 / 0.45)), 0 4px 6px -4px light-dark(oklch(0% 0 0 / 0.12), oklch(0% 0 0 / 0.32))"
+          "cssRecipe": "0 10px 15px -3px light-dark(oklch(0% 0 0 / 0.14), oklch(0% 0 0 / 0.45)), 0 4px 6px -4px light-dark(oklch(0% 0 0 / 0.12), oklch(0% 0 0 / 0.32))",
+          "usageContracts": [
+            {
+              "property": "box-shadow",
+              "profile": "shadow"
+            }
+          ]
         }
       }
     }
@@ -607,7 +1544,21 @@
             "cssProperty": "--cinder-control-height-xs",
             "public": true,
             "category": "size",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "height",
+                "profile": "nonnegative-length"
+              },
+              {
+                "property": "min-height",
+                "profile": "nonnegative-length"
+              },
+              {
+                "property": "min-width",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -622,7 +1573,21 @@
             "cssProperty": "--cinder-control-height-sm",
             "public": true,
             "category": "size",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "block-size",
+                "profile": "nonnegative-length"
+              },
+              {
+                "property": "min-block-size",
+                "profile": "nonnegative-length"
+              },
+              {
+                "property": "min-height",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -637,7 +1602,13 @@
             "cssProperty": "--cinder-control-height-lg",
             "public": true,
             "category": "size",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "min-height",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       }
@@ -661,7 +1632,17 @@
           "cssProperty": "--cinder-font-sans",
           "public": true,
           "category": "typography",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "font",
+              "profile": "font-family"
+            },
+            {
+              "property": "font-family",
+              "profile": "font-family"
+            }
+          ]
         }
       }
     },
@@ -682,7 +1663,13 @@
           "cssProperty": "--cinder-font-mono",
           "public": true,
           "category": "typography",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "font-family",
+              "profile": "font-family"
+            }
+          ]
         }
       }
     },
@@ -695,7 +1682,13 @@
           "cssProperty": "--cinder-font-normal",
           "public": true,
           "category": "typography",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "font-weight",
+              "profile": "font-weight"
+            }
+          ]
         }
       }
     },
@@ -708,7 +1701,17 @@
           "cssProperty": "--cinder-font-medium",
           "public": true,
           "category": "typography",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "font",
+              "profile": "font-weight"
+            },
+            {
+              "property": "font-weight",
+              "profile": "font-weight"
+            }
+          ]
         }
       }
     },
@@ -721,7 +1724,17 @@
           "cssProperty": "--cinder-font-semibold",
           "public": true,
           "category": "typography",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "font",
+              "profile": "font-weight"
+            },
+            {
+              "property": "font-weight",
+              "profile": "font-weight"
+            }
+          ]
         }
       }
     },
@@ -734,7 +1747,13 @@
           "cssProperty": "--cinder-font-bold",
           "public": true,
           "category": "typography",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "font-weight",
+              "profile": "font-weight"
+            }
+          ]
         }
       }
     },
@@ -752,7 +1771,13 @@
             "cssProperty": "--cinder-text-2xs",
             "public": true,
             "category": "typography",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "font-size",
+                "profile": "positive-font-size"
+              }
+            ]
           }
         }
       },
@@ -767,7 +1792,17 @@
             "cssProperty": "--cinder-text-xs",
             "public": true,
             "category": "typography",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "font",
+                "profile": "positive-font-size"
+              },
+              {
+                "property": "font-size",
+                "profile": "positive-font-size"
+              }
+            ]
           }
         }
       },
@@ -782,7 +1817,17 @@
             "cssProperty": "--cinder-text-sm",
             "public": true,
             "category": "typography",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "font",
+                "profile": "positive-font-size"
+              },
+              {
+                "property": "font-size",
+                "profile": "positive-font-size"
+              }
+            ]
           }
         }
       },
@@ -797,7 +1842,13 @@
             "cssProperty": "--cinder-text-base",
             "public": true,
             "category": "typography",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "font-size",
+                "profile": "positive-font-size"
+              }
+            ]
           }
         }
       },
@@ -812,7 +1863,13 @@
             "cssProperty": "--cinder-text-md",
             "public": true,
             "category": "typography",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "font-size",
+                "profile": "positive-font-size"
+              }
+            ]
           }
         }
       },
@@ -827,7 +1884,17 @@
             "cssProperty": "--cinder-text-lg",
             "public": true,
             "category": "typography",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "font",
+                "profile": "positive-font-size"
+              },
+              {
+                "property": "font-size",
+                "profile": "positive-font-size"
+              }
+            ]
           }
         }
       },
@@ -842,7 +1909,13 @@
             "cssProperty": "--cinder-text-xl",
             "public": true,
             "category": "typography",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "font-size",
+                "profile": "positive-font-size"
+              }
+            ]
           }
         }
       },
@@ -857,7 +1930,13 @@
             "cssProperty": "--cinder-text-2xl",
             "public": true,
             "category": "typography",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "font-size",
+                "profile": "positive-font-size"
+              }
+            ]
           }
         }
       },
@@ -872,7 +1951,13 @@
             "cssProperty": "--cinder-text-3xl",
             "public": true,
             "category": "typography",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "font-size",
+                "profile": "positive-font-size"
+              }
+            ]
           }
         }
       },
@@ -887,7 +1972,13 @@
             "cssProperty": "--cinder-text-4xl",
             "public": true,
             "category": "typography",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "font-size",
+                "profile": "positive-font-size"
+              }
+            ]
           }
         }
       },
@@ -902,7 +1993,13 @@
             "cssProperty": "--cinder-text-5xl",
             "public": true,
             "category": "typography",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "font-size",
+                "profile": "positive-font-size"
+              }
+            ]
           }
         }
       }
@@ -919,7 +2016,13 @@
           "cssProperty": "--cinder-leading-none",
           "public": true,
           "category": "typography",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "line-height",
+              "profile": "line-height"
+            }
+          ]
         }
       }
     },
@@ -931,7 +2034,13 @@
           "cssProperty": "--cinder-leading-tight",
           "public": true,
           "category": "typography",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "line-height",
+              "profile": "line-height"
+            }
+          ]
         }
       }
     },
@@ -943,7 +2052,13 @@
           "cssProperty": "--cinder-leading-snug",
           "public": true,
           "category": "typography",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "line-height",
+              "profile": "line-height"
+            }
+          ]
         }
       }
     },
@@ -955,7 +2070,13 @@
           "cssProperty": "--cinder-leading-normal",
           "public": true,
           "category": "typography",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "line-height",
+              "profile": "line-height"
+            }
+          ]
         }
       }
     },
@@ -967,7 +2088,13 @@
           "cssProperty": "--cinder-leading-relaxed",
           "public": true,
           "category": "typography",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "line-height",
+              "profile": "line-height"
+            }
+          ]
         }
       }
     }
@@ -985,7 +2112,13 @@
           "cssProperty": "--cinder-tracking-normal",
           "public": true,
           "category": "typography",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "letter-spacing",
+              "profile": "signed-length"
+            }
+          ]
         }
       }
     },
@@ -998,7 +2131,13 @@
           "cssProperty": "--cinder-tracking-tight",
           "public": true,
           "category": "typography",
-          "cssRecipe": "-0.01em"
+          "cssRecipe": "-0.01em",
+          "usageContracts": [
+            {
+              "property": "letter-spacing",
+              "profile": "signed-length"
+            }
+          ]
         }
       }
     },
@@ -1011,7 +2150,13 @@
           "cssProperty": "--cinder-tracking-wide",
           "public": true,
           "category": "typography",
-          "cssRecipe": "0.02em"
+          "cssRecipe": "0.02em",
+          "usageContracts": [
+            {
+              "property": "letter-spacing",
+              "profile": "signed-length"
+            }
+          ]
         }
       }
     }
@@ -1026,7 +2171,13 @@
           "cssProperty": "--cinder-type-tab-size",
           "public": true,
           "category": "typography",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "tab-size",
+              "profile": "tab-size"
+            }
+          ]
         }
       }
     }
@@ -1044,7 +2195,57 @@
           "cssProperty": "--cinder-touch-target-min",
           "public": true,
           "category": "size",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "block-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "height",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "inline-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "inset-block-start",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-block-end",
+              "profile": "signed-length"
+            },
+            {
+              "property": "min-block-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "min-height",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "min-inline-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "min-width",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "right",
+              "profile": "signed-length"
+            },
+            {
+              "property": "top",
+              "profile": "signed-length"
+            },
+            {
+              "property": "width",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     }
@@ -1064,7 +2265,13 @@
             "cssProperty": "--cinder-content-width",
             "public": true,
             "category": "size",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "max-inline-size",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -1079,7 +2286,13 @@
             "cssProperty": "--cinder-content-width-narrow",
             "public": true,
             "category": "size",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "max-inline-size",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -1094,7 +2307,21 @@
             "cssProperty": "--cinder-content-width-wide",
             "public": true,
             "category": "size",
-            "cssRecipe": null
+            "cssRecipe": null,
+            "usageContracts": [
+              {
+                "property": "inline-size",
+                "profile": "nonnegative-length"
+              },
+              {
+                "property": "margin-inline",
+                "profile": "signed-length"
+              },
+              {
+                "property": "max-inline-size",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       },
@@ -1107,7 +2334,13 @@
             "cssProperty": "--cinder-content-width-prose",
             "public": true,
             "category": "layout",
-            "cssRecipe": "65ch"
+            "cssRecipe": "65ch",
+            "usageContracts": [
+              {
+                "property": "max-inline-size",
+                "profile": "nonnegative-length"
+              }
+            ]
           }
         }
       }
@@ -1123,7 +2356,17 @@
           "cssProperty": "--cinder-ease-standard",
           "public": true,
           "category": "motion",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "animation",
+              "profile": "easing"
+            },
+            {
+              "property": "transition",
+              "profile": "easing"
+            }
+          ]
         }
       }
     },
@@ -1135,7 +2378,13 @@
           "cssProperty": "--cinder-ease-decelerate",
           "public": true,
           "category": "motion",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "animation",
+              "profile": "easing"
+            }
+          ]
         }
       }
     },
@@ -1147,7 +2396,13 @@
           "cssProperty": "--cinder-ease-accelerate",
           "public": true,
           "category": "motion",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "transition-timing-function",
+              "profile": "easing"
+            }
+          ]
         }
       }
     },
@@ -1159,7 +2414,13 @@
           "cssProperty": "--cinder-ease-in-out",
           "public": true,
           "category": "motion",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "transition",
+              "profile": "easing"
+            }
+          ]
         }
       }
     },
@@ -1171,7 +2432,13 @@
           "cssProperty": "--cinder-ease-spring",
           "public": true,
           "category": "motion",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "transition",
+              "profile": "easing"
+            }
+          ]
         }
       }
     }
@@ -1190,7 +2457,13 @@
           "cssProperty": "--cinder-duration-instant",
           "public": true,
           "category": "motion",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "transition-duration",
+              "profile": "duration"
+            }
+          ]
         }
       }
     },
@@ -1205,7 +2478,17 @@
           "cssProperty": "--cinder-duration-fast",
           "public": true,
           "category": "motion",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "animation",
+              "profile": "duration"
+            },
+            {
+              "property": "transition",
+              "profile": "duration"
+            }
+          ]
         }
       }
     },
@@ -1217,7 +2500,13 @@
           "cssProperty": "--cinder-duration-normal",
           "public": true,
           "category": "motion",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "transition",
+              "profile": "duration"
+            }
+          ]
         }
       }
     },
@@ -1232,7 +2521,13 @@
           "cssProperty": "--cinder-duration-moderate",
           "public": true,
           "category": "motion",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "transition",
+              "profile": "duration"
+            }
+          ]
         }
       }
     },
@@ -1247,7 +2542,13 @@
           "cssProperty": "--cinder-duration-slow",
           "public": true,
           "category": "motion",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "transition-duration",
+              "profile": "duration"
+            }
+          ]
         }
       }
     },
@@ -1262,7 +2563,13 @@
           "cssProperty": "--cinder-duration-spin",
           "public": true,
           "category": "motion",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "animation",
+              "profile": "duration"
+            }
+          ]
         }
       }
     },
@@ -1277,7 +2584,13 @@
           "cssProperty": "--cinder-duration-pulse",
           "public": true,
           "category": "motion",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "animation",
+              "profile": "duration"
+            }
+          ]
         }
       }
     },
@@ -1294,7 +2607,13 @@
               "cssProperty": "--cinder-duration-progress-bar-indeterminate",
               "public": true,
               "category": "motion",
-              "cssRecipe": null
+              "cssRecipe": null,
+              "usageContracts": [
+                {
+                  "property": "animation",
+                  "profile": "duration"
+                }
+              ]
             }
           }
         }
@@ -1311,7 +2630,13 @@
               "cssProperty": "--cinder-duration-progress-ring-spin",
               "public": true,
               "category": "motion",
-              "cssRecipe": null
+              "cssRecipe": null,
+              "usageContracts": [
+                {
+                  "property": "animation",
+                  "profile": "duration"
+                }
+              ]
             }
           }
         }
@@ -1329,7 +2654,17 @@
           "cssProperty": "--cinder-duration-base",
           "public": true,
           "category": "motion",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "animation",
+              "profile": "duration"
+            },
+            {
+              "property": "transition",
+              "profile": "duration"
+            }
+          ]
         }
       }
     }
@@ -1345,7 +2680,13 @@
           "cssProperty": "--cinder-opacity-disabled",
           "public": true,
           "category": "opacity",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "opacity",
+              "profile": "opacity"
+            }
+          ]
         }
       }
     },
@@ -1357,7 +2698,13 @@
           "cssProperty": "--cinder-opacity-muted",
           "public": true,
           "category": "opacity",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "opacity",
+              "profile": "opacity"
+            }
+          ]
         }
       }
     },
@@ -1369,7 +2716,13 @@
           "cssProperty": "--cinder-opacity-faint",
           "public": true,
           "category": "opacity",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "opacity",
+              "profile": "opacity"
+            }
+          ]
         }
       }
     }
@@ -1385,7 +2738,13 @@
           "cssProperty": "--cinder-z-tooltip",
           "public": true,
           "category": "z-index",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "z-index",
+              "profile": "layer-index"
+            }
+          ]
         }
       }
     },
@@ -1397,7 +2756,13 @@
           "cssProperty": "--cinder-z-dropdown",
           "public": true,
           "category": "z-index",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "z-index",
+              "profile": "layer-index"
+            }
+          ]
         }
       }
     },
@@ -1409,7 +2774,13 @@
           "cssProperty": "--cinder-z-popover",
           "public": true,
           "category": "z-index",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "z-index",
+              "profile": "layer-index"
+            }
+          ]
         }
       }
     },
@@ -1421,7 +2792,13 @@
           "cssProperty": "--cinder-z-backdrop",
           "public": true,
           "category": "z-index",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "z-index",
+              "profile": "layer-index"
+            }
+          ]
         }
       }
     },
@@ -1433,7 +2810,13 @@
           "cssProperty": "--cinder-z-modal",
           "public": true,
           "category": "z-index",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "z-index",
+              "profile": "layer-index"
+            }
+          ]
         }
       }
     },
@@ -1445,7 +2828,13 @@
           "cssProperty": "--cinder-z-toast",
           "public": true,
           "category": "z-index",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "z-index",
+              "profile": "layer-index"
+            }
+          ]
         }
       }
     },
@@ -1457,7 +2846,13 @@
           "cssProperty": "--cinder-z-focused-affordance",
           "public": true,
           "category": "z-index",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "z-index",
+              "profile": "layer-index"
+            }
+          ]
         }
       }
     },
@@ -1469,7 +2864,13 @@
           "cssProperty": "--cinder-z-drag-preview",
           "public": true,
           "category": "z-index",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "z-index",
+              "profile": "layer-index"
+            }
+          ]
         }
       }
     }

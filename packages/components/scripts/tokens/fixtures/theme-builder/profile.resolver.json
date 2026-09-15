@@ -1,0 +1,26 @@
+{
+  "version": "2025.10",
+  "sets": { "base": { "sources": [{ "$ref": "base.tokens.json" }] } },
+  "modifiers": {
+    "theme": {
+      "default": "light",
+      "contexts": {
+        "light": [{ "$ref": "light.tokens.json" }],
+        "dark": [{ "$ref": "dark.tokens.json" }]
+      }
+    },
+    "motion": {
+      "default": "default",
+      "contexts": {
+        "default": [{ "$ref": "motion-default.tokens.json" }],
+        "reduced": [{ "$ref": "motion-reduced.tokens.json" }],
+        "forced-reduced-motion": [{ "$ref": "motion-forced-reduced-motion.tokens.json" }]
+      }
+    }
+  },
+  "resolutionOrder": [
+    { "$ref": "#/sets/base" },
+    { "$ref": "#/modifiers/theme" },
+    { "$ref": "#/modifiers/motion" }
+  ]
+}

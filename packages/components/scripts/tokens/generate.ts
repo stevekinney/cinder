@@ -85,6 +85,15 @@ export const colorTokenRegistryGeneratedPath = join(
   'shell-app',
   'color-token-registry.generated.ts',
 );
+/** Private authoring catalogue consumed by the playground theme builder. */
+export const themeTokenCatalogueGeneratedPath = join(
+  packageRoot,
+  '..',
+  'playground',
+  'src',
+  'shell-app',
+  'theme-token-registry.generated.ts',
+);
 
 export const REGENERATE_COMMAND = 'bun run --filter=@lostgradient/cinder tokens:generate';
 
@@ -160,6 +169,11 @@ export type CorpusEntry = {
   category?: string | undefined;
   component?: string | undefined;
   deprecated?: boolean | string | undefined;
+  /** Cinder authoring metadata, preserved for the private catalogue. */
+  usageContracts?: readonly { property: string; profile: string }[] | undefined;
+  recipeInputs?: readonly string[] | undefined;
+  scale?: 'spacing' | undefined;
+  nonRepresentableValue?: boolean | undefined;
   /**
    * True when `value` came from `$ref` rather than `$value`. `$ref` is a
    * generic JSON Pointer with no DTCG requirement that its target be a whole
@@ -229,6 +243,19 @@ function toEntry(
       ? token.$deprecated
       : undefined;
   const deprecated = ownDeprecated ?? inheritedDeprecated;
+  const usageContracts = Array.isArray(extensions?.['usageContracts'])
+    ? extensions?.['usageContracts'].filter(
+        (value): value is { property: string; profile: string } =>
+          isPlainObject(value) &&
+          typeof value['property'] === 'string' &&
+          typeof value['profile'] === 'string',
+      )
+    : undefined;
+  const recipeInputs = Array.isArray(extensions?.['recipeInputs'])
+    ? extensions?.['recipeInputs'].filter((value): value is string => typeof value === 'string')
+    : undefined;
+  const scale = extensions?.['scale'] === 'spacing' ? ('spacing' as const) : undefined;
+  const nonRepresentableValue = extensions?.['nonRepresentableValue'] === true;
   // A `$ref` whole-token alias has no `$value` of its own -- the reference
   // string ITSELF is the raw, unresolved value this walker records (mirroring
   // how an ordinary embedded `{a.b.c}`/`#/a/b/c` alias is kept raw rather than
@@ -249,6 +276,10 @@ function toEntry(
     category,
     component,
     deprecated,
+    usageContracts,
+    recipeInputs,
+    scale,
+    nonRepresentableValue,
     isRefAlias: token.$ref !== undefined,
   };
 }

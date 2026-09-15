@@ -7,7 +7,13 @@
         "cssProperty": "--cinder-space-0",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "scale": "spacing",
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "padding", "profile": "nonnegative-length" },
+          { "property": "margin", "profile": "signed-length" },
+          { "property": "gap", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -20,7 +26,47 @@
         "cssProperty": "--cinder-space-2",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "scale": "spacing",
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "block-size", "profile": "nonnegative-length" },
+          { "property": "border-radius", "profile": "nonnegative-length" },
+          { "property": "bottom", "profile": "signed-length" },
+          { "property": "column-gap", "profile": "nonnegative-length" },
+          { "property": "gap", "profile": "nonnegative-length" },
+          { "property": "inline-size", "profile": "nonnegative-length" },
+          { "property": "inset", "profile": "signed-length" },
+          { "property": "inset-block-end", "profile": "signed-length" },
+          { "property": "inset-block-start", "profile": "signed-length" },
+          { "property": "inset-inline", "profile": "signed-length" },
+          { "property": "inset-inline-end", "profile": "signed-length" },
+          { "property": "left", "profile": "signed-length" },
+          { "property": "margin", "profile": "signed-length" },
+          { "property": "margin-block", "profile": "signed-length" },
+          { "property": "margin-block-end", "profile": "signed-length" },
+          { "property": "margin-block-start", "profile": "signed-length" },
+          { "property": "margin-bottom", "profile": "signed-length" },
+          { "property": "margin-inline", "profile": "signed-length" },
+          { "property": "margin-inline-end", "profile": "signed-length" },
+          { "property": "margin-inline-start", "profile": "signed-length" },
+          { "property": "margin-top", "profile": "signed-length" },
+          { "property": "min-inline-size", "profile": "nonnegative-length" },
+          { "property": "min-width", "profile": "nonnegative-length" },
+          { "property": "padding", "profile": "nonnegative-length" },
+          { "property": "padding-block", "profile": "nonnegative-length" },
+          { "property": "padding-block-end", "profile": "nonnegative-length" },
+          { "property": "padding-block-start", "profile": "nonnegative-length" },
+          { "property": "padding-bottom", "profile": "nonnegative-length" },
+          { "property": "padding-inline", "profile": "nonnegative-length" },
+          { "property": "padding-inline-end", "profile": "nonnegative-length" },
+          { "property": "padding-inline-start", "profile": "nonnegative-length" },
+          { "property": "padding-right", "profile": "nonnegative-length" },
+          { "property": "padding-top", "profile": "nonnegative-length" },
+          { "property": "right", "profile": "signed-length" },
+          { "property": "row-gap", "profile": "nonnegative-length" },
+          { "property": "top", "profile": "signed-length" },
+          { "property": "width", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -33,7 +79,30 @@
         "cssProperty": "--cinder-space-3",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "scale": "spacing",
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "column-gap", "profile": "nonnegative-length" },
+          { "property": "gap", "profile": "nonnegative-length" },
+          { "property": "inline-size", "profile": "nonnegative-length" },
+          { "property": "inset-block-start", "profile": "signed-length" },
+          { "property": "inset-inline-end", "profile": "signed-length" },
+          { "property": "inset-inline-start", "profile": "signed-length" },
+          { "property": "margin", "profile": "signed-length" },
+          { "property": "margin-block", "profile": "signed-length" },
+          { "property": "margin-block-end", "profile": "signed-length" },
+          { "property": "margin-block-start", "profile": "signed-length" },
+          { "property": "margin-top", "profile": "signed-length" },
+          { "property": "padding", "profile": "nonnegative-length" },
+          { "property": "padding-block", "profile": "nonnegative-length" },
+          { "property": "padding-inline", "profile": "nonnegative-length" },
+          { "property": "padding-inline-end", "profile": "nonnegative-length" },
+          { "property": "padding-inline-start", "profile": "nonnegative-length" },
+          { "property": "padding-top", "profile": "nonnegative-length" },
+          { "property": "right", "profile": "signed-length" },
+          { "property": "padding-block-end", "profile": "nonnegative-length" },
+          { "property": "margin-inline-start", "profile": "signed-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -46,7 +115,40 @@
         "cssProperty": "--cinder-space-4",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "scale": "spacing",
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "block-size", "profile": "nonnegative-length" },
+          { "property": "bottom", "profile": "signed-length" },
+          { "property": "column-gap", "profile": "nonnegative-length" },
+          { "property": "gap", "profile": "nonnegative-length" },
+          { "property": "inline-size", "profile": "nonnegative-length" },
+          { "property": "inset-block-end", "profile": "signed-length" },
+          { "property": "inset-block-start", "profile": "signed-length" },
+          { "property": "inset-inline-end", "profile": "signed-length" },
+          { "property": "left", "profile": "signed-length" },
+          { "property": "margin", "profile": "signed-length" },
+          { "property": "margin-block", "profile": "signed-length" },
+          { "property": "margin-block-end", "profile": "signed-length" },
+          { "property": "margin-block-start", "profile": "signed-length" },
+          { "property": "margin-inline", "profile": "signed-length" },
+          { "property": "margin-inline-start", "profile": "signed-length" },
+          { "property": "margin-top", "profile": "signed-length" },
+          { "property": "max-block-size", "profile": "nonnegative-length" },
+          { "property": "max-height", "profile": "nonnegative-length" },
+          { "property": "max-inline-size", "profile": "nonnegative-length" },
+          { "property": "min-inline-size", "profile": "nonnegative-length" },
+          { "property": "padding", "profile": "nonnegative-length" },
+          { "property": "padding-block", "profile": "nonnegative-length" },
+          { "property": "padding-bottom", "profile": "nonnegative-length" },
+          { "property": "padding-inline", "profile": "nonnegative-length" },
+          { "property": "padding-inline-end", "profile": "nonnegative-length" },
+          { "property": "padding-inline-start", "profile": "nonnegative-length" },
+          { "property": "right", "profile": "signed-length" },
+          { "property": "row-gap", "profile": "nonnegative-length" },
+          { "property": "top", "profile": "signed-length" },
+          { "property": "width", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -59,7 +161,18 @@
         "cssProperty": "--cinder-space-5",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "scale": "spacing",
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "gap", "profile": "nonnegative-length" },
+          { "property": "inline-size", "profile": "nonnegative-length" },
+          { "property": "margin", "profile": "signed-length" },
+          { "property": "margin-block-end", "profile": "signed-length" },
+          { "property": "padding", "profile": "nonnegative-length" },
+          { "property": "padding-inline", "profile": "nonnegative-length" },
+          { "property": "padding-inline-end", "profile": "nonnegative-length" },
+          { "property": "padding-inline-start", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -72,7 +185,28 @@
         "cssProperty": "--cinder-space-6",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "scale": "spacing",
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "block-size", "profile": "nonnegative-length" },
+          { "property": "gap", "profile": "nonnegative-length" },
+          { "property": "inline-size", "profile": "nonnegative-length" },
+          { "property": "margin", "profile": "signed-length" },
+          { "property": "margin-block-end", "profile": "signed-length" },
+          { "property": "margin-block-start", "profile": "signed-length" },
+          { "property": "margin-inline-end", "profile": "signed-length" },
+          { "property": "margin-inline-start", "profile": "signed-length" },
+          { "property": "max-block-size", "profile": "nonnegative-length" },
+          { "property": "max-inline-size", "profile": "nonnegative-length" },
+          { "property": "min-height", "profile": "nonnegative-length" },
+          { "property": "padding", "profile": "nonnegative-length" },
+          { "property": "padding-block", "profile": "nonnegative-length" },
+          { "property": "padding-inline", "profile": "nonnegative-length" },
+          { "property": "padding-inline-start", "profile": "nonnegative-length" },
+          { "property": "inset-block-start", "profile": "signed-length" },
+          { "property": "inset-inline-start", "profile": "signed-length" },
+          { "property": "transform", "profile": "signed-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -85,7 +219,16 @@
         "cssProperty": "--cinder-space-7",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "scale": "spacing",
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "height", "profile": "nonnegative-length" },
+          { "property": "margin-block-start", "profile": "signed-length" },
+          { "property": "padding", "profile": "nonnegative-length" },
+          { "property": "padding-inline-end", "profile": "nonnegative-length" },
+          { "property": "padding-inline-start", "profile": "nonnegative-length" },
+          { "property": "width", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -98,7 +241,19 @@
         "cssProperty": "--cinder-space-8",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "scale": "spacing",
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "gap", "profile": "nonnegative-length" },
+          { "property": "max-block-size", "profile": "nonnegative-length" },
+          { "property": "max-height", "profile": "nonnegative-length" },
+          { "property": "padding", "profile": "nonnegative-length" },
+          { "property": "padding-block", "profile": "nonnegative-length" },
+          { "property": "padding-inline", "profile": "nonnegative-length" },
+          { "property": "padding-inline-end", "profile": "nonnegative-length" },
+          { "property": "padding-inline-start", "profile": "nonnegative-length" },
+          { "property": "width", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -111,7 +266,15 @@
         "cssProperty": "--cinder-space-10",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "scale": "spacing",
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "block-size", "profile": "nonnegative-length" },
+          { "property": "inline-size", "profile": "nonnegative-length" },
+          { "property": "max-inline-size", "profile": "nonnegative-length" },
+          { "property": "padding-block", "profile": "nonnegative-length" },
+          { "property": "padding-inline-end", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -124,7 +287,14 @@
         "cssProperty": "--cinder-space-12",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "scale": "spacing",
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "block-size", "profile": "nonnegative-length" },
+          { "property": "inline-size", "profile": "nonnegative-length" },
+          { "property": "min-block-size", "profile": "nonnegative-length" },
+          { "property": "padding-block", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -137,7 +307,12 @@
         "cssProperty": "--cinder-space-16",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "scale": "spacing",
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "block-size", "profile": "nonnegative-length" },
+          { "property": "inline-size", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -150,7 +325,13 @@
         "cssProperty": "--cinder-space-20",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "scale": "spacing",
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "padding", "profile": "nonnegative-length" },
+          { "property": "margin", "profile": "signed-length" },
+          { "property": "gap", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -163,7 +344,13 @@
         "cssProperty": "--cinder-space-24",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "scale": "spacing",
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "padding", "profile": "nonnegative-length" },
+          { "property": "margin", "profile": "signed-length" },
+          { "property": "gap", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -176,7 +363,13 @@
         "cssProperty": "--cinder-space-32",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "scale": "spacing",
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "padding", "profile": "nonnegative-length" },
+          { "property": "margin", "profile": "signed-length" },
+          { "property": "gap", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -189,7 +382,18 @@
         "cssProperty": "--cinder-space-0-5",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "scale": "spacing",
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "bottom", "profile": "signed-length" },
+          { "property": "gap", "profile": "nonnegative-length" },
+          { "property": "margin", "profile": "signed-length" },
+          { "property": "margin-block-start", "profile": "signed-length" },
+          { "property": "margin-inline-start", "profile": "signed-length" },
+          { "property": "margin-top", "profile": "signed-length" },
+          { "property": "padding", "profile": "nonnegative-length" },
+          { "property": "padding-block", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -202,7 +406,38 @@
         "cssProperty": "--cinder-space-1",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "scale": "spacing",
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "border-radius", "profile": "nonnegative-length" },
+          { "property": "bottom", "profile": "signed-length" },
+          { "property": "gap", "profile": "nonnegative-length" },
+          { "property": "inset-block-end", "profile": "signed-length" },
+          { "property": "inset-block-start", "profile": "signed-length" },
+          { "property": "left", "profile": "signed-length" },
+          { "property": "margin", "profile": "signed-length" },
+          { "property": "margin-block", "profile": "signed-length" },
+          { "property": "margin-block-end", "profile": "signed-length" },
+          { "property": "margin-block-start", "profile": "signed-length" },
+          { "property": "margin-bottom", "profile": "signed-length" },
+          { "property": "margin-inline", "profile": "signed-length" },
+          { "property": "margin-inline-end", "profile": "signed-length" },
+          { "property": "margin-inline-start", "profile": "signed-length" },
+          { "property": "margin-top", "profile": "signed-length" },
+          { "property": "padding", "profile": "nonnegative-length" },
+          { "property": "padding-block", "profile": "nonnegative-length" },
+          { "property": "padding-block-start", "profile": "nonnegative-length" },
+          { "property": "padding-inline", "profile": "nonnegative-length" },
+          { "property": "padding-inline-end", "profile": "nonnegative-length" },
+          { "property": "padding-inline-start", "profile": "nonnegative-length" },
+          { "property": "padding-left", "profile": "nonnegative-length" },
+          { "property": "padding-right", "profile": "nonnegative-length" },
+          { "property": "padding-top", "profile": "nonnegative-length" },
+          { "property": "right", "profile": "signed-length" },
+          { "property": "row-gap", "profile": "nonnegative-length" },
+          { "property": "top", "profile": "signed-length" },
+          { "property": "width", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -215,7 +450,17 @@
         "cssProperty": "--cinder-space-1-5",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "scale": "spacing",
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "gap", "profile": "nonnegative-length" },
+          { "property": "margin", "profile": "signed-length" },
+          { "property": "padding", "profile": "nonnegative-length" },
+          { "property": "padding-block", "profile": "nonnegative-length" },
+          { "property": "padding-block-end", "profile": "nonnegative-length" },
+          { "property": "padding-inline", "profile": "nonnegative-length" },
+          { "property": "margin-block-end", "profile": "signed-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -228,7 +473,14 @@
         "cssProperty": "--cinder-space-2-5",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "scale": "spacing",
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "gap", "profile": "nonnegative-length" },
+          { "property": "padding", "profile": "nonnegative-length" },
+          { "property": "padding-block", "profile": "nonnegative-length" },
+          { "property": "padding-inline", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -241,7 +493,9 @@
         "cssProperty": "--cinder-space-3-5",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "scale": "spacing",
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -254,7 +508,8 @@
         "cssProperty": "--cinder-radius-sm",
         "public": true,
         "category": "radius",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "border-radius", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -267,7 +522,13 @@
         "cssProperty": "--cinder-radius-md",
         "public": true,
         "category": "radius",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "border-end-end-radius", "profile": "nonnegative-length" },
+          { "property": "border-end-start-radius", "profile": "nonnegative-length" },
+          { "property": "border-radius", "profile": "nonnegative-length" },
+          { "property": "border-start-start-radius", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -280,7 +541,16 @@
         "cssProperty": "--cinder-radius-lg",
         "public": true,
         "category": "radius",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "border-end-end-radius", "profile": "nonnegative-length" },
+          { "property": "border-end-start-radius", "profile": "nonnegative-length" },
+          { "property": "border-radius", "profile": "nonnegative-length" },
+          { "property": "border-start-end-radius", "profile": "nonnegative-length" },
+          { "property": "border-start-start-radius", "profile": "nonnegative-length" },
+          { "property": "border-top-left-radius", "profile": "nonnegative-length" },
+          { "property": "border-top-right-radius", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -293,7 +563,8 @@
         "cssProperty": "--cinder-radius-full",
         "public": true,
         "category": "radius",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "border-radius", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -306,7 +577,8 @@
         "cssProperty": "--cinder-radius-control",
         "public": true,
         "category": "radius",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "border-radius", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -319,7 +591,8 @@
         "cssProperty": "--cinder-radius-surface",
         "public": true,
         "category": "radius",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "border-radius", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -346,7 +619,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-shadow-sm",
         "public": true,
-        "category": "shadow"
+        "category": "shadow",
+        "usageContracts": [{ "property": "box-shadow", "profile": "shadow" }]
       }
     },
     "$type": "shadow"
@@ -373,7 +647,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-shadow-md",
         "public": true,
-        "category": "shadow"
+        "category": "shadow",
+        "usageContracts": [{ "property": "box-shadow", "profile": "shadow" }]
       }
     },
     "$type": "shadow"
@@ -400,7 +675,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-shadow-lg",
         "public": true,
-        "category": "shadow"
+        "category": "shadow",
+        "usageContracts": [{ "property": "box-shadow", "profile": "shadow" }]
       }
     },
     "$type": "shadow"
@@ -427,7 +703,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-shadow-overlay",
         "public": true,
-        "category": "shadow"
+        "category": "shadow",
+        "usageContracts": [{ "property": "box-shadow", "profile": "shadow" }]
       }
     },
     "$type": "shadow"
@@ -440,7 +717,12 @@
         "cssProperty": "--cinder-control-height-xs",
         "public": true,
         "category": "size",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "height", "profile": "nonnegative-length" },
+          { "property": "min-height", "profile": "nonnegative-length" },
+          { "property": "min-width", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -453,7 +735,12 @@
         "cssProperty": "--cinder-control-height-sm",
         "public": true,
         "category": "size",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "block-size", "profile": "nonnegative-length" },
+          { "property": "min-block-size", "profile": "nonnegative-length" },
+          { "property": "min-height", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -466,7 +753,8 @@
         "cssProperty": "--cinder-control-height-lg",
         "public": true,
         "category": "size",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "min-height", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -488,7 +776,11 @@
         "cssProperty": "--cinder-font-sans",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "font", "profile": "font-family" },
+          { "property": "font-family", "profile": "font-family" }
+        ]
       }
     }
   },
@@ -509,7 +801,8 @@
         "cssProperty": "--cinder-font-mono",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-family", "profile": "font-family" }]
       }
     }
   },
@@ -522,7 +815,8 @@
         "cssProperty": "--cinder-font-normal",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-weight", "profile": "font-weight" }]
       }
     }
   },
@@ -535,7 +829,11 @@
         "cssProperty": "--cinder-font-medium",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "font", "profile": "font-weight" },
+          { "property": "font-weight", "profile": "font-weight" }
+        ]
       }
     }
   },
@@ -548,7 +846,11 @@
         "cssProperty": "--cinder-font-semibold",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "font", "profile": "font-weight" },
+          { "property": "font-weight", "profile": "font-weight" }
+        ]
       }
     }
   },
@@ -561,7 +863,8 @@
         "cssProperty": "--cinder-font-bold",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-weight", "profile": "font-weight" }]
       }
     }
   },
@@ -573,7 +876,8 @@
         "cssProperty": "--cinder-text-2xs",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     },
     "$type": "dimension"
@@ -586,7 +890,11 @@
         "cssProperty": "--cinder-text-xs",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "font", "profile": "positive-font-size" },
+          { "property": "font-size", "profile": "positive-font-size" }
+        ]
       }
     },
     "$type": "dimension"
@@ -599,7 +907,11 @@
         "cssProperty": "--cinder-text-sm",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "font", "profile": "positive-font-size" },
+          { "property": "font-size", "profile": "positive-font-size" }
+        ]
       }
     },
     "$type": "dimension"
@@ -612,7 +924,8 @@
         "cssProperty": "--cinder-text-base",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     },
     "$type": "dimension"
@@ -625,7 +938,8 @@
         "cssProperty": "--cinder-text-md",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     },
     "$type": "dimension"
@@ -638,7 +952,11 @@
         "cssProperty": "--cinder-text-lg",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "font", "profile": "positive-font-size" },
+          { "property": "font-size", "profile": "positive-font-size" }
+        ]
       }
     },
     "$type": "dimension"
@@ -651,7 +969,8 @@
         "cssProperty": "--cinder-text-xl",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     },
     "$type": "dimension"
@@ -664,7 +983,8 @@
         "cssProperty": "--cinder-text-2xl",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     },
     "$type": "dimension"
@@ -677,7 +997,8 @@
         "cssProperty": "--cinder-text-3xl",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     },
     "$type": "dimension"
@@ -690,7 +1011,8 @@
         "cssProperty": "--cinder-text-4xl",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     },
     "$type": "dimension"
@@ -703,7 +1025,8 @@
         "cssProperty": "--cinder-text-5xl",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     },
     "$type": "dimension"
@@ -716,7 +1039,8 @@
         "cssProperty": "--cinder-leading-none",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "line-height", "profile": "line-height" }]
       }
     },
     "$type": "number"
@@ -729,7 +1053,8 @@
         "cssProperty": "--cinder-leading-tight",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "line-height", "profile": "line-height" }]
       }
     },
     "$type": "number"
@@ -742,7 +1067,8 @@
         "cssProperty": "--cinder-leading-snug",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "line-height", "profile": "line-height" }]
       }
     },
     "$type": "number"
@@ -755,7 +1081,8 @@
         "cssProperty": "--cinder-leading-normal",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "line-height", "profile": "line-height" }]
       }
     },
     "$type": "number"
@@ -768,7 +1095,8 @@
         "cssProperty": "--cinder-leading-relaxed",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "line-height", "profile": "line-height" }]
       }
     },
     "$type": "number"
@@ -782,7 +1110,8 @@
         "cssProperty": "--cinder-tracking-normal",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "letter-spacing", "profile": "signed-length" }]
       }
     }
   },
@@ -795,7 +1124,8 @@
         "cssProperty": "--cinder-tracking-tight",
         "public": true,
         "category": "typography",
-        "cssRecipe": "-0.01em"
+        "cssRecipe": "-0.01em",
+        "usageContracts": [{ "property": "letter-spacing", "profile": "signed-length" }]
       }
     }
   },
@@ -808,7 +1138,8 @@
         "cssProperty": "--cinder-tracking-wide",
         "public": true,
         "category": "typography",
-        "cssRecipe": "0.02em"
+        "cssRecipe": "0.02em",
+        "usageContracts": [{ "property": "letter-spacing", "profile": "signed-length" }]
       }
     }
   },
@@ -821,7 +1152,8 @@
         "cssProperty": "--cinder-type-tab-size",
         "public": true,
         "category": "typography",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "tab-size", "profile": "tab-size" }]
       }
     }
   },
@@ -834,7 +1166,21 @@
         "cssProperty": "--cinder-touch-target-min",
         "public": true,
         "category": "size",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "block-size", "profile": "nonnegative-length" },
+          { "property": "height", "profile": "nonnegative-length" },
+          { "property": "inline-size", "profile": "nonnegative-length" },
+          { "property": "inset-block-start", "profile": "signed-length" },
+          { "property": "margin-block-end", "profile": "signed-length" },
+          { "property": "min-block-size", "profile": "nonnegative-length" },
+          { "property": "min-height", "profile": "nonnegative-length" },
+          { "property": "min-inline-size", "profile": "nonnegative-length" },
+          { "property": "min-width", "profile": "nonnegative-length" },
+          { "property": "right", "profile": "signed-length" },
+          { "property": "top", "profile": "signed-length" },
+          { "property": "width", "profile": "nonnegative-length" }
+        ]
       }
     }
   },
@@ -846,7 +1192,8 @@
         "cssProperty": "--cinder-content-width",
         "public": true,
         "category": "size",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "max-inline-size", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -859,7 +1206,8 @@
         "cssProperty": "--cinder-content-width-narrow",
         "public": true,
         "category": "size",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "max-inline-size", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -872,7 +1220,12 @@
         "cssProperty": "--cinder-content-width-wide",
         "public": true,
         "category": "size",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "inline-size", "profile": "nonnegative-length" },
+          { "property": "margin-inline", "profile": "signed-length" },
+          { "property": "max-inline-size", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -886,7 +1239,8 @@
         "cssProperty": "--cinder-content-width-prose",
         "public": true,
         "category": "layout",
-        "cssRecipe": "65ch"
+        "cssRecipe": "65ch",
+        "usageContracts": [{ "property": "max-inline-size", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -898,7 +1252,11 @@
         "cssProperty": "--cinder-ease-standard",
         "public": true,
         "category": "motion",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "animation", "profile": "easing" },
+          { "property": "transition", "profile": "easing" }
+        ]
       }
     },
     "$type": "cubicBezier"
@@ -911,7 +1269,8 @@
         "cssProperty": "--cinder-ease-decelerate",
         "public": true,
         "category": "motion",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "animation", "profile": "easing" }]
       }
     },
     "$type": "cubicBezier"
@@ -924,7 +1283,8 @@
         "cssProperty": "--cinder-ease-accelerate",
         "public": true,
         "category": "motion",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "transition-timing-function", "profile": "easing" }]
       }
     },
     "$type": "cubicBezier"
@@ -937,7 +1297,8 @@
         "cssProperty": "--cinder-ease-in-out",
         "public": true,
         "category": "motion",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "transition", "profile": "easing" }]
       }
     },
     "$type": "cubicBezier"
@@ -950,7 +1311,8 @@
         "cssProperty": "--cinder-ease-spring",
         "public": true,
         "category": "motion",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "transition", "profile": "easing" }]
       }
     },
     "$type": "cubicBezier"
@@ -963,7 +1325,8 @@
         "cssProperty": "--cinder-duration-instant",
         "public": true,
         "category": "motion",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "transition-duration", "profile": "duration" }]
       }
     },
     "$type": "duration"
@@ -976,7 +1339,11 @@
         "cssProperty": "--cinder-duration-fast",
         "public": true,
         "category": "motion",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "animation", "profile": "duration" },
+          { "property": "transition", "profile": "duration" }
+        ]
       }
     },
     "$type": "duration"
@@ -989,7 +1356,8 @@
         "cssProperty": "--cinder-duration-normal",
         "public": true,
         "category": "motion",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "transition", "profile": "duration" }]
       }
     },
     "$type": "duration"
@@ -1002,7 +1370,8 @@
         "cssProperty": "--cinder-duration-moderate",
         "public": true,
         "category": "motion",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "transition", "profile": "duration" }]
       }
     },
     "$type": "duration"
@@ -1015,7 +1384,8 @@
         "cssProperty": "--cinder-duration-slow",
         "public": true,
         "category": "motion",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "transition-duration", "profile": "duration" }]
       }
     },
     "$type": "duration"
@@ -1028,7 +1398,8 @@
         "cssProperty": "--cinder-duration-spin",
         "public": true,
         "category": "motion",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "animation", "profile": "duration" }]
       }
     },
     "$type": "duration"
@@ -1041,7 +1412,8 @@
         "cssProperty": "--cinder-duration-pulse",
         "public": true,
         "category": "motion",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "animation", "profile": "duration" }]
       }
     },
     "$type": "duration"
@@ -1054,7 +1426,8 @@
         "cssProperty": "--cinder-duration-progress-bar-indeterminate",
         "public": true,
         "category": "motion",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "animation", "profile": "duration" }]
       }
     },
     "$type": "duration"
@@ -1067,7 +1440,8 @@
         "cssProperty": "--cinder-duration-progress-ring-spin",
         "public": true,
         "category": "motion",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "animation", "profile": "duration" }]
       }
     },
     "$type": "duration"
@@ -1081,7 +1455,11 @@
         "cssProperty": "--cinder-duration-base",
         "public": true,
         "category": "motion",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "animation", "profile": "duration" },
+          { "property": "transition", "profile": "duration" }
+        ]
       }
     }
   },
@@ -1093,7 +1471,8 @@
         "cssProperty": "--cinder-opacity-disabled",
         "public": true,
         "category": "opacity",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "opacity", "profile": "opacity" }]
       }
     },
     "$type": "number"
@@ -1106,7 +1485,8 @@
         "cssProperty": "--cinder-opacity-muted",
         "public": true,
         "category": "opacity",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "opacity", "profile": "opacity" }]
       }
     },
     "$type": "number"
@@ -1119,7 +1499,8 @@
         "cssProperty": "--cinder-opacity-faint",
         "public": true,
         "category": "opacity",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "opacity", "profile": "opacity" }]
       }
     },
     "$type": "number"
@@ -1132,7 +1513,8 @@
         "cssProperty": "--cinder-z-tooltip",
         "public": true,
         "category": "z-index",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "z-index", "profile": "layer-index" }]
       }
     },
     "$type": "number"
@@ -1145,7 +1527,8 @@
         "cssProperty": "--cinder-z-dropdown",
         "public": true,
         "category": "z-index",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "z-index", "profile": "layer-index" }]
       }
     },
     "$type": "number"
@@ -1158,7 +1541,8 @@
         "cssProperty": "--cinder-z-popover",
         "public": true,
         "category": "z-index",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "z-index", "profile": "layer-index" }]
       }
     },
     "$type": "number"
@@ -1171,7 +1555,8 @@
         "cssProperty": "--cinder-z-backdrop",
         "public": true,
         "category": "z-index",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "z-index", "profile": "layer-index" }]
       }
     },
     "$type": "number"
@@ -1184,7 +1569,8 @@
         "cssProperty": "--cinder-z-modal",
         "public": true,
         "category": "z-index",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "z-index", "profile": "layer-index" }]
       }
     },
     "$type": "number"
@@ -1197,7 +1583,8 @@
         "cssProperty": "--cinder-z-toast",
         "public": true,
         "category": "z-index",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "z-index", "profile": "layer-index" }]
       }
     },
     "$type": "number"
@@ -1210,7 +1597,8 @@
         "cssProperty": "--cinder-z-focused-affordance",
         "public": true,
         "category": "z-index",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "z-index", "profile": "layer-index" }]
       }
     },
     "$type": "number"
@@ -1223,7 +1611,8 @@
         "cssProperty": "--cinder-z-drag-preview",
         "public": true,
         "category": "z-index",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "z-index", "profile": "layer-index" }]
       }
     },
     "$type": "number"
@@ -1236,7 +1625,13 @@
         "cssProperty": "--cinder-surface",
         "public": true,
         "category": "color",
-        "contrastPairs": ["text.default"]
+        "contrastPairs": ["text.default"],
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
+          { "property": "box-shadow", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1249,7 +1644,17 @@
         "cssProperty": "--cinder-surface-raised",
         "public": true,
         "category": "color",
-        "contrastPairs": ["text.default"]
+        "contrastPairs": ["text.default"],
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
+          { "property": "border-bottom", "profile": "color" },
+          { "property": "border-left", "profile": "color" },
+          { "property": "border-right", "profile": "color" },
+          { "property": "border-top", "profile": "color" },
+          { "property": "box-shadow", "profile": "color" },
+          { "property": "stroke", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1259,9 +1664,11 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 2.5%)",
+        "recipeInputs": ["surface.raised"],
         "cssProperty": "--cinder-surface-raised-hover",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     },
     "$description": "Hover state of the raised surface. Light mode washes toward the accent; dark mode mixes toward white.",
@@ -1272,9 +1679,11 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 6%)",
+        "recipeInputs": ["surface.raised"],
         "cssProperty": "--cinder-surface-raised-pressed",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     },
     "$description": "Pressed state of the raised surface. Light mode washes toward the accent; dark mode mixes toward white.",
@@ -1287,7 +1696,13 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-surface-inset",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
+          { "property": "fill", "profile": "color" },
+          { "property": "stroke", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1297,9 +1712,14 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 2.5%)",
+        "recipeInputs": ["surface.base"],
         "cssProperty": "--cinder-surface-hover",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     },
     "$description": "Hover state of the default surface. Light mode washes toward the accent rather than darkening toward black: once the light ramp is anchored at white, its four resting tiers occupy only 0.040 lightness points, so a proportional lightness-only mix would be wider than the whole ramp it has to stay clear of. A light-mode hover that washes toward the brand accent separates by chroma and hue as well, staying legible at a lightness step small enough to fit the ramp.",
@@ -1310,9 +1730,11 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 6%)",
+        "recipeInputs": ["surface.base"],
         "cssProperty": "--cinder-surface-pressed",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     },
     "$description": "Pressed state of the default surface. Same accent-wash rationale as `surface.hover`, at a stronger mix percentage.",
@@ -1325,7 +1747,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-surface-inverse",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     },
     "$type": "color"
@@ -1337,7 +1760,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-surface-upcoming-marker",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     },
     "$type": "color"
@@ -1350,7 +1774,11 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-surface-canvas",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     }
   },
@@ -1361,7 +1789,12 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-polarity-ink",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "color", "profile": "color" },
+          { "property": "scrollbar-color", "profile": "color" },
+          { "property": "background", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1373,7 +1806,26 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-border-ink",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "border-color", "profile": "color" },
+          { "property": "border-bottom", "profile": "color" },
+          { "property": "border-inline-start", "profile": "color" },
+          { "property": "border", "profile": "color" },
+          { "property": "border-block-start", "profile": "color" },
+          { "property": "border-top", "profile": "color" },
+          { "property": "background", "profile": "color" },
+          { "property": "border-block-end", "profile": "color" },
+          { "property": "border-block", "profile": "color" },
+          { "property": "background-image", "profile": "color" },
+          { "property": "border-inline-end", "profile": "color" },
+          { "property": "box-shadow", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
+          { "property": "border-right", "profile": "color" },
+          { "property": "border-left", "profile": "color" },
+          { "property": "color", "profile": "color" },
+          { "property": "outline", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1383,10 +1835,29 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 52%)",
+        "recipeInputs": ["border.ink"],
         "cssProperty": "--cinder-border",
         "public": true,
         "category": "color",
-        "contrastPairs": ["surface.base", "surface.raised"]
+        "contrastPairs": ["surface.base", "surface.raised"],
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
+          { "property": "background-image", "profile": "color" },
+          { "property": "border", "profile": "color" },
+          { "property": "border-block", "profile": "color" },
+          { "property": "border-block-end", "profile": "color" },
+          { "property": "border-block-start", "profile": "color" },
+          { "property": "border-bottom", "profile": "color" },
+          { "property": "border-color", "profile": "color" },
+          { "property": "border-inline-end", "profile": "color" },
+          { "property": "border-inline-start", "profile": "color" },
+          { "property": "border-left", "profile": "color" },
+          { "property": "border-right", "profile": "color" },
+          { "property": "border-top", "profile": "color" },
+          { "property": "outline", "profile": "color" },
+          { "property": "box-shadow", "profile": "color" }
+        ]
       }
     },
     "$description": "Functional control boundary that clears WCAG 1.4.11's 3:1 floor against every supported surface. It is the border of the secondary Button, whose fill is `surface.raised` -- white in light mode, a raised dark surface in dark mode -- so in both themes it is the only thing making that control read as a control. Composed as a 48% alpha step over `border.ink` rather than authored per arm, so it can no longer drift out of step with the other two tiers.",
@@ -1399,7 +1870,14 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-border-faint",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "border", "profile": "color" },
+          { "property": "border-block-end", "profile": "color" },
+          { "property": "border-block-start", "profile": "color" },
+          { "property": "border-top", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1409,9 +1887,23 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 81%)",
+        "recipeInputs": ["border.ink"],
         "cssProperty": "--cinder-border-muted",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
+          { "property": "border", "profile": "color" },
+          { "property": "border-block-end", "profile": "color" },
+          { "property": "border-block-start", "profile": "color" },
+          { "property": "border-bottom", "profile": "color" },
+          { "property": "border-color", "profile": "color" },
+          { "property": "border-inline-end", "profile": "color" },
+          { "property": "border-inline-start", "profile": "color" },
+          { "property": "border-top", "profile": "color" },
+          { "property": "box-shadow", "profile": "color" }
+        ]
       }
     },
     "$description": "Decorative divider that wants less weight than `border.control`. Clears a separate 1.4:1 floor against its backdrop. Composed as a 19% alpha step over `border.ink`.",
@@ -1422,9 +1914,19 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 42%)",
+        "recipeInputs": ["border.ink"],
         "cssProperty": "--cinder-border-strong",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
+          { "property": "border", "profile": "color" },
+          { "property": "border-block-end", "profile": "color" },
+          { "property": "border-color", "profile": "color" },
+          { "property": "border-inline-start", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     },
     "$description": "Stronger control boundary. Clears WCAG 1.4.11's 3:1 floor against every supported surface, like `border.control`, with more weight. Composed as a 58% alpha step over `border.ink`.",
@@ -1437,7 +1939,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-border-inverse",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "border", "profile": "color" }]
       }
     },
     "$type": "color"
@@ -1449,7 +1952,13 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-text-muted",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "border", "profile": "color" },
+          { "property": "color", "profile": "color" },
+          { "property": "fill", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1461,7 +1970,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-text-subtle",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     },
     "$type": "color"
@@ -1473,7 +1983,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-text-disabled",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     },
     "$type": "color"
@@ -1485,7 +1996,11 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-text-inverse",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "color", "profile": "color" },
+          { "property": "fill", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1498,7 +2013,14 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-text-default",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "border-top-color", "profile": "color" },
+          { "property": "box-shadow", "profile": "color" },
+          { "property": "caret-color", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     }
   },
@@ -1509,7 +2031,11 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-fill-disabled",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background-color", "profile": "color" },
+          { "property": "border-color", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1521,7 +2047,11 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-accent-contrast",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "box-shadow", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1533,7 +2063,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-accent-text",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     },
     "$type": "color"
@@ -1543,9 +2074,11 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)",
+        "recipeInputs": ["accent.text"],
         "cssProperty": "--cinder-accent-text-hover",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     },
     "$description": "Hover step for text/icon links, derived as a darker step of `accent.text` (not the bright fill-derived `accent.solid.hover`, which is lighter than the resting text color and drops below WCAG AA on near-white).",
@@ -1558,7 +2091,24 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-accent-solid",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "accent-color", "profile": "color" },
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
+          { "property": "border", "profile": "color" },
+          { "property": "border-block-end-color", "profile": "color" },
+          { "property": "border-bottom", "profile": "color" },
+          { "property": "border-bottom-color", "profile": "color" },
+          { "property": "border-color", "profile": "color" },
+          { "property": "border-inline-start", "profile": "color" },
+          { "property": "border-inline-start-color", "profile": "color" },
+          { "property": "border-top-color", "profile": "color" },
+          { "property": "box-shadow", "profile": "color" },
+          { "property": "color", "profile": "color" },
+          { "property": "outline", "profile": "color" },
+          { "property": "stroke", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1568,9 +2118,11 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h)",
+        "recipeInputs": ["accent.solid"],
         "cssProperty": "--cinder-accent-solid-active",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     },
     "$description": "Active/pressed step for solid accent fills, derived as a darker step of `accent.solid` (l - 0.15, c and h held constant).",
@@ -1582,9 +2134,11 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "oklch(from var(--cinder-accent-solid) calc(l - 0.11) c h)",
+        "recipeInputs": ["accent.solid"],
         "cssProperty": "--cinder-accent-solid-active-on-fill",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     },
     "$description": "Pressed fill for solid accent surfaces that carry the `accent.contrast` label (primary Button, FloatingAction). Kept distinct from `accent.solid.active` so label-bearing and non-label consumers can diverge if ever needed."
@@ -1595,9 +2149,15 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h)",
+        "recipeInputs": ["accent.solid"],
         "cssProperty": "--cinder-accent-solid-hover",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
+          { "property": "border-color", "profile": "color" }
+        ]
       }
     },
     "$description": "Hover step for solid accent fills, derived as a darker step of `accent.solid` (l - 0.08, c and h held constant)."
@@ -1608,9 +2168,11 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "color-mix(in oklch, var(--cinder-accent-solid), var(--cinder-surface) 88%)",
+        "recipeInputs": ["accent.solid", "surface.base"],
         "cssProperty": "--cinder-accent-background",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     },
     "$description": "Soft accent-tinted background, mixed 88% toward the current surface."
@@ -1621,9 +2183,11 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "color-mix(in oklch, var(--cinder-accent-solid), transparent 60%)",
+        "recipeInputs": ["accent.solid"],
         "cssProperty": "--cinder-accent-border",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "border-color", "profile": "color" }]
       }
     },
     "$description": "Soft accent-tinted border, the accent color mixed 60% toward transparent."
@@ -1637,7 +2201,15 @@
         "cssProperty": "--cinder-ring-width",
         "public": true,
         "category": "size",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "box-shadow", "profile": "nonnegative-length" },
+          { "property": "margin-block", "profile": "signed-length" },
+          { "property": "outline", "profile": "nonnegative-length" },
+          { "property": "outline-offset", "profile": "signed-length" },
+          { "property": "padding-block", "profile": "nonnegative-length" },
+          { "property": "stroke-width", "profile": "nonnegative-length" }
+        ]
       }
     }
   },
@@ -1650,7 +2222,14 @@
         "cssProperty": "--cinder-ring-offset",
         "public": true,
         "category": "size",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "box-shadow", "profile": "signed-length" },
+          { "property": "margin-block", "profile": "signed-length" },
+          { "property": "outline-offset", "profile": "signed-length" },
+          { "property": "padding-block", "profile": "nonnegative-length" },
+          { "property": "stroke-width", "profile": "nonnegative-length" }
+        ]
       }
     }
   },
@@ -1662,7 +2241,11 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-ring-offset-color",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "box-shadow", "profile": "color" },
+          { "property": "stroke", "profile": "color" }
+        ]
       }
     }
   },
@@ -1672,9 +2255,16 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "oklch(from var(--cinder-accent-solid) 0.7 0.14 h)",
+        "recipeInputs": ["accent.solid"],
         "cssProperty": "--cinder-ring-color",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "border-color", "profile": "color" },
+          { "property": "box-shadow", "profile": "color" },
+          { "property": "outline", "profile": "color" },
+          { "property": "stroke", "profile": "color" }
+        ]
       }
     },
     "$description": "Focus ring color, relative to `accent.solid` so a consumer override re-derives the ring hue. Light arm clamps L to 0.55 for 3.56:1 against the widened ramp's darkest surface; `h` tracks the accent hue."
@@ -1687,7 +2277,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-ring-on-accent",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "box-shadow", "profile": "color" }]
       }
     }
   },
@@ -1700,7 +2291,11 @@
         "cssProperty": "--cinder-scrollbar-size",
         "public": true,
         "category": "size",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "block-size", "profile": "nonnegative-length" },
+          { "property": "inline-size", "profile": "nonnegative-length" }
+        ]
       }
     }
   },
@@ -1710,9 +2305,14 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 96%)",
+        "recipeInputs": ["polarity.ink"],
         "cssProperty": "--cinder-scrollbar-track",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "scrollbar-color", "profile": "color" }
+        ]
       }
     },
     "$description": "Scrollbar track color."
@@ -1723,9 +2323,14 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 55%)",
+        "recipeInputs": ["polarity.ink"],
         "cssProperty": "--cinder-scrollbar-thumb",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "scrollbar-color", "profile": "color" }
+        ]
       }
     },
     "$description": "Scrollbar thumb color."
@@ -1736,9 +2341,11 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 35%)",
+        "recipeInputs": ["polarity.ink"],
         "cssProperty": "--cinder-scrollbar-thumb-hover",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     },
     "$description": "Scrollbar thumb hover color."
@@ -1751,7 +2358,11 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-overlay-backdrop",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     }
   },
@@ -1764,7 +2375,8 @@
         "cssProperty": "--cinder-overlay-blur",
         "public": true,
         "category": "size",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "backdrop-filter", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -1777,7 +2389,8 @@
         "cssProperty": "--cinder-overlay-padding",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -1790,7 +2403,8 @@
         "cssProperty": "--cinder-overlay-radius",
         "public": true,
         "category": "radius",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "border-radius", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -1801,7 +2415,14 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-chart-series-1",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
+          { "property": "fill", "profile": "color" },
+          { "property": "stop-color", "profile": "color" },
+          { "property": "stroke", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1813,7 +2434,14 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-chart-series-2",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
+          { "property": "fill", "profile": "color" },
+          { "property": "stop-color", "profile": "color" },
+          { "property": "stroke", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1825,7 +2453,14 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-chart-series-3",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
+          { "property": "fill", "profile": "color" },
+          { "property": "stop-color", "profile": "color" },
+          { "property": "stroke", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1837,7 +2472,14 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-chart-series-4",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
+          { "property": "fill", "profile": "color" },
+          { "property": "stop-color", "profile": "color" },
+          { "property": "stroke", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1849,7 +2491,14 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-chart-series-5",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
+          { "property": "fill", "profile": "color" },
+          { "property": "stop-color", "profile": "color" },
+          { "property": "stroke", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1861,7 +2510,14 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-chart-series-6",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
+          { "property": "fill", "profile": "color" },
+          { "property": "stop-color", "profile": "color" },
+          { "property": "stroke", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1873,7 +2529,14 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-chart-series-7",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
+          { "property": "fill", "profile": "color" },
+          { "property": "stop-color", "profile": "color" },
+          { "property": "stroke", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1885,7 +2548,14 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-chart-series-8",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" },
+          { "property": "fill", "profile": "color" },
+          { "property": "stop-color", "profile": "color" },
+          { "property": "stroke", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1898,7 +2568,8 @@
         "cssProperty": "--cinder-gap-stack",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "gap", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -1911,7 +2582,8 @@
         "cssProperty": "--cinder-gap-inline",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "gap", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -1924,7 +2596,8 @@
         "cssProperty": "--cinder-pad-control",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -1937,7 +2610,8 @@
         "cssProperty": "--cinder-pad-card",
         "public": true,
         "category": "spacing",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -1950,7 +2624,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-success-contrast",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -1961,7 +2636,14 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-success-solid",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "border-color", "profile": "color" },
+          { "property": "color", "profile": "color" },
+          { "property": "text-decoration-color", "profile": "color" },
+          { "property": "box-shadow", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -1974,7 +2656,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-success-solid-active",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     }
   },
@@ -1986,7 +2669,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-success-solid-hover",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     }
   },
@@ -1998,7 +2682,11 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-success-background",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     }
   },
@@ -2010,7 +2698,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-success-text",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2022,7 +2711,12 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-success-border",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "border-color", "profile": "color" },
+          { "property": "box-shadow", "profile": "color" }
+        ]
       }
     }
   },
@@ -2032,9 +2726,11 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-text-default) 36%) l min(c, 0.05) h )",
+        "recipeInputs": ["status.success.solid", "text.default"],
         "cssProperty": "--cinder-status-success-subtle",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     },
     "$description": "Success color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors."
@@ -2045,9 +2741,11 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-surface) 36%) l min(c, 0.05) h )",
+        "recipeInputs": ["status.success.solid", "surface.base"],
         "cssProperty": "--cinder-status-success-muted",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background-color", "profile": "color" }]
       }
     },
     "$description": "Success color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors."
@@ -2060,7 +2758,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-warning-contrast",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2071,7 +2770,15 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-warning-solid",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "border-color", "profile": "color" },
+          { "property": "border-inline-start", "profile": "color" },
+          { "property": "color", "profile": "color" },
+          { "property": "text-decoration", "profile": "color" },
+          { "property": "box-shadow", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -2084,7 +2791,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-warning-solid-active",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     }
   },
@@ -2096,7 +2804,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-warning-solid-hover",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     }
   },
@@ -2108,7 +2817,11 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-warning-background",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     }
   },
@@ -2120,7 +2833,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-warning-text",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2132,7 +2846,11 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-warning-border",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "border-bottom", "profile": "color" },
+          { "property": "border-color", "profile": "color" }
+        ]
       }
     }
   },
@@ -2142,9 +2860,11 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-text-default) 36%) l min(c, 0.05) h )",
+        "recipeInputs": ["status.warning.solid", "text.default"],
         "cssProperty": "--cinder-status-warning-subtle",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     },
     "$description": "Warning color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors."
@@ -2155,9 +2875,11 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-surface) 36%) l min(c, 0.05) h )",
+        "recipeInputs": ["status.warning.solid", "surface.base"],
         "cssProperty": "--cinder-status-warning-muted",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background-color", "profile": "color" }]
       }
     },
     "$description": "Warning color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors."
@@ -2170,7 +2892,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-danger-contrast",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2181,7 +2904,16 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-danger-solid",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "border", "profile": "color" },
+          { "property": "border-color", "profile": "color" },
+          { "property": "border-inline-start-color", "profile": "color" },
+          { "property": "box-shadow", "profile": "color" },
+          { "property": "color", "profile": "color" },
+          { "property": "text-decoration", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -2194,7 +2926,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-danger-solid-active",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     }
   },
@@ -2206,7 +2939,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-danger-solid-hover",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     }
   },
@@ -2218,7 +2952,11 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-danger-background",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "background-color", "profile": "color" }
+        ]
       }
     }
   },
@@ -2230,7 +2968,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-danger-text",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2242,7 +2981,16 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-danger-border",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "border", "profile": "color" },
+          { "property": "border-bottom-color", "profile": "color" },
+          { "property": "border-color", "profile": "color" },
+          { "property": "border-inline-start", "profile": "color" },
+          { "property": "border-top-color", "profile": "color" },
+          { "property": "box-shadow", "profile": "color" }
+        ]
       }
     }
   },
@@ -2252,9 +3000,11 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-text-default) 36%) l min(c, 0.05) h )",
+        "recipeInputs": ["status.danger.solid", "text.default"],
         "cssProperty": "--cinder-status-danger-subtle",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     },
     "$description": "Danger color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors."
@@ -2265,9 +3015,11 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-surface) 36%) l min(c, 0.05) h )",
+        "recipeInputs": ["status.danger.solid", "surface.base"],
         "cssProperty": "--cinder-status-danger-muted",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background-color", "profile": "color" }]
       }
     },
     "$description": "Danger color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors."
@@ -2280,7 +3032,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-info-contrast",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2291,7 +3044,13 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-info-solid",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "border-color", "profile": "color" },
+          { "property": "color", "profile": "color" },
+          { "property": "box-shadow", "profile": "color" }
+        ]
       }
     },
     "$type": "color"
@@ -2304,7 +3063,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-info-solid-active",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     }
   },
@@ -2316,7 +3076,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-info-solid-hover",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     }
   },
@@ -2328,7 +3089,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-info-background",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     }
   },
@@ -2340,7 +3102,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-info-text",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2352,7 +3115,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-info-border",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "border-color", "profile": "color" }]
       }
     }
   },
@@ -2362,9 +3126,11 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-text-default) 36%) l min(c, 0.05) h )",
+        "recipeInputs": ["status.info.solid", "text.default"],
         "cssProperty": "--cinder-status-info-subtle",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     },
     "$description": "Info color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors."
@@ -2375,9 +3141,11 @@
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-surface) 36%) l min(c, 0.05) h )",
+        "recipeInputs": ["status.info.solid", "surface.base"],
         "cssProperty": "--cinder-status-info-muted",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background-color", "profile": "color" }]
       }
     },
     "$description": "Info color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors."
@@ -2390,7 +3158,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-neutral-background",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     }
   },
@@ -2402,7 +3171,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-neutral-text",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2414,7 +3184,11 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-status-neutral-border",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "border-block", "profile": "color" },
+          { "property": "border-color", "profile": "color" }
+        ]
       }
     }
   },
@@ -2426,7 +3200,11 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-severity-critical",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [
+          { "property": "border-color", "profile": "color" },
+          { "property": "color", "profile": "color" }
+        ]
       }
     }
   },
@@ -2438,7 +3216,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-severity-critical-background",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     }
   },
@@ -2449,7 +3228,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-black",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2460,7 +3240,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-red",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2471,7 +3252,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-green",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2482,7 +3264,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-yellow",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2493,7 +3276,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-blue",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2504,7 +3288,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-magenta",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2515,7 +3300,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-cyan",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2526,7 +3312,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-white",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2537,7 +3324,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-bright-black",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2548,7 +3336,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-bright-red",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2559,7 +3348,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-bright-green",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2570,7 +3360,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-bright-yellow",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2581,7 +3372,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-bright-blue",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2592,7 +3384,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-bright-magenta",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2603,7 +3396,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-bright-cyan",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2614,7 +3408,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-bright-white",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2626,7 +3421,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-checker-base",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background-color", "profile": "color" }]
       }
     }
   },
@@ -2638,7 +3434,8 @@
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-checker-tile",
         "public": true,
-        "category": "color"
+        "category": "color",
+        "usageContracts": [{ "property": "background-image", "profile": "color" }]
       }
     }
   },
@@ -2651,7 +3448,8 @@
         "cssProperty": "--cinder-button-background",
         "public": true,
         "category": "color",
-        "component": "button"
+        "component": "button",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     }
   },
@@ -2664,7 +3462,8 @@
         "cssProperty": "--cinder-button-foreground",
         "public": true,
         "category": "color",
-        "component": "button"
+        "component": "button",
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -2677,7 +3476,11 @@
         "cssProperty": "--cinder-button-border",
         "public": true,
         "category": "color",
-        "component": "button"
+        "component": "button",
+        "usageContracts": [
+          { "property": "border", "profile": "color" },
+          { "property": "border-color", "profile": "color" }
+        ]
       }
     }
   },
@@ -2690,7 +3493,8 @@
         "public": true,
         "category": "radius",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "border-radius", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -2704,7 +3508,8 @@
         "public": true,
         "category": "radius",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "border-radius", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -2718,7 +3523,8 @@
         "public": true,
         "category": "radius",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "border-radius", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -2732,7 +3538,8 @@
         "public": true,
         "category": "radius",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "border-radius", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -2746,7 +3553,8 @@
         "public": true,
         "category": "radius",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "border-radius", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -2760,7 +3568,8 @@
         "public": true,
         "category": "radius",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "border-radius", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -2774,7 +3583,11 @@
         "public": true,
         "category": "size",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "min-height", "profile": "nonnegative-length" },
+          { "property": "min-width", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -2788,7 +3601,11 @@
         "public": true,
         "category": "size",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "min-height", "profile": "nonnegative-length" },
+          { "property": "min-width", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -2802,7 +3619,12 @@
         "public": true,
         "category": "size",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "min-block-size", "profile": "nonnegative-length" },
+          { "property": "min-height", "profile": "nonnegative-length" },
+          { "property": "min-width", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -2816,7 +3638,11 @@
         "public": true,
         "category": "size",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "min-height", "profile": "nonnegative-length" },
+          { "property": "min-width", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -2830,7 +3656,11 @@
         "public": true,
         "category": "size",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "min-height", "profile": "nonnegative-length" },
+          { "property": "min-width", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -2844,7 +3674,8 @@
         "public": true,
         "category": "spacing",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -2858,7 +3689,8 @@
         "public": true,
         "category": "spacing",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -2872,7 +3704,11 @@
         "public": true,
         "category": "spacing",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "padding", "profile": "nonnegative-length" },
+          { "property": "padding-inline", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -2886,7 +3722,8 @@
         "public": true,
         "category": "spacing",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -2900,7 +3737,8 @@
         "public": true,
         "category": "spacing",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -2914,7 +3752,8 @@
         "public": true,
         "category": "spacing",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -2928,7 +3767,8 @@
         "public": true,
         "category": "spacing",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -2942,7 +3782,11 @@
         "public": true,
         "category": "spacing",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "padding", "profile": "nonnegative-length" },
+          { "property": "padding-block", "profile": "nonnegative-length" }
+        ]
       }
     },
     "$type": "dimension"
@@ -2956,7 +3800,8 @@
         "public": true,
         "category": "spacing",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -2970,7 +3815,8 @@
         "public": true,
         "category": "spacing",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     },
     "$type": "dimension"
@@ -2984,7 +3830,8 @@
         "public": true,
         "category": "typography",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     },
     "$type": "dimension"
@@ -2998,7 +3845,8 @@
         "public": true,
         "category": "typography",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     },
     "$type": "dimension"
@@ -3012,7 +3860,8 @@
         "public": true,
         "category": "typography",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     },
     "$type": "dimension"
@@ -3026,7 +3875,8 @@
         "public": true,
         "category": "typography",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     },
     "$type": "dimension"
@@ -3040,7 +3890,8 @@
         "public": true,
         "category": "typography",
         "component": "button",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     },
     "$type": "dimension"
@@ -3053,7 +3904,8 @@
         "cssProperty": "--cinder-toggle-track-off-resting",
         "public": true,
         "category": "color",
-        "component": "toggle"
+        "component": "toggle",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     },
     "$type": "color"
@@ -3066,7 +3918,8 @@
         "cssProperty": "--cinder-toggle-track-off-hover-resting",
         "public": true,
         "category": "color",
-        "component": "toggle"
+        "component": "toggle",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     },
     "$type": "color"
@@ -3081,7 +3934,8 @@
         "public": true,
         "category": "spacing",
         "component": "accordion-item",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "gap", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3095,7 +3949,8 @@
         "public": true,
         "category": "spacing",
         "component": "accordion-item",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3109,7 +3964,8 @@
         "public": true,
         "category": "spacing",
         "component": "accordion-item",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3123,7 +3979,8 @@
         "public": true,
         "category": "typography",
         "component": "accordion-item",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     }
   },
@@ -3137,7 +3994,8 @@
         "public": true,
         "category": "typography",
         "component": "accordion-item",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-weight", "profile": "font-weight" }]
       }
     }
   },
@@ -3151,7 +4009,8 @@
         "public": true,
         "category": "spacing",
         "component": "accordion-item",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3165,7 +4024,8 @@
         "public": true,
         "category": "spacing",
         "component": "accordion-item",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3179,7 +4039,8 @@
         "public": true,
         "category": "spacing",
         "component": "accordion-item",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3193,7 +4054,8 @@
         "public": true,
         "category": "typography",
         "component": "accordion-item",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     }
   },
@@ -3207,7 +4069,8 @@
         "public": true,
         "category": "typography",
         "component": "accordion-item",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "line-height", "profile": "line-height" }]
       }
     }
   },
@@ -3221,7 +4084,8 @@
         "public": true,
         "category": "spacing",
         "component": "action-row",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3235,7 +4099,8 @@
         "public": true,
         "category": "spacing",
         "component": "action-row",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3249,7 +4114,8 @@
         "public": true,
         "category": "spacing",
         "component": "action-row",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "column-gap", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3263,7 +4129,8 @@
         "public": true,
         "category": "spacing",
         "component": "action-row",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "row-gap", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3277,7 +4144,8 @@
         "public": true,
         "category": "spacing",
         "component": "action-row",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "gap", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3291,7 +4159,8 @@
         "public": true,
         "category": "typography",
         "component": "action-row",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     }
   },
@@ -3305,7 +4174,8 @@
         "public": true,
         "category": "typography",
         "component": "action-row",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     }
   },
@@ -3319,7 +4189,8 @@
         "public": true,
         "category": "typography",
         "component": "action-row",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     }
   },
@@ -3333,7 +4204,8 @@
         "public": true,
         "category": "spacing",
         "component": "action-row",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "gap", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3346,7 +4218,8 @@
         "cssProperty": "--cinder-alert-info",
         "public": true,
         "category": "color",
-        "component": "alert"
+        "component": "alert",
+        "usageContracts": [{ "property": "box-shadow", "profile": "color" }]
       }
     }
   },
@@ -3360,7 +4233,8 @@
         "public": true,
         "category": "spacing",
         "component": "avatar-group",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "margin-inline-start", "profile": "signed-length" }]
       }
     }
   },
@@ -3374,7 +4248,11 @@
         "public": true,
         "category": "spacing",
         "component": "card",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "inline-size", "profile": "nonnegative-length" },
+          { "property": "margin-inline", "profile": "signed-length" }
+        ]
       }
     }
   },
@@ -3388,7 +4266,8 @@
         "public": true,
         "category": "spacing",
         "component": "carousel",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "gap", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3402,7 +4281,11 @@
         "public": true,
         "category": "size",
         "component": "carousel",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "height", "profile": "nonnegative-length" },
+          { "property": "width", "profile": "nonnegative-length" }
+        ]
       }
     }
   },
@@ -3415,7 +4298,8 @@
         "cssProperty": "--cinder-code-block-background",
         "public": true,
         "category": "color",
-        "component": "code-block"
+        "component": "code-block",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     }
   },
@@ -3429,7 +4313,8 @@
         "public": true,
         "category": "typography",
         "component": "code-block",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     }
   },
@@ -3443,7 +4328,8 @@
         "public": true,
         "category": "typography",
         "component": "code-block",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "line-height", "profile": "line-height" }]
       }
     }
   },
@@ -3457,7 +4343,8 @@
         "public": true,
         "category": "spacing",
         "component": "code-block",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3471,7 +4358,8 @@
         "public": true,
         "category": "size",
         "component": "data-table",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "block-size", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3485,7 +4373,13 @@
         "public": true,
         "category": "size",
         "component": "feed-event",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "block-size", "profile": "nonnegative-length" },
+          { "property": "inline-size", "profile": "nonnegative-length" },
+          { "property": "inset-block-start", "profile": "signed-length" },
+          { "property": "inset-inline-start", "profile": "signed-length" }
+        ]
       }
     }
   },
@@ -3499,7 +4393,8 @@
         "public": true,
         "category": "color",
         "component": "file-upload",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     }
   },
@@ -3513,7 +4408,8 @@
         "public": true,
         "category": "color",
         "component": "file-upload",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "border", "profile": "color" }]
       }
     }
   },
@@ -3527,7 +4423,8 @@
         "public": true,
         "category": "color",
         "component": "file-upload",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     }
   },
@@ -3541,7 +4438,8 @@
         "public": true,
         "category": "color",
         "component": "file-upload",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     }
   },
@@ -3555,7 +4453,8 @@
         "public": true,
         "category": "size",
         "component": "kanban-board",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "grid-auto-columns", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3569,7 +4468,8 @@
         "public": true,
         "category": "spacing",
         "component": "kanban-board",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "gap", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3583,7 +4483,8 @@
         "public": true,
         "category": "color",
         "component": "kanban-board",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     }
   },
@@ -3597,7 +4498,8 @@
         "public": true,
         "category": "color",
         "component": "kanban-board",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     }
   },
@@ -3610,7 +4512,8 @@
         "cssProperty": "--cinder-kanban-board-scroll-edge",
         "public": true,
         "category": "color",
-        "component": "kanban-board"
+        "component": "kanban-board",
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     }
   },
@@ -3624,7 +4527,8 @@
         "public": true,
         "category": "motion",
         "component": "marquee",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "animation", "profile": "duration" }]
       }
     }
   },
@@ -3638,7 +4542,11 @@
         "public": true,
         "category": "spacing",
         "component": "marquee",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "gap", "profile": "nonnegative-length" },
+          { "property": "transform", "profile": "signed-length" }
+        ]
       }
     }
   },
@@ -3652,7 +4560,8 @@
         "public": true,
         "category": "color",
         "component": "modal",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "background-color", "profile": "color" }]
       }
     }
   },
@@ -3666,7 +4575,8 @@
         "public": true,
         "category": "spacing",
         "component": "selectable-row",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3680,7 +4590,11 @@
         "public": true,
         "category": "spacing",
         "component": "selectable-row",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "padding", "profile": "nonnegative-length" },
+          { "property": "padding-inline-end", "profile": "nonnegative-length" }
+        ]
       }
     }
   },
@@ -3694,7 +4608,8 @@
         "public": true,
         "category": "spacing",
         "component": "selectable-row",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "gap", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3708,7 +4623,8 @@
         "public": true,
         "category": "spacing",
         "component": "selectable-row",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "gap", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3722,7 +4638,8 @@
         "public": true,
         "category": "spacing",
         "component": "selectable-row",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "gap", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3736,7 +4653,8 @@
         "public": true,
         "category": "spacing",
         "component": "selectable-row",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "gap", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3750,7 +4668,8 @@
         "public": true,
         "category": "spacing",
         "component": "side-navigation",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "gap", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3764,7 +4683,11 @@
         "public": true,
         "category": "size",
         "component": "spinner",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "height", "profile": "nonnegative-length" },
+          { "property": "width", "profile": "nonnegative-length" }
+        ]
       }
     }
   },
@@ -3778,7 +4701,8 @@
         "public": true,
         "category": "spacing",
         "component": "statistic",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "row-gap", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3792,7 +4716,8 @@
         "public": true,
         "category": "spacing",
         "component": "statistic",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "column-gap", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3806,7 +4731,8 @@
         "public": true,
         "category": "typography",
         "component": "statistic",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     }
   },
@@ -3820,7 +4746,8 @@
         "public": true,
         "category": "typography",
         "component": "statistic",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     }
   },
@@ -3834,7 +4761,8 @@
         "public": true,
         "category": "typography",
         "component": "statistic",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-weight", "profile": "font-weight" }]
       }
     }
   },
@@ -3848,7 +4776,8 @@
         "public": true,
         "category": "typography",
         "component": "statistic",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "line-height", "profile": "line-height" }]
       }
     }
   },
@@ -3862,7 +4791,8 @@
         "public": true,
         "category": "spacing",
         "component": "statistic",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "gap", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3876,7 +4806,8 @@
         "public": true,
         "category": "typography",
         "component": "statistic",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "font-size", "profile": "positive-font-size" }]
       }
     }
   },
@@ -3890,7 +4821,8 @@
         "public": true,
         "category": "spacing",
         "component": "statistic-group",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "gap", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3904,7 +4836,8 @@
         "public": true,
         "category": "spacing",
         "component": "statistic-group",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3918,7 +4851,8 @@
         "public": true,
         "category": "spacing",
         "component": "statistic-group",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "padding", "profile": "nonnegative-length" }]
       }
     }
   },
@@ -3932,7 +4866,8 @@
         "public": true,
         "category": "color",
         "component": "status-dot",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "background", "profile": "color" }]
       }
     }
   },
@@ -3946,7 +4881,11 @@
         "public": true,
         "category": "size",
         "component": "status-dot",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "block-size", "profile": "nonnegative-length" },
+          { "property": "inline-size", "profile": "nonnegative-length" }
+        ]
       }
     }
   },
@@ -3960,7 +4899,8 @@
         "public": true,
         "category": "color",
         "component": "table-of-contents",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -3974,7 +4914,8 @@
         "public": true,
         "category": "color",
         "component": "table-of-contents",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "color", "profile": "color" }]
       }
     }
   },
@@ -3988,7 +4929,8 @@
         "public": true,
         "category": "spacing",
         "component": "table-of-contents",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "margin-inline-start", "profile": "signed-length" }]
       }
     }
   },
@@ -4002,7 +4944,11 @@
         "public": true,
         "category": "color",
         "component": "tree",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "background", "profile": "color" },
+          { "property": "box-shadow", "profile": "color" }
+        ]
       }
     }
   },
@@ -4016,7 +4962,12 @@
         "public": true,
         "category": "size",
         "component": "tree",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "block-size", "profile": "nonnegative-length" },
+          { "property": "border-radius", "profile": "nonnegative-length" },
+          { "property": "box-shadow", "profile": "nonnegative-length" }
+        ]
       }
     }
   },
@@ -4030,7 +4981,8 @@
         "public": true,
         "category": "opacity",
         "component": "tree",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [{ "property": "opacity", "profile": "opacity" }]
       }
     }
   },
@@ -4044,7 +4996,11 @@
         "public": true,
         "category": "size",
         "component": "virtual-list",
-        "cssRecipe": null
+        "cssRecipe": null,
+        "usageContracts": [
+          { "property": "block-size", "profile": "nonnegative-length" },
+          { "property": "inline-size", "profile": "nonnegative-length" }
+        ]
       }
     }
   }
