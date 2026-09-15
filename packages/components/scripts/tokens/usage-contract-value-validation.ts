@@ -1,6 +1,43 @@
 import valueParser from 'postcss-value-parser';
 import type { UsageProfile } from './usage-contracts.ts';
 
+const CSS_LENGTH_UNITS = new Set([
+  '%',
+  'px',
+  'em',
+  'rem',
+  'ex',
+  'ch',
+  'cap',
+  'ic',
+  'lh',
+  'rlh',
+  'vw',
+  'vh',
+  'vi',
+  'vb',
+  'vmin',
+  'vmax',
+  'svw',
+  'svh',
+  'svi',
+  'svb',
+  'lvw',
+  'lvh',
+  'lvi',
+  'lvb',
+  'dvw',
+  'dvh',
+  'dvi',
+  'dvb',
+  'q',
+  'cm',
+  'mm',
+  'in',
+  'pt',
+  'pc',
+]);
+
 type KnownValue =
   | { kind: 'number'; value: number; unit: string | undefined }
   | { kind: 'keyword'; value: string }
@@ -33,6 +70,18 @@ function tokenLiteral(value: unknown): KnownValue {
   return undefined;
 }
 
+export function recipeIsLengthLiteral(recipe: string): boolean {
+  const nodes = valueParser(recipe).nodes.filter(
+    (node) => node.type !== 'space' && node.type !== 'comment',
+  );
+  const node = nodes[0];
+  if (nodes.length !== 1 || node?.type !== 'word') return false;
+  const parsed = valueParser.unit(node.value);
+  if (!parsed || !Number.isFinite(Number(parsed.number))) return false;
+  if (parsed.unit === '') return Number(parsed.number) === 0;
+  return CSS_LENGTH_UNITS.has(parsed.unit.toLowerCase());
+}
+
 /** Return the violated profile keyword, or null when the value is valid/unknown. */
 export function profileValueViolation(
   value: unknown,
@@ -53,6 +102,8 @@ export function profileValueViolation(
   }
 
   if (profile.finite === true && !Number.isFinite(known.value)) return 'finite';
+  if (recipe !== undefined && profile.valueKind === 'length' && !recipeIsLengthLiteral(recipe))
+    return 'units';
   // The profile units describe the resolved DTCG literal. Existing authored
   // CSS recipes intentionally project numeric source values into CSS units
   // such as em, ch, and %, so their grammar remains authoritative here.

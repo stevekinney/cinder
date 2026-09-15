@@ -1,6 +1,6 @@
 import valueParser from 'postcss-value-parser';
 import type { TokenType } from './types.ts';
-import { profileValueViolation } from './usage-contract-value-validation.ts';
+import { profileValueViolation, recipeIsLengthLiteral } from './usage-contract-value-validation.ts';
 
 export type UsageContract = { property: string; profile: string };
 export type UsageProfile = {
@@ -338,19 +338,6 @@ function matchesProfileType(token: UsageToken, profile: UsageProfile): boolean {
   return token.value === 0;
 }
 
-function recipeIsLengthLiteral(recipe: string): boolean {
-  const nodes = valueParser(recipe).nodes.filter(
-    (node) => node.type !== 'space' && node.type !== 'comment',
-  );
-  const node = nodes[0];
-  if (nodes.length !== 1 || node?.type !== 'word') return false;
-  const parsed = valueParser.unit(node.value);
-  if (!parsed || !Number.isFinite(Number(parsed.number))) return false;
-  if (parsed.unit === '') return Number(parsed.number) === 0;
-  return /^(%|px|em|rem|ex|ch|cap|ic|lh|rlh|vw|vh|vi|vb|vmin|vmax|svw|svh|svi|svb|lvw|lvh|lvi|lvb|dvw|dvh|dvi|dvb|q|cm|mm|in|pt|pc)$/.test(
-    parsed.unit.toLowerCase(),
-  );
-}
 export type TokenUsageMetadata = {
   usageContracts: UsageContract[];
   recipeInputs: string[];

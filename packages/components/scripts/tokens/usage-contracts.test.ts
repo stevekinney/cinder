@@ -264,6 +264,67 @@ describe('authoritative token usage contracts', () => {
     expect(validateUsageContracts([length(), dynamic]).size).toBe(2);
   });
 
+  test.each(['2', '2banana'])('rejects invalid length recipe units: %s', (cssRecipe) => {
+    expect(() =>
+      validateUsageContracts([
+        {
+          ...length(),
+          metadata: {
+            usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
+            cssRecipe,
+            recipeInputs: [],
+          },
+        },
+      ]),
+    ).toThrow('units');
+
+    expect(() =>
+      validateUsageContracts([
+        {
+          ...length(),
+          type: undefined,
+          value: undefined,
+          metadata: {
+            usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
+            cssRecipe,
+            recipeInputs: [],
+          },
+        },
+      ]),
+    ).toThrow('units');
+  });
+
+  test('accepts valid CSS length recipe units and applies recipe bounds', () => {
+    for (const cssRecipe of ['0', '2em', '2ch', '100%']) {
+      expect(
+        validateUsageContracts([
+          {
+            ...length(),
+            type: undefined,
+            value: undefined,
+            metadata: {
+              usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
+              cssRecipe,
+              recipeInputs: [],
+            },
+          },
+        ]).size,
+      ).toBe(1);
+    }
+    expect(() =>
+      validateUsageContracts([
+        {
+          ...length(),
+          metadata: {
+            usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
+            cssRecipe: '-1px',
+            recipeInputs: [],
+          },
+        },
+      ]),
+    ).toThrow('minimum');
+  });
+
   test('rejects a recipe-backed color token claiming a length profile', () => {
     expect(() =>
       validateUsageContracts([
