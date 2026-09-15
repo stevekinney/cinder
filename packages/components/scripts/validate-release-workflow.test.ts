@@ -315,6 +315,7 @@ describe('Playwright dependency setup', () => {
       'static-artifact',
       'package',
       'playground',
+      'playground-production-producer',
       'playground-production',
       'browser-runner-lifecycle',
       'component',
@@ -328,18 +329,68 @@ describe('Playwright dependency setup', () => {
     expect(aggregatorStep?.['run']).toContain('*,static,*) [ "$STATIC" = success ] || exit 1');
   });
 
-  test('installs Chromium in the deploy job before the static production gate', () => {
+  test('routes the exact Vercel build through shared production verification before deployment', () => {
     const workspaceRoot = resolve(import.meta.dirname, '../../..');
     const workflow = loadYaml(
       readFileSync(join(workspaceRoot, '.github', 'workflows', 'deploy-playground.yaml'), 'utf8'),
-    ) as { jobs: Record<string, { steps?: Array<Record<string, unknown>> }> };
-    const steps = workflow.jobs['deploy']?.steps ?? [];
-    const names = steps.map((step) => step['name']);
-    const installIndex = names.indexOf('Install Chromium for static production gate');
-    const gateIndex = names.indexOf('Verify the exact Vercel static artifact before deployment');
-    expect(installIndex).toBeGreaterThanOrEqual(0);
-    expect(gateIndex).toBeGreaterThan(installIndex);
-    expect(steps[installIndex]?.['run']).toBe('bunx playwright install --with-deps chromium');
+    ) as {
+      jobs: Record<
+        string,
+        { steps?: Array<Record<string, unknown>>; needs?: string[]; uses?: string }
+      >;
+    };
+    expect(workflow.jobs['build']).toBeDefined();
+    expect(workflow.jobs['verification']).toMatchObject({
+      needs: ['preflight', 'build'],
+      uses: './.github/workflows/playground-production.yaml',
+    });
+  });
+
+  test('requires all eight production shards and preserves each evidence artifact', () => {
+    const workspaceRoot = resolve(import.meta.dirname, '../../..');
+    const workflow = loadYaml(
+      readFileSync(join(workspaceRoot, '.github/workflows/playground-production.yaml'), 'utf8'),
+    ) as {
+      jobs: Record<
+        string,
+        {
+          needs?: string | string[];
+          if?: string;
+          strategy?: unknown;
+          steps?: Array<Record<string, unknown>>;
+        }
+      >;
+    };
+    expect(workflow.jobs['preflight']?.if).toContain("inputs.producer-result == 'success'");
+    expect(workflow.jobs['shards']).toMatchObject({
+      needs: 'preflight',
+      strategy: { 'fail-fast': false, matrix: { shard: [1, 2, 3, 4, 5, 6, 7, 8] } },
+    });
+    expect(workflow.jobs['shards']?.if).toContain("needs.preflight.result == 'success'");
+    const shardRuns =
+      workflow.jobs['shards']?.steps?.flatMap((step) =>
+        typeof step['run'] === 'string' ? [step['run']] : [],
+      ) ?? [];
+    expect(shardRuns.some((run) => run.includes('--shard=${{ matrix.shard }}/8'))).toBe(true);
+    expect(workflow.jobs['aggregate']?.needs).toEqual(['preflight', 'shards']);
+    expect(workflow.jobs['aggregate']?.if).toContain('always()');
+    const aggregateSteps = workflow.jobs['aggregate']?.steps ?? [];
+    const shardDownload = aggregateSteps.find(
+      (step) =>
+        step['uses'] === 'actions/download-artifact@v7' &&
+        typeof step['with'] === 'object' &&
+        step['with'] !== null &&
+        'pattern' in step['with'],
+    );
+    expect(shardDownload?.['with']).not.toHaveProperty('merge-multiple', true);
+    const aggregateRuns = aggregateSteps
+      .flatMap((step) => (typeof step['run'] === 'string' ? [step['run']] : []))
+      .join('\n');
+    expect(aggregateRuns).toContain("[ '${{ needs.preflight.result }}' = success ]");
+    expect(aggregateRuns).toContain("[ '${{ needs.shards.result }}' = success ]");
+    expect(aggregateRuns).toContain('--shards 8');
+    expect(aggregateRuns).toContain('test ! -e "$destination"');
+    expect(aggregateRuns).toContain('PLAYWRIGHT_HTML_OUTPUT_DIR=.playground-evidence/html');
   });
 
   test('asserts every successful production evidence file before upload', () => {
@@ -351,13 +402,12 @@ describe('Playwright dependency setup', () => {
     ]) {
       const source = readFileSync(join(workspaceRoot, workflowPath), 'utf8');
       expect(source).toContain('test -f packages/playground/static-export-metadata.json');
-      expect(source).toContain('test -f packages/testing/test-results/playground-production.json');
+      expect(source).toContain('static-playground-report.json');
       expect(source).toContain('if-no-files-found: error');
       expect(source).toContain('uses: actions/upload-artifact@v7');
       expect(source).toContain(
-        'playground-production-failures-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}',
+        'playground-production-artifact-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}',
       );
-      expect(source).toContain('if-no-files-found: ignore');
     }
   });
 
@@ -366,14 +416,12 @@ describe('Playwright dependency setup', () => {
     const workflow = loadYaml(
       readFileSync(join(workspaceRoot, '.github', 'workflows', 'deploy-playground.yaml'), 'utf8'),
     ) as { jobs: Record<string, { steps?: Array<Record<string, unknown>> }> };
-    const steps = workflow.jobs['deploy']?.steps ?? [];
-    const names = steps.map((step) => step['name']);
-    const gateIndex = names.indexOf('Verify the exact Vercel static artifact before deployment');
-    const evidenceIndex = names.indexOf('Assert Playground production evidence exists');
-    const deployIndex = names.indexOf('Deploy to Vercel');
-    expect(gateIndex).toBeGreaterThanOrEqual(0);
-    expect(evidenceIndex).toBeGreaterThan(gateIndex);
-    expect(deployIndex).toBeGreaterThan(evidenceIndex);
+    expect(workflow.jobs['deploy']).toMatchObject({
+      needs: ['preflight', 'build', 'verification'],
+    });
+    expect(workflow.jobs['verification']).toMatchObject({
+      uses: './.github/workflows/playground-production.yaml',
+    });
   });
 });
 

@@ -172,10 +172,10 @@ jobs:
           fi
           bun run --filter=@cinder/playground check:source-temp
 
-  playground-production:
+  playground-production-producer:
     needs: scope
     if: "!cancelled() && (needs.scope.result != 'success' || contains(needs.scope.outputs.unit_lanes, 'playground'))"
-    name: playground-production
+    name: playground-production-producer
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -188,37 +188,39 @@ jobs:
       - uses: ./.github/actions/install-dependencies
       - name: Build credential-independent static export
         run: PLAYGROUND_BASE_URL=https://cinder.website bun run --filter=@cinder/playground vercel-build
-      - name: Normalize Ubuntu mirror for Playwright dependencies
-        run: >-
-          sudo sed -i
-          's|http://azure.archive.ubuntu.com/ubuntu/|https://archive.ubuntu.com/ubuntu/|g'
-          /etc/apt/apt-mirrors.txt
-      - name: Install Chromium for production gate
-        run: bunx playwright install --with-deps chromium
+      - name: Verify static evidence mechanisms
+        run: bun run check:playground-evidence
       - name: Verify static Playground production artifact
-        run: bun run check:playground-production -- --directory packages/playground/public
+        run: bun run check:playground-production -- --directory packages/playground/public --verify-only
       - name: Assert Playground production evidence exists
         run: |
           test -f packages/playground/static-playground-report.json
           test -f packages/playground/static-export-metadata.json
-          test -f packages/testing/test-results/playground-production.json
+      - name: Package immutable production artifact
+        run: |
+          set -euo pipefail
+          mkdir -p .playground-artifact/static
+          cp -R packages/playground/public/. .playground-artifact/static/
+          cp packages/playground/static-export-metadata.json packages/playground/static-playground-report.json .playground-artifact/
+          bun run packages/testing/scripts/playground-artifact-tree.ts --write --root .playground-artifact --manifest .playground-artifact/artifact-tree-manifest.json
+          tar -cf .playground-artifact/playground-production-artifact.tar -C .playground-artifact static static-export-metadata.json static-playground-report.json artifact-tree-manifest.json
+          test -f packages/playground/static-playground-report.json
       - name: Upload Playground production evidence
-        if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: playground-production-evidence-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+          name: playground-production-artifact-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
           if-no-files-found: error
-          path: |
-            packages/playground/static-playground-report.json
-            packages/playground/static-export-metadata.json
-            packages/testing/test-results/playground-production.json
-      - name: Upload Playground production failure evidence
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: playground-production-failures-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
-          if-no-files-found: ignore
-          path: packages/testing/test-results/playground-production/
+          path: .playground-artifact/playground-production-artifact.tar
+
+  playground-production:
+    needs: [scope, playground-production-producer]
+    if: "always() && !cancelled() && (needs.scope.result != 'success' || contains(needs.scope.outputs.unit_lanes, 'playground'))"
+    uses: ./.github/workflows/playground-production.yaml
+    with:
+      artifact-name: playground-production-artifact-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+      producer-result: ${{ needs.playground-production-producer.result }}
+      directory-mode: static
+      source-sha: ${{ github.sha }}
 
   browser-runner-lifecycle:
     needs: scope
@@ -267,6 +269,7 @@ jobs:
         static-artifact,
         package,
         playground,
+        playground-production-producer,
         playground-production,
         browser-runner-lifecycle,
         component,
@@ -280,17 +283,19 @@ jobs:
           STATIC: ${{ needs.static-artifact.result }}
           PACKAGE: ${{ needs.package.result }}
           PLAYGROUND: ${{ needs.playground.result }}
+          PLAYGROUND_PRODUCTION_PRODUCER: ${{ needs.playground-production-producer.result }}
           PLAYGROUND_PRODUCTION: ${{ needs.playground-production.result }}
           BROWSER_RUNNER_LIFECYCLE: ${{ needs.browser-runner-lifecycle.result }}
           COMPONENT: ${{ needs.component.result }}
           LANES: ${{ needs.scope.outputs.unit_lanes }}
         run: |
           set -euo pipefail
-          echo "scope=$SCOPE lanes=$LANES static=$STATIC package=$PACKAGE playground=$PLAYGROUND playground-production=$PLAYGROUND_PRODUCTION browser-runner-lifecycle=$BROWSER_RUNNER_LIFECYCLE component=$COMPONENT" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "scope=$SCOPE lanes=$LANES static=$STATIC package=$PACKAGE playground=$PLAYGROUND playground-production-producer=$PLAYGROUND_PRODUCTION_PRODUCER playground-production=$PLAYGROUND_PRODUCTION browser-runner-lifecycle=$BROWSER_RUNNER_LIFECYCLE component=$COMPONENT" | tee -a "$GITHUB_STEP_SUMMARY"
           [ "$SCOPE" = success ] || exit 1
           case ",$LANES," in *,static,*) [ "$STATIC" = success ] || exit 1;; esac
           case ",$LANES," in *,package,*) [ "$PACKAGE" = success ] || exit 1;; esac
           case ",$LANES," in *,playground,*) [ "$PLAYGROUND" = success ] || exit 1;; esac
           case ",$LANES," in *,playground,*) [ "$PLAYGROUND_PRODUCTION" = success ] || exit 1;; esac
+          case ",$LANES," in *,playground,*) [ "$PLAYGROUND_PRODUCTION_PRODUCER" = success ] || exit 1;; esac
           [ "$BROWSER_RUNNER_LIFECYCLE" = success ] || exit 1
           case ",$LANES," in *,components,*) [ "$COMPONENT" = success ] || exit 1;; esac

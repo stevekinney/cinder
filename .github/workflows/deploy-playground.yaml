@@ -122,8 +122,8 @@ jobs:
             echo "VERCEL_TOKEN is not set — skipping deploy. Configure the Vercel secrets per CONTRIBUTING.md to enable." >> "$GITHUB_STEP_SUMMARY"
           fi
 
-  deploy:
-    name: deploy-playground
+  build:
+    name: deploy-playground-build
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: preflight
@@ -131,6 +131,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -163,40 +165,71 @@ jobs:
             PLAYGROUND_BASE_URL=https://cinder.website vercel build --token="$VERCEL_TOKEN"
           fi
 
-      - name: Normalize Ubuntu mirror for Playwright dependencies
-        run: >-
-          sudo sed -i
-          's|http://azure.archive.ubuntu.com/ubuntu/|https://archive.ubuntu.com/ubuntu/|g'
-          /etc/apt/apt-mirrors.txt
-
-      - name: Install Chromium for static production gate
-        run: bunx playwright install --with-deps chromium
-
-      - name: Verify the exact Vercel static artifact before deployment
-        run: bun run check:playground-production -- --directory .vercel/output/static --metadata packages/playground/static-export-metadata.json
-      - name: Assert Playground production evidence exists
+      - name: Package immutable Vercel output
         run: |
-          test -f .vercel/output/static-playground-report.json
+          set -euo pipefail
+          test -d .vercel/output/static
+          if find .vercel/output -type f \( -name '.env' -o -name '.env.*' \) -print -quit | grep -q .; then exit 1; fi
+          mkdir -p .playground-artifact/vercel-output
+          cp -R .vercel/output/. .playground-artifact/vercel-output/
+          bun run check:playground-production -- --directory .playground-artifact/vercel-output/static --metadata packages/playground/static-export-metadata.json --verify-only
           test -f packages/playground/static-export-metadata.json
-          test -f packages/testing/test-results/playground-production.json
-      - name: Upload Playground production evidence
-        if: always()
-        uses: actions/upload-artifact@v7
+          test -f .playground-artifact/vercel-output/static-playground-report.json
+          cp packages/playground/static-export-metadata.json .playground-artifact/
+          cp .playground-artifact/vercel-output/static-playground-report.json .playground-artifact/static-playground-report.json
+          rm .playground-artifact/vercel-output/static-playground-report.json
+          bun run packages/testing/scripts/playground-artifact-tree.ts --write --root .playground-artifact --manifest .playground-artifact/artifact-tree-manifest.json
+          tar -cf .playground-artifact/playground-production-artifact.tar -C .playground-artifact vercel-output static-export-metadata.json static-playground-report.json artifact-tree-manifest.json
+      - uses: actions/upload-artifact@v7
         with:
-          name: playground-production-evidence-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+          name: playground-production-artifact-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
           if-no-files-found: error
-          path: |
-            .vercel/output/static-playground-report.json
-            packages/playground/static-export-metadata.json
-            packages/testing/test-results/playground-production.json
-      - name: Upload Playground production failure evidence
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: playground-production-failures-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
-          if-no-files-found: ignore
-          path: packages/testing/test-results/playground-production/
+          path: .playground-artifact/playground-production-artifact.tar
 
+  verification:
+    needs: [preflight, build]
+    if: always() && !cancelled() && needs.preflight.outputs.can_deploy == 'true'
+    uses: ./.github/workflows/playground-production.yaml
+    with:
+      artifact-name: playground-production-artifact-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+      producer-result: ${{ needs.build.result }}
+      directory-mode: vercel-output
+      source-sha: ${{ github.sha }}
+
+  deploy:
+    name: deploy-playground
+    needs: [preflight, build, verification]
+    if: always() && !cancelled() && needs.preflight.outputs.can_deploy == 'true' && needs.build.result == 'success' && needs.verification.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: ./.github/actions/install-dependencies
+      - name: Install Vercel CLI
+        run: bun add --global vercel@latest
+      - uses: actions/download-artifact@v7
+        with:
+          name: playground-production-artifact-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+          path: .playground-artifact
+      - name: Restore tested Vercel output
+        run: |
+          set -euo pipefail
+          bun run packages/testing/scripts/extract-playground-artifact.ts --archive .playground-artifact/playground-production-artifact.tar --destination .playground-extracted
+          mkdir -p .vercel/output
+          cp -R .playground-extracted/vercel-output/. .vercel/output/
+          bun run packages/testing/scripts/playground-artifact-tree.ts --verify --root .vercel/output --manifest .playground-extracted/artifact-tree-manifest.json --prefix vercel-output
+          bun run check:playground-production -- --directory .vercel/output/static --metadata .playground-extracted/static-export-metadata.json --expected-report .playground-extracted/static-playground-report.json --verify-only
+      - name: Determine environment
+        id: environment
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.environment == 'production' }}" = "true" ]; then echo "vercel=production" >> "$GITHUB_OUTPUT"; else echo "vercel=preview" >> "$GITHUB_OUTPUT"; fi
       - name: Deploy to Vercel
         id: deploy
         run: |

@@ -649,6 +649,11 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'not assigned to release or hook layers because deployment performs its own direct pre-deploy ' +
       'verification and local hooks do not have the generated artifact or Chromium dependencies.',
   },
+  'root#check:playground-evidence': {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'Both static producer jobs verify installed Playwright reporters, aggregate coverage and unsharded runner parity after building their artifacts.',
+  },
 };
 
 /** Commands whose layer set is intentionally NOT verified (meta-scripts with no fixed home). */
