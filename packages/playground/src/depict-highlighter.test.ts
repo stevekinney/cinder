@@ -44,6 +44,10 @@ describe('depictHighlighter', () => {
 });
 
 describe('depictInlineHighlighter', () => {
+  it('returns empty output without initializing the highlighter for empty code', async () => {
+    await expect(depictInlineHighlighter('', 'ts')).resolves.toBe('');
+  });
+
   it('keeps the depict token markup but removes the block-only pre/code frame', async () => {
     const html = await depictInlineHighlighter(
       "import { Button } from '@lostgradient/cinder/button';",

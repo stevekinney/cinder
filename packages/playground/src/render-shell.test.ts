@@ -10,6 +10,7 @@
  */
 
 import { describe, expect, it } from 'bun:test';
+import { runInNewContext } from 'node:vm';
 
 import { CSS_VARIABLE_THEME } from '@lostgradient/markdown/rendering/highlighter';
 
@@ -18,6 +19,7 @@ import {
   documentationMetadataTags,
   documentationPageMetadata,
   jsonForScriptTag,
+  PRE_PAINT_THEME_SCRIPT,
   renderShell,
 } from './render-shell.ts';
 
@@ -58,6 +60,15 @@ describe('jsonForScriptTag', () => {
 });
 
 describe('renderShell', () => {
+  it('uses token scopes and preserves the CodeBlock theme signal in system mode', () => {
+    expect(PRE_PAINT_THEME_SCRIPT).toContain(
+      "document.documentElement.dataset['theme'] = override",
+    );
+    expect(PRE_PAINT_THEME_SCRIPT).toContain("removeAttribute('data-theme')");
+    expect(PRE_PAINT_THEME_SCRIPT).toContain("style.colorScheme = ''");
+    expect(PRE_PAINT_THEME_SCRIPT).toContain("dataset['cinderTheme']");
+    expect(renderShell('button', [])).toContain('html:not([data-theme])');
+  });
   it('embeds the active component and component list in the data island', () => {
     const html = renderShell('button', ['button', 'avatar']);
     const match = /<script type="application\/json" id="cinder-initial">([^<]+)<\/script>/.exec(
@@ -297,4 +308,34 @@ describe('documentation structured data', () => {
     expect(jsonLd).toContain('"SoftwareApplication"');
     expect(jsonLd).toContain('https://cinder.website/social.png');
   });
+});
+
+describe('pre-paint theme consumers', () => {
+  it.each([
+    ['?theme=dark', 'light', 'dark'],
+    ['?theme=light', 'dark', 'light'],
+    ['', 'dark', 'dark'],
+    ['', 'light', 'light'],
+    ['', null, 'system'],
+    ['?theme=invalid', 'invalid', 'system'],
+  ] as const)(
+    'preserves both theme consumers for query %s and stored %s',
+    (search, stored, expected) => {
+      const documentElement = document.createElement('html');
+      const staleTheme = expected === 'dark' ? 'light' : 'dark';
+      documentElement.dataset['theme'] = staleTheme;
+      documentElement.dataset['cinderTheme'] = staleTheme;
+      documentElement.style.colorScheme = 'dark';
+      runInNewContext(PRE_PAINT_THEME_SCRIPT, {
+        document: { documentElement },
+        window: { location: { search } },
+        URLSearchParams,
+        localStorage: { getItem: () => stored },
+      });
+      expect(documentElement.dataset['cinderTheme']).toBe(expected);
+      if (expected === 'system') expect(documentElement.dataset['theme']).toBeUndefined();
+      else expect(documentElement.dataset['theme']).toBe(expected);
+      if (expected === 'system') expect(documentElement.style.colorScheme).toBe('');
+    },
+  );
 });

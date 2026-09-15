@@ -235,6 +235,20 @@ describe('createEventSource reactivity', () => {
     expect(liveSources.size).toBe(0);
   });
 
+  test('keeps an imperative URL change when the initial prop is updated', async () => {
+    const { component, rerender, unmount } = render(Driver, { initial: '/events/a' });
+    await tick();
+
+    component['setUrl']('/events/b');
+    await tick();
+    await rerender({ initial: '/events/c' });
+    await tick();
+
+    expect(FakeEventSource.lastUrl).toBe('/events/b');
+    expect(liveSources.size).toBe(1);
+    unmount();
+  });
+
   test('null URL initially, then setting URL opens exactly one source', async () => {
     const { component, unmount } = render(Driver, { initial: null });
     await tick();

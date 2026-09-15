@@ -22,6 +22,7 @@ import {
   setShellStale,
 } from './rebuild-generation.ts';
 import { bundleEntryByKey } from './scenario-bundle.ts';
+import { COMPOUND_COMPONENT_FAMILIES } from './shell-app/compound-families.ts';
 import { resetShellBuildPromise } from './shell-bundle.ts';
 import { triggerReload } from './sse-broadcast.ts';
 import { resetPageServerRendererPromise, resetShellRendererWarmupState } from './ssr-renderer.ts';
@@ -45,7 +46,7 @@ const REPO_ROOT = join(PLAYGROUND_ROOT, '..', '..');
  *   isn't cheaply computable. Clearing is an O(1) Map operation, not a
  *   rebuild — only the page(s) actually requested next pay a compile cost.
  * - `examples`: only `.example.svelte` files changed. An example file
- *   belongs to exactly one component, so this scope is precise.
+ *   invalidates its component and any compound parts that can use the parent's examples.
  */
 export type ChangeScope =
   | { kind: 'shell' }
@@ -175,7 +176,10 @@ export function invalidateCachesForChange(scope: ChangeScope): void {
   scenarioBuildPromiseByKey.clear();
 
   if (scope.kind === 'examples') {
-    for (const name of scope.names) {
+    const affectedNames = new Set(scope.names);
+    for (const parent of scope.names)
+      for (const child of COMPOUND_COMPONENT_FAMILIES[parent] ?? []) affectedNames.add(child);
+    for (const name of affectedNames) {
       const entryPath = pageEntryByName.get(name);
       pageEntryByName.delete(name);
       if (entryPath !== undefined) pageArtifactByPath.delete(entryPath);

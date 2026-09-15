@@ -1,14 +1,57 @@
 import { describe, expect, test } from 'bun:test';
 
-import { CINDER_COMPONENT_SOURCE } from '../component-sources.ts';
-import { COMPOSE_ONLY_COMPONENTS } from '../discover.ts';
+import { canBareMount } from '../component-page-live-preview.ts';
+import { COMPOSE_ONLY_COMPONENTS, discoverExamples } from '../discover.ts';
 import {
   COMPOUND_COMPONENT_FAMILIES,
   COMPOUND_COMPONENT_PARENTS,
-  CONTEXT_REQUIRED_PARTS,
+  resolvePreviewSourceComponentName,
 } from './compound-families.ts';
 
 describe('compound-families registry completeness', () => {
+  test('every compound part receives its authored composition instead of missing children or ancestors', async () => {
+    for (const [part, parent] of Object.entries(COMPOUND_COMPONENT_PARENTS)) {
+      expect(canBareMount(part, false)).toBe(false);
+      const source = await resolvePreviewSourceComponentName(part, async (name) => {
+        const examples = await discoverExamples(name);
+        return examples.length > 0;
+      });
+      const partExamples = await discoverExamples(part);
+      const expected = partExamples.length > 0 ? part : parent;
+      expect(source).toBe(expected);
+      expect(await discoverExamples(source)).not.toHaveLength(0);
+    }
+    await expect(resolvePreviewSourceComponentName('button', async () => false)).resolves.toBe(
+      'button',
+    );
+    expect(canBareMount('button', false)).toBe(true);
+  });
+
+  test('retains authored Chat and FeedBoundary examples while empty parts use parents', async () => {
+    const hasExamples = async (name: string) => {
+      const examples = await discoverExamples(name);
+      return examples.length > 0;
+    };
+    await expect(
+      resolvePreviewSourceComponentName('chat-composer-popover', hasExamples),
+    ).resolves.toBe('chat-composer-popover');
+    await expect(
+      resolvePreviewSourceComponentName('chat-conversation-header', hasExamples),
+    ).resolves.toBe('chat-conversation-header');
+    await expect(
+      resolvePreviewSourceComponentName('chat-conversation-list', hasExamples),
+    ).resolves.toBe('chat-conversation-list');
+    await expect(resolvePreviewSourceComponentName('feed-boundary', hasExamples)).resolves.toBe(
+      'feed-boundary',
+    );
+    await expect(
+      resolvePreviewSourceComponentName('side-navigation-item', hasExamples),
+    ).resolves.toBe('side-navigation');
+    await expect(resolvePreviewSourceComponentName('table-cell', hasExamples)).resolves.toBe(
+      'table',
+    );
+    await expect(resolvePreviewSourceComponentName('tree-item', hasExamples)).resolves.toBe('tree');
+  });
   test('every compose-only leaf has a parent entry', () => {
     for (const leaf of COMPOSE_ONLY_COMPONENTS) {
       expect(COMPOUND_COMPONENT_PARENTS[leaf]).toBeDefined();
@@ -32,40 +75,6 @@ describe('compound-families registry completeness', () => {
     for (const [child, root] of Object.entries(COMPOUND_COMPONENT_PARENTS)) {
       expect(COMPOUND_COMPONENT_FAMILIES[root]).toBeDefined();
       expect(COMPOUND_COMPONENT_FAMILIES[root]).toContain(child);
-    }
-  });
-});
-
-describe('CONTEXT_REQUIRED_PARTS', () => {
-  test('is a subset of the compound-family leaves', () => {
-    // The playground uses this to skip a bare mount. A slug that is not a known
-    // compound leaf would be silently ignored (its page keeps the broken mount)
-    // or, worse, would suppress a standalone component's preview outright.
-    for (const part of CONTEXT_REQUIRED_PARTS) {
-      expect(COMPOUND_COMPONENT_PARENTS[part]).toBeDefined();
-    }
-  });
-
-  test('every listed part really does read a strict context getter at init scope', async () => {
-    // Empirical drift guard. The set is hand-maintained because the strict/optional
-    // distinction lives in the getter's DEFINITION, not at the call site — but a
-    // listed part that no longer reads context at all should not keep losing its
-    // live preview, and this catches that.
-    //
-    // The inverse direction (no UNLISTED leaf throws) is deliberately not asserted
-    // here: proving it needs the getter definitions resolved across files, and the
-    // honest version of that check is to bare-mount every leaf, which belongs in a
-    // browser test rather than this data-integrity file.
-    const { join } = await import('node:path');
-    for (const part of CONTEXT_REQUIRED_PARTS) {
-      const source = await Bun.file(
-        join(CINDER_COMPONENT_SOURCE.componentsRoot, part, `${part}.svelte`),
-      ).text();
-      // Anchored on `Context(` so an unrelated `getBoundingClientRect(` cannot
-      // satisfy the guard — the point is that the part still reads CONTEXT.
-      // `\bget` excludes the optional `tryGet*Context(` accessors: those spell
-      // it `Get`, and the lowercase `t` before it denies the word boundary.
-      expect(/\bget[A-Za-z]*Context\s*\(/.test(source)).toBe(true);
     }
   });
 });

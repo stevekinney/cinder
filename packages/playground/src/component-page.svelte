@@ -1,6 +1,6 @@
 <!-- dev-only playground scaffold; immutable page data is injected server-side -->
 <script lang="ts">
-  import { type Snippet } from 'svelte';
+  import { type Snippet, untrack } from 'svelte';
   import { Accordion } from '@lostgradient/cinder/accordion';
   import { AccordionItem } from '@lostgradient/cinder/accordion-item';
   import { Alert } from '@lostgradient/cinder/alert';
@@ -90,8 +90,6 @@
       __CINDER_EXAMPLES__?: CinderExampleDescriptor[];
       __CINDER_SNAPSHOT_READY__?: Promise<void>;
     };
-  type BadgeVariant = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'accent';
-  type StatusDotStatus = 'online' | 'warning' | 'danger' | 'pending' | 'neutral' | 'accent';
 
   // The bare component's module namespace is loaded by the page-bundle entry
   // only after a reader opens Playground. Keeping the loader as a prop rather
@@ -161,7 +159,8 @@
     onThemeChange,
   }: Props = $props();
 
-  let bareComponentModule = $state(bareComponentModuleProp);
+  let bareComponentModule = $state(untrack(() => bareComponentModuleProp));
+  let bareComponentLoadState = $state<'pending' | 'settled'>('pending');
 
   /** True on `/`, which renders the README through this same chrome. */
   const isLanding = $derived(readmeHtml !== undefined);
@@ -178,7 +177,7 @@
     return Array.isArray(raw) ? raw : [];
   }
 
-  const examples: CinderExampleDescriptor[] = examplesProp ?? readExamples();
+  const examples: CinderExampleDescriptor[] = untrack(() => examplesProp ?? readExamples());
   const explicitlyFeatured = examples.filter((example) => example.featured === true);
 
   // Snapshot mode (`?snapshot=1`) is how the visual-regression and a11y test
@@ -186,10 +185,12 @@
   // (e.g. exactly one `.cinder-section-heading`), so we must not mount the
   // featured example twice. The Overview live preview is therefore suppressed in
   // snapshot mode — the Examples section still mounts each scenario exactly once.
-  const snapshotMode =
-    snapshotModeProp ??
-    (typeof window !== 'undefined' &&
-      new URLSearchParams(window.location.search).get('snapshot') === '1');
+  const snapshotMode = untrack(
+    () =>
+      snapshotModeProp ??
+      (typeof window !== 'undefined' &&
+        new URLSearchParams(window.location.search).get('snapshot') === '1'),
+  );
 
   // The Overview live preview uses the first featured example, or the first
   // example overall. Undefined when there are no examples at all, and suppressed
@@ -206,7 +207,7 @@
     return window.location.pathname.replace(/^\/page\//, '').split('/')[0] ?? '';
   }
 
-  const componentName: string = componentNameProp ?? readComponentNameFromLocation();
+  const componentName: string = untrack(() => componentNameProp ?? readComponentNameFromLocation());
 
   // Snapshot consumers need the scenario mounts, not merely the outer page
   // chrome. Expose the actual completion promise so the browser harness can
@@ -246,17 +247,18 @@
   // dev-server stream. Snapshot pages deliberately stay quiet: automated
   // visual and focus suites share the dev server and a reload would interrupt
   // the test currently driving the page.
-  const liveReloadUrl = !snapshotMode && typeof window !== 'undefined' ? '/events' : null;
+  const isStaticExport =
+    typeof document !== 'undefined' &&
+    document.documentElement.getAttribute('data-static-export') === 'true';
+  const liveReloadUrl =
+    !snapshotMode && typeof window !== 'undefined' && !isStaticExport ? '/events' : null;
   function handleLiveReload(): void {
     window.location.reload();
   }
 
   // --- Theme toggle -----------------------------------------------------
-  // Cinder tokens switch on `color-scheme` (via `light-dark()`); the playground
-  // bridge mirrors the same value onto `data-cinder-theme` for bookkeeping. We
-  // read the active scheme on mount and, on toggle, write BOTH `color-scheme`
-  // (the real switch) and `data-cinder-theme` so we stay consistent with the
-  // bridge, plus persist to localStorage under the pre-paint key.
+  // Cinder tokens switch on the scoped `data-theme` attribute. The real
+  // preference is adopted on mount, and toggles persist under the pre-paint key.
   // Server rendering has no `document`, so the SSR tree seeds `light` — matching
   // the base `color-scheme: light dark` first argument — and the real preference
   // is adopted in `onMount`. Seeding from the document during init would make the
@@ -298,6 +300,23 @@
     activeView = readViewFromSearch(search);
   });
 
+  // Keep the visible control and the shared preview store in sync while the
+  // page is following System mode. Explicit `data-theme` scopes remain pinned;
+  // an OS change is adopted only while that scope is absent.
+  $effect(() => {
+    if (!isHydrated || typeof window === 'undefined') return;
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const syncSystemTheme = (): void => {
+      if (document.documentElement.dataset['theme'] !== undefined) return;
+      const nextTheme = media.matches ? 'dark' : 'light';
+      if (theme === nextTheme) return;
+      theme = nextTheme;
+      onThemeChange?.(nextTheme);
+    };
+    media.addEventListener('change', syncSystemTheme);
+    return () => media.removeEventListener('change', syncSystemTheme);
+  });
+
   /**
    * Which of the two views the page is showing (decision 2).
    *
@@ -323,6 +342,7 @@
       return;
     }
     let cancelled = false;
+    bareComponentLoadState = 'pending';
     void loadBareComponentModule()
       .then((module) => {
         if (!cancelled) bareComponentModule = module;
@@ -331,6 +351,9 @@
         if (!cancelled) {
           console.error('[cinder playground] failed to load bare component:', error);
         }
+      })
+      .finally(() => {
+        if (!cancelled) bareComponentLoadState = 'settled';
       });
     return () => {
       cancelled = true;
@@ -533,10 +556,10 @@
   // in the page HTML and the client reads it synchronously before first render.
   let documentation: ComponentDocumentationPayload | null = $state(null);
   let documentationError: string | null = $state(null);
-  if (documentationProp !== undefined || documentationErrorProp !== undefined) {
+  if (untrack(() => documentationProp !== undefined || documentationErrorProp !== undefined)) {
     // Supplied by the render path (server SSR or the client bundle entry).
-    documentation = documentationProp ?? null;
-    documentationError = documentationErrorProp ?? null;
+    documentation = untrack(() => documentationProp ?? null);
+    documentationError = untrack(() => documentationErrorProp ?? null);
   } else if (typeof document !== 'undefined') {
     try {
       documentation = readComponentDocumentationDataIsland();
@@ -597,32 +620,6 @@
    * policy for type complexity, not two.
    */
   const SINGLE_TYPE_PREVIEW_CHARS = 160;
-
-  function statusDotStatus(status: string): StatusDotStatus {
-    switch (status) {
-      case 'stable':
-        return 'online';
-      case 'beta':
-        return 'accent';
-      case 'alpha':
-        return 'warning';
-      default:
-        return 'neutral';
-    }
-  }
-
-  function statusBadgeVariant(status: string): BadgeVariant {
-    switch (status) {
-      case 'stable':
-        return 'success';
-      case 'beta':
-        return 'info';
-      case 'alpha':
-        return 'warning';
-      default:
-        return 'neutral';
-    }
-  }
 
   // --- Import line copy --------------------------------------------------
   let importCopied = $state(false);
@@ -795,14 +792,23 @@
   // `undefined` when the module wasn't provided or the export isn't a component,
   // in which case the section degrades to the static featured-example mount.
   //
-  // Compound ROOTS (Accordion, Tabs, …) and context-requiring PARTS
-  // (accordion-item, tab, table-header-cell, …) both resolve to `undefined` here
-  // on purpose — see `canBareMount` for why neither can be mounted alone. Roots
-  // take the featured-example fallback; parts have no examples of their own and
-  // take the compose-guidance branch below.
+  // Compound roots and parts use authored examples that supply their complete
+  // composition. A part keeps its documentation identity and authored examples,
+  // falling back to its parent's examples only when it has none. See
+  // `canBareMount` and `resolvePreviewSourceComponentName`.
   const canMountBare = $derived(
     documentation !== null &&
       canBareMount(documentation.propsManifest.kebabName, documentation.propsManifest.isCompound),
+  );
+  const bareComponentPending = $derived(
+    isHydrated &&
+      activeView === 'playground' &&
+      canGenerateFromProps &&
+      canMountBare &&
+      previewRecipe?.prefersFeaturedExample !== true &&
+      loadBareComponentModule !== undefined &&
+      bareComponentModule === undefined &&
+      bareComponentLoadState === 'pending',
   );
   const hasFocusablePreview = $derived(
     overviewExample !== undefined || (canGenerateFromProps && canMountBare),
@@ -1113,42 +1119,6 @@
                   {/if}
                 </div>
               </div>
-
-              <aside class="dx-spec" aria-label="Component facts">
-                <div class="dx-spec__row">
-                  <span class="dx-spec__key">Status</span>
-                  <span class="dx-spec__val">
-                    <!-- The adjacent Badge is the accessible status text. The dot
-                       is a redundant color cue, so mark it decorative — otherwise
-                       its role="img" name re-announces the same word the Badge
-                       already speaks (the audible half of #388). -->
-                    <StatusDot status={statusDotStatus(component.status)} aria-hidden="true" />
-                    <Badge variant={statusBadgeVariant(component.status)} size="sm">
-                      {component.status}
-                    </Badge>
-                  </span>
-                </div>
-                <div class="dx-spec__row">
-                  <span class="dx-spec__key">Category</span>
-                  <span class="dx-spec__val">{component.categoryLabel}</span>
-                </div>
-                {#if component.a11y?.pattern !== undefined}
-                  <div class="dx-spec__row">
-                    <span class="dx-spec__key">A11y pattern</span>
-                    <span class="dx-spec__val">{component.a11y.pattern}</span>
-                  </div>
-                {/if}
-                <div class="dx-spec__row">
-                  <span class="dx-spec__key">Export</span>
-                  <span class="dx-spec__val dx-spec__val--monospace">{component.exportName}</span>
-                </div>
-                <div class="dx-spec__row">
-                  <span class="dx-spec__key">Version</span>
-                  <span class="dx-spec__val dx-spec__val--monospace"
-                    >v{component.packageVersion}</span
-                  >
-                </div>
-              </aside>
             </div>
           </div>
         </div>
@@ -1261,9 +1231,22 @@
                needs `bareComponentModule`, which only the client bundle
                supplies. Without the gate the server would render the
                featured-example branch and the client the live branch on
-               its hydration pass — a mismatch. The live preview swaps in
-               immediately after mount. -->
-                {#if isHydrated && bareComponent !== undefined && !snapshotMode && canGenerateFromProps && (!liveMountFailed || overviewExample === undefined)}
+               its hydration pass — a mismatch. A pending lazy load shows a
+               stable loading stage until the bare module settles. -->
+                {#if bareComponentPending && !snapshotMode}
+                  <div class="dx-stage">
+                    <div class="dx-stage__bar">
+                      <span class="dx-stage__dot" aria-hidden="true"></span>
+                      <span class="dx-stage__label">Loading preview</span>
+                    </div>
+                    <div class="dx-stage__canvas" role="region" aria-label="Preview" tabindex="0">
+                      <div class="preview-loading" role="status">
+                        <StatusDot status="pending" />
+                        <span>Loading preview…</span>
+                      </div>
+                    </div>
+                  </div>
+                {:else if isHydrated && bareComponent !== undefined && !snapshotMode && canGenerateFromProps && (!liveMountFailed || overviewExample === undefined)}
                   {#snippet previewChildren()}
                     {#if previewRecipe?.childrenHtml !== undefined}
                       <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -2175,7 +2158,6 @@
        page is expressed as a `calc()` against it. */
     --dx-topbar-h: 0rem;
     min-height: 100vh;
-    border: 1px solid var(--cinder-border);
     background: light-dark(oklch(100% 0 0), var(--cinder-surface-canvas));
   }
 
@@ -2402,10 +2384,7 @@
     border-block-end: 1px solid var(--cinder-border-muted);
   }
   .dx-hero__grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 19rem;
-    gap: clamp(1.5rem, 4vw, 3.5rem);
-    align-items: end;
+    display: block;
   }
   .dx-eyebrow {
     display: flex;
@@ -2454,42 +2433,6 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--cinder-space-1-5, 0.375rem);
-  }
-
-  .dx-spec {
-    border: 1px solid var(--cinder-border);
-    border-radius: var(--cinder-radius-lg);
-    background: var(--cinder-surface-raised);
-    box-shadow: var(--cinder-shadow-sm);
-    overflow: hidden;
-  }
-  .dx-spec__row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--cinder-space-4);
-    padding: var(--cinder-space-3) var(--cinder-space-4);
-    font-size: var(--cinder-text-sm);
-  }
-  .dx-spec__row + .dx-spec__row {
-    border-block-start: 1px solid var(--cinder-border-muted);
-  }
-  .dx-spec__key {
-    color: var(--cinder-text-subtle);
-    font-size: var(--cinder-text-xs);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-  .dx-spec__val {
-    color: var(--cinder-text-default);
-    font-weight: var(--cinder-font-medium);
-    display: inline-flex;
-    align-items: center;
-    gap: var(--cinder-space-2);
-  }
-  .dx-spec__val--monospace {
-    font-family: var(--cinder-font-mono);
-    font-weight: var(--cinder-font-normal);
   }
 
   .dx-import {
@@ -3077,6 +3020,7 @@
    * sample. The component owns its frame; the prose rule applies only to bare
    * <pre> in README markdown. */
   .readme-content :global(.cinder-code-block pre) {
+    overflow-x: clip;
     border: 0;
     border-radius: 0;
     background: transparent;
@@ -3088,6 +3032,16 @@
   .readme-content :global(table) {
     width: 100%;
     border-collapse: collapse;
+  }
+  .readme-content :global(.readme-table-scroll) {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    border-radius: var(--cinder-radius-sm);
+  }
+  .readme-content :global(.readme-table-scroll):focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
   }
   .readme-content :global(blockquote) {
     padding-inline-start: var(--cinder-space-4);
@@ -3838,16 +3792,6 @@
     margin: 0 0 var(--cinder-space-2);
   }
   /* ===== Responsive ===== */
-  @media (max-width: 1080px) {
-    .dx-hero__grid {
-      grid-template-columns: minmax(0, 1fr);
-      align-items: start;
-    }
-    .dx-spec {
-      max-width: 26rem;
-    }
-  }
-
   @media (max-width: 920px) {
     .dx-layout {
       grid-template-columns: minmax(0, 1fr);
@@ -3863,9 +3807,6 @@
   @media (max-width: 640px) {
     .dx-guide {
       grid-template-columns: minmax(0, 1fr);
-    }
-    .dx-spec {
-      max-width: none;
     }
   }
   @media (prefers-reduced-motion: reduce) {

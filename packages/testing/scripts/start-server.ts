@@ -1,11 +1,17 @@
-import { spawn, type ChildProcess } from 'node:child_process';
-import { once } from 'node:events';
+import { type ChildProcess } from 'node:child_process';
 import { mkdirSync, rmSync, watch, type FSWatcher } from 'node:fs';
 import { dirname, resolve as resolvePath } from 'node:path';
-import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { PLAYGROUND_URL } from '../src/helpers/playground-url.ts';
+import { spawnManagedProcess } from './managed-process-spawn.ts';
 import { DEFAULT_PLAYGROUND_URL, isLocalDefaultPlaygroundUrl } from './playground-server-url';
+import {
+  childProcessHasFinished,
+  cleanupManagedChildren,
+  manageChildProcess,
+  waitForExit,
+  type ManagedChildProcess,
+} from './process-lifecycle.ts';
 import {
   isFingerprintStale,
   newestSourceMtimeMs,
@@ -74,17 +80,10 @@ export function describePlaygroundExit({ code, signal, output }: PlaygroundExit)
 }
 const PLAYGROUND_WARM_READINESS_STABLE_READS = 2;
 const PLAYGROUND_WARM_READINESS_DELAY_MS = 500;
-const CHILD_PROCESS_TERMINATION_GRACE_MS = 5_000;
 
 type PlaygroundPathProbeResult = {
   ok: boolean;
   status: number | null;
-};
-
-export type ManagedChildProcess = {
-  childProcess: ChildProcess;
-  name: string;
-  killProcessGroup: boolean;
 };
 
 export function playgroundUrlForPath(
@@ -130,24 +129,25 @@ async function ping(playgroundUrl: string = targetPlaygroundUrl): Promise<boolea
 
 const PLAYGROUND_FINGERPRINT_HEADER = 'X-Cinder-Playground-Fingerprint';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isPlaygroundFreshnessFingerprint(value: unknown): value is PlaygroundFreshnessFingerprint {
+  return (
+    isRecord(value) &&
+    typeof value['startedAtMs'] === 'number' &&
+    (typeof value['newestSourceMtimeMs'] === 'number' || value['newestSourceMtimeMs'] === null)
+  );
+}
+
 export function parsePlaygroundFingerprintHeader(
   headerValue: string | null,
 ): PlaygroundFreshnessFingerprint | null {
   if (headerValue === null) return null;
   try {
     const parsed: unknown = JSON.parse(headerValue);
-    if (
-      typeof parsed === 'object' &&
-      parsed !== null &&
-      'startedAtMs' in parsed &&
-      'newestSourceMtimeMs' in parsed &&
-      typeof (parsed as { startedAtMs: unknown }).startedAtMs === 'number' &&
-      (typeof (parsed as { newestSourceMtimeMs: unknown }).newestSourceMtimeMs === 'number' ||
-        (parsed as { newestSourceMtimeMs: unknown }).newestSourceMtimeMs === null)
-    ) {
-      return parsed as PlaygroundFreshnessFingerprint;
-    }
-    return null;
+    return isPlaygroundFreshnessFingerprint(parsed) ? parsed : null;
   } catch {
     return null;
   }
@@ -247,40 +247,6 @@ export function appendServerOutputBuffer(
   return nextBuffer.length > 4096 ? nextBuffer.slice(-4096) : nextBuffer;
 }
 
-export function waitForExit(childProcess: ChildProcess): Promise<number> {
-  return new Promise((resolve) => {
-    let settled = false;
-    const settle = (code: number): void => {
-      if (settled) return;
-      settled = true;
-      childProcess.off('exit', onExit);
-      childProcess.off('error', onError);
-      resolve(code);
-    };
-    const onExit = (code: number | null): void => settle(code ?? 1);
-    const onError = (error: Error): void => {
-      console.error('Child process error:', error);
-      settle(1);
-    };
-
-    // Listen for both `exit` and `error`. If `spawn()` fails (ENOENT,
-    // EACCES, etc.) the child emits `error` and may never emit `exit`,
-    // which would hang the script indefinitely.
-    childProcess.on('exit', onExit);
-    childProcess.on('error', onError);
-
-    // A cached build can finish between spawn() and listener registration.
-    // Node retains the terminal status but does not replay the `exit` event,
-    // so consume that status after the listeners are installed to close both
-    // sides of the race.
-    if (childProcess.exitCode !== null) {
-      settle(childProcess.exitCode);
-    } else if (childProcess.signalCode !== null) {
-      settle(1);
-    }
-  });
-}
-
 /**
  * Remove a color preference Playwright overrides when it starts test workers.
  * Node warns when a child receives both `NO_COLOR` and Playwright's forced
@@ -297,16 +263,6 @@ export function playwrightProcessEnvironment(
 /** Run Playwright through the workspace's pinned Bun runtime. */
 export function playwrightCommandArguments(argumentsList: string[]): string[] {
   return ['--bun', 'playwright', 'test', ...argumentsList];
-}
-
-export function childProcessHasFinished(
-  childProcess: Pick<ChildProcess, 'pid' | 'exitCode' | 'signalCode'>,
-): boolean {
-  return (
-    childProcess.pid === undefined ||
-    childProcess.exitCode !== null ||
-    childProcess.signalCode !== null
-  );
 }
 
 export function finalPlaywrightExitCode(
@@ -329,130 +285,6 @@ export function shouldStartManagedChildProcess(shutdownExitCode: number | null):
   return shutdownExitCode === null;
 }
 
-/**
- * Register SIGINT/SIGTERM handlers that run `cleanup` at most once, then
- * exit with the signal's conventional exit code (130 for SIGINT, 143 for
- * SIGTERM). Shared by every wrapper script that spawns children of its own
- * so an interrupt always tears down the child before the wrapper exits,
- * instead of leaving it orphaned.
- */
-export function installSignalCleanupHandlers(runCleanup: () => Promise<void>): void {
-  let cleanupPromise: Promise<void> | null = null;
-
-  const cleanupOnce = async (): Promise<void> => {
-    cleanupPromise ??= runCleanup();
-    await cleanupPromise;
-  };
-
-  const exitAfterCleanup = async (code: number): Promise<never> => {
-    try {
-      await cleanupOnce();
-    } catch (error) {
-      console.error('Cleanup failed during shutdown:', error);
-    }
-    process.exit(code);
-  };
-
-  process.on('SIGINT', () => {
-    void exitAfterCleanup(130);
-  });
-  process.on('SIGTERM', () => {
-    void exitAfterCleanup(143);
-  });
-}
-
-function isAbortError(error: unknown): boolean {
-  return error instanceof Error && error.name === 'AbortError';
-}
-
-async function waitForExitOrTimeout(
-  childProcess: ChildProcess,
-  timeoutMs: number,
-): Promise<boolean> {
-  if (childProcessHasFinished(childProcess)) return true;
-
-  const abortController = new AbortController();
-  const exitPromise = once(childProcess, 'exit', { signal: abortController.signal }).then(
-    () => 'exited' as const,
-    (error: unknown) => (isAbortError(error) ? 'aborted' : 'exited'),
-  );
-  const errorPromise = once(childProcess, 'error', { signal: abortController.signal }).then(
-    ([error]) => {
-      console.error('Child process error:', error);
-      return 'exited' as const;
-    },
-    (error: unknown) => (isAbortError(error) ? 'aborted' : 'exited'),
-  );
-  const timeoutPromise = delay(timeoutMs, 'timeout' as const, {
-    signal: abortController.signal,
-  }).catch((error: unknown) => {
-    if (isAbortError(error)) return 'aborted' as const;
-    throw error;
-  });
-
-  const result = await Promise.race([exitPromise, errorPromise, timeoutPromise]);
-  abortController.abort();
-
-  return result === 'exited' || childProcessHasFinished(childProcess);
-}
-
-function signalChildProcess(
-  managedChildProcess: ManagedChildProcess,
-  signal: NodeJS.Signals,
-): void {
-  const { childProcess, killProcessGroup, name } = managedChildProcess;
-  const processId = childProcess.pid;
-  if (processId === undefined || childProcessHasFinished(childProcess)) return;
-
-  try {
-    if (killProcessGroup && process.platform !== 'win32') {
-      process.kill(-processId, signal);
-    } else {
-      childProcess.kill(signal);
-    }
-  } catch (error) {
-    const code =
-      typeof error === 'object' && error !== null && 'code' in error
-        ? (error as { code?: unknown }).code
-        : undefined;
-    if (code !== 'ESRCH') {
-      console.error(`Failed to send ${signal} to ${name}:`, error);
-    }
-  }
-}
-
-/**
- * SIGTERM a managed child process, escalating to SIGKILL if it does not exit
- * within `CHILD_PROCESS_TERMINATION_GRACE_MS`. Exported so other wrapper
- * scripts (run-browser-docker.ts, update-snapshots.ts,
- * update-snapshots-docker.ts) can give their own spawned children the same
- * SIGINT/SIGTERM cleanup this script relies on, rather than reimplementing
- * the escalation policy.
- */
-export async function terminateChildProcess(
-  managedChildProcess: ManagedChildProcess,
-): Promise<void> {
-  const { childProcess, name } = managedChildProcess;
-  if (childProcessHasFinished(childProcess)) return;
-
-  signalChildProcess(managedChildProcess, 'SIGTERM');
-  if (await waitForExitOrTimeout(childProcess, CHILD_PROCESS_TERMINATION_GRACE_MS)) return;
-
-  console.error(`${name} did not exit after SIGTERM; sending SIGKILL.`);
-  signalChildProcess(managedChildProcess, 'SIGKILL');
-  if (!(await waitForExitOrTimeout(childProcess, CHILD_PROCESS_TERMINATION_GRACE_MS))) {
-    console.error(`${name} did not exit after SIGKILL; continuing cleanup.`);
-  }
-}
-
-async function cleanup(
-  children: ManagedChildProcess[],
-  playgroundPortFile: string | null,
-): Promise<void> {
-  await Promise.all(children.map((child) => terminateChildProcess(child)));
-  if (playgroundPortFile !== null) rmSync(playgroundPortFile, { force: true });
-}
-
 export function playgroundBundleDependencyBuildArguments(packageName: string): string[] {
   return ['run', `--filter=${packageName}`, 'build'];
 }
@@ -460,13 +292,9 @@ export function playgroundBundleDependencyBuildArguments(packageName: string): s
 export function playgroundBundleDependencyBuildProcess(
   childProcess: ChildProcess,
   packageName: string,
-  killProcessGroup = process.platform !== 'win32',
+  ownsProcessGroup = false,
 ): ManagedChildProcess {
-  return {
-    childProcess,
-    name: `${packageName} build`,
-    killProcessGroup,
-  };
+  return manageChildProcess(childProcess, `${packageName} build`, ownsProcessGroup);
 }
 
 export function playgroundBundleDependencySourceDirectories(packageName: string): string[] {
@@ -571,15 +399,27 @@ async function buildPlaygroundBundleDependencies(
   for (const packageName of playgroundBundleDependencyPackages) {
     if (!shouldContinueStartingChildProcesses()) return;
 
-    const buildProcess = spawn('bun', playgroundBundleDependencyBuildArguments(packageName), {
-      cwd: repoRoot,
-      // These finite prebuilds are awaited before the server starts. Detaching
-      // them can leave Bun's child-process exit event unobserved in Docker.
-      detached: false,
-      stdio: 'inherit',
-      env: process.env,
-    });
-    registerChildProcess(playgroundBundleDependencyBuildProcess(buildProcess, packageName, false));
+    const buildProcess = spawnManagedProcess(
+      'bun',
+      playgroundBundleDependencyBuildArguments(packageName),
+      {
+        cwd: repoRoot,
+        // Give each finite build its own process group so a build that exits
+        // immediately after spawning a descendant cannot orphan that descendant
+        // before cleanup observes it. The root is still awaited for its true
+        // build exit code, including inside Docker.
+        detached: process.platform !== 'win32',
+        stdio: 'inherit',
+        env: process.env,
+      },
+    );
+    registerChildProcess(
+      playgroundBundleDependencyBuildProcess(
+        buildProcess,
+        packageName,
+        process.platform !== 'win32',
+      ),
+    );
     const buildCode = await waitForExit(buildProcess);
     if (!shouldContinueStartingChildProcesses()) return;
     if (buildCode !== 0) {
@@ -669,15 +509,25 @@ function startPlaygroundBundleDependencyWatchers(
         return;
       }
       activeBuild = true;
-      state.buildProcess = spawn('bun', playgroundBundleDependencyBuildArguments(packageName), {
-        cwd: repoRoot,
-        detached: process.platform !== 'win32',
-        stdio: 'inherit',
-        env: process.env,
-      });
+      state.buildProcess = spawnManagedProcess(
+        'bun',
+        playgroundBundleDependencyBuildArguments(packageName),
+        {
+          cwd: repoRoot,
+          detached: process.platform !== 'win32',
+          stdio: 'inherit',
+          env: process.env,
+        },
+      );
       const currentBuild = state.buildProcess;
       if (currentBuild === null) return;
-      registerChildProcess(playgroundBundleDependencyBuildProcess(currentBuild, packageName));
+      registerChildProcess(
+        playgroundBundleDependencyBuildProcess(
+          currentBuild,
+          packageName,
+          process.platform !== 'win32',
+        ),
+      );
       void waitForExit(currentBuild).then((buildCode) => {
         if (buildCode !== 0 && failure === null) {
           failure = new Error(`${packageName} watched build exited with code ${buildCode}`);
@@ -744,7 +594,7 @@ const isLocalDefault = isLocalDefaultPlaygroundUrl(PLAYGROUND_URL);
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
 
-  let serverProcess: ReturnType<typeof spawn> | null = null;
+  let serverProcess: ChildProcess | null = null;
   let playgroundTermination: PlaygroundTermination | null = null;
   // Reads the server's output as it stands when the report is written; the
   // buffer itself lives in the block that spawns the server, and stays null
@@ -765,7 +615,7 @@ async function main(): Promise<void> {
   const cleanupOnce = async (): Promise<void> => {
     dependencyWatchController?.dispose();
     dependencyWatchController = null;
-    cleanupPromise ??= cleanup(children, playgroundPortFile);
+    cleanupPromise ??= cleanupManagedChildren(children, playgroundPortFile);
     await cleanupPromise;
   };
 
@@ -849,7 +699,7 @@ async function main(): Promise<void> {
     let reportedPlaygroundPort: number | null = null;
     mkdirSync(resolvePath(repoRoot, 'tmp'), { recursive: true });
     rmSync(playgroundPortFile, { force: true });
-    serverProcess = spawn('bun', playgroundServerArguments(), {
+    serverProcess = spawnManagedProcess('bun', playgroundServerArguments(), {
       cwd: playgroundServerWorkingDirectory(),
       detached: process.platform !== 'win32',
       // stderr is piped rather than inherited so an uncaught exception's stack
@@ -859,11 +709,9 @@ async function main(): Promise<void> {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env, PLAYGROUND_PORT_FILE: playgroundPortFile },
     });
-    children.push({
-      childProcess: serverProcess,
-      name: 'playground server',
-      killProcessGroup: process.platform !== 'win32',
-    });
+    children.push(
+      manageChildProcess(serverProcess, 'playground server', process.platform !== 'win32'),
+    );
 
     let serverOutputBuffer = '';
     serverOutputTail = (): string => serverOutputBuffer;
@@ -989,12 +837,12 @@ async function main(): Promise<void> {
   );
   await exitIfShuttingDown();
 
-  const prep = spawn('bun', ['run', 'scripts/prepare-manifest.ts'], {
+  const prep = spawnManagedProcess('bun', ['run', 'scripts/prepare-manifest.ts'], {
     cwd: packageRoot,
     stdio: 'inherit',
     env: { ...process.env, PLAYGROUND_URL: targetPlaygroundUrl },
   });
-  children.push({ childProcess: prep, name: 'manifest preparation', killProcessGroup: false });
+  children.push(manageChildProcess(prep, 'manifest preparation', false));
   const prepCode = await waitForExit(prep);
   await exitIfShuttingDown();
   if (prepCode !== 0) {
@@ -1007,15 +855,16 @@ async function main(): Promise<void> {
   );
   await exitIfShuttingDown();
 
-  const playwright = spawn('bunx', playwrightCommandArguments(args), {
+  const playwright = spawnManagedProcess('bunx', playwrightCommandArguments(args), {
     cwd: packageRoot,
+    detached: process.platform !== 'win32',
     stdio: 'inherit',
     env: {
       ...playwrightProcessEnvironment(),
       PLAYGROUND_URL: targetPlaygroundUrl,
     },
   });
-  children.push({ childProcess: playwright, name: 'Playwright', killProcessGroup: false });
+  children.push(manageChildProcess(playwright, 'Playwright', process.platform !== 'win32'));
   // A dead playground cannot serve the rest of the suite, and every test that
   // follows would spend its full timeout proving it. Stop here instead.
   const stopSuiteForDeadPlayground = (): void => {
@@ -1054,12 +903,12 @@ async function main(): Promise<void> {
     await exitAfterCleanup(1);
   }
 
-  const summary = spawn('bun', ['run', 'scripts/summarize-axe.ts'], {
+  const summary = spawnManagedProcess('bun', ['run', 'scripts/summarize-axe.ts'], {
     cwd: packageRoot,
     stdio: 'inherit',
     env: { ...process.env, PLAYGROUND_URL: targetPlaygroundUrl },
   });
-  children.push({ childProcess: summary, name: 'axe summary', killProcessGroup: false });
+  children.push(manageChildProcess(summary, 'axe summary', false));
   const summaryCode = await waitForExit(summary);
   if (summaryCode !== 0) {
     console.error(

@@ -14,6 +14,7 @@ import {
   assertSitemapMatchesRoutes,
   assetUrlsFromHtml,
   initialRoutePayload,
+  markStaticExportDocument,
   requireProductionBaseUrl,
   runStaticExport,
 } from './static-export.ts';
@@ -245,17 +246,34 @@ test('initial payload includes static imports but excludes reader-triggered dyna
 });
 
 describe('static export', () => {
-  test('writes the root landing shell instead of a redirect', async () => {
+  test('marks full HTML documents as static exports and leaves fragments unchanged', () => {
+    expect(markStaticExportDocument('<html><head></head><body></body></html>')).toContain(
+      '<html data-static-export="true">',
+    );
+    expect(
+      markStaticExportDocument('<!doctype html><html lang="en"><body></body></html>'),
+    ).toContain('<html lang="en" data-static-export="true">');
+    expect(
+      markStaticExportDocument('<!doctype html><meta http-equiv="refresh" content="0">'),
+    ).not.toContain('data-static-export');
+  });
+
+  test('writes the landing shell and parent-authored strict-part sources', async () => {
     const outputDirectory = await mkdtemp(join(tmpdir(), 'cinder-static-export-'));
     try {
       const rendered = await runStaticExport({
         outputDirectory,
-        sidebarComponents: ['button'],
-        allComponents: [],
+        sidebarComponents: ['button', 'accordion'],
+        allComponents: ['accordion-item'],
       });
       const indexHtml = await readFile(join(outputDirectory, 'index.html'), 'utf8');
+      expect(rendered.has('/example-src/accordion-item/basic')).toBe(true);
+      await expect(
+        readFile(join(outputDirectory, 'example-src', 'accordion-item', 'basic'), 'utf8'),
+      ).resolves.toContain('Accordion');
 
       expect(indexHtml).toContain('id="shell-root"');
+      expect(indexHtml).toContain('<html lang="en" data-static-export="true">');
       expect(indexHtml).toContain('id="cinder-initial"');
       expect(indexHtml).toContain('readmeHtml');
       expect(indexHtml).toMatch(/\/assets\/[a-f0-9]{64}\/shell-bundle\/shell\.js/);

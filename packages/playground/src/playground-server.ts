@@ -90,6 +90,7 @@ import {
 import { buildPageBundle } from './page-bundle.ts';
 import { PLAYGROUND_ROOT } from './playground-paths.ts';
 import { createHttpServerOnAvailablePort, resolvePreferredPort } from './port-scanner.ts';
+import { wrapReadmeTables } from './readme-table-scroll.ts';
 import { getRebuildGeneration } from './rebuild-generation.ts';
 import {
   DEPICT_THEME_VARIABLES,
@@ -105,6 +106,7 @@ import {
 import { repositorySourceHref, rewriteRelativeRenderedMarkdownLinks } from './repository-links.ts';
 import { matchRoute, type RouteDefinition } from './route-table.ts';
 import { buildBundle } from './scenario-bundle.ts';
+import { resolvePreviewSourceComponentName } from './shell-app/compound-families.ts';
 import { humanizeComponentName } from './shell-app/humanize.ts';
 import { buildShellBundle } from './shell-bundle.ts';
 import {
@@ -337,7 +339,11 @@ async function renderComponentPage(
   baseUrl: string,
 ): Promise<string> {
   const componentDefinition = await discoverComponentDefinition(componentName);
-  const scenarios = await discoverExamples(componentName);
+  const previewSourceName = await resolvePreviewSourceComponentName(componentName, async (name) => {
+    const examples = await discoverExamples(name);
+    return examples.length > 0;
+  });
+  const scenarios = await discoverExamples(previewSourceName);
   const componentStylesheetUrl =
     componentDefinition === undefined
       ? null
@@ -348,7 +354,11 @@ async function renderComponentPage(
   const componentStylesheetUrls = [
     ...(componentDefinition === undefined
       ? []
-      : documentationExampleStylesheetUrls(componentDefinition.source, componentName, scenarios)),
+      : documentationExampleStylesheetUrls(
+          componentDefinition.source,
+          previewSourceName,
+          scenarios,
+        )),
     ...(componentStylesheetUrl === null ? [] : [componentStylesheetUrl]),
   ].filter((stylesheetUrl, index, urls) => urls.indexOf(stylesheetUrl) === index);
   const componentStylesheetLinks = componentStylesheetUrls
@@ -360,7 +370,7 @@ async function renderComponentPage(
         PLAYGROUND_ROOT,
         'src',
         'examples',
-        componentName,
+        previewSourceName,
         `${scenario}.example.svelte`,
       );
       const meta = await readExampleMetadata(filePath);
@@ -428,7 +438,7 @@ async function renderComponentPage(
       if (overviewExample !== undefined) {
         const mountId = `overview-mount-${overviewExample.scenario}`;
         const renderedExample = await renderFeaturedExample(
-          componentName,
+          previewSourceName,
           overviewExample.scenario,
           mountId,
         );
@@ -482,10 +492,7 @@ async function renderComponentPage(
         font-family: var(--cinder-font-sans);
         font-size: var(--cinder-text-base);
         line-height: var(--cinder-leading-normal);
-        /* Scale the preview gutter with the viewport: a comfortable space-6
-           (24px) on wide screens collapses to a thin space-1 (4px) on phones so
-           example components get almost the full width and look realistic. */
-        padding: clamp(var(--cinder-space-1), 2.5vw, var(--cinder-space-6));
+        padding: ${snapshotMode || previewOnly ? 'clamp(var(--cinder-space-1), 2.5vw, var(--cinder-space-6))' : '0'};
       }
       /* Guard the background/color crossfade behind a reduced-motion opt-out so
          users who prefer no motion get an instant theme swap, not a transition. */
@@ -689,7 +696,9 @@ async function renderLandingReadmeHtml(): Promise<string> {
       'Root README rendering stripped unsafe content. Update README.md to remove raw HTML, unsafe URLs, or other sanitizer-blocked content.',
     );
   }
-  return omitLandingReadmeTitle(rewriteRepositoryRelativeReadmeLinks(rendered.html));
+  return wrapReadmeTables(
+    omitLandingReadmeTitle(rewriteRepositoryRelativeReadmeLinks(rendered.html)),
+  );
 }
 
 /**
@@ -804,11 +813,15 @@ async function handlePageRoute(url: URL, componentName: string): Promise<Respons
 
 async function handleExampleSrcRoute(componentName: string, scenario: string): Promise<Response> {
   if (!isSafeSegment(componentName) || !isSafeSegment(scenario)) return notFound();
+  const previewSourceName = await resolvePreviewSourceComponentName(componentName, async (name) => {
+    const examples = await discoverExamples(name);
+    return examples.length > 0;
+  });
   const examplePath = join(
     PLAYGROUND_ROOT,
     'src',
     'examples',
-    componentName,
+    previewSourceName,
     `${scenario}.example.svelte`,
   );
   const exampleFile = Bun.file(examplePath);
@@ -921,7 +934,8 @@ export const ROUTES: RouteDefinition[] = [
   {
     method: 'GET',
     pattern: /^\/playground-styles\/(documentation|landing)\.css$/,
-    handler: ({ match }) => handlePlaygroundStylesRoute(match[1]! as 'documentation' | 'landing'),
+    handler: ({ match }) =>
+      handlePlaygroundStylesRoute(match[1] === 'landing' ? 'landing' : 'documentation'),
   },
   {
     method: 'GET',
@@ -940,7 +954,14 @@ export const ROUTES: RouteDefinition[] = [
       const componentName = match[1]!;
       const scenario = match[2]!;
       if (!isSafeSegment(componentName) || !isSafeSegment(scenario)) return notFound();
-      const code = await buildBundle(componentName, scenario);
+      const previewSourceName = await resolvePreviewSourceComponentName(
+        componentName,
+        async (name) => {
+          const examples = await discoverExamples(name);
+          return examples.length > 0;
+        },
+      );
+      const code = await buildBundle(previewSourceName, scenario);
       if (code === null) {
         return notFound(`Example "${componentName}/${scenario}" not found or failed to build`);
       }

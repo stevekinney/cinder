@@ -69,6 +69,8 @@ export const depictHighlighter: Highlighter = shikiHighlighter({
  * nesting the block highlighter's `<pre><code>` frame inside a text span.
  */
 export async function depictInlineHighlighter(code: string, language: string): Promise<string> {
+  if (code === '') return '';
+
   const html = await depictHighlighter(code, language);
   const match = /<code>([\s\S]*)<\/code>/.exec(html);
   return match?.[1] ?? '';

@@ -10,21 +10,21 @@
   const uid = $props.id();
   let editorId = $derived(`${mountIdPrefix ?? uid}-review-editor`);
 
-  const original = `# Release Plan
+  const original = `## Release Plan
 
 The first release includes a dashboard, export actions, and inline review.
 
-## Checklist
+### Checklist
 
 - Finalize the component API
 - Add playground coverage
 - Verify consumer fixtures`;
 
-  let value = $state(`# Release Plan
+  let value = $state(`## Release Plan
 
 The first release includes a dashboard, export actions, inline review, and comment summaries.
 
-## Checklist
+### Checklist
 
 - Finalize the component API
 - Add playground coverage

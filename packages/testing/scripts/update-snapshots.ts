@@ -1,16 +1,22 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { dirname, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  type BaselineComponentScope,
   createBaselineProvenance,
   dockerImageTagForPlaywrightVersion,
   normalizeProvenanceComponentScope,
   readOsCodename,
   writeBaselineProvenance,
+  type BaselineComponentScope,
 } from './baseline-provenance.ts';
 import { checkDockerAuthenticity, formatFailures } from './docker-authenticity.ts';
-import { installSignalCleanupHandlers, terminateChildProcess } from './start-server.ts';
+import { spawnManagedProcess } from './managed-process-spawn.ts';
+import {
+  installSignalCleanupHandlers,
+  manageChildProcess,
+  terminateChildProcess,
+  type ManagedChildProcess,
+} from './process-lifecycle.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolvePath(here, '..');
@@ -78,7 +84,7 @@ async function main(): Promise<void> {
   const extraArgs = process.argv.slice(2);
   const startServer = resolvePath(packageRoot, 'scripts/start-server.ts');
   const renderedSourceSha = readRenderedSourceSha(repoRoot);
-  const child = spawn('bun', startServerArguments(startServer, extraArgs), {
+  const child = spawnManagedProcess('bun', startServerArguments(startServer, extraArgs), {
     cwd: packageRoot,
     stdio: 'inherit',
     // CINDER_VISUAL_DIFF=block ensures toHaveScreenshot is active so
@@ -86,13 +92,10 @@ async function main(): Promise<void> {
     // than writing legacy review screenshots under screenshots/.
     env: snapshotUpdateEnvironment(process.env),
   });
+  let activeChild: ManagedChildProcess | null = manageChildProcess(child, 'start-server.ts');
 
   installSignalCleanupHandlers(() =>
-    terminateChildProcess({
-      childProcess: child,
-      name: 'start-server.ts',
-      killProcessGroup: false,
-    }),
+    activeChild === null ? Promise.resolve() : terminateChildProcess(activeChild),
   );
 
   const exitCode = await new Promise<number>((resolve) => {
@@ -102,6 +105,7 @@ async function main(): Promise<void> {
       resolve(1);
     });
   });
+  activeChild = null;
 
   if (exitCode === 0) {
     const shard = provenanceShard(process.env['CINDER_TEST_SHARD']);

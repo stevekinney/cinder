@@ -17,6 +17,7 @@ globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserv
 
 const { cleanup, render } = await import('@testing-library/svelte');
 const { default: Spectrogram } = await import('./spectrogram.svelte');
+const { renderToServerHtml } = await import('../../test/server-render.ts');
 
 afterEach(() => cleanup());
 afterAll(() => {
@@ -32,6 +33,22 @@ const mockFrames = [
 ];
 
 describe('Spectrogram', () => {
+  test('SSR emits finite y coordinates for every valid frequency label', async () => {
+    const html = await renderToServerHtml(
+      new URL('./spectrogram.svelte', import.meta.url).pathname,
+      {
+        label: 'Server spectrogram',
+        frames: [{ label: '0 ms', bins: Array.from({ length: 8 }, (_, index) => index) }],
+        frequencyLabels: Array.from({ length: 8 }, (_, index) => `${index} Hz`),
+      },
+    );
+    const yValues = [
+      ...html.matchAll(/class="cinder-spectrogram__tick-label"\sx="-6"\sy="([^"]+)"/g),
+    ].map((match) => Number(match[1]));
+    expect(yValues).toHaveLength(8);
+    expect(yValues.every(Number.isFinite)).toBe(true);
+  });
+
   test('uses the custom theme palette and paints the chart background', async () => {
     const { container } = render(Spectrogram, {
       label: 'Themed spectrogram',

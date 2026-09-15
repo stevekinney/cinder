@@ -193,6 +193,8 @@ const runtimeDependencyExternals = [
   'ajv/*',
   'ajv-formats',
   'ajv-formats/*',
+  'json-schema-library',
+  'json-schema-library/*',
   'shiki',
 ];
 

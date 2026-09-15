@@ -1,6 +1,14 @@
-import type { ErrorObject, ValidateFunction } from 'ajv';
-
+import { detectJsonSchemaDraft } from '../../utilities/json-schema-draft.ts';
+import type {
+  compileJsonSchemaRuntime,
+  JsonSchemaRuntimeError,
+} from '../../utilities/json-schema-runtime.ts';
+import { createRetryingLoaderCache } from '../../utilities/retrying-loader-cache.ts';
 import { isRecord, pathKey, type JsonSchemaObject } from './schema-form-model.ts';
+
+const loadJsonSchemaRuntime = createRetryingLoaderCache(
+  () => import('../../utilities/json-schema-runtime.ts'),
+);
 
 export type SchemaFormValidationIssue = {
   path: string[];
@@ -11,7 +19,10 @@ export type SchemaFormValidationResult =
   | { valid: true; value: unknown; issues: [] }
   | { valid: false; value: unknown; issues: SchemaFormValidationIssue[] };
 
-const validatorCache = new WeakMap<JsonSchemaObject, Promise<ValidateFunction>>();
+const validatorCache = new WeakMap<
+  JsonSchemaObject,
+  Promise<ReturnType<typeof compileJsonSchemaRuntime>>
+>();
 
 export async function validateSchemaValue(
   schema: JsonSchemaObject,
@@ -32,34 +43,28 @@ async function validateJsonSchemaValue(
   schema: JsonSchemaObject,
   value: unknown,
 ): Promise<SchemaFormValidationResult> {
-  let validate: ValidateFunction;
+  let node: ReturnType<typeof compileJsonSchemaRuntime>;
   try {
-    validate = await validatorForSchema(schema);
+    node = await validatorForSchema(schema);
   } catch (error) {
     return validationFailure(value, readableSchemaError(error));
   }
 
-  let valid: unknown;
   try {
-    const result = validate(value) as unknown;
-    valid = isPromiseLike(result) ? (await result, true) : result;
-  } catch (error) {
-    if (isAjvValidationError(error))
+    const { validateJsonSchemaRuntime } = await loadJsonSchemaRuntime();
+    const result = validateJsonSchemaRuntime(node, value);
+    if (!result.valid) {
       return {
         valid: false,
         value,
-        issues: ajvIssues(error.errors),
+        issues: jsonSchemaIssues(result.errors),
       };
-
+    }
+  } catch (error) {
     return validationFailure(value, readableSchemaError(error));
   }
 
-  if (valid) return { valid: true, value, issues: [] };
-  return {
-    valid: false,
-    value,
-    issues: ajvIssues(validate.errors ?? []),
-  };
+  return { valid: true, value, issues: [] };
 }
 
 function validationFailure(value: unknown, message: string): SchemaFormValidationResult {
@@ -81,65 +86,56 @@ function readableSchemaError(error: unknown): string {
   return message === '' ? 'Invalid JSON Schema.' : `Invalid JSON Schema: ${message}`;
 }
 
-function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
-  return isRecord(value) && typeof value['then'] === 'function';
-}
-
-function isAjvValidationError(error: unknown): error is { errors: ErrorObject[] } {
-  return isRecord(error) && Array.isArray(error['errors']);
-}
-
-function validatorForSchema(schema: JsonSchemaObject): Promise<ValidateFunction> {
+function validatorForSchema(
+  schema: JsonSchemaObject,
+): Promise<ReturnType<typeof compileJsonSchemaRuntime>> {
   const cached = validatorCache.get(schema);
   if (cached) return cached;
 
-  const promise = createValidator(schema).catch((error: unknown) => {
-    validatorCache.delete(schema);
-    throw error;
-  });
+  const promise = Promise.resolve()
+    .then(() => createValidator(schema))
+    .catch((error: unknown) => {
+      validatorCache.delete(schema);
+      throw error;
+    });
   validatorCache.set(schema, promise);
   return promise;
 }
 
-async function createValidator(schema: JsonSchemaObject): Promise<ValidateFunction> {
-  const draft = jsonSchemaDraft(schema);
-  if (draft === 'draft-07') {
-    const { default: Ajv } = await import('ajv');
-    return new Ajv({ strict: false, allErrors: true, addUsedSchema: false }).compile(schema);
-  }
-  if (draft === '2019-09') {
-    const { default: Ajv2019 } = await import('ajv/dist/2019.js');
-    return new Ajv2019({ strict: false, allErrors: true, addUsedSchema: false }).compile(schema);
-  }
-  const { default: Ajv2020 } = await import('ajv/dist/2020.js');
-  return new Ajv2020({ strict: false, allErrors: true, addUsedSchema: false }).compile(schema);
+async function createValidator(
+  schema: JsonSchemaObject,
+): Promise<ReturnType<typeof compileJsonSchemaRuntime>> {
+  const { compileJsonSchemaRuntime } = await loadJsonSchemaRuntime();
+  return compileJsonSchemaRuntime(schema, jsonSchemaDraft(schema), { throwOnInvalidSchema: true });
 }
 
 function jsonSchemaDraft(schema: JsonSchemaObject): '2020-12' | '2019-09' | 'draft-07' {
-  const id = schema['$schema'];
-  if (typeof id !== 'string') return '2020-12';
-  if (id.includes('draft-07')) return 'draft-07';
-  if (id.includes('2019-09')) return '2019-09';
-  return '2020-12';
+  const draft = detectJsonSchemaDraft(schema);
+  if (draft === 'unknown')
+    throw new Error(`Unknown JSON Schema draft: ${String(schema['$schema'])}`);
+  return draft;
 }
 
-function ajvIssues(errors: readonly ErrorObject[]): SchemaFormValidationIssue[] {
+function jsonSchemaIssues(errors: readonly JsonSchemaRuntimeError[]): SchemaFormValidationIssue[] {
   return errors.map((error) => ({
-    path: ajvErrorPath(error),
-    message: readableAjvMessage(error),
+    path: jsonSchemaErrorPath(error),
+    message: readableJsonSchemaMessage(error),
   }));
 }
 
-function readableAjvMessage(error: ErrorObject): string {
-  const fieldName = ajvErrorPath(error).at(-1) ?? 'Value';
+function readableJsonSchemaMessage(error: JsonSchemaRuntimeError): string {
+  const fieldName = jsonSchemaErrorPath(error).at(-1) ?? 'Value';
   const label = humanizeFieldName(fieldName);
 
-  if (error.keyword === 'required') return `${label} is required.`;
-  if (error.keyword === 'minLength') return `${label} is too short.`;
-  if (error.keyword === 'maxLength') return `${label} is too long.`;
-  if (error.keyword === 'minimum') return `${label} must be at least ${error.params?.['limit']}.`;
-  if (error.keyword === 'maximum') return `${label} must be at most ${error.params?.['limit']}.`;
-  if (error.keyword === 'type') return `${label} must be ${error.params?.['type']}.`;
+  if (error.code === 'required-property-error') return `${label} is required.`;
+  if (error.code === 'min-length-error') return `${label} is too short.`;
+  if (error.code === 'max-length-error') return `${label} is too long.`;
+  if (error.code === 'minimum-error')
+    return `${label} must be at least ${String(error.data?.['minimum'])}.`;
+  if (error.code === 'maximum-error')
+    return `${label} must be at most ${String(error.data?.['maximum'])}.`;
+  if (error.code === 'type-error') return `${label} must be ${String(error.data?.expected)}.`;
+  if (error.code === 'const-error') return `${label} must be constant.`;
 
   return error.message ?? 'Invalid value';
 }
@@ -151,12 +147,11 @@ function humanizeFieldName(name: string): string {
     .replace(/^./, (character) => character.toUpperCase());
 }
 
-function ajvErrorPath(error: ErrorObject): string[] {
-  const parentPath = jsonPointerToPath(error.instancePath);
-  if (error.keyword !== 'required' || !isRecord(error.params)) return parentPath;
-
-  const missingProperty = error.params['missingProperty'];
-  return typeof missingProperty === 'string' ? [...parentPath, missingProperty] : parentPath;
+function jsonSchemaErrorPath(error: JsonSchemaRuntimeError): string[] {
+  const parentPath = jsonPointerToPath(error.data?.pointer?.replace(/^#/, '') ?? '');
+  return error.code === 'required-property-error' && typeof error.data?.key === 'string'
+    ? [...parentPath, error.data.key]
+    : parentPath;
 }
 
 export function jsonPointerToPath(pointer: string): string[] {

@@ -1,0 +1,141 @@
+name: playground-production-reusable
+
+on:
+  workflow_call:
+    inputs:
+      artifact-name:
+        required: true
+        type: string
+      producer-result:
+        required: true
+        type: string
+      directory-mode:
+        required: true
+        type: string
+      source-sha:
+        required: true
+        type: string
+
+env:
+  BUN_VERSION: 1.4.0
+
+jobs:
+  preflight:
+    name: playground-production-preflight
+    if: ${{ inputs.producer-result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      directory: ${{ steps.extract.outputs.directory }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.source-sha }}
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: ./.github/actions/install-dependencies
+      - uses: actions/download-artifact@v7
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: .playground-artifact
+      - id: extract
+        env:
+          DIRECTORY_MODE: ${{ inputs.directory-mode }}
+        run: |
+          set -euo pipefail
+          test -f .playground-artifact/playground-production-artifact.tar
+          bun run packages/testing/scripts/extract-playground-artifact.ts --archive .playground-artifact/playground-production-artifact.tar --destination .playground-extracted
+          test -f .playground-extracted/static-playground-report.json
+          test -f .playground-extracted/static-export-metadata.json
+          test -f .playground-extracted/artifact-tree-manifest.json
+          if [ "$DIRECTORY_MODE" = static ]; then test -d .playground-extracted/static; echo "directory=.playground-extracted/static" >> "$GITHUB_OUTPUT"; elif [ "$DIRECTORY_MODE" = vercel-output ]; then test -d .playground-extracted/vercel-output/static; echo "directory=.playground-extracted/vercel-output/static" >> "$GITHUB_OUTPUT"; else exit 1; fi
+          bun run check:playground-production -- --directory "$(sed -n 's/^directory=//p' "$GITHUB_OUTPUT")" --metadata .playground-extracted/static-export-metadata.json --expected-report .playground-extracted/static-playground-report.json --verify-only
+
+  shards:
+    name: playground-production-shard (${{ matrix.shard }}/8)
+    needs: preflight
+    if: ${{ needs.preflight.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.directory-mode == 'vercel-output' && 20 || 30 }}
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.source-sha }}
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: ./.github/actions/install-dependencies
+      - uses: actions/download-artifact@v7
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: .playground-artifact
+      - name: Extract immutable artifact
+        run: |
+          set -euo pipefail
+          bun run packages/testing/scripts/extract-playground-artifact.ts --archive .playground-artifact/playground-production-artifact.tar --destination .playground-extracted
+          test -f .playground-extracted/static-playground-report.json
+          test -f .playground-extracted/artifact-tree-manifest.json
+      - name: Normalize Ubuntu mirror for Playwright dependencies
+        run: >-
+          sudo sed -i
+          's|http://azure.archive.ubuntu.com/ubuntu/|https://archive.ubuntu.com/ubuntu/|g'
+          /etc/apt/apt-mirrors.txt
+      - run: bunx --no-install playwright install --with-deps chromium
+      - name: Run deterministic shard
+        run: bun run check:playground-production -- --directory .playground-extracted/${{ inputs.directory-mode == 'static' && 'static' || 'vercel-output/static' }} --metadata .playground-extracted/static-export-metadata.json --expected-report .playground-extracted/static-playground-report.json --shard=${{ matrix.shard }}/8 --evidence-directory .playground-evidence/shard-${{ matrix.shard }}
+      - name: Upload shard evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playground-production-shard-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.source-sha }}-${{ matrix.shard }}
+          if-no-files-found: error
+          path: .playground-evidence/shard-${{ matrix.shard }}
+
+  aggregate:
+    name: playground-production
+    needs: [preflight, shards]
+    if: ${{ always() && !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.source-sha }}
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: ./.github/actions/install-dependencies
+      - uses: actions/download-artifact@v7
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: .playground-artifact
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: playground-production-shard-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.source-sha }}-*
+          path: .playground-evidence
+      - name: Require all prerequisites and aggregate exact coverage
+        run: |
+          set -euo pipefail
+          [ '${{ needs.preflight.result }}' = success ]
+          [ '${{ needs.shards.result }}' = success ]
+          test -f .playground-artifact/playground-production-artifact.tar
+          bun run packages/testing/scripts/extract-playground-artifact.ts --archive .playground-artifact/playground-production-artifact.tar --destination .playground-extracted
+          bun run packages/testing/scripts/aggregate-static-playground.ts --report .playground-extracted/static-playground-report.json --evidence-directory .playground-evidence --shards 8 --output .playground-evidence/aggregate.json
+          mkdir -p .playground-blobs
+          while IFS= read -r -d '' blob; do shard=$(basename "$(dirname "$(dirname "$blob")")"); destination=".playground-blobs/report-${shard}.zip"; test ! -e "$destination"; cp "$blob" "$destination"; done < <(find .playground-evidence -type f -name '*.zip' -print0)
+          test "$(find .playground-blobs -type f -name '*.zip' | wc -l)" -eq 8
+          PLAYWRIGHT_HTML_OUTPUT_DIR=.playground-evidence/html bunx --no-install playwright merge-reports --reporter html .playground-blobs
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: playground-production-aggregate-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.source-sha }}
+          if-no-files-found: error
+          path: .playground-evidence

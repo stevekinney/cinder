@@ -1,7 +1,11 @@
 {
   "schemaVersion": 1,
-  "componentScope": "all",
-  "renderedSourceSha": "fb4df154e668d8a8219c8ebac0f86550293c76d0",
+  "componentScope": [
+    "locale-provider",
+    "markdown-editor",
+    "review-editor"
+  ],
+  "renderedSourceSha": "9e39d0a779cb874f49398935fc85099b2df8c031",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",

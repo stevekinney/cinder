@@ -172,6 +172,73 @@ jobs:
           fi
           bun run --filter=@cinder/playground check:source-temp
 
+  playground-production-producer:
+    needs: scope
+    if: "!cancelled() && (needs.scope.result != 'success' || contains(needs.scope.outputs.unit_lanes, 'playground'))"
+    name: playground-production-producer
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: ./.github/actions/install-dependencies
+      - name: Build credential-independent static export
+        run: PLAYGROUND_BASE_URL=https://cinder.website bun run --filter=@cinder/playground vercel-build
+      - name: Verify static evidence mechanisms
+        run: bun run check:playground-evidence
+      - name: Verify static Playground production artifact
+        run: bun run check:playground-production -- --directory packages/playground/public --verify-only
+      - name: Assert Playground production evidence exists
+        run: |
+          test -f packages/playground/static-playground-report.json
+          test -f packages/playground/static-export-metadata.json
+      - name: Package immutable production artifact
+        run: |
+          set -euo pipefail
+          mkdir -p .playground-artifact/static
+          cp -R packages/playground/public/. .playground-artifact/static/
+          cp packages/playground/static-export-metadata.json packages/playground/static-playground-report.json .playground-artifact/
+          bun run packages/testing/scripts/playground-artifact-tree.ts --write --root .playground-artifact --manifest .playground-artifact/artifact-tree-manifest.json
+          tar -cf .playground-artifact/playground-production-artifact.tar -C .playground-artifact static static-export-metadata.json static-playground-report.json artifact-tree-manifest.json
+          test -f packages/playground/static-playground-report.json
+      - name: Upload Playground production evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: playground-production-artifact-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+          if-no-files-found: error
+          path: .playground-artifact/playground-production-artifact.tar
+
+  playground-production:
+    needs: [scope, playground-production-producer]
+    if: "always() && !cancelled() && (needs.scope.result != 'success' || contains(needs.scope.outputs.unit_lanes, 'playground'))"
+    uses: ./.github/workflows/playground-production.yaml
+    with:
+      artifact-name: playground-production-artifact-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+      producer-result: ${{ needs.playground-production-producer.result }}
+      directory-mode: static
+      source-sha: ${{ github.sha }}
+
+  browser-runner-lifecycle:
+    needs: scope
+    if: '!cancelled()'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - uses: ./.github/actions/install-dependencies
+      - name: Verify browser-runner descendant cleanup
+        run: |
+          bun test packages/testing/scripts/start-server.test.ts packages/testing/scripts/kill-playground.test.ts packages/testing/scripts/playground-exit-report.test.ts packages/testing/scripts/managed-process-spawn.test.ts
+          bun run --filter=@cinder/testing typecheck
+
   component:
     needs: scope
     if: "!cancelled() && (needs.scope.result != 'success' || contains(needs.scope.outputs.unit_lanes, 'components'))"
@@ -196,7 +263,17 @@ jobs:
 
   unit-tests:
     name: unit-tests
-    needs: [scope, static-artifact, package, playground, component]
+    needs:
+      [
+        scope,
+        static-artifact,
+        package,
+        playground,
+        playground-production-producer,
+        playground-production,
+        browser-runner-lifecycle,
+        component,
+      ]
     if: '!cancelled()'
     runs-on: ubuntu-latest
     steps:
@@ -206,13 +283,19 @@ jobs:
           STATIC: ${{ needs.static-artifact.result }}
           PACKAGE: ${{ needs.package.result }}
           PLAYGROUND: ${{ needs.playground.result }}
+          PLAYGROUND_PRODUCTION_PRODUCER: ${{ needs.playground-production-producer.result }}
+          PLAYGROUND_PRODUCTION: ${{ needs.playground-production.result }}
+          BROWSER_RUNNER_LIFECYCLE: ${{ needs.browser-runner-lifecycle.result }}
           COMPONENT: ${{ needs.component.result }}
           LANES: ${{ needs.scope.outputs.unit_lanes }}
         run: |
           set -euo pipefail
-          echo "scope=$SCOPE lanes=$LANES static=$STATIC package=$PACKAGE playground=$PLAYGROUND component=$COMPONENT" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "scope=$SCOPE lanes=$LANES static=$STATIC package=$PACKAGE playground=$PLAYGROUND playground-production-producer=$PLAYGROUND_PRODUCTION_PRODUCER playground-production=$PLAYGROUND_PRODUCTION browser-runner-lifecycle=$BROWSER_RUNNER_LIFECYCLE component=$COMPONENT" | tee -a "$GITHUB_STEP_SUMMARY"
           [ "$SCOPE" = success ] || exit 1
           case ",$LANES," in *,static,*) [ "$STATIC" = success ] || exit 1;; esac
           case ",$LANES," in *,package,*) [ "$PACKAGE" = success ] || exit 1;; esac
           case ",$LANES," in *,playground,*) [ "$PLAYGROUND" = success ] || exit 1;; esac
+          case ",$LANES," in *,playground,*) [ "$PLAYGROUND_PRODUCTION" = success ] || exit 1;; esac
+          case ",$LANES," in *,playground,*) [ "$PLAYGROUND_PRODUCTION_PRODUCER" = success ] || exit 1;; esac
+          [ "$BROWSER_RUNNER_LIFECYCLE" = success ] || exit 1
           case ",$LANES," in *,components,*) [ "$COMPONENT" = success ] || exit 1;; esac

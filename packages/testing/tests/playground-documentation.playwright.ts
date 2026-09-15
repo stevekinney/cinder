@@ -97,10 +97,10 @@ test.describe('playground component documentation', () => {
 
     await page.goto('/page/button', { waitUntil: 'load' });
 
-    // The pre-paint script seeds `data-cinder-theme` from the persisted key
+    // The pre-paint script seeds `data-theme` from the persisted key
     // before first paint; the page adopts it after hydration without changing
     // the server tree.
-    await expect(page.locator('html')).toHaveAttribute('data-cinder-theme', 'dark');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
     expect(errors).toEqual([]);
   });
 

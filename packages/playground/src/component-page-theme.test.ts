@@ -40,6 +40,7 @@ afterEach(() => {
     writable: true,
   });
   document.documentElement.style.colorScheme = '';
+  delete document.documentElement.dataset['theme'];
   delete document.documentElement.dataset['cinderTheme'];
 });
 
@@ -49,21 +50,24 @@ describe('readInitialTheme', () => {
     expect(readInitialTheme()).toBe('light');
   });
 
-  it('reads a concrete color-scheme from documentElement.style', () => {
-    document.documentElement.style.colorScheme = 'dark';
-    expect(readInitialTheme()).toBe('dark');
-  });
-
-  it('falls back to dataset.cinderTheme when color-scheme is not a concrete value', () => {
-    document.documentElement.style.colorScheme = '';
-    document.documentElement.dataset['cinderTheme'] = 'dark';
+  it('reads the authoritative data-theme scope', () => {
+    document.documentElement.dataset['theme'] = 'dark';
     expect(readInitialTheme()).toBe('dark');
   });
 
   it('defaults to "light" when neither signal indicates dark', () => {
     document.documentElement.style.colorScheme = '';
-    delete document.documentElement.dataset['cinderTheme'];
+    delete document.documentElement.dataset['theme'];
     expect(readInitialTheme()).toBe('light');
+  });
+
+  it('follows a dark operating-system preference when System mode has no attribute', () => {
+    delete document.documentElement.dataset['theme'];
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      value: { matchMedia: () => ({ matches: true }) },
+    });
+    expect(readInitialTheme()).toBe('dark');
   });
 });
 
@@ -116,18 +120,20 @@ describe('readStoredNavFilter', () => {
 });
 
 describe('applyTheme', () => {
-  it('sets colorScheme, dataset.cinderTheme, and localStorage for "dark"', () => {
+  it('sets data-theme and localStorage for "dark"', () => {
     localStorage.removeItem(THEME_STORAGE_KEY);
     applyTheme('dark');
-    expect(document.documentElement.style.colorScheme).toBe('dark');
+    expect(document.documentElement.style.colorScheme).toBe('');
+    expect(document.documentElement.dataset['theme']).toBe('dark');
     expect(document.documentElement.dataset['cinderTheme']).toBe('dark');
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark');
     localStorage.removeItem(THEME_STORAGE_KEY);
   });
 
-  it('sets colorScheme, dataset.cinderTheme, and localStorage for "light"', () => {
+  it('sets data-theme and localStorage for "light"', () => {
     applyTheme('light');
-    expect(document.documentElement.style.colorScheme).toBe('light');
+    expect(document.documentElement.style.colorScheme).toBe('');
+    expect(document.documentElement.dataset['theme']).toBe('light');
     expect(document.documentElement.dataset['cinderTheme']).toBe('light');
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light');
     localStorage.removeItem(THEME_STORAGE_KEY);
@@ -145,7 +151,8 @@ describe('applyTheme', () => {
     });
     try {
       expect(() => applyTheme('dark')).not.toThrow();
-      expect(document.documentElement.style.colorScheme).toBe('dark');
+      expect(document.documentElement.style.colorScheme).toBe('');
+      expect(document.documentElement.dataset['theme']).toBe('dark');
       expect(document.documentElement.dataset['cinderTheme']).toBe('dark');
     } finally {
       Object.defineProperty(globalThis, 'localStorage', {

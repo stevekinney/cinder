@@ -10,7 +10,7 @@
   const uid = $props.id();
   let editorId = $derived(`${mountIdPrefix ?? uid}-editor`);
 
-  let value = $state(`# Release notes
+  let value = $state(`## Release notes
 
 This editor supports **rich markdown editing**, toolbar actions, and a source mode.
 

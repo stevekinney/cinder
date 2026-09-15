@@ -39,19 +39,91 @@
  * `globalThis` before `@testing-library/svelte` loads.
  */
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { computeAccessibleName } from 'dom-accessibility-api';
+import { join } from 'node:path';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../components/src/test/happy-dom.ts';
+import { analyzeComponent } from './analyze.ts';
 import {
   createLivePreviewMount,
   LIVE_MOUNT_CONTAINER_ID,
   type MountErrorRecord,
   toMountProps,
 } from './component-page-live-preview.ts';
-import type { PlaygroundControl } from './component-page-playground.ts';
+import {
+  buildPlaygroundModel,
+  type PlaygroundControl,
+  type PlaygroundValue,
+} from './component-page-playground.ts';
 import { previewRecipeFor } from './component-page-preview-recipes.ts';
 
 setupHappyDom();
+
+const ACCESSIBLE_PREVIEW_CASES = [
+  ['checkbox', 'Preview checkbox', 'input'],
+  ['color-field', 'Preview color', 'input'],
+  ['combobox', 'Preview option', 'input'],
+  ['file-upload', 'Preview file', 'input[type="file"]'],
+  ['input', 'Preview input', 'input'],
+  ['number-input', 'Preview number', 'input'],
+  ['search-field', 'Preview search', 'input'],
+  ['select', 'Preview selection', 'select'],
+  ['tag-input', 'Preview tags', 'input'],
+  ['textarea', 'Preview text', 'textarea'],
+  ['time-field', 'Preview time', 'input[type="time"]'],
+  ['footer', 'Preview footer', 'footer'],
+] as const;
+
+async function loadAccessiblePreviewComponent(componentName: string): Promise<unknown> {
+  const module = await import(`@lostgradient/cinder/${componentName}`);
+  return module.default;
+}
+
+async function actualPreviewState(componentName: string) {
+  const manifest = await analyzeComponent(
+    join(
+      import.meta.dir,
+      '../../components/src/components',
+      componentName,
+      `${componentName}.svelte`,
+    ),
+    { importPath: `@lostgradient/cinder/${componentName}` },
+  );
+  const model = buildPlaygroundModel(manifest);
+  const recipe = previewRecipeFor(componentName);
+  const defaults: Record<string, PlaygroundValue> = Object.fromEntries(
+    model.controls.map((control) => [control.name, control.value]),
+  );
+  const values: Record<string, PlaygroundValue> = Object.fromEntries(
+    model.controls.map((control) => {
+      const recipeValue = recipe?.props?.[control.name];
+      return [
+        control.name,
+        typeof recipeValue === 'string' ||
+        typeof recipeValue === 'number' ||
+        typeof recipeValue === 'boolean'
+          ? recipeValue
+          : control.value,
+      ];
+    }),
+  );
+  return { model, recipe, values, defaults };
+}
+
+describe('LocaleProvider authored preview', () => {
+  test('renders and updates a descendant using the inherited locale', async () => {
+    const { default: LocaleExample } =
+      await import('./examples/locale-provider/basic.example.svelte');
+    const { render, fireEvent } = await import('@testing-library/svelte');
+    const view = render(LocaleExample);
+    const amount = view.getByLabelText('Amount');
+    expect(Reflect.get(amount, 'value')).toBe('1.234,50');
+    await fireEvent.click(view.getByRole('button', { name: 'English' }));
+    expect(Reflect.get(amount, 'value')).toBe('1,234.50');
+    view.unmount();
+  });
+});
 
 describe('toMountProps', () => {
   test('passes non-children controls through unchanged', () => {
@@ -114,10 +186,104 @@ describe('toMountProps', () => {
 
     expect(props).not.toHaveProperty('label');
   });
+
+  test.each(ACCESSIBLE_PREVIEW_CASES)(
+    'renders an accessible name for the generated %s preview',
+    async (componentName, expectedName, selector) => {
+      const component = await loadAccessiblePreviewComponent(componentName);
+      const element = document.createElement(componentName === 'footer' ? 'main' : 'div');
+      const mountErrors: MountErrorRecord = {};
+      const { model, recipe, values } = await actualPreviewState(componentName);
+      const props = toMountProps(model.controls, values, model.seeds, recipe);
+      document.body.append(element);
+
+      const teardown = createLivePreviewMount({ mountErrors })(component, props)(element);
+      await tick();
+
+      const target = element.querySelector(selector);
+      expect(target, `${componentName} target should render`).not.toBeNull();
+      expect(computeAccessibleName(target as Element)).toBe(expectedName);
+      expect(mountErrors[LIVE_MOUNT_CONTAINER_ID]).toBeUndefined();
+      if (componentName === 'footer') {
+        expect(target?.getAttribute('role')).toBe('group');
+        expect(element.textContent).toContain('© 2026 Cinder');
+      }
+
+      teardown();
+      element.remove();
+    },
+  );
+
+  test.each(ACCESSIBLE_PREVIEW_CASES)(
+    'detects the missing generated %s recipe baseline',
+    async (componentName, expectedName, selector) => {
+      const component = await loadAccessiblePreviewComponent(componentName);
+      const element = document.createElement('div');
+      const { model, defaults } = await actualPreviewState(componentName);
+      const props = toMountProps(model.controls, defaults, model.seeds);
+      const mountErrors: MountErrorRecord = {};
+      document.body.append(element);
+
+      const teardown = createLivePreviewMount({ mountErrors })(component, props)(element);
+      await tick();
+
+      const target = element.querySelector(selector);
+      expect(target, `${componentName} target should render`).not.toBeNull();
+      if (componentName === 'footer') {
+        expect(target?.getAttribute('role')).not.toBe('group');
+      } else {
+        expect(computeAccessibleName(target as Element)).not.toBe(expectedName);
+      }
+
+      teardown();
+      element.remove();
+    },
+  );
+
+  test('clearing visible and ARIA recipe names removes them after actual rerender', async () => {
+    for (const [componentName, expectedName, selector, namingProp] of [
+      ['input', 'Preview input', 'input', 'label'],
+      ['progress', 'Task progress', '[role="progressbar"]', 'ariaLabel'],
+    ] as const) {
+      const component = await loadAccessiblePreviewComponent(componentName);
+      const element = document.createElement('div');
+      const { model, recipe, values } = await actualPreviewState(componentName);
+      document.body.append(element);
+      const mountErrors: MountErrorRecord = {};
+      const factory = createLivePreviewMount({ mountErrors });
+
+      const initialTeardown = factory(
+        component,
+        toMountProps(model.controls, values, model.seeds, recipe),
+      )(element);
+      await tick();
+      expect(computeAccessibleName(element.querySelector(selector) as Element)).toBe(expectedName);
+      initialTeardown();
+      await tick();
+      element.remove();
+
+      const clearedValues = { ...values };
+      clearedValues[namingProp] = '';
+      const clearedElement = document.createElement('div');
+      document.body.append(clearedElement);
+      const clearedTeardown = factory(
+        component,
+        toMountProps(model.controls, clearedValues, model.seeds, recipe),
+      )(clearedElement);
+      await tick();
+      expect(computeAccessibleName(clearedElement.querySelector(selector) as Element)).not.toBe(
+        expectedName,
+      );
+      clearedTeardown();
+      clearedElement.remove();
+    }
+  });
 });
 
 const { render } = await import('@testing-library/svelte');
 const { default: Fixture } = await import('./component-page-live-preview-fixture.svelte');
+const { default: ExplicitItemsExample } =
+  await import('./examples/table-of-contents/explicit-items.example.svelte');
 const probeModule = (await import('./component-page-live-probe.svelte')) as unknown as {
   default: unknown;
   lastProps: () => Record<string, unknown> | undefined;
@@ -170,6 +336,36 @@ afterEach(() => {
 });
 
 describe('component-page live preview (#405)', () => {
+  test('keeps explicit table-of-contents links aligned with a changed mount prefix', async () => {
+    const { container, rerender, unmount } = render(ExplicitItemsExample, {
+      mountIdPrefix: 'first-mount',
+    });
+
+    const expectLinksResolve = (prefix: string): void => {
+      const headings = new Set(
+        [...container.querySelectorAll('h2, h3')].map((heading) => heading.id),
+      );
+      const links = [...container.querySelectorAll<HTMLAnchorElement>('a[href^="#"]')];
+      expect(links.length).toBe(4);
+      expect(links.every((link) => link.getAttribute('href')?.startsWith(`#${prefix}-`))).toBe(
+        true,
+      );
+      expect(links.every((link) => headings.has(link.getAttribute('href')?.slice(1) ?? ''))).toBe(
+        true,
+      );
+    };
+
+    await tick();
+    expectLinksResolve('first-mount');
+
+    await rerender({ mountIdPrefix: 'second-mount' });
+    await tick();
+    expectLinksResolve('second-mount');
+    expect(container.querySelector('#first-mount-api-overview')).toBeNull();
+
+    unmount();
+  });
+
   test('resolves the bare component from the module namespace by export name', async () => {
     const { unmount } = render(Fixture, {
       bareComponentModule: asNamedModule(LiveProbe, 'Demo'),
@@ -449,6 +645,21 @@ describe('component-page live preview (#405)', () => {
     expect(element.querySelector('.live-probe')?.textContent).toContain('Indigo');
     teardown();
 
+    element.remove();
+  });
+
+  test('does not restore the ready marker after cleanup races the mount tick', async () => {
+    const mountErrors: MountErrorRecord = {};
+    const element = document.createElement('div');
+    element.id = LIVE_MOUNT_CONTAINER_ID;
+    document.body.append(element);
+
+    const factory = createLivePreviewMount({ mountErrors });
+    const teardown = factory(LiveProbe, { label: 'Raced' })(element);
+    teardown();
+    await tick();
+
+    expect(element.hasAttribute('data-live-preview-ready')).toBe(false);
     element.remove();
   });
 });

@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "locale-provider",
+  "import": "@lostgradient/cinder/locale-provider",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Inherited locale",
+      "description": "Change the provider locale to update number formatting in its descendant.",
+      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { LocaleProvider } from '@lostgradient/cinder/locale-provider';\n  import { NumberInput } from '@lostgradient/cinder/number-input';\n\n  let locale = $state('de-DE');\n  let amount = $state<number | null>(1234.5);\n</script>\n\n<div class=\"example-preview-column\">\n  <div class=\"example-preview-row\" role=\"group\" aria-label=\"Number format locale\">\n    <Button type=\"button\" aria-pressed={locale === 'de-DE'} onclick={() => (locale = 'de-DE')}\n      >German</Button\n    >\n    <Button type=\"button\" aria-pressed={locale === 'en-US'} onclick={() => (locale = 'en-US')}\n      >English</Button\n    >\n  </div>\n  <LocaleProvider {locale}>\n    <NumberInput\n      id=\"amount\"\n      label=\"Amount\"\n      bind:value={amount}\n      format={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }}\n    />\n  </LocaleProvider>\n</div>\n"
+    }
+  ]
+}

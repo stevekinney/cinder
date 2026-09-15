@@ -3084,10 +3084,11 @@
       ],
       "related": ["number-input", "phone-input", "statistic"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/locale-provider/schema",
-        "variables": "@lostgradient/cinder/locale-provider/variables"
+        "variables": "@lostgradient/cinder/locale-provider/variables",
+        "examples": "@lostgradient/cinder/locale-provider/examples"
       }
     },
     {

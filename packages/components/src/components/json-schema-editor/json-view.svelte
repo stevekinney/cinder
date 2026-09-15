@@ -46,7 +46,7 @@
   }
 
   // Parse is synchronous; the meta-schema check is not (validateMetaSchema
-  // dynamically imports Ajv), so it's tracked as state updated from an
+  // loads the interpreted runtime), so it's tracked as state updated from an
   // effect rather than a $derived. The state container only debounces
   // validation against the *committed* schema; this runs an immediate check
   // on the *draft* so the user gets feedback on the current text without

@@ -17,7 +17,7 @@
  *     the live mount fails.
  */
 import type { Snippet } from 'svelte';
-import { mount, unmount } from 'svelte';
+import { mount, tick, unmount } from 'svelte';
 
 import type {
   PlaygroundControl,
@@ -26,7 +26,7 @@ import type {
 } from './component-page-playground.ts';
 import type { PreviewRecipe } from './component-page-preview-recipes.ts';
 import { toMountErrorDetail, type MountErrorDetail } from './example-error.ts';
-import { CONTEXT_REQUIRED_PARTS } from './shell-app/compound-families.ts';
+import { COMPOUND_COMPONENT_PARENTS } from './shell-app/compound-families.ts';
 
 /**
  * Translate the flat playground control values into the props object handed to
@@ -158,32 +158,12 @@ function readProperty(value: unknown, key: string): unknown {
 }
 
 /**
- * Whether the playground may mount this component BARE with synthesized props.
- *
- * Two structural exclusions, both about children the playground cannot invent:
- *
- *  - A compound ROOT (`isCompound`, from the manifest) expects structured
- *    sub-components (`<Accordion.Item>`); a bare mount renders an empty shell or
- *    throws on `{@render children()}`.
- *  - A context-requiring PART (see {@link CONTEXT_REQUIRED_PARTS}) reads a strict
- *    context getter during init, so a mount with no provider ancestor throws
- *    `missing_context` — which the page then paints as a red error callout on a
- *    component whose only sin is being designed for composition.
- *
- * Auto-wrapping the parts in a synthesized `<Root><Part/></Root>` was considered
- * and rejected: several need a nesting depth greater than two
- * (`Table > Table.Header > Table.Row > Table.HeaderCell`), the roots have their
- * own required props, and `tab`/`segment`/`choice-grid-item` need registration
- * values that match the root's selection state. A generic wrapper renders blank
- * or misleading for most of them, and the root's own page already shows the real
- * composition.
- *
- * Deliberately NOT gated on compound-family membership as a whole: most family
- * members read context through the optional `tryGet*` accessors and bare-mount
- * fine today.
+ * Compound roots and parts use authored examples. They require structured
+ * children, ancestor context, or matching selection state that synthesized
+ * scalar controls cannot supply.
  */
 export function canBareMount(kebabName: string, isCompound: boolean | undefined): boolean {
-  return isCompound !== true && !CONTEXT_REQUIRED_PARTS.has(kebabName);
+  return isCompound !== true && !Object.hasOwn(COMPOUND_COMPONENT_PARENTS, kebabName);
 }
 
 /**
@@ -270,17 +250,25 @@ export function createLivePreviewMount(
       return () => {};
     }
     let app: ReturnType<typeof mount> | undefined;
+    let disposed = false;
     try {
       app = mount(component, {
         target: element,
         props,
       });
       mountErrors[mountKey] = undefined;
+      void tick().then(() => {
+        if (!disposed && app !== undefined && element.isConnected)
+          element.setAttribute('data-live-preview-ready', '');
+        return undefined;
+      });
     } catch (error) {
       console.error('[cinder playground] failed to mount live preview:', error);
       mountErrors[mountKey] = toMountErrorDetail(error);
     }
     return () => {
+      disposed = true;
+      element.removeAttribute('data-live-preview-ready');
       if (app === undefined) return;
       try {
         // `unmount` returns a Promise (outro animations); the teardown is

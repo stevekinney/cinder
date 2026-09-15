@@ -641,6 +641,19 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'for cinder/chat/editor — not run in unit-tests/browser-tests/pre-commit/pre-push, same as ' +
       'those audits.',
   },
+  'root#check:playground-production': {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'The static Playground production artifact and browser smoke gate runs in the dedicated ' +
+      'unit-tests production lane and the authoritative main-green source gate. It is intentionally ' +
+      'not assigned to release or hook layers because deployment performs its own direct pre-deploy ' +
+      'verification and local hooks do not have the generated artifact or Chromium dependencies.',
+  },
+  'root#check:playground-evidence': {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'Both static producer jobs verify installed Playwright reporters, aggregate coverage and unsharded runner parity after building their artifacts.',
+  },
 };
 
 /** Commands whose layer set is intentionally NOT verified (meta-scripts with no fixed home). */
@@ -1024,6 +1037,7 @@ function layerInvokesCommand(
   packageScripts: Record<string, string>,
   rootScripts: Record<string, string>,
   packageName = componentsPackageName,
+  commandScope: ScriptScope = 'package',
 ): boolean {
   if (invokesDirectScriptPath(layerText, command, packageScripts)) return true;
 
@@ -1039,7 +1053,10 @@ function layerInvokesCommand(
       rootScripts,
       packageName,
     );
-    if (chain.packageScripts.has(command)) return true;
+    if (
+      commandScope === 'root' ? chain.rootScripts.has(command) : chain.packageScripts.has(command)
+    )
+      return true;
   }
 
   return false;
@@ -1237,6 +1254,7 @@ export function checkPipelineCoverage(
     const packageScripts =
       sources.workspacePackageScripts?.[packageName] ??
       (packageName === componentsPackageName ? sources.packageScripts : {});
+    const isRootCommand = packageName === 'root';
     const declared = new Set(row.layers);
 
     for (const layer of LAYERS) {
@@ -1269,9 +1287,10 @@ export function checkPipelineCoverage(
           : layerInvokesCommand(
               layerText,
               scriptName,
-              packageScripts,
+              isRootCommand ? sources.rootScripts : packageScripts,
               sources.rootScripts,
-              packageName,
+              isRootCommand ? componentsPackageName : packageName,
+              isRootCommand ? 'root' : 'package',
             );
       const isDeclared = declared.has(layer);
 

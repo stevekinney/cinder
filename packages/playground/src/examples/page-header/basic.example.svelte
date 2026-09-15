@@ -11,11 +11,11 @@
 </script>
 
 <div>
-  <PageHeader title="Approvals" description="3 pending · 12 resolved" />
+  <PageHeader headingLevel={2} title="Approvals" description="3 pending · 12 resolved" />
 </div>
 
 <div style="margin-top: var(--cinder-space-4);">
-  <PageHeader>
+  <PageHeader headingLevel={2}>
     {#snippet breadcrumbs()}
       <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Schedules' }]} />
     {/snippet}

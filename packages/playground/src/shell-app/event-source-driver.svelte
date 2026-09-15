@@ -12,11 +12,13 @@
 </script>
 
 <script lang="ts">
+  import { untrack } from 'svelte';
+
   import Fixture from './event-source-fixture.svelte';
 
   let { initial, handlers = {} }: EventSourceDriverProps = $props();
 
-  let url = $state<string | null>(initial);
+  let url = $state<string | null>(untrack(() => initial));
 
   /** Imperative handle the test holds onto so it can mutate `url`. */
   export function setUrl(next: string | null): void {

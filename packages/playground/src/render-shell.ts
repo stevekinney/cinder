@@ -71,10 +71,8 @@ export function jsonForScriptTag(value: unknown): string {
  *
  * The only persisted/shareable values are explicit overrides — `light` or
  * `dark`. With no override the playground follows the browser's
- * `prefers-color-scheme`: the inline `color-scheme` is left unset so the base
- * `color-scheme: light dark` declaration governs, and `data-cinder-theme` is
- * seeded with the resolved preference so the authoritative CSS signal still
- * reflects the theme actually in effect.
+ * `prefers-color-scheme`: remove the explicit token scope and give CodeBlock
+ * its system signal so both consumers follow the OS preference.
  */
 export const PRE_PAINT_THEME_SCRIPT = `
       (function () {
@@ -91,17 +89,14 @@ export const PRE_PAINT_THEME_SCRIPT = `
           }
         } catch (e) { /* ignore — localStorage unavailable in private mode etc. */ }
         if (override) {
-          // Explicit override wins over the OS setting.
-          document.documentElement.style.colorScheme = override;
-          document.documentElement.dataset.cinderTheme = override;
+          // Explicit Cinder scope wins over the OS setting.
+          document.documentElement.dataset['theme'] = override;
+          document.documentElement.dataset['cinderTheme'] = override;
         } else {
-          // No override: follow the browser. Leave color-scheme to the base
-          // 'color-scheme: light dark' declaration and seed data-cinder-theme
-          // with the resolved prefers-color-scheme so CSS reads the live theme.
-          var prefersDark =
-            typeof window.matchMedia === 'function' &&
-            window.matchMedia('(prefers-color-scheme: dark)').matches;
-          document.documentElement.dataset.cinderTheme = prefersDark ? 'dark' : 'light';
+          // System mode follows the browser. Remove stale explicit signals.
+          document.documentElement.style.colorScheme = '';
+          document.documentElement.removeAttribute('data-theme');
+          document.documentElement.dataset['cinderTheme'] = 'system';
         }
       })();
     `;
@@ -394,12 +389,8 @@ export function renderShell(
         }
       }
 
-      /* light-dark() needs an active color-scheme to know which value to
-         return. Without this declaration, light-dark() always returns its
-         first argument, so system-preference dark-mode users see a light
-         flash before the SPA mounts. The pre-paint script overrides this
-         to a concrete light/dark for explicit theme choices. */
-      html {
+      /* System mode follows the OS preference through the base token styles. */
+      html:not([data-theme]) {
         color-scheme: light dark;
       }
 

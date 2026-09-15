@@ -1,9 +1,15 @@
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { spawnSync, type ChildProcess } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve as resolvePath, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REQUIRED_BASELINE_ARCHITECTURE } from './baseline-provenance.ts';
-import { installSignalCleanupHandlers, terminateChildProcess } from './start-server.ts';
+import { spawnManagedProcess } from './managed-process-spawn.ts';
+import {
+  installSignalCleanupHandlers,
+  manageChildProcess,
+  terminateChildProcess,
+  type ManagedChildProcess,
+} from './process-lifecycle.ts';
 
 /** The exact CI dispatch every architecture-refusal message must name. */
 export const BASELINE_UPDATE_WORKFLOW_DISPATCH_COMMAND =
@@ -66,12 +72,22 @@ const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolvePath(here, '..');
 const repoRoot = resolvePath(packageRoot, '../..');
 
-type PackageManifest = { devDependencies?: Record<string, string>; packageManager?: string };
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+  return isRecord(value) && Object.values(value).every((entry) => typeof entry === 'string');
+}
 
 export function readPinnedPlaywrightVersion(): string {
   const raw = readFileSync(resolvePath(packageRoot, 'package.json'), 'utf8');
-  const parsed = JSON.parse(raw) as PackageManifest;
-  const pinned = parsed.devDependencies?.['@playwright/test'];
+  const parsed: unknown = JSON.parse(raw);
+  const devDependencies =
+    isRecord(parsed) && isStringRecord(parsed['devDependencies'])
+      ? parsed['devDependencies']
+      : undefined;
+  const pinned = devDependencies?.['@playwright/test'];
   if (!pinned || /^[\^~]/.test(pinned)) {
     throw new Error(
       `@playwright/test must be exact-pinned (no ^ or ~) in packages/testing/package.json; got ${pinned ?? 'undefined'}`,
@@ -92,10 +108,7 @@ export function readPinnedPlaywrightVersion(): string {
 export function readPinnedBunVersion(): string {
   const raw = readFileSync(resolvePath(repoRoot, 'package.json'), 'utf8');
   const parsed: unknown = JSON.parse(raw);
-  const field =
-    typeof parsed === 'object' && parsed !== null
-      ? (parsed as PackageManifest).packageManager
-      : undefined;
+  const field = isRecord(parsed) ? parsed['packageManager'] : undefined;
   // Checked rather than assumed: a `packageManager` that is present but not a
   // string would make `.match` throw a TypeError, replacing the explicit
   // message below with something a reader has to decode.
@@ -115,7 +128,7 @@ export function run(
   options: { cwd?: string; onSpawn?: (child: ChildProcess) => void } = {},
 ): Promise<number> {
   return new Promise((resolve) => {
-    const child = spawn(command, args, {
+    const child = spawnManagedProcess(command, args, {
       cwd: options.cwd,
       stdio: 'inherit',
     });
@@ -250,13 +263,13 @@ function isInsideDirectory(path: string, directory: string): boolean {
  * checkout. Mount only those referenced directories at their host paths so Git
  * can resolve `HEAD` inside Docker without exposing the whole parent checkout.
  */
-export function gitMetadataMountPaths(repoRoot: string): string[] {
+export function gitMetadataMountPaths(repositoryRoot: string): string[] {
   const gitDirectory = spawnSync('git', ['rev-parse', '--absolute-git-dir'], {
-    cwd: repoRoot,
+    cwd: repositoryRoot,
     encoding: 'utf8',
   });
   const commonDirectory = spawnSync('git', ['rev-parse', '--git-common-dir'], {
-    cwd: repoRoot,
+    cwd: repositoryRoot,
     encoding: 'utf8',
   });
   if (gitDirectory.status !== 0 || commonDirectory.status !== 0) {
@@ -264,18 +277,18 @@ export function gitMetadataMountPaths(repoRoot: string): string[] {
   }
 
   const metadataPaths = [gitDirectory.stdout.trim(), commonDirectory.stdout.trim()].map((path) =>
-    isAbsolute(path) ? path : resolvePath(repoRoot, path),
+    isAbsolute(path) ? path : resolvePath(repositoryRoot, path),
   );
   return [...new Set(metadataPaths)].filter(
-    (path) => path.length > 0 && !isInsideDirectory(path, repoRoot),
+    (path) => path.length > 0 && !isInsideDirectory(path, repositoryRoot),
   );
 }
 
 export function gitMetadataMounts(
-  repoRoot: string,
+  repositoryRoot: string,
   platform: NodeJS.Platform = process.platform,
 ): GitMetadataMount[] {
-  return gitMetadataMountPaths(repoRoot).map((hostPath, index) => ({
+  return gitMetadataMountPaths(repositoryRoot).map((hostPath, index) => ({
     hostPath,
     containerPath: platform === 'win32' ? `/git-metadata/${index}` : hostPath,
   }));
@@ -355,14 +368,10 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  let activeChild: ChildProcess | null = null;
+  let activeChild: ManagedChildProcess | null = null;
   installSignalCleanupHandlers(async () => {
     if (activeChild !== null) {
-      await terminateChildProcess({
-        childProcess: activeChild,
-        name: 'docker',
-        killProcessGroup: false,
-      });
+      await terminateChildProcess(activeChild);
     }
   });
 
@@ -373,7 +382,7 @@ async function main(): Promise<void> {
   const buildExit = await buildPlaywrightDockerImage(
     playwrightVersion,
     imageTag,
-    (child) => (activeChild = child),
+    (child) => (activeChild = manageChildProcess(child, 'docker build')),
   );
   activeChild = null;
   if (buildExit !== 0) {
@@ -400,7 +409,10 @@ async function main(): Promise<void> {
         ...hostOwnershipEnvironment(),
       },
     }),
-    { cwd: repoRoot, onSpawn: (child) => (activeChild = child) },
+    {
+      cwd: repoRoot,
+      onSpawn: (child) => (activeChild = manageChildProcess(child, 'docker run')),
+    },
   );
   activeChild = null;
 

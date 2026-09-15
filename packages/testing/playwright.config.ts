@@ -6,9 +6,8 @@ type TraceValue = (typeof TRACE_VALUES)[number];
 
 function resolveTrace(): TraceValue {
   const raw = process.env['PLAYWRIGHT_TRACE'];
-  if (raw !== undefined && (TRACE_VALUES as readonly string[]).includes(raw)) {
-    return raw as TraceValue;
-  }
+  const trace = TRACE_VALUES.find((value) => value === raw);
+  if (trace !== undefined) return trace;
   // No override: CI defaults to off (trace recording adds measurable
   // per-test overhead). The CI workflow opts into 'retain-on-failure'
   // via PLAYWRIGHT_TRACE for any full-matrix run — pushes to main and
@@ -74,6 +73,7 @@ export default defineConfig({
       testIgnore: [
         '**/overlay-reduced-motion-exit.playwright.ts',
         '**/reduced-motion-cascade-precedence.playwright.ts',
+        '**/playground-production.playwright.ts',
       ],
     },
     // CIN-376: emulates `prefers-reduced-motion: reduce` at the browser-context

@@ -146,7 +146,11 @@ function installDocumentationDataIsland(fixture: ComponentDocumentationPayload):
 // `new EventSource(url)` throws `ReferenceError: EventSource is not defined`.
 // This stub only needs to exist and stay inert — these tests assert on layout,
 // not on live-reload behavior (that's covered by `event-source.test.ts`).
+let eventSourceOpenCount = 0;
 class NoopEventSource {
+  constructor() {
+    eventSourceOpenCount += 1;
+  }
   addEventListener(): void {}
   removeEventListener(): void {}
   close(): void {}
@@ -155,6 +159,7 @@ class NoopEventSource {
 const originalEventSource = Reflect.get(globalThis, 'EventSource') as unknown;
 
 beforeEach(() => {
+  eventSourceOpenCount = 0;
   resetLedgers();
   const happyWindow = window as unknown as { happyDOM: { setURL(url: string): void } };
   happyWindow.happyDOM.setURL('http://localhost/page/button');
@@ -167,6 +172,7 @@ beforeEach(() => {
 afterEach(() => {
   resetLedgers();
   document.body.innerHTML = '';
+  document.documentElement.removeAttribute('data-static-export');
   if (originalEventSource === undefined) {
     Reflect.deleteProperty(globalThis, 'EventSource');
   } else {
@@ -188,6 +194,21 @@ async function showPlayground(): Promise<void> {
 }
 
 describe('component-page single-scroll layout', () => {
+  test('does not open the development EventSource for static exports', async () => {
+    document.documentElement.setAttribute('data-static-export', 'true');
+    const { unmount } = render(ComponentPage, { documentation: baseFixture() });
+    await tick();
+    expect(eventSourceOpenCount).toBe(0);
+    unmount();
+  });
+
+  test('opens the development EventSource for normal documents', async () => {
+    const { unmount } = render(ComponentPage, { documentation: baseFixture() });
+    await tick();
+    expect(eventSourceOpenCount).toBeGreaterThan(0);
+    unmount();
+  });
+
   test('groups standalone page actions and exposes focus-visible tooltips', async () => {
     // The page controls live in the SIDEBAR footer now, not a top bar — the band
     // they came from restated the sidebar brand, the hero eyebrow, and the page
@@ -228,15 +249,15 @@ describe('component-page single-scroll layout', () => {
     }
   });
 
-  test('renders the hero, spec card, and section anchors from a fixture', async () => {
+  test('renders the hero, import control, and section anchors from a fixture', async () => {
     const { unmount } = render(ComponentPage);
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Button' })).toBeTruthy();
     expect(screen.getByText('Fixture purpose for a documentation page.')).toBeTruthy();
     // Import line built from exportName + importSpecifier.
     expect(screen.getByText("import { Button } from '@lostgradient/cinder/button';")).toBeTruthy();
-    // Spec card version row.
-    expect(screen.getByText('v0.2.0')).toBeTruthy();
+    expect(document.querySelector('[aria-label="Component facts"]')).toBeNull();
+    expect(screen.getByText('Actions')).toBeTruthy();
 
     // Section anchors resolve.
     for (const id of ['overview', 'guidance', 'props', 'related']) {
@@ -260,37 +281,6 @@ describe('component-page single-scroll layout', () => {
     // ("Segmented Control"); the href keeps the kebab id.
     const altLink = screen.getByRole('link', { name: /Segmented Control/ });
     expect(altLink.getAttribute('href')).toBe('/page/segmented-control');
-
-    unmount();
-    await tick();
-  });
-
-  test('maps a non-stable status to a non-success badge variant', async () => {
-    const beta = baseFixture();
-    beta.component.status = 'beta';
-    installDocumentationDataIsland(beta);
-
-    const { unmount } = render(ComponentPage);
-    const statusBadge = await screen.findByText('beta');
-    expect(statusBadge.getAttribute('data-variant')).toBe('info');
-
-    unmount();
-    await tick();
-  });
-
-  test('renders the status dot as decorative so it does not re-announce the badge text', async () => {
-    // Regression for #388/#372: the spec-row StatusDot sits next to a Badge that
-    // already names the status visibly. The dot must be decorative
-    // (`aria-hidden`) — if it carried `aria-label={status}` it would speak the
-    // same word the Badge already announces (the audible duplication).
-    const { unmount } = render(ComponentPage);
-    await screen.findByRole('heading', { level: 1, name: 'Button' });
-
-    const dot = document.querySelector('.dx-spec__val [role="img"]');
-    expect(dot).not.toBeNull();
-    expect(dot?.getAttribute('aria-hidden')).toBe('true');
-    // The decorative dot carries no accessible name of its own.
-    expect(dot?.getAttribute('aria-label')).toBeNull();
 
     unmount();
     await tick();
@@ -486,6 +476,120 @@ describe('component-page single-scroll layout', () => {
     expect(loadCount).toBe(1);
     unmount();
     await tick();
+  });
+
+  test('holds the preview in loading state until the lazy bare module settles', async () => {
+    let resolveBareModule: ((module: unknown) => void) | undefined;
+    const bareModule = new Promise<unknown>((resolve) => {
+      resolveBareModule = resolve;
+    });
+    const { unmount } = render(ComponentPage, {
+      props: {
+        examples: [{ scenario: 'basic', title: 'Basic', featured: true }],
+        loadBareComponentModule: () => bareModule,
+      },
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+
+    await showPlayground();
+    expect(screen.getByText('Loading preview…')).toBeTruthy();
+    expect(screen.queryByText('Featured example')).toBeNull();
+    expect(document.querySelector('[id^="playground-mount-"]')).toBeNull();
+
+    resolveBareModule?.({ Button: ButtonMock });
+    await Promise.resolve();
+    await tick();
+
+    expect(screen.queryByText('Loading preview…')).toBeNull();
+    expect(screen.getByText('Live preview')).toBeTruthy();
+    expect(document.querySelector('#playground-live-mount')).toBeTruthy();
+    expect(document.querySelector('[id^="playground-mount-"]')).toBeNull();
+
+    unmount();
+    await tick();
+  });
+
+  test('uses the featured fallback after a lazy bare module rejects', async () => {
+    const { unmount } = render(ComponentPage, {
+      props: {
+        examples: [{ scenario: 'basic', title: 'Basic', featured: true }],
+        loadBareComponentModule: async () => {
+          throw new Error('load failed');
+        },
+      },
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await showPlayground();
+    await waitFor(() => expect(screen.getByText('Featured example')).toBeTruthy());
+
+    expect(screen.getByText('Featured example')).toBeTruthy();
+    expect(document.querySelector('[id^="playground-mount-"]')).toBeTruthy();
+    expect(document.querySelector('#playground-live-mount')).toBeNull();
+
+    unmount();
+    await tick();
+  });
+
+  test('cancels a pending bare-module load when the page unmounts', async () => {
+    let resolveBareModule: ((module: unknown) => void) | undefined;
+    const bareModule = new Promise<unknown>((resolve) => {
+      resolveBareModule = resolve;
+    });
+    const { unmount } = render(ComponentPage, {
+      props: { loadBareComponentModule: () => bareModule },
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await showPlayground();
+    unmount();
+
+    resolveBareModule?.({ Button: ButtonMock });
+    await Promise.resolve();
+    await tick();
+    expect(document.querySelector('#playground-live-mount')).toBeNull();
+    expect(document.querySelector('[id^="playground-mount-"]')).toBeNull();
+  });
+
+  test('holds a retried lazy import in loading state after reopening Playground', async () => {
+    let resolveRetry: ((module: unknown) => void) | undefined;
+    const retryModule = new Promise<unknown>((resolve) => {
+      resolveRetry = resolve;
+    });
+    let attempts = 0;
+    const { unmount } = render(ComponentPage, {
+      props: {
+        examples: [{ scenario: 'basic', title: 'Basic', featured: true }],
+        loadBareComponentModule: () =>
+          ++attempts === 1 ? Promise.reject(new Error('first load failed')) : retryModule,
+      },
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await showPlayground();
+    await waitFor(() => expect(screen.getByText('Featured example')).toBeTruthy());
+    await fireEvent.click(screen.getByRole('tab', { name: 'Documentation' }));
+    await showPlayground();
+    expect(screen.getByText('Loading preview…')).toBeTruthy();
+    expect(screen.queryByText('Featured example')).toBeNull();
+    resolveRetry?.({ Button: ButtonMock });
+    await waitFor(() => expect(screen.getByText('Live preview')).toBeTruthy());
+    expect(attempts).toBe(2);
+    unmount();
+  });
+
+  test('does not delay authored compound previews for an unused bare import', async () => {
+    const fixture = baseFixture();
+    fixture.propsManifest.isCompound = true;
+    installDocumentationDataIsland(fixture);
+    const { unmount } = render(ComponentPage, {
+      props: {
+        examples: [{ scenario: 'basic', title: 'Basic', featured: true }],
+        loadBareComponentModule: () => new Promise<unknown>(() => {}),
+      },
+    });
+    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await showPlayground();
+    expect(screen.queryByText('Loading preview…')).toBeNull();
+    expect(screen.getByText('Featured example')).toBeTruthy();
+    unmount();
   });
 
   test('makes the active view linkable through the URL', async () => {

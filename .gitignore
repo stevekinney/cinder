@@ -116,6 +116,9 @@ tmp/
 
 # Playground Vercel build output (function-only deploy; no real static assets)
 packages/playground/public/
+# Static export evidence emitted beside the ignored artifact tree.
+packages/playground/static-export-metadata.json
+packages/playground/static-playground-report.json
 
 # Playground server temporary wrapper files
 scripts/playground/.controls-*.svelte
