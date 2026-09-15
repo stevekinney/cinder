@@ -97,7 +97,7 @@ export type JsonSchemaValidationResult = {
    * check has ruled out `status === 'invalid'` cases (no schema, non-object)
    * — for a plausibly-valid shape, `valid` stays optimistic (reflects
    * whatever the previous check found, or `true` on a cold mount before the
-   * first Ajv chunk has resolved) until `status` moves off `'pending'`.
+   * interpreted runtime has resolved) until `status` moves off `'pending'`.
    * Gate on `status`, not `valid` alone.
    */
   valid: boolean;

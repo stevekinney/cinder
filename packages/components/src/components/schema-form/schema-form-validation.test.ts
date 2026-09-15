@@ -10,7 +10,7 @@ import {
 } from './schema-form-validation.ts';
 
 describe('schema-form validation', () => {
-  test('validates JSON Schema values with lazy Ajv compilation', async () => {
+  test('validates JSON Schema values with the shared lazy runtime', async () => {
     const schema = {
       type: 'object',
       properties: {
@@ -29,6 +29,24 @@ describe('schema-form validation', () => {
     const invalid = await validateSchemaValue(schema, { name: '', count: 0 });
     expect(invalid.valid).toBe(false);
     expect(invalid.issues.map((issue) => issue.path)).toEqual([['name'], ['count']]);
+  });
+
+  test('does not mutate frozen schemas or instances', async () => {
+    const schema = Object.freeze({
+      type: 'object',
+      properties: Object.freeze({
+        name: Object.freeze({ type: 'string', format: 'email' }),
+      }),
+      required: Object.freeze(['name']),
+    });
+    const value = Object.freeze({ name: 'ada@example.com' });
+    const schemaBefore = JSON.stringify(schema);
+    const valueBefore = JSON.stringify(value);
+
+    await expect(validateSchemaValue(schema, value)).resolves.toMatchObject({ valid: true });
+
+    expect(JSON.stringify(schema)).toBe(schemaBefore);
+    expect(JSON.stringify(value)).toBe(valueBefore);
   });
 
   test('selects draft-07 and 2019-09 validators from $schema', async () => {
@@ -129,6 +147,15 @@ describe('schema-form validation', () => {
     ]);
   });
 
+  test('rejects unrecognised draft identifiers', async () => {
+    await expect(
+      validateSchemaValue(
+        { $schema: 'https://example.invalid/draft/2020-12/schema', type: 'string' },
+        'Ada',
+      ),
+    ).resolves.toMatchObject({ valid: false });
+  });
+
   test('reports invalid JSON Schema compilation errors as root issues', async () => {
     const result = await validateSchemaValue(
       {
@@ -188,6 +215,52 @@ describe('schema-form validation', () => {
     expect(result.valid).toBe(false);
     expect(result.issues[0]?.path).toEqual(['accepted']);
     expect(result.issues[0]?.message).toMatch(/constant/i);
+  });
+
+  test('validates local recursive and dynamic references', async () => {
+    const recursive = {
+      $schema: 'https://json-schema.org/draft/2019-09/schema',
+      $recursiveAnchor: true,
+      type: 'object',
+      properties: { child: { $recursiveRef: '#' } },
+    };
+    const dynamic = {
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      $dynamicAnchor: 'node',
+      type: 'object',
+      properties: { child: { $dynamicRef: '#node' } },
+    };
+    await expect(validateSchemaValue(recursive, { child: { child: {} } })).resolves.toMatchObject({
+      valid: true,
+    });
+    await expect(validateSchemaValue(dynamic, { child: { child: {} } })).resolves.toMatchObject({
+      valid: true,
+    });
+  });
+
+  test('validates standard formats and rejects malformed values', async () => {
+    const formats = [
+      ['date', '2020-02-29', '2020-02-30'],
+      ['time', '23:59:60Z', '24:00:00Z'],
+      ['date-time', '2020-02-29T23:59:59Z', '2020-19-39T29:00:00Z'],
+      ['email', 'ada@example.com', 'invalid'],
+      ['iso-time', '12:30:00', 'invalid'],
+      ['iso-time', '12:30:00+05:30', '29:00:00'],
+      ['iso-date-time', '2020-01-01T12:30:00', '2020-19-39T29:00:00'],
+      ['regex', 'a+', '['],
+      ['json-pointer-uri-fragment', '#/name~1first%20name', '#/bad~2escape'],
+      ['byte', 'YWJj', '!'],
+      ['int32', 1, 2 ** 31],
+      ['int64', 1, 1.5],
+    ] as const;
+    for (const [format, validValue, invalidValue] of formats) {
+      await expect(validateSchemaValue({ format }, validValue)).resolves.toMatchObject({
+        valid: true,
+      });
+      await expect(validateSchemaValue({ format }, invalidValue)).resolves.toMatchObject({
+        valid: false,
+      });
+    }
   });
 
   test('groups issues by path without overwriting the first field message', () => {

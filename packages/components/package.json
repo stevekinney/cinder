@@ -6572,6 +6572,7 @@
     "ajv-formats": "^3.0.1",
     "culori": "^4.0.2",
     "esm-env": "^1.2.0",
+    "json-schema-library": "11.6.2",
     "libphonenumber-js": "^1.13.3",
     "lucide-svelte": "0.503.0",
     "qrcode": "^1.5.4",

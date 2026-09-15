@@ -18,9 +18,9 @@ function withImmediateTimers<T>(run: () => T): T {
 }
 
 /**
- * Meta-schema/compile validation dynamically imports Ajv, so even
- * "immediate" debounce timers only kick off async work — they don't finish
- * it. Flush a real macrotask (a genuine `setTimeout`, taken after
+ * Meta-schema/compile validation loads the interpreted runtime asynchronously,
+ * so even "immediate" debounce timers only kick off async work — they don't
+ * finish it. Flush a real macrotask (a genuine `setTimeout`, taken after
  * `withImmediateTimers` has restored the original) so every microtask the
  * validation promise chain scheduled has drained by the time we return.
  */
@@ -131,7 +131,7 @@ describe('createEditorState — JSON draft / Apply', () => {
 
   // Regression (Codex review): applyJsonDraft only checked `readonly`
   // before its first await. If a parent flipped readonly to true while the
-  // Ajv-backed meta-schema check was still in flight, the commit went
+  // While the interpreted meta-schema check was still in flight, the commit went
   // through anyway once it resolved — readonly must also be rechecked
   // after the await, since setReadonly doesn't bump validationEpoch the
   // way other mutations do.
@@ -538,7 +538,7 @@ describe('createEditorState — onValidate callback', () => {
     withImmediateTimers(() => {
       state.setJsonDraftText('[1,2,3]');
     });
-    // The immediate timer only starts the (now async, Ajv-backed) validation
+    // The immediate timer only starts the (now async, interpreted) validation
     // — it doesn't finish it. Flush a real macrotask so the promise chain
     // resolves before asserting.
     await flushValidation();
@@ -548,7 +548,7 @@ describe('createEditorState — onValidate callback', () => {
     expect(events.at(-1)).toMatchObject({ status: 'invalid', valid: false });
   });
 
-  // Regression (review feedback on the ajv-deferral PR): the pending emit
+  // Regression (review feedback on the runtime deferral): the pending emit
   // that opens a new validation cycle must not report validity/compilable
   // left over from whatever schema was active before it. Before this fix,
   // `metaResult`/`compileResult` were untouched until the async check
@@ -564,7 +564,7 @@ describe('createEditorState — onValidate callback', () => {
 
     state.reload('{not-valid');
 
-    // The pending emit fires synchronously, before any Ajv import resolves.
+    // The pending emit fires synchronously, before the runtime load resolves.
     const pendingEvent = events[baseline];
     expect(pendingEvent).toMatchObject({ status: 'pending', valid: false });
   });
