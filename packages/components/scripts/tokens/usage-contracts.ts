@@ -320,17 +320,34 @@ export type UsageToken = {
 };
 
 function matchesProfileType(token: UsageToken, profile: UsageProfile): boolean {
-  // Trusted recipes can project a source number into a CSS length (tracking
-  // in em, for example). Their declared input graph and CSS value remain the
-  // contract; source type alone cannot describe that projection.
-  if (typeof token.metadata['cssRecipe'] === 'string') return true;
+  const recipe = token.metadata['cssRecipe'];
+  // Tokens without an authored DTCG type cannot be checked for a conflicting
+  // source type; their reviewed recipe and profile remain the contract.
+  if (token.type === undefined && typeof recipe === 'string') return true;
   if (profile.valueKind === token.type) return true;
   if (profile.valueKind === 'ratio') return token.type === 'number';
   if (profile.valueKind !== 'length') return false;
   if (token.type === 'dimension') return true;
   if (token.type !== 'number') return false;
+  // A recipe must be a complete length literal, not merely contain one.
+  // Shipped numeric projections use em tracking, ch widths and percentages.
+  if (typeof recipe === 'string') return recipeIsLengthLiteral(recipe);
   // CSS permits unitless zero in length positions without inventing a unit.
   return token.value === 0;
+}
+
+function recipeIsLengthLiteral(recipe: string): boolean {
+  const nodes = valueParser(recipe).nodes.filter(
+    (node) => node.type !== 'space' && node.type !== 'comment',
+  );
+  const node = nodes[0];
+  if (nodes.length !== 1 || node?.type !== 'word') return false;
+  const parsed = valueParser.unit(node.value);
+  if (!parsed || !Number.isFinite(Number(parsed.number))) return false;
+  if (parsed.unit === '') return Number(parsed.number) === 0;
+  return /^(%|px|em|rem|ex|ch|cap|ic|lh|rlh|vw|vh|vi|vb|vmin|vmax|svw|svh|svi|svb|lvw|lvh|lvi|lvb|dvw|dvh|dvi|dvb|q|cm|mm|in|pt|pc)$/.test(
+    parsed.unit.toLowerCase(),
+  );
 }
 export type TokenUsageMetadata = {
   usageContracts: UsageContract[];

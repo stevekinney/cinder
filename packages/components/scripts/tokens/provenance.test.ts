@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
+import { isToken, mergeDocuments } from './resolve-merge.ts';
 import { resolveDocuments, resolveDocumentsWithTrace } from './resolve.ts';
 import { TokenValidationError, type TokenDocument } from './types.ts';
 
@@ -326,6 +327,73 @@ describe('resolver provenance', () => {
     expect(result.resolved['token']!.$extensions?.['com.lostgradient.cinder']).not.toHaveProperty(
       'recipeInputs',
     );
+  });
+
+  test('drops CSS-only recipe metadata when a value-only override becomes representable', () => {
+    const result = mergeDocuments([
+      {
+        token: {
+          $type: 'dimension',
+          $value: { value: 1, unit: 'rem' },
+          $extensions: {
+            'com.lostgradient.cinder': {
+              cssProperty: '--cinder-spacing-token',
+              public: true,
+              usageContracts: [{ property: 'margin', profile: 'signed-length' }],
+              cssRecipe: 'calc(100% - 1rem)',
+              recipeInputs: [],
+              nonRepresentableValue: true,
+              portabilityReason: 'recipe requires a CSS calculation',
+            },
+          },
+        },
+      } as TokenDocument,
+      {
+        token: { $value: { value: 2, unit: 'rem' } },
+      } as TokenDocument,
+    ]);
+    const token = result['token'];
+    if (!isToken(token)) throw new Error('Expected merged token');
+    const metadata = token.$extensions?.['com.lostgradient.cinder'];
+    expect(metadata).toMatchObject({
+      cssProperty: '--cinder-spacing-token',
+      public: true,
+      usageContracts: [{ property: 'margin', profile: 'signed-length' }],
+    });
+    expect(metadata).not.toHaveProperty('cssRecipe');
+    expect(metadata).not.toHaveProperty('recipeInputs');
+    expect(metadata).not.toHaveProperty('nonRepresentableValue');
+    expect(metadata).not.toHaveProperty('portabilityReason');
+  });
+
+  test('preserves public spacing membership when a later layer changes the literal value', () => {
+    const base: TokenDocument = {
+      space: {
+        small: {
+          $type: 'dimension',
+          $value: { value: 4, unit: 'px' },
+          $extensions: {
+            'com.lostgradient.cinder': {
+              public: true,
+              cssProperty: '--cinder-space-small',
+              scale: 'spacing',
+              usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
+            },
+          },
+        },
+      },
+    };
+    const override: TokenDocument = { space: { small: { $value: { value: 8, unit: 'px' } } } };
+    const before = JSON.stringify([base, override]);
+    const result = traced([base, override], ['base.json', 'override.json']);
+    expect(result.resolved['space.small']?.$value).toEqual({ value: 8, unit: 'px' });
+    expect(result.resolved['space.small']?.$extensions?.['com.lostgradient.cinder']).toMatchObject({
+      public: true,
+      cssProperty: '--cinder-space-small',
+      scale: 'spacing',
+      usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
+    });
+    expect(JSON.stringify([base, override])).toBe(before);
   });
 
   test('records exact nested composite reference pointers and resolved target locations', () => {

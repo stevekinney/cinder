@@ -149,6 +149,63 @@ describe('authoritative token usage contracts', () => {
     expect(validateUsageContracts([{ ...length(), type: 'number', value: 0 }]).size).toBe(1);
   });
 
+  test('rejects a recipe-backed color token claiming a length profile', () => {
+    expect(() =>
+      validateUsageContracts([
+        {
+          ...length(),
+          type: 'color',
+          value: { colorSpace: 'srgb', components: [0, 0, 0] },
+          metadata: {
+            usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
+            cssRecipe: 'oklch(50% 0.1 20)',
+            recipeInputs: [],
+          },
+        },
+      ]),
+    ).toThrow('incompatible token type');
+  });
+
+  test.each(['rgb(1em 0 0)', 'red 1em', 'var(--cinder-space-small, 1em)', 'red'])(
+    'does not mistake a nested or unrelated length for a numeric length projection: %s',
+    (cssRecipe) => {
+      expect(() =>
+        validateUsageContracts([
+          {
+            ...length(),
+            type: 'number',
+            value: 0,
+            metadata: {
+              usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
+              cssRecipe,
+              recipeInputs: cssRecipe.startsWith('var(') ? ['space.small'] : [],
+            },
+          },
+        ]),
+      ).toThrow('incompatible token type');
+    },
+  );
+
+  test.each(['-0.01em', '65ch', '100%', '+1e1px'])(
+    'recognizes one complete numeric CSS length projection: %s',
+    (cssRecipe) => {
+      expect(
+        validateUsageContracts([
+          {
+            ...length(),
+            type: 'number',
+            value: 1,
+            metadata: {
+              usageContracts: [{ property: 'margin', profile: 'signed-length' }],
+              cssRecipe,
+              recipeInputs: [],
+            },
+          },
+        ]).size,
+      ).toBe(1);
+    },
+  );
+
   test('cross-checks exact recipe inputs against actual public CSS references', () => {
     const base = length();
     const alias: UsageToken = {

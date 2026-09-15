@@ -147,6 +147,7 @@ function mergeToken(
       'component',
       'contrastPairs',
       'usageContracts',
+      'scale',
     ])
       if (cinder[key] === undefined && baseCinder[key] !== undefined)
         cinder[key] = clone(baseCinder[key]);
