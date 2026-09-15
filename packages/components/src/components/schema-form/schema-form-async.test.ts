@@ -2,15 +2,14 @@
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 import { tick } from 'svelte';
 
-import Ajv2020 from 'ajv/dist/2020.js';
-
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
 const { cleanup, fireEvent, render, screen } = await import('@testing-library/svelte');
 const { default: SchemaForm } = await import('./schema-form.svelte');
-const { validateSchemaValue } = await import('./schema-form-validation.ts');
+const schemaValidation = await import('./schema-form-validation.ts');
+const { validateSchemaValue } = schemaValidation;
 
 async function flush(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
@@ -31,25 +30,17 @@ describe('SchemaForm async JSON Schema validation', () => {
     const validationStarted = Promise.withResolvers<void>();
     const schema = {
       $id: 'schema-form-async-submit-validation',
-      $async: true,
       type: 'object',
       properties: { name: { type: 'string', title: 'Name' } },
       required: ['name'],
     };
-    const validator = new Ajv2020({
-      strict: false,
-      allErrors: true,
-      addUsedSchema: false,
-    }).compile(schema);
-    const delayedValidator = new Proxy(validator, {
-      apply(target, thisArgument, argumentsList) {
+    const validationSpy = spyOn(schemaValidation, 'validateSchemaValue').mockImplementation(
+      async (source, value) => {
         validationStarted.resolve();
-        return pendingValidation.promise.then(() =>
-          Reflect.apply(target, thisArgument, argumentsList),
-        );
+        await pendingValidation.promise;
+        return validateSchemaValue(source, value);
       },
-    });
-    const compileSpy = spyOn(Ajv2020.prototype, 'compile').mockReturnValue(delayedValidator);
+    );
     const submitted: unknown[] = [];
 
     try {
@@ -87,9 +78,9 @@ describe('SchemaForm async JSON Schema validation', () => {
       expect(submitted).toEqual([]);
     } finally {
       pendingValidation.resolve({});
-      const compileCallCount = compileSpy.mock.calls.length;
-      compileSpy.mockRestore();
-      expect(compileCallCount).toBe(1);
+      const validationCallCount = validationSpy.mock.calls.length;
+      validationSpy.mockRestore();
+      expect(validationCallCount).toBe(1);
       await flush();
       await flush();
     }
