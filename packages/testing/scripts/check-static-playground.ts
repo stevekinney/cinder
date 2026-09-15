@@ -1,18 +1,14 @@
-import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import { join, relative, resolve as resolvePath, sep } from 'node:path';
-import {
-  cleanupManagedChildren,
-  installSignalCleanupHandlers,
-  manageChildProcess,
-  waitForExit,
-} from './process-lifecycle.ts';
+import { parseExpectedReport, type ShardIdentity } from './static-playground-evidence.ts';
+import { runStaticPlaywright } from './static-playground-runner.ts';
 import {
   headerRules,
   startStaticServer,
   type StaticVercelConfig,
 } from './static-playground-server.ts';
+export { playwrightArguments, runStaticPlaywright } from './static-playground-runner.ts';
 
 export type StaticManifestEntry = { path: string; bytes: number; sha256: string };
 type StaticExportInventory = { version: 1; sourceSha: string; routes: string[] };
@@ -310,54 +306,103 @@ export async function verifyStaticArtifact(options: VerifyStaticArtifactOptions)
   return report;
 }
 
-export async function runStaticPlaywright(
-  directory: string,
-  reportPath: string,
-  config: StaticVercelConfig,
-): Promise<number> {
-  const server = await startStaticServer(directory, config);
-  const child = spawn(
-    process.env['BUN_BIN'] ?? 'bun',
-    ['x', 'playwright', 'test', '-c', 'playwright-static.config.ts'],
-    {
-      cwd: resolvePath(import.meta.dirname, '..'),
-      env: {
-        ...process.env,
-        PLAYGROUND_STATIC_BASE_URL: server.origin,
-        PLAYGROUND_STATIC_REPORT: reportPath,
-      },
-      stdio: 'inherit',
-      detached: process.platform !== 'win32',
-    },
-  );
-  const managed = manageChildProcess(
-    child,
-    'static-playwright',
-    false,
-    process.platform !== 'win32',
-  );
-  let cleanupPromise: Promise<void> | undefined;
-  const cleanup = (): Promise<void> => {
-    cleanupPromise ??= cleanupManagedChildren([managed], null).then(() => server.close());
-    return cleanupPromise;
-  };
-  installSignalCleanupHandlers(cleanup);
-  try {
-    return await waitForExit(child);
-  } finally {
-    await cleanup();
-  }
-}
-
 async function main(): Promise<void> {
-  const directoryFlag = process.argv.indexOf('--directory');
-  const directory = directoryFlag >= 0 ? process.argv[directoryFlag + 1] : undefined;
+  const args = process.argv.slice(2);
+  const occurrences = (flag: string): string[] =>
+    args.flatMap((arg, index) => {
+      if (arg === flag)
+        return args[index + 1] && !args[index + 1]!.startsWith('--') ? [args[index + 1]!] : [];
+      if (arg.startsWith(`${flag}=`)) return [arg.slice(flag.length + 1)];
+      return [];
+    });
+  const valueFor = (flag: string): string | undefined => {
+    const values = occurrences(flag);
+    if (values.length > 1) throw new Error(`[static-playground] duplicate flag ${flag}`);
+    if (values.length === 1 && values[0]!.length === 0)
+      throw new Error(`[static-playground] empty value for ${flag}`);
+    return values[0];
+  };
+  if (args.filter((arg) => arg === '--verify-only').length > 1)
+    throw new Error('[static-playground] duplicate flag --verify-only');
+  const knownFlags = new Set([
+    '--directory',
+    '--metadata',
+    '--expected-report',
+    '--shard',
+    '--evidence-directory',
+    '--verify-only',
+  ]);
+  const valueFlags = new Set([
+    '--directory',
+    '--metadata',
+    '--expected-report',
+    '--shard',
+    '--evidence-directory',
+  ]);
+  for (const arg of args) {
+    if (
+      !arg.startsWith('--') ||
+      knownFlags.has(arg) ||
+      [...knownFlags].some((flag) => arg.startsWith(`${flag}=`))
+    )
+      continue;
+    throw new Error(`[static-playground] unknown flag ${arg}`);
+  }
+  for (let index = 0; index < args.length; index++) {
+    const arg = args[index]!;
+    if (arg.startsWith('--')) continue;
+    const previous = args[index - 1]?.split('=', 1)[0];
+    if (!previous || !valueFlags.has(previous))
+      throw new Error(`[static-playground] unexpected argument ${arg}`);
+  }
+  for (const flag of knownFlags) {
+    if (
+      flag !== '--verify-only' &&
+      args.some(
+        (arg, index) => arg === flag && (!args[index + 1] || args[index + 1]!.startsWith('--')),
+      )
+    )
+      throw new Error(`[static-playground] ${flag} requires a value`);
+  }
+  const directory = valueFor('--directory');
   if (!directory)
     throw new Error('usage: check-static-playground.ts --directory <public-directory>');
   const artifactDirectory = resolvePath(directory);
-  const metadataFlag = process.argv.indexOf('--metadata');
-  if (metadataFlag >= 0 && process.argv[metadataFlag + 1])
-    process.env['PLAYGROUND_STATIC_METADATA'] = resolvePath(process.argv[metadataFlag + 1]!);
+  const metadata = valueFor('--metadata');
+  if (metadata) process.env['PLAYGROUND_STATIC_METADATA'] = resolvePath(metadata);
+  const shardValue = valueFor('--shard');
+  let shard: ShardIdentity = { index: 1, total: 1 };
+  if (shardValue) {
+    const match = shardValue.match(/^(\d+)\/(\d+)$/);
+    if (!match) throw new Error('[static-playground] --shard must be INDEX/TOTAL');
+    shard = { index: Number(match[1]), total: Number(match[2]) };
+    if (
+      !Number.isSafeInteger(shard.index) ||
+      !Number.isSafeInteger(shard.total) ||
+      shard.total < 1 ||
+      shard.index < 1 ||
+      shard.index > shard.total
+    )
+      throw new Error('[static-playground] --shard is out of range');
+  }
+  const evidenceDirectory = valueFor('--evidence-directory');
+  if (evidenceDirectory && shard.total < 1)
+    throw new Error('[static-playground] invalid evidence shard');
+  const verifyOnly = args.includes('--verify-only');
+  if (verifyOnly && (shardValue || evidenceDirectory))
+    throw new Error(
+      '[static-playground] --verify-only cannot be combined with --shard or --evidence-directory',
+    );
+  if (args.some((arg) => arg.startsWith('--verify-only=')))
+    throw new Error('[static-playground] --verify-only does not take a value');
+  const expectedReportPath = valueFor('--expected-report');
+  const expectedReport = expectedReportPath
+    ? await Bun.file(resolvePath(expectedReportPath))
+        .json()
+        .catch(() => {
+          throw new Error('[static-playground] expected producer report is missing or malformed');
+        })
+    : undefined;
   const parsedConfig: unknown = JSON.parse(
     await Bun.file(join(import.meta.dirname, '../../playground/vercel.json')).text(),
   );
@@ -367,15 +412,35 @@ async function main(): Promise<void> {
     directory: artifactDirectory,
     vercelConfig: parsedConfig,
     origin: 'https://cinder.website',
-    reportPath: join(artifactDirectory, '..', 'static-playground-report.json'),
+    ...(expectedReportPath
+      ? {}
+      : { reportPath: join(artifactDirectory, '..', 'static-playground-report.json') }),
   });
+  if (expectedReportPath) {
+    const expected = parseExpectedReport(expectedReport);
+    if (
+      expected.sourceSha !== report.sourceSha ||
+      expected.artifactDigest !== report.artifactDigest ||
+      JSON.stringify(expected.routes) !== JSON.stringify(report.routes) ||
+      JSON.stringify(expected.manifest) !== JSON.stringify(report.manifest)
+    )
+      throw new Error(
+        '[static-playground] producer report identity does not match downloaded artifact',
+      );
+  }
   console.log(
     `[static-playground] verified ${report.routes.length} routes, ${report.manifest.length} files, digest ${report.artifactDigest}`,
   );
+  if (verifyOnly) return;
+  const producerReportPath = expectedReportPath
+    ? resolvePath(expectedReportPath)
+    : join(artifactDirectory, '..', 'static-playground-report.json');
   const browserExit = await runStaticPlaywright(
     artifactDirectory,
-    join(artifactDirectory, '..', 'static-playground-report.json'),
+    producerReportPath,
     parsedConfig,
+    shard,
+    evidenceDirectory,
   );
   if (browserExit !== 0) process.exitCode = browserExit;
 }

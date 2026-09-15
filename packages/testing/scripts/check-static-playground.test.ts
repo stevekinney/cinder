@@ -4,7 +4,7 @@ import { join } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
 
-import { verifyStaticArtifact } from './check-static-playground.ts';
+import { playwrightArguments, verifyStaticArtifact } from './check-static-playground.ts';
 import { startStaticServer } from './static-playground-server.ts';
 
 const VERCEL_CONFIG = {
@@ -58,6 +58,27 @@ async function fixture(
 }
 
 describe('verifyStaticArtifact', () => {
+  test('passes the deterministic shard through to Playwright', () => {
+    expect(playwrightArguments({ index: 3, total: 8 })).toContain('--shard=3/8');
+    expect(playwrightArguments({ index: 1, total: 1 })).not.toContain('--shard=1/1');
+  });
+  test('rejects unknown, duplicate, and incompatible command flags before artifact work', () => {
+    for (const argumentsList of [
+      ['--directory', '/tmp/missing', '--unknown'],
+      ['--directory', '/tmp/missing', '--directory', '/tmp/other'],
+      ['--directory', '/tmp/missing', '--verify-only', '--shard=1/8'],
+    ]) {
+      const result = Bun.spawnSync([
+        'bun',
+        'run',
+        'packages/testing/scripts/check-static-playground.ts',
+        '--',
+        ...argumentsList,
+      ]);
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stderr.toString()).toMatch(/static-playground/);
+    }
+  });
   test('applies wildcard security headers to redirects and missing routes', async () => {
     const { root, directory } = await fixture();
     try {
