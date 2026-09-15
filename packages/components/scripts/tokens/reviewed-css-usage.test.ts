@@ -1,8 +1,61 @@
 import { expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import registry from '../../src/tokens/registry.generated.json' with { type: 'json' };
 import { inventoryFromSources, type Inventory } from './css-usage-inventory';
+import committedReview from './css-usage-review.json' with { type: 'json' };
 import { observedUsageProperties } from './reviewed-css-usage';
 
 const properties = new Set(['--cinder-color', '--cinder-space']);
+
+test('owned style producers retain their public token contracts in the committed review', () => {
+  const root = resolve(import.meta.dir, '../../../..');
+  const paths = new Set([
+    'packages/playground/src/examples/selection-popover/existing-comments.example.svelte',
+    'packages/playground/src/examples/command-palette/search-recent-actions.example.svelte',
+    'packages/playground/src/examples/grid/logo-cloud.example.svelte',
+    'packages/components/src/components/statistic/statistic.svelte',
+    'packages/components/src/components/statistic/statistic.css',
+    'packages/playground/src/shell-app/token-inspector-panel.svelte',
+    'packages/components/src/tokens/registry.generated.ts',
+    'labs/chat-room/src/routes/+page.svelte',
+    'labs/chat-room/src/routes/exercises/adapter-push/+page.svelte',
+    'labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte',
+  ]);
+  const publicProperties = new Set(registry.entries.map((entry) => entry.cssProperty));
+  const inventory = inventoryFromSources(
+    [...paths].map((path) => ({ path, content: readFileSync(resolve(root, path), 'utf8') })),
+    publicProperties,
+  );
+  const review = {
+    ...committedReview,
+    surfaces: committedReview.surfaces.filter((surface) => paths.has(surface.identity.file)),
+    sourceFiles: committedReview.sourceFiles.filter((source) => paths.has(source.path)),
+    producerEvidence: committedReview.producerEvidence.filter((source) => paths.has(source.path)),
+  };
+  const observed = observedUsageProperties(inventory, review, publicProperties);
+  expect(observed.get('--cinder-accent-solid')).toContain('text-decoration-color');
+  expect(observed.get('--cinder-accent-solid')).toContain('outline');
+  expect(observed.get('--cinder-border')).toContain('border-block-start');
+  expect(observed.get('--cinder-text-xl')).toContain('font-size');
+  expect(observed.get('--cinder-font-semibold')).toContain('font-weight');
+  expect(observed.get('--cinder-text-default')).toContain('color');
+  expect(observed.get('--cinder-font-mono')).toContain('font-family');
+  const swatches = review.surfaces.filter(
+    (surface) =>
+      surface.identity.file.endsWith('/token-inspector-panel.svelte') &&
+      ['style:background={token.light}', 'style:background={token.dark}'].includes(
+        surface.identity.expression,
+      ),
+  );
+  expect(swatches).toHaveLength(2);
+  for (const swatch of swatches) {
+    expect(swatch.category).toBe('computed-style-color-input');
+    expect(swatch.producer.emitsPublicVar).toBe(false);
+    expect(swatch.mappings).toEqual([]);
+  }
+  expect(observed.get('--cinder-terminal-ansi-red')).toBeUndefined();
+});
 function fixture() {
   const inventory = inventoryFromSources(
     [

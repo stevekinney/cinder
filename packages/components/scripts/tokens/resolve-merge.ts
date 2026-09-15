@@ -26,21 +26,11 @@ export function normalizeObjectPrototypes(value: unknown): void {
 export function copyTraceMetadata(value: unknown, copy: unknown, state: TraceState): void {
   if (!isObject(value) || !isObject(copy)) return;
   const metadata = state.nodes.get(value);
-  if (metadata)
-    state.nodes.set(copy, {
-      location: metadata.location,
-      contributions: [...metadata.contributions],
-      typeOrigin: metadata.typeOrigin,
-      dependencies: metadata.dependencies.map((dependency) => ({
-        ...dependency,
-        source: { ...dependency.source },
-        ...(dependency.target ? { target: { ...dependency.target } } : {}),
-      })),
-    });
+  if (metadata) state.nodes.set(copy, cloneTraceMetadata(metadata));
   const groupLocation = state.groups.get(value);
-  if (groupLocation) state.groups.set(copy, groupLocation);
+  if (groupLocation) state.groups.set(copy, { ...groupLocation });
   const groupType = state.groupTypes.get(value);
-  if (groupType) state.groupTypes.set(copy, groupType);
+  if (groupType) state.groupTypes.set(copy, { ...groupType });
   for (const [key, child] of Object.entries(value)) copyTraceMetadata(child, copy[key], state);
 }
 export function copyExtensionOrigins(

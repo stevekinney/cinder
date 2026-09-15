@@ -243,11 +243,13 @@ test('retains inputs introduced only by a dark recipe override', async () => {
     },
   };
   documentsByPath.get('themes/dark.tokens.json')!['context-probe'] = {
-    $value: { value: 1, unit: 'rem' },
+    $value: { value: 2, unit: 'rem' },
     $extensions: {
       'com.lostgradient.cinder': {
         cssRecipe: 'var(--cinder-space-4)',
         recipeInputs: ['space.4'],
+        nonRepresentableValue: true,
+        portabilityReason: 'dark context requires a CSS recipe',
       },
     },
   };
@@ -255,6 +257,10 @@ test('retains inputs introduced only by a dark recipe override', async () => {
     (entry) => entry.path === 'context-probe',
   )!;
   for (const context of entry.contexts) {
+    expect(context.resolvedValue).toEqual({
+      value: context.context.theme === 'dark' ? 2 : 1,
+      unit: 'rem',
+    });
     expect(context.recipeInputs).toEqual(context.context.theme === 'dark' ? ['space.4'] : []);
     expect(
       context.directDependencies
@@ -262,4 +268,89 @@ test('retains inputs introduced only by a dark recipe override', async () => {
         .map((dependency) => dependency.targetPath),
     ).toEqual([...context.recipeInputs]);
   }
+  expect(entry.completePortable).toEqual({
+    status: 'omitted',
+    value: null,
+    reason:
+      'dark:default: dark context requires a CSS recipe; dark:reduced: dark context requires a CSS recipe; dark:forced-reduced-motion: dark context requires a CSS recipe',
+  });
+  expect(entry.subsetPortable).toEqual(entry.completePortable);
+  const allRepresentable = buildThemeTokenCatalogue(resolver, documentsByPath).entries.find(
+    (candidate) => candidate.path === 'border.control',
+  )!;
+  expect(allRepresentable.completePortable.status).toBe('supported');
+  expect(allRepresentable.completePortable.value).toEqual(
+    allRepresentable.contexts[0]!.resolvedValue,
+  );
+});
+
+test('omits portability when only a motion context is nonrepresentable', async () => {
+  const { resolver, documentsByPath } = await loadCorpus();
+  documentsByPath.get('sets/foundation.tokens.json')!['motion-context-probe'] = {
+    $type: 'dimension',
+    $value: { value: 1, unit: 'rem' },
+    $extensions: {
+      'com.lostgradient.cinder': {
+        public: true,
+        cssProperty: '--cinder-motion-context-probe',
+        usageContracts: [{ property: 'gap', profile: 'nonnegative-length' }],
+      },
+    },
+  };
+  documentsByPath.get('modes/motion-reduced.tokens.json')!['motion-context-probe'] = {
+    $value: { value: 3, unit: 'rem' },
+    $extensions: {
+      'com.lostgradient.cinder': {
+        cssRecipe: 'var(--cinder-space-4)',
+        recipeInputs: ['space.4'],
+        nonRepresentableValue: true,
+        portabilityReason: 'reduced motion context requires a CSS recipe',
+      },
+    },
+  };
+  const entry = buildThemeTokenCatalogue(resolver, documentsByPath).entries.find(
+    (candidate) => candidate.path === 'motion-context-probe',
+  )!;
+  expect(entry.completePortable).toEqual({
+    status: 'omitted',
+    value: null,
+    reason:
+      'light:reduced: reduced motion context requires a CSS recipe; dark:reduced: reduced motion context requires a CSS recipe',
+  });
+  expect(entry.contexts).toHaveLength(6);
+  expect(entry.contexts.filter((context) => context.context.motion === 'reduced')).toHaveLength(2);
+  for (const context of entry.contexts) {
+    expect(context.resolvedValue).toEqual({
+      value: context.context.motion === 'reduced' ? 3 : 1,
+      unit: 'rem',
+    });
+    expect(context.recipeInputs).toEqual(context.context.motion === 'reduced' ? ['space.4'] : []);
+    expect(
+      context.directDependencies
+        .filter((dependency) => dependency.kind === 'recipe')
+        .map((dependency) => dependency.targetPath),
+    ).toEqual([...context.recipeInputs]);
+  }
+});
+
+test('reports the exact context when public usage metadata disappears', async () => {
+  const { resolver, documentsByPath } = await loadCorpus();
+  documentsByPath.get('sets/foundation.tokens.json')!['missing-usage-probe'] = {
+    $type: 'dimension',
+    $value: { value: 1, unit: 'rem' },
+    $extensions: {
+      'com.lostgradient.cinder': {
+        public: true,
+        cssProperty: '--cinder-missing-usage-probe',
+        usageContracts: [{ property: 'gap', profile: 'nonnegative-length' }],
+      },
+    },
+  };
+  documentsByPath.get('themes/dark.tokens.json')!['missing-usage-probe'] = {
+    $value: { value: 2, unit: 'rem' },
+    $extensions: { 'com.lostgradient.cinder': { public: false } },
+  };
+  expect(() => buildThemeTokenCatalogue(resolver, documentsByPath)).toThrow(
+    'missing-usage-probe: missing authoring usage contract for dark:default',
+  );
 });

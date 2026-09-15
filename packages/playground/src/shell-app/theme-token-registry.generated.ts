@@ -25835,6 +25835,7 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'color', profile: 'color' },
         { property: 'outline', profile: 'color' },
         { property: 'stroke', profile: 'color' },
+        { property: 'text-decoration-color', profile: 'color' },
       ],
       observedProperties: [
         'accent-color',
@@ -25852,6 +25853,7 @@ export const THEME_TOKEN_CATALOGUE = {
         'color',
         'outline',
         'stroke',
+        'text-decoration-color',
       ],
       scale: null,
       source: {
@@ -38312,10 +38314,11 @@ export const THEME_TOKEN_CATALOGUE = {
       sourceType: 'color',
       usageContracts: [
         { property: 'background-color', profile: 'color' },
+        { property: 'border', profile: 'color' },
         { property: 'border-bottom', profile: 'color' },
         { property: 'border-color', profile: 'color' },
       ],
-      observedProperties: ['background-color', 'border-bottom', 'border-color'],
+      observedProperties: ['background-color', 'border', 'border-bottom', 'border-color'],
       scale: null,
       source: {
         status: 'supported',
@@ -64309,12 +64312,14 @@ export const THEME_TOKEN_CATALOGUE = {
       css: { status: 'supported', reason: null, value: '100%' },
       completePortable: {
         status: 'omitted',
-        reason: 'CSS percentage sizing has no faithful DTCG dimension representation.',
+        reason:
+          'light:default: CSS percentage sizing has no faithful DTCG dimension representation.; light:reduced: CSS percentage sizing has no faithful DTCG dimension representation.; light:forced-reduced-motion: CSS percentage sizing has no faithful DTCG dimension representation.; dark:default: CSS percentage sizing has no faithful DTCG dimension representation.; dark:reduced: CSS percentage sizing has no faithful DTCG dimension representation.; dark:forced-reduced-motion: CSS percentage sizing has no faithful DTCG dimension representation.',
         value: null,
       },
       subsetPortable: {
         status: 'omitted',
-        reason: 'CSS percentage sizing has no faithful DTCG dimension representation.',
+        reason:
+          'light:default: CSS percentage sizing has no faithful DTCG dimension representation.; light:reduced: CSS percentage sizing has no faithful DTCG dimension representation.; light:forced-reduced-motion: CSS percentage sizing has no faithful DTCG dimension representation.; dark:default: CSS percentage sizing has no faithful DTCG dimension representation.; dark:reduced: CSS percentage sizing has no faithful DTCG dimension representation.; dark:forced-reduced-motion: CSS percentage sizing has no faithful DTCG dimension representation.',
         value: null,
       },
       contexts: [
@@ -64778,13 +64783,13 @@ export const THEME_TOKEN_CATALOGUE = {
       completePortable: {
         status: 'omitted',
         reason:
-          'The shipped CSS ratio syntax is retained; its placeholder number is not a portable replacement.',
+          'light:default: The shipped CSS ratio syntax is retained; its placeholder number is not a portable replacement.; light:reduced: The shipped CSS ratio syntax is retained; its placeholder number is not a portable replacement.; light:forced-reduced-motion: The shipped CSS ratio syntax is retained; its placeholder number is not a portable replacement.; dark:default: The shipped CSS ratio syntax is retained; its placeholder number is not a portable replacement.; dark:reduced: The shipped CSS ratio syntax is retained; its placeholder number is not a portable replacement.; dark:forced-reduced-motion: The shipped CSS ratio syntax is retained; its placeholder number is not a portable replacement.',
         value: null,
       },
       subsetPortable: {
         status: 'omitted',
         reason:
-          'The shipped CSS ratio syntax is retained; its placeholder number is not a portable replacement.',
+          'light:default: The shipped CSS ratio syntax is retained; its placeholder number is not a portable replacement.; light:reduced: The shipped CSS ratio syntax is retained; its placeholder number is not a portable replacement.; light:forced-reduced-motion: The shipped CSS ratio syntax is retained; its placeholder number is not a portable replacement.; dark:default: The shipped CSS ratio syntax is retained; its placeholder number is not a portable replacement.; dark:reduced: The shipped CSS ratio syntax is retained; its placeholder number is not a portable replacement.; dark:forced-reduced-motion: The shipped CSS ratio syntax is retained; its placeholder number is not a portable replacement.',
         value: null,
       },
       contexts: [
@@ -65846,12 +65851,14 @@ export const THEME_TOKEN_CATALOGUE = {
       css: { status: 'supported', reason: null, value: 'auto' },
       completePortable: {
         status: 'omitted',
-        reason: 'DTCG dimensions cannot represent the intrinsic size keyword auto.',
+        reason:
+          'light:default: DTCG dimensions cannot represent the intrinsic size keyword auto.; light:reduced: DTCG dimensions cannot represent the intrinsic size keyword auto.; light:forced-reduced-motion: DTCG dimensions cannot represent the intrinsic size keyword auto.; dark:default: DTCG dimensions cannot represent the intrinsic size keyword auto.; dark:reduced: DTCG dimensions cannot represent the intrinsic size keyword auto.; dark:forced-reduced-motion: DTCG dimensions cannot represent the intrinsic size keyword auto.',
         value: null,
       },
       subsetPortable: {
         status: 'omitted',
-        reason: 'DTCG dimensions cannot represent the intrinsic size keyword auto.',
+        reason:
+          'light:default: DTCG dimensions cannot represent the intrinsic size keyword auto.; light:reduced: DTCG dimensions cannot represent the intrinsic size keyword auto.; light:forced-reduced-motion: DTCG dimensions cannot represent the intrinsic size keyword auto.; dark:default: DTCG dimensions cannot represent the intrinsic size keyword auto.; dark:reduced: DTCG dimensions cannot represent the intrinsic size keyword auto.; dark:forced-reduced-motion: DTCG dimensions cannot represent the intrinsic size keyword auto.',
         value: null,
       },
       contexts: [
@@ -72246,12 +72253,14 @@ export const THEME_TOKEN_CATALOGUE = {
       css: { status: 'supported', reason: null, value: 'currentColor' },
       completePortable: {
         status: 'omitted',
-        reason: 'DTCG colors cannot preserve context-inherited currentColor.',
+        reason:
+          'light:default: DTCG colors cannot preserve context-inherited currentColor.; light:reduced: DTCG colors cannot preserve context-inherited currentColor.; light:forced-reduced-motion: DTCG colors cannot preserve context-inherited currentColor.; dark:default: DTCG colors cannot preserve context-inherited currentColor.; dark:reduced: DTCG colors cannot preserve context-inherited currentColor.; dark:forced-reduced-motion: DTCG colors cannot preserve context-inherited currentColor.',
         value: null,
       },
       subsetPortable: {
         status: 'omitted',
-        reason: 'DTCG colors cannot preserve context-inherited currentColor.',
+        reason:
+          'light:default: DTCG colors cannot preserve context-inherited currentColor.; light:reduced: DTCG colors cannot preserve context-inherited currentColor.; light:forced-reduced-motion: DTCG colors cannot preserve context-inherited currentColor.; dark:default: DTCG colors cannot preserve context-inherited currentColor.; dark:reduced: DTCG colors cannot preserve context-inherited currentColor.; dark:forced-reduced-motion: DTCG colors cannot preserve context-inherited currentColor.',
         value: null,
       },
       contexts: [

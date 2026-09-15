@@ -267,6 +267,7 @@ export async function loadRepositorySources(root: string): Promise<Source[]> {
     'packages/editor/src',
     'packages/markdown/src',
     'packages/playground/src',
+    'labs/chat-room/src',
   ];
   const extensions = new Set(['.css', '.html', '.svelte', '.ts', '.tsx', '.js', '.jsx']);
   const sources: Source[] = [];
@@ -279,7 +280,7 @@ export async function loadRepositorySources(root: string): Promise<Source[]> {
         !extensions.has(extension) ||
         /(^|\/)__tests__(\/|$)/.test(relativePath) ||
         /^(?:lib\/)?test(?:\/|$)/.test(path.replaceAll('\\', '/')) ||
-        /\.(test|spec|playwright)\.[^.]+$/.test(relativePath)
+        /\.(test|spec|playwright|e2e)\.[^.]+$/.test(relativePath)
       )
         continue;
       sources.push({

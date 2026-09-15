@@ -163,8 +163,13 @@ export function buildThemeTokenCatalogue(
         const contextResult = contextResults.get(`${theme}:${motion}`)!;
         const trace = contextResult.traces.get(registryEntry.path);
         const resolved = contextResult.resolved[registryEntry.path];
+        const usage = contextResult.usage.get(registryEntry.path);
+        if (!usage)
+          throw new Error(
+            `${registryEntry.path}: missing authoring usage contract for ${theme}:${motion}`,
+          );
         const value = resolved?.$value ?? entry.value;
-        const recipeInputs = contextResult.usage.get(registryEntry.path)?.recipeInputs ?? [];
+        const recipeInputs = usage.recipeInputs;
         const recipeDependencies: ResolverTraceDependency[] = recipeInputs.map((targetPath) => {
           if (!trace)
             throw new Error(`${registryEntry.path}: trusted recipe has no source provenance`);
@@ -194,9 +199,14 @@ export function buildThemeTokenCatalogue(
           resolvedValue: value,
         };
       });
-      const firstContext = contextResults.get('light:default');
-      const usage = firstContext?.usage.get(registryEntry.path);
-      if (!usage) throw new Error(`${registryEntry.path}: missing authoring usage contract`);
+      const firstContext = contextResults.get('light:default')!;
+      const usage = firstContext.usage.get(registryEntry.path)!;
+      const portabilityFailures = THEME_CONTEXTS.flatMap(({ theme, motion }) => {
+        const reason = contextResults
+          .get(`${theme}:${motion}`)!
+          .usage.get(registryEntry.path)!.portabilityReason;
+        return reason === null ? [] : [`${theme}:${motion}: ${reason}`];
+      });
       if (
         usage.scale &&
         (entry.isRefAlias ||
@@ -205,12 +215,12 @@ export function buildThemeTokenCatalogue(
           Array.isArray(entry.value))
       )
         throw new Error(`${entry.path}: spacing scale requires an authored literal dimension`);
-      const portable: CatalogueDisposition = usage.portabilityReason
-        ? { status: 'omitted', reason: usage.portabilityReason, value: null }
+      const portable: CatalogueDisposition = portabilityFailures.length
+        ? { status: 'omitted', reason: portabilityFailures.join('; '), value: null }
         : {
             status: 'supported',
             reason: null,
-            value: firstContext?.resolved[registryEntry.path]?.$value,
+            value: firstContext.resolved[registryEntry.path]?.$value,
           };
       return {
         path: registryEntry.path,

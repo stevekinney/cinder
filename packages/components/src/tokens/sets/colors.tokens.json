@@ -215,6 +215,10 @@
                 "profile": "color"
               },
               {
+                "property": "border",
+                "profile": "color"
+              },
+              {
                 "property": "border-bottom",
                 "profile": "color"
               },

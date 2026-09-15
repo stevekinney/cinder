@@ -2130,7 +2130,8 @@
           { "property": "box-shadow", "profile": "color" },
           { "property": "color", "profile": "color" },
           { "property": "outline", "profile": "color" },
-          { "property": "stroke", "profile": "color" }
+          { "property": "stroke", "profile": "color" },
+          { "property": "text-decoration-color", "profile": "color" }
         ]
       }
     },
@@ -2926,6 +2927,7 @@
         "category": "color",
         "usageContracts": [
           { "property": "background-color", "profile": "color" },
+          { "property": "border", "profile": "color" },
           { "property": "border-bottom", "profile": "color" },
           { "property": "border-color", "profile": "color" }
         ]

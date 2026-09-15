@@ -4083,15 +4083,27 @@
         "property": "--_cinder-chart-foreground",
         "expression": "style:--_cinder-chart-foreground={resolvedTheme.foreground}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "Chart theme producer resolves caller-supplied values with currentColor/transparent defaults; this surface is an explicit style/color input, not a public-token observation. Producer: packages/components/src/components/statistic/statistic.svelte:96 — const resolvedTheme = $derived(     theme       ? // A supplied theme — even a partial one — keeps `resolveChartTheme`'s. It can emit public var(--cinder-*) references at this boundary; review status: reviewed.",
-      "mappings": [],
+      "category": "shipped-public-token-mapping",
+      "reason": "The no-theme branch explicitly supplies the public text token. The private chart variable reaches color declarations in the owned statistic stylesheet. Supplied theme values remain a caller-controlled branch without invented token mappings.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-text-default",
+          "property": "color"
+        }
+      ],
       "producer": {
         "path": "packages/components/src/components/statistic/statistic.svelte",
-        "line": 96,
-        "description": "const resolvedTheme = $derived(     theme       ? // A supplied theme — even a partial one — keeps `resolveChartTheme`'s",
+        "line": 107,
+        "description": "The no-theme branch explicitly supplies the public text token. The private chart variable reaches color declarations in the owned statistic stylesheet. Supplied theme values remain a caller-controlled branch without invented token mappings.",
         "emitsPublicVar": true,
-        "status": "reviewed"
+        "status": "reviewed",
+        "chain": [
+          {
+            "path": "packages/components/src/components/statistic/statistic.css",
+            "line": 9,
+            "description": "The owned private chart color variable is consumed by the color property."
+          }
+        ]
       },
       "reviewStatus": "reviewed"
     },
@@ -4104,15 +4116,27 @@
         "property": "--_cinder-chart-muted",
         "expression": "style:--_cinder-chart-muted={resolvedTheme.muted}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "Chart theme producer resolves caller-supplied values with currentColor/transparent defaults; this surface is an explicit style/color input, not a public-token observation. Producer: packages/components/src/components/statistic/statistic.svelte:96 — const resolvedTheme = $derived(     theme       ? // A supplied theme — even a partial one — keeps `resolveChartTheme`'s. It can emit public var(--cinder-*) references at this boundary; review status: reviewed.",
-      "mappings": [],
+      "category": "shipped-public-token-mapping",
+      "reason": "The no-theme branch explicitly supplies the public text token. The private chart variable reaches color declarations in the owned statistic stylesheet. Supplied theme values remain a caller-controlled branch without invented token mappings.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-text-muted",
+          "property": "color"
+        }
+      ],
       "producer": {
         "path": "packages/components/src/components/statistic/statistic.svelte",
-        "line": 96,
-        "description": "const resolvedTheme = $derived(     theme       ? // A supplied theme — even a partial one — keeps `resolveChartTheme`'s",
+        "line": 108,
+        "description": "The no-theme branch explicitly supplies the public text token. The private chart variable reaches color declarations in the owned statistic stylesheet. Supplied theme values remain a caller-controlled branch without invented token mappings.",
         "emitsPublicVar": true,
-        "status": "reviewed"
+        "status": "reviewed",
+        "chain": [
+          {
+            "path": "packages/components/src/components/statistic/statistic.css",
+            "line": 30,
+            "description": "The owned private chart color variable is consumed by the color property."
+          }
+        ]
       },
       "reviewStatus": "reviewed"
     },
@@ -4739,13 +4763,18 @@
         "property": null,
         "expression": "{headerBase}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/examples/command-palette/search-recent-actions.example.svelte:111 is const headerBase =       'font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--cinder-text-muted); pointer-events: none;'}     {@const headerFirst = 'padding: 0.625rem 1.25rem 0.375rem;'}. The producer preserves caller-supplied style/color text, so public var() references remain an explicit caller boundary.",
-      "mappings": [],
+      "category": "shipped-public-token-mapping",
+      "reason": "The snippet-local headerBase constant supplies the label color.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-text-muted",
+          "property": "color"
+        }
+      ],
       "producer": {
         "path": "packages/playground/src/examples/command-palette/search-recent-actions.example.svelte",
         "line": 111,
-        "description": "const headerBase =       'font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--cinder-text-muted); pointer-events: none;'}     {@const headerFirst = 'padding: 0.625rem 1.25rem 0.375rem;'}",
+        "description": "The snippet-local headerBase constant supplies the label color.",
         "emitsPublicVar": true,
         "status": "reviewed"
       },
@@ -4760,14 +4789,14 @@
         "property": null,
         "expression": "{headerFirst}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/examples/command-palette/search-recent-actions.example.svelte:113 is const headerFirst = 'padding: 0.625rem 1.25rem 0.375rem;'}     {@const headerWithDivider =       'padding: 0.625rem 1.25rem 0.375rem 1.25rem; padding-block-start: 0.625rem; margin-block-start: 0.25rem; border-block-start: 1px solid var(--cinder-border);'}. The producer preserves caller-supplied style/color text, so public var() references remain an explicit caller boundary.",
+      "category": "geometric-numeric-runtime-value",
+      "reason": "The snippet-local headerFirst constant contains only fixed padding, with no public token.",
       "mappings": [],
       "producer": {
         "path": "packages/playground/src/examples/command-palette/search-recent-actions.example.svelte",
         "line": 113,
-        "description": "const headerFirst = 'padding: 0.625rem 1.25rem 0.375rem;'}     {@const headerWithDivider =       'padding: 0.625rem 1.25rem 0.375rem 1.25rem; padding-block-start: 0.625rem; margin-block-start: 0.25rem; border-block-start: 1px solid var(--cinder-border);'}",
-        "emitsPublicVar": true,
+        "description": "The snippet-local headerFirst constant contains only fixed padding, with no public token.",
+        "emitsPublicVar": false,
         "status": "reviewed"
       },
       "reviewStatus": "reviewed"
@@ -4781,13 +4810,18 @@
         "property": null,
         "expression": "{headerBase}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/examples/command-palette/search-recent-actions.example.svelte:111 is const headerBase =       'font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--cinder-text-muted); pointer-events: none;'}     {@const headerFirst = 'padding: 0.625rem 1.25rem 0.375rem;'}. The producer preserves caller-supplied style/color text, so public var() references remain an explicit caller boundary.",
-      "mappings": [],
+      "category": "shipped-public-token-mapping",
+      "reason": "The snippet-local headerBase constant supplies the label color.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-text-muted",
+          "property": "color"
+        }
+      ],
       "producer": {
         "path": "packages/playground/src/examples/command-palette/search-recent-actions.example.svelte",
         "line": 111,
-        "description": "const headerBase =       'font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--cinder-text-muted); pointer-events: none;'}     {@const headerFirst = 'padding: 0.625rem 1.25rem 0.375rem;'}",
+        "description": "The snippet-local headerBase constant supplies the label color.",
         "emitsPublicVar": true,
         "status": "reviewed"
       },
@@ -4802,14 +4836,19 @@
         "property": null,
         "expression": "{showPages ? headerWithDivider : headerFirst}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/examples/command-palette/search-recent-actions.example.svelte:116 is const showPages = filteredPages.length > 0}     {@const showRecent = !paletteQuery}     {@const showActions = filteredActions.length > 0}. The producer resolves caller input or computed values into this style boundary and does not add a public var() reference.",
-      "mappings": [],
+      "category": "shipped-public-token-mapping",
+      "reason": "The boolean branch selects owned headerWithDivider or headerFirst constants; headerWithDivider contributes the public border color, and caller input never supplies CSS text.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-border",
+          "property": "border-block-start"
+        }
+      ],
       "producer": {
         "path": "packages/playground/src/examples/command-palette/search-recent-actions.example.svelte",
-        "line": 116,
-        "description": "const showPages = filteredPages.length > 0}     {@const showRecent = !paletteQuery}     {@const showActions = filteredActions.length > 0}",
-        "emitsPublicVar": false,
+        "line": 114,
+        "description": "The boolean branch selects owned headerWithDivider or headerFirst constants; headerWithDivider contributes the public border color, and caller input never supplies CSS text.",
+        "emitsPublicVar": true,
         "status": "reviewed"
       },
       "reviewStatus": "reviewed"
@@ -4823,13 +4862,18 @@
         "property": null,
         "expression": "{headerBase}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/examples/command-palette/search-recent-actions.example.svelte:111 is const headerBase =       'font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--cinder-text-muted); pointer-events: none;'}     {@const headerFirst = 'padding: 0.625rem 1.25rem 0.375rem;'}. The producer preserves caller-supplied style/color text, so public var() references remain an explicit caller boundary.",
-      "mappings": [],
+      "category": "shipped-public-token-mapping",
+      "reason": "The snippet-local headerBase constant supplies the label color.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-text-muted",
+          "property": "color"
+        }
+      ],
       "producer": {
         "path": "packages/playground/src/examples/command-palette/search-recent-actions.example.svelte",
         "line": 111,
-        "description": "const headerBase =       'font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--cinder-text-muted); pointer-events: none;'}     {@const headerFirst = 'padding: 0.625rem 1.25rem 0.375rem;'}",
+        "description": "The snippet-local headerBase constant supplies the label color.",
         "emitsPublicVar": true,
         "status": "reviewed"
       },
@@ -4844,14 +4888,19 @@
         "property": null,
         "expression": "{showPages || showRecent ? headerWithDivider : headerFirst}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/examples/command-palette/search-recent-actions.example.svelte:116 is const showPages = filteredPages.length > 0}     {@const showRecent = !paletteQuery}     {@const showActions = filteredActions.length > 0}. The producer resolves caller input or computed values into this style boundary and does not add a public var() reference.",
-      "mappings": [],
+      "category": "shipped-public-token-mapping",
+      "reason": "The boolean branch selects owned headerWithDivider or headerFirst constants; headerWithDivider contributes the public border color, and caller input never supplies CSS text.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-border",
+          "property": "border-block-start"
+        }
+      ],
       "producer": {
         "path": "packages/playground/src/examples/command-palette/search-recent-actions.example.svelte",
-        "line": 116,
-        "description": "const showPages = filteredPages.length > 0}     {@const showRecent = !paletteQuery}     {@const showActions = filteredActions.length > 0}",
-        "emitsPublicVar": false,
+        "line": 114,
+        "description": "The boolean branch selects owned headerWithDivider or headerFirst constants; headerWithDivider contributes the public border color, and caller input never supplies CSS text.",
+        "emitsPublicVar": true,
         "status": "reviewed"
       },
       "reviewStatus": "reviewed"
@@ -4865,13 +4914,26 @@
         "property": null,
         "expression": "{wordmarkStyle}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/examples/grid/logo-cloud.example.svelte:21 is const wordmarkStyle =     'font-size: var(--cinder-text-xl); font-weight: var(--cinder-font-semibold); letter-spacing: -0.02em; color: var(--cinder-text-subtle);'; </script>. The producer preserves caller-supplied style/color text, so public var() references remain an explicit caller boundary.",
-      "mappings": [],
+      "category": "shipped-public-token-mapping",
+      "reason": "The owned wordmarkStyle constant supplies font size, font weight and text color.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-text-xl",
+          "property": "font-size"
+        },
+        {
+          "tokenProperty": "--cinder-font-semibold",
+          "property": "font-weight"
+        },
+        {
+          "tokenProperty": "--cinder-text-subtle",
+          "property": "color"
+        }
+      ],
       "producer": {
         "path": "packages/playground/src/examples/grid/logo-cloud.example.svelte",
-        "line": 21,
-        "description": "const wordmarkStyle =     'font-size: var(--cinder-text-xl); font-weight: var(--cinder-font-semibold); letter-spacing: -0.02em; color: var(--cinder-text-subtle);'; </script>",
+        "line": 23,
+        "description": "The owned wordmarkStyle constant supplies font size, font weight and text color.",
         "emitsPublicVar": true,
         "status": "reviewed"
       },
@@ -4886,13 +4948,26 @@
         "property": null,
         "expression": "{wordmarkStyle}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/examples/grid/logo-cloud.example.svelte:21 is const wordmarkStyle =     'font-size: var(--cinder-text-xl); font-weight: var(--cinder-font-semibold); letter-spacing: -0.02em; color: var(--cinder-text-subtle);'; </script>. The producer preserves caller-supplied style/color text, so public var() references remain an explicit caller boundary.",
-      "mappings": [],
+      "category": "shipped-public-token-mapping",
+      "reason": "The owned wordmarkStyle constant supplies font size, font weight and text color.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-text-xl",
+          "property": "font-size"
+        },
+        {
+          "tokenProperty": "--cinder-font-semibold",
+          "property": "font-weight"
+        },
+        {
+          "tokenProperty": "--cinder-text-subtle",
+          "property": "color"
+        }
+      ],
       "producer": {
         "path": "packages/playground/src/examples/grid/logo-cloud.example.svelte",
-        "line": 21,
-        "description": "const wordmarkStyle =     'font-size: var(--cinder-text-xl); font-weight: var(--cinder-font-semibold); letter-spacing: -0.02em; color: var(--cinder-text-subtle);'; </script>",
+        "line": 23,
+        "description": "The owned wordmarkStyle constant supplies font size, font weight and text color.",
         "emitsPublicVar": true,
         "status": "reviewed"
       },
@@ -4907,13 +4982,18 @@
         "property": null,
         "expression": "{layoutStyle}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/examples/selection-popover/existing-comments.example.svelte:44 is const layoutStyle =     'display: flex; flex-wrap: wrap; gap: var(--cinder-space-4); align-items: flex-start;';   const surfaceStyle =. The producer preserves caller-supplied style/color text, so public var() references remain an explicit caller boundary.",
-      "mappings": [],
+      "category": "shipped-public-token-mapping",
+      "reason": "An owned constant supplies layout spacing; it accepts no caller style text.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-space-4",
+          "property": "gap"
+        }
+      ],
       "producer": {
         "path": "packages/playground/src/examples/selection-popover/existing-comments.example.svelte",
         "line": 44,
-        "description": "const layoutStyle =     'display: flex; flex-wrap: wrap; gap: var(--cinder-space-4); align-items: flex-start;';   const surfaceStyle =",
+        "description": "An owned constant supplies layout spacing; it accepts no caller style text.",
         "emitsPublicVar": true,
         "status": "reviewed"
       },
@@ -4928,14 +5008,14 @@
         "property": null,
         "expression": "{surfaceStyle}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/examples/selection-popover/existing-comments.example.svelte:46 is const surfaceStyle =     'flex: 1 1 24rem; min-width: min(100%, 20rem); max-width: 36rem; line-height: 1.6; user-select: text; cursor: text;';   const paragraphStyle = 'margin: 0 0 var(--cinder-space-3);';. The producer preserves caller-supplied style/color text, so public var() references remain an explicit caller boundary.",
+      "category": "geometric-numeric-runtime-value",
+      "reason": "An owned constant contains fixed flex and sizing declarations with no public token reference.",
       "mappings": [],
       "producer": {
         "path": "packages/playground/src/examples/selection-popover/existing-comments.example.svelte",
         "line": 46,
-        "description": "const surfaceStyle =     'flex: 1 1 24rem; min-width: min(100%, 20rem); max-width: 36rem; line-height: 1.6; user-select: text; cursor: text;';   const paragraphStyle = 'margin: 0 0 var(--cinder-space-3);';",
-        "emitsPublicVar": true,
+        "description": "An owned constant contains fixed flex and sizing declarations with no public token reference.",
+        "emitsPublicVar": false,
         "status": "reviewed"
       },
       "reviewStatus": "reviewed"
@@ -4949,13 +5029,18 @@
         "property": null,
         "expression": "{paragraphStyle}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/examples/selection-popover/existing-comments.example.svelte:48 is const paragraphStyle = 'margin: 0 0 var(--cinder-space-3);';   const anchorBaseStyle =     'border-radius: var(--cinder-radius-sm); color: inherit; text-decoration-color: var(--cinder-accent-solid); text-decoration-thickness: 0.1em; text-underline-offset: 0.15em; cursor: pointer;';. The producer preserves caller-supplied style/color text, so public var() references remain an explicit caller boundary.",
-      "mappings": [],
+      "category": "shipped-public-token-mapping",
+      "reason": "An owned constant supplies paragraph margin.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-space-3",
+          "property": "margin"
+        }
+      ],
       "producer": {
         "path": "packages/playground/src/examples/selection-popover/existing-comments.example.svelte",
         "line": 48,
-        "description": "const paragraphStyle = 'margin: 0 0 var(--cinder-space-3);';   const anchorBaseStyle =     'border-radius: var(--cinder-radius-sm); color: inherit; text-decoration-color: var(--cinder-accent-solid); text-decoration-thickness: 0.1em; text-underline-offset: 0.15em; cursor: pointer;';",
+        "description": "An owned constant supplies paragraph margin.",
         "emitsPublicVar": true,
         "status": "reviewed"
       },
@@ -4970,13 +5055,30 @@
         "property": null,
         "expression": "{getAnchorStyle(activeCommentId === 'existing-comment-platform')}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/examples/selection-popover/existing-comments.example.svelte:59 is function getAnchorStyle(active: boolean): string {     const background = active       ? 'background: color-mix(in oklch, var(--cinder-accent-solid), transparent 72%); outline: 1px solid color-mix(in oklch, var(--cinder-accent-solid), transparent 32%);'. The producer preserves caller-supplied style/color text, so public var() references remain an explicit caller boundary.",
-      "mappings": [],
+      "category": "shipped-public-token-mapping",
+      "reason": "getAnchorStyle selects between two owned background literals using a boolean and appends anchorBaseStyle. Both branches and the base are accounted; no argument supplies CSS text.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-radius-sm",
+          "property": "border-radius"
+        },
+        {
+          "tokenProperty": "--cinder-accent-solid",
+          "property": "text-decoration-color"
+        },
+        {
+          "tokenProperty": "--cinder-accent-solid",
+          "property": "background"
+        },
+        {
+          "tokenProperty": "--cinder-accent-solid",
+          "property": "outline"
+        }
+      ],
       "producer": {
         "path": "packages/playground/src/examples/selection-popover/existing-comments.example.svelte",
         "line": 59,
-        "description": "function getAnchorStyle(active: boolean): string {     const background = active       ? 'background: color-mix(in oklch, var(--cinder-accent-solid), transparent 72%); outline: 1px solid color-mix(in oklch, var(--cinder-accent-solid), transparent 32%);'",
+        "description": "getAnchorStyle selects between two owned background literals using a boolean and appends anchorBaseStyle. Both branches and the base are accounted; no argument supplies CSS text.",
         "emitsPublicVar": true,
         "status": "reviewed"
       },
@@ -4991,13 +5093,18 @@
         "property": null,
         "expression": "{paragraphStyle}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/examples/selection-popover/existing-comments.example.svelte:48 is const paragraphStyle = 'margin: 0 0 var(--cinder-space-3);';   const anchorBaseStyle =     'border-radius: var(--cinder-radius-sm); color: inherit; text-decoration-color: var(--cinder-accent-solid); text-decoration-thickness: 0.1em; text-underline-offset: 0.15em; cursor: pointer;';. The producer preserves caller-supplied style/color text, so public var() references remain an explicit caller boundary.",
-      "mappings": [],
+      "category": "shipped-public-token-mapping",
+      "reason": "An owned constant supplies paragraph margin.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-space-3",
+          "property": "margin"
+        }
+      ],
       "producer": {
         "path": "packages/playground/src/examples/selection-popover/existing-comments.example.svelte",
         "line": 48,
-        "description": "const paragraphStyle = 'margin: 0 0 var(--cinder-space-3);';   const anchorBaseStyle =     'border-radius: var(--cinder-radius-sm); color: inherit; text-decoration-color: var(--cinder-accent-solid); text-decoration-thickness: 0.1em; text-underline-offset: 0.15em; cursor: pointer;';",
+        "description": "An owned constant supplies paragraph margin.",
         "emitsPublicVar": true,
         "status": "reviewed"
       },
@@ -5012,13 +5119,30 @@
         "property": null,
         "expression": "{getAnchorStyle(activeCommentId === 'existing-comment-anchors')}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/examples/selection-popover/existing-comments.example.svelte:59 is function getAnchorStyle(active: boolean): string {     const background = active       ? 'background: color-mix(in oklch, var(--cinder-accent-solid), transparent 72%); outline: 1px solid color-mix(in oklch, var(--cinder-accent-solid), transparent 32%);'. The producer preserves caller-supplied style/color text, so public var() references remain an explicit caller boundary.",
-      "mappings": [],
+      "category": "shipped-public-token-mapping",
+      "reason": "getAnchorStyle selects between two owned background literals using a boolean and appends anchorBaseStyle. Both branches and the base are accounted; no argument supplies CSS text.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-radius-sm",
+          "property": "border-radius"
+        },
+        {
+          "tokenProperty": "--cinder-accent-solid",
+          "property": "text-decoration-color"
+        },
+        {
+          "tokenProperty": "--cinder-accent-solid",
+          "property": "background"
+        },
+        {
+          "tokenProperty": "--cinder-accent-solid",
+          "property": "outline"
+        }
+      ],
       "producer": {
         "path": "packages/playground/src/examples/selection-popover/existing-comments.example.svelte",
         "line": 59,
-        "description": "function getAnchorStyle(active: boolean): string {     const background = active       ? 'background: color-mix(in oklch, var(--cinder-accent-solid), transparent 72%); outline: 1px solid color-mix(in oklch, var(--cinder-accent-solid), transparent 32%);'",
+        "description": "getAnchorStyle selects between two owned background literals using a boolean and appends anchorBaseStyle. Both branches and the base are accounted; no argument supplies CSS text.",
         "emitsPublicVar": true,
         "status": "reviewed"
       },
@@ -5033,13 +5157,30 @@
         "property": null,
         "expression": "{panelStyle}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/examples/selection-popover/existing-comments.example.svelte:51 is const panelStyle =     'flex: 1 1 14rem; max-width: 18rem; padding: var(--cinder-space-3); border: 1px solid var(--cinder-border-muted); border-radius: var(--cinder-radius-md); background: var(--cinder-surface);';   const headingStyle =. The producer preserves caller-supplied style/color text, so public var() references remain an explicit caller boundary.",
-      "mappings": [],
+      "category": "shipped-public-token-mapping",
+      "reason": "An owned constant supplies panel padding, border, radius and background.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-space-3",
+          "property": "padding"
+        },
+        {
+          "tokenProperty": "--cinder-border-muted",
+          "property": "border"
+        },
+        {
+          "tokenProperty": "--cinder-radius-md",
+          "property": "border-radius"
+        },
+        {
+          "tokenProperty": "--cinder-surface",
+          "property": "background"
+        }
+      ],
       "producer": {
         "path": "packages/playground/src/examples/selection-popover/existing-comments.example.svelte",
         "line": 51,
-        "description": "const panelStyle =     'flex: 1 1 14rem; max-width: 18rem; padding: var(--cinder-space-3); border: 1px solid var(--cinder-border-muted); border-radius: var(--cinder-radius-md); background: var(--cinder-surface);';   const headingStyle =",
+        "description": "An owned constant supplies panel padding, border, radius and background.",
         "emitsPublicVar": true,
         "status": "reviewed"
       },
@@ -5054,13 +5195,26 @@
         "property": null,
         "expression": "{headingStyle}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/examples/selection-popover/existing-comments.example.svelte:53 is const headingStyle =     'margin: 0 0 var(--cinder-space-2); font-size: var(--cinder-text-sm); font-weight: var(--cinder-font-medium);';   const bodyStyle =. The producer preserves caller-supplied style/color text, so public var() references remain an explicit caller boundary.",
-      "mappings": [],
+      "category": "shipped-public-token-mapping",
+      "reason": "An owned constant supplies heading margin, size and weight.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-space-2",
+          "property": "margin"
+        },
+        {
+          "tokenProperty": "--cinder-text-sm",
+          "property": "font-size"
+        },
+        {
+          "tokenProperty": "--cinder-font-medium",
+          "property": "font-weight"
+        }
+      ],
       "producer": {
         "path": "packages/playground/src/examples/selection-popover/existing-comments.example.svelte",
         "line": 53,
-        "description": "const headingStyle =     'margin: 0 0 var(--cinder-space-2); font-size: var(--cinder-text-sm); font-weight: var(--cinder-font-medium);';   const bodyStyle =",
+        "description": "An owned constant supplies heading margin, size and weight.",
         "emitsPublicVar": true,
         "status": "reviewed"
       },
@@ -5075,13 +5229,22 @@
         "property": null,
         "expression": "{bodyStyle}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/examples/selection-popover/existing-comments.example.svelte:55 is const bodyStyle =     'margin: 0; color: var(--cinder-text-muted); font-size: var(--cinder-text-sm); line-height: 1.5;';   const submittedStyle = `${panelStyle} max-width: 36rem; margin-top: var(--cinder-space-3);`;. The producer preserves caller-supplied style/color text, so public var() references remain an explicit caller boundary.",
-      "mappings": [],
+      "category": "shipped-public-token-mapping",
+      "reason": "An owned constant supplies body text color and size.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-text-muted",
+          "property": "color"
+        },
+        {
+          "tokenProperty": "--cinder-text-sm",
+          "property": "font-size"
+        }
+      ],
       "producer": {
         "path": "packages/playground/src/examples/selection-popover/existing-comments.example.svelte",
         "line": 55,
-        "description": "const bodyStyle =     'margin: 0; color: var(--cinder-text-muted); font-size: var(--cinder-text-sm); line-height: 1.5;';   const submittedStyle = `${panelStyle} max-width: 36rem; margin-top: var(--cinder-space-3);`;",
+        "description": "An owned constant supplies body text color and size.",
         "emitsPublicVar": true,
         "status": "reviewed"
       },
@@ -5096,13 +5259,34 @@
         "property": null,
         "expression": "{submittedStyle}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/examples/selection-popover/existing-comments.example.svelte:57 is const submittedStyle = `${panelStyle} max-width: 36rem; margin-top: var(--cinder-space-3);`;    function getAnchorStyle(active: boolean): string {. The producer preserves caller-supplied style/color text, so public var() references remain an explicit caller boundary.",
-      "mappings": [],
+      "category": "shipped-public-token-mapping",
+      "reason": "An owned template retains all panelStyle declarations and adds the submitted block margin.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-space-3",
+          "property": "padding"
+        },
+        {
+          "tokenProperty": "--cinder-border-muted",
+          "property": "border"
+        },
+        {
+          "tokenProperty": "--cinder-radius-md",
+          "property": "border-radius"
+        },
+        {
+          "tokenProperty": "--cinder-surface",
+          "property": "background"
+        },
+        {
+          "tokenProperty": "--cinder-space-3",
+          "property": "margin-top"
+        }
+      ],
       "producer": {
         "path": "packages/playground/src/examples/selection-popover/existing-comments.example.svelte",
         "line": 57,
-        "description": "const submittedStyle = `${panelStyle} max-width: 36rem; margin-top: var(--cinder-space-3);`;    function getAnchorStyle(active: boolean): string {",
+        "description": "An owned template retains all panelStyle declarations and adds the submitted block margin.",
         "emitsPublicVar": true,
         "status": "reviewed"
       },
@@ -5117,13 +5301,26 @@
         "property": null,
         "expression": "{headingStyle}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/examples/selection-popover/existing-comments.example.svelte:53 is const headingStyle =     'margin: 0 0 var(--cinder-space-2); font-size: var(--cinder-text-sm); font-weight: var(--cinder-font-medium);';   const bodyStyle =. The producer preserves caller-supplied style/color text, so public var() references remain an explicit caller boundary.",
-      "mappings": [],
+      "category": "shipped-public-token-mapping",
+      "reason": "An owned constant supplies heading margin, size and weight.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-space-2",
+          "property": "margin"
+        },
+        {
+          "tokenProperty": "--cinder-text-sm",
+          "property": "font-size"
+        },
+        {
+          "tokenProperty": "--cinder-font-medium",
+          "property": "font-weight"
+        }
+      ],
       "producer": {
         "path": "packages/playground/src/examples/selection-popover/existing-comments.example.svelte",
         "line": 53,
-        "description": "const headingStyle =     'margin: 0 0 var(--cinder-space-2); font-size: var(--cinder-text-sm); font-weight: var(--cinder-font-medium);';   const bodyStyle =",
+        "description": "An owned constant supplies heading margin, size and weight.",
         "emitsPublicVar": true,
         "status": "reviewed"
       },
@@ -5138,13 +5335,22 @@
         "property": null,
         "expression": "{bodyStyle}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/examples/selection-popover/existing-comments.example.svelte:55 is const bodyStyle =     'margin: 0; color: var(--cinder-text-muted); font-size: var(--cinder-text-sm); line-height: 1.5;';   const submittedStyle = `${panelStyle} max-width: 36rem; margin-top: var(--cinder-space-3);`;. The producer preserves caller-supplied style/color text, so public var() references remain an explicit caller boundary.",
-      "mappings": [],
+      "category": "shipped-public-token-mapping",
+      "reason": "An owned constant supplies body text color and size.",
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-text-muted",
+          "property": "color"
+        },
+        {
+          "tokenProperty": "--cinder-text-sm",
+          "property": "font-size"
+        }
+      ],
       "producer": {
         "path": "packages/playground/src/examples/selection-popover/existing-comments.example.svelte",
         "line": 55,
-        "description": "const bodyStyle =     'margin: 0; color: var(--cinder-text-muted); font-size: var(--cinder-text-sm); line-height: 1.5;';   const submittedStyle = `${panelStyle} max-width: 36rem; margin-top: var(--cinder-space-3);`;",
+        "description": "An owned constant supplies body text color and size.",
         "emitsPublicVar": true,
         "status": "reviewed"
       },
@@ -5321,15 +5527,22 @@
         "property": "background",
         "expression": "style:background={token.light}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/shell-app/token-inspector-panel.svelte:92 is const light = readTheme('light');       const dark = readTheme('dark');. The producer resolves caller input or computed values into this style boundary and does not add a public var() reference.",
+      "category": "computed-style-color-input",
+      "reason": "The owned inspector reads browser-computed custom-property values into resolved color strings; the swatch receives the resolved value and emits no retained public var() binding.",
       "mappings": [],
       "producer": {
         "path": "packages/playground/src/shell-app/token-inspector-panel.svelte",
-        "line": 92,
-        "description": "const light = readTheme('light');       const dark = readTheme('dark');",
+        "line": 86,
+        "description": "readResolvedValues reads registry entries with getComputedStyle(...).getPropertyValue(...). The filtered swatch receives the resolved light or dark string only after isPaintable succeeds; public custom-property references are not emitted at this sink.",
         "emitsPublicVar": false,
-        "status": "reviewed"
+        "status": "reviewed",
+        "chain": [
+          {
+            "path": "packages/components/src/tokens/registry.generated.ts",
+            "line": 54,
+            "description": "Generated registry binds the finite public color-token paths to their CSS custom properties."
+          }
+        ]
       },
       "reviewStatus": "reviewed"
     },
@@ -5342,15 +5555,22 @@
         "property": "background",
         "expression": "style:background={token.dark}"
       },
-      "category": "caller-controlled-style-color-input",
-      "reason": "The reviewed producer at packages/playground/src/shell-app/token-inspector-panel.svelte:93 is const dark = readTheme('dark');        return Object.fromEntries(. The producer resolves caller input or computed values into this style boundary and does not add a public var() reference.",
+      "category": "computed-style-color-input",
+      "reason": "The owned inspector reads browser-computed custom-property values into resolved color strings; the swatch receives the resolved value and emits no retained public var() binding.",
       "mappings": [],
       "producer": {
         "path": "packages/playground/src/shell-app/token-inspector-panel.svelte",
-        "line": 93,
-        "description": "const dark = readTheme('dark');        return Object.fromEntries(",
+        "line": 86,
+        "description": "readResolvedValues reads registry entries with getComputedStyle(...).getPropertyValue(...). The filtered swatch receives the resolved light or dark string only after isPaintable succeeds; public custom-property references are not emitted at this sink.",
         "emitsPublicVar": false,
-        "status": "reviewed"
+        "status": "reviewed",
+        "chain": [
+          {
+            "path": "packages/components/src/tokens/registry.generated.ts",
+            "line": 54,
+            "description": "Generated registry binds the finite public color-token paths to their CSS custom properties."
+          }
+        ]
       },
       "reviewStatus": "reviewed"
     },
@@ -7043,27 +7263,6 @@
     {
       "category": "caller-controlled-style-color-input",
       "identity": {
-        "column": 23,
-        "expression": "message",
-        "file": "packages/playground/src/http-responses.ts",
-        "kind": "runtime-html-unresolved",
-        "line": 3,
-        "property": null
-      },
-      "mappings": [],
-      "producer": {
-        "description": "Owned serialization or transport boundary inspected at the reported sink.",
-        "emitsPublicVar": false,
-        "line": 3,
-        "path": "packages/playground/src/http-responses.ts",
-        "status": "reviewed"
-      },
-      "reason": "notFound returns caller-provided text/plain content; it is not an HTML/CSS sink.",
-      "reviewStatus": "reviewed"
-    },
-    {
-      "category": "caller-controlled-style-color-input",
-      "identity": {
         "column": 16,
         "expression": "htmlAttribute",
         "file": "packages/playground/src/playground-server.ts",
@@ -7608,342 +7807,6 @@
       "reviewStatus": "reviewed"
     },
     {
-      "category": "caller-controlled-style-color-input",
-      "identity": {
-        "column": 52,
-        "expression": "componentName",
-        "file": "packages/playground/src/playground-server.ts",
-        "kind": "runtime-html-interpolation",
-        "line": 607,
-        "property": null
-      },
-      "mappings": [],
-      "producer": {
-        "description": "Owned serialization or transport boundary inspected at the reported sink.",
-        "emitsPublicVar": false,
-        "line": 607,
-        "path": "packages/playground/src/playground-server.ts",
-        "status": "reviewed"
-      },
-      "reason": "The owned boundary serializes metadata, URLs, JSON, plain text, JavaScript, an image, or an SSE stream; its documented content type is not a CSS/public-token producer.",
-      "reviewStatus": "reviewed"
-    },
-    {
-      "category": "caller-controlled-style-color-input",
-      "identity": {
-        "column": 72,
-        "expression": "message",
-        "file": "packages/playground/src/playground-server.ts",
-        "kind": "runtime-html-interpolation",
-        "line": 607,
-        "property": null
-      },
-      "mappings": [],
-      "producer": {
-        "description": "Owned serialization or transport boundary inspected at the reported sink.",
-        "emitsPublicVar": false,
-        "line": 607,
-        "path": "packages/playground/src/playground-server.ts",
-        "status": "reviewed"
-      },
-      "reason": "The owned boundary serializes metadata, URLs, JSON, plain text, JavaScript, an image, or an SSE stream; its documented content type is not a CSS/public-token producer.",
-      "reviewStatus": "reviewed"
-    },
-    {
-      "category": "caller-controlled-style-color-input",
-      "identity": {
-        "column": 36,
-        "expression": "componentName",
-        "file": "packages/playground/src/playground-server.ts",
-        "kind": "runtime-html-interpolation",
-        "line": 616,
-        "property": null
-      },
-      "mappings": [],
-      "producer": {
-        "description": "Owned serialization or transport boundary inspected at the reported sink.",
-        "emitsPublicVar": false,
-        "line": 616,
-        "path": "packages/playground/src/playground-server.ts",
-        "status": "reviewed"
-      },
-      "reason": "The owned boundary serializes metadata, URLs, JSON, plain text, JavaScript, an image, or an SSE stream; its documented content type is not a CSS/public-token producer.",
-      "reviewStatus": "reviewed"
-    },
-    {
-      "category": "caller-controlled-style-color-input",
-      "identity": {
-        "column": 64,
-        "expression": "expectedFixtureContentHash",
-        "file": "packages/playground/src/playground-server.ts",
-        "kind": "runtime-html-interpolation",
-        "line": 616,
-        "property": null
-      },
-      "mappings": [],
-      "producer": {
-        "description": "Owned serialization or transport boundary inspected at the reported sink.",
-        "emitsPublicVar": false,
-        "line": 616,
-        "path": "packages/playground/src/playground-server.ts",
-        "status": "reviewed"
-      },
-      "reason": "The owned boundary serializes metadata, URLs, JSON, plain text, JavaScript, an image, or an SSE stream; its documented content type is not a CSS/public-token producer.",
-      "reviewStatus": "reviewed"
-    },
-    {
-      "category": "caller-controlled-style-color-input",
-      "identity": {
-        "column": 101,
-        "expression": "fixtureFile.contentHash",
-        "file": "packages/playground/src/playground-server.ts",
-        "kind": "runtime-html-interpolation",
-        "line": 616,
-        "property": null
-      },
-      "mappings": [],
-      "producer": {
-        "description": "Owned serialization or transport boundary inspected at the reported sink.",
-        "emitsPublicVar": false,
-        "line": 616,
-        "path": "packages/playground/src/playground-server.ts",
-        "status": "reviewed"
-      },
-      "reason": "The owned boundary serializes metadata, URLs, JSON, plain text, JavaScript, an image, or an SSE stream; its documented content type is not a CSS/public-token producer.",
-      "reviewStatus": "reviewed"
-    },
-    {
-      "category": "caller-controlled-style-color-input",
-      "identity": {
-        "column": 35,
-        "expression": "componentName",
-        "file": "packages/playground/src/playground-server.ts",
-        "kind": "runtime-html-interpolation",
-        "line": 638,
-        "property": null
-      },
-      "mappings": [],
-      "producer": {
-        "description": "Owned serialization or transport boundary inspected at the reported sink.",
-        "emitsPublicVar": false,
-        "line": 638,
-        "path": "packages/playground/src/playground-server.ts",
-        "status": "reviewed"
-      },
-      "reason": "The owned boundary serializes metadata, URLs, JSON, plain text, JavaScript, an image, or an SSE stream; its documented content type is not a CSS/public-token producer.",
-      "reviewStatus": "reviewed"
-    },
-    {
-      "category": "caller-controlled-style-color-input",
-      "identity": {
-        "column": 52,
-        "expression": "fixtureName",
-        "file": "packages/playground/src/playground-server.ts",
-        "kind": "runtime-html-interpolation",
-        "line": 638,
-        "property": null
-      },
-      "mappings": [],
-      "producer": {
-        "description": "Owned serialization or transport boundary inspected at the reported sink.",
-        "emitsPublicVar": false,
-        "line": 638,
-        "path": "packages/playground/src/playground-server.ts",
-        "status": "reviewed"
-      },
-      "reason": "The owned boundary serializes metadata, URLs, JSON, plain text, JavaScript, an image, or an SSE stream; its documented content type is not a CSS/public-token producer.",
-      "reviewStatus": "reviewed"
-    },
-    {
-      "category": "caller-controlled-style-color-input",
-      "identity": {
-        "column": 23,
-        "expression": "message",
-        "file": "packages/playground/src/playground-server.ts",
-        "kind": "runtime-html-unresolved",
-        "line": 666,
-        "property": null
-      },
-      "mappings": [],
-      "producer": {
-        "description": "Owned serialization or transport boundary inspected at the reported sink.",
-        "emitsPublicVar": false,
-        "line": 666,
-        "path": "packages/playground/src/playground-server.ts",
-        "status": "reviewed"
-      },
-      "reason": "The owned boundary serializes metadata, URLs, JSON, plain text, JavaScript, an image, or an SSE stream; its documented content type is not a CSS/public-token producer.",
-      "reviewStatus": "reviewed"
-    },
-    {
-      "category": "caller-controlled-style-color-input",
-      "identity": {
-        "column": 65,
-        "expression": "scenarioKey",
-        "file": "packages/playground/src/playground-server.ts",
-        "kind": "runtime-html-interpolation",
-        "line": 713,
-        "property": null
-      },
-      "mappings": [],
-      "producer": {
-        "description": "Owned serialization or transport boundary inspected at the reported sink.",
-        "emitsPublicVar": false,
-        "line": 713,
-        "path": "packages/playground/src/playground-server.ts",
-        "status": "reviewed"
-      },
-      "reason": "The owned boundary serializes metadata, URLs, JSON, plain text, JavaScript, an image, or an SSE stream; its documented content type is not a CSS/public-token producer.",
-      "reviewStatus": "reviewed"
-    },
-    {
-      "category": "caller-controlled-style-color-input",
-      "identity": {
-        "column": 82,
-        "expression": "detail",
-        "file": "packages/playground/src/playground-server.ts",
-        "kind": "runtime-html-interpolation",
-        "line": 713,
-        "property": null
-      },
-      "mappings": [],
-      "producer": {
-        "description": "Owned serialization or transport boundary inspected at the reported sink.",
-        "emitsPublicVar": false,
-        "line": 713,
-        "path": "packages/playground/src/playground-server.ts",
-        "status": "reviewed"
-      },
-      "reason": "The owned boundary serializes metadata, URLs, JSON, plain text, JavaScript, an image, or an SSE stream; its documented content type is not a CSS/public-token producer.",
-      "reviewStatus": "reviewed"
-    },
-    {
-      "category": "caller-controlled-style-color-input",
-      "identity": {
-        "column": 23,
-        "expression": "snippet",
-        "file": "packages/playground/src/playground-server.ts",
-        "kind": "runtime-html-unresolved",
-        "line": 718,
-        "property": null
-      },
-      "mappings": [],
-      "producer": {
-        "description": "Owned serialization or transport boundary inspected at the reported sink.",
-        "emitsPublicVar": false,
-        "line": 718,
-        "path": "packages/playground/src/playground-server.ts",
-        "status": "reviewed"
-      },
-      "reason": "The owned boundary serializes metadata, URLs, JSON, plain text, JavaScript, an image, or an SSE stream; its documented content type is not a CSS/public-token producer.",
-      "reviewStatus": "reviewed"
-    },
-    {
-      "category": "caller-controlled-style-color-input",
-      "identity": {
-        "column": 23,
-        "expression": "JSON.stringify(manifests)",
-        "file": "packages/playground/src/playground-server.ts",
-        "kind": "runtime-html-unresolved",
-        "line": 726,
-        "property": null
-      },
-      "mappings": [],
-      "producer": {
-        "description": "Owned serialization or transport boundary inspected at the reported sink.",
-        "emitsPublicVar": false,
-        "line": 726,
-        "path": "packages/playground/src/playground-server.ts",
-        "status": "reviewed"
-      },
-      "reason": "The owned boundary serializes metadata, URLs, JSON, plain text, JavaScript, an image, or an SSE stream; its documented content type is not a CSS/public-token producer.",
-      "reviewStatus": "reviewed"
-    },
-    {
-      "category": "caller-controlled-style-color-input",
-      "identity": {
-        "column": 23,
-        "expression": "JSON.stringify(manifest)",
-        "file": "packages/playground/src/playground-server.ts",
-        "kind": "runtime-html-unresolved",
-        "line": 736,
-        "property": null
-      },
-      "mappings": [],
-      "producer": {
-        "description": "Owned serialization or transport boundary inspected at the reported sink.",
-        "emitsPublicVar": false,
-        "line": 736,
-        "path": "packages/playground/src/playground-server.ts",
-        "status": "reviewed"
-      },
-      "reason": "The owned boundary serializes metadata, URLs, JSON, plain text, JavaScript, an image, or an SSE stream; its documented content type is not a CSS/public-token producer.",
-      "reviewStatus": "reviewed"
-    },
-    {
-      "category": "caller-controlled-style-color-input",
-      "identity": {
-        "column": 25,
-        "expression": "JSON.stringify(documentation)",
-        "file": "packages/playground/src/playground-server.ts",
-        "kind": "runtime-html-unresolved",
-        "line": 749,
-        "property": null
-      },
-      "mappings": [],
-      "producer": {
-        "description": "Owned serialization or transport boundary inspected at the reported sink.",
-        "emitsPublicVar": false,
-        "line": 749,
-        "path": "packages/playground/src/playground-server.ts",
-        "status": "reviewed"
-      },
-      "reason": "The owned boundary serializes metadata, URLs, JSON, plain text, JavaScript, an image, or an SSE stream; its documented content type is not a CSS/public-token producer.",
-      "reviewStatus": "reviewed"
-    },
-    {
-      "category": "caller-controlled-style-color-input",
-      "identity": {
-        "column": 58,
-        "expression": "componentName",
-        "file": "packages/playground/src/playground-server.ts",
-        "kind": "runtime-html-interpolation",
-        "line": 757,
-        "property": null
-      },
-      "mappings": [],
-      "producer": {
-        "description": "Owned serialization or transport boundary inspected at the reported sink.",
-        "emitsPublicVar": false,
-        "line": 757,
-        "path": "packages/playground/src/playground-server.ts",
-        "status": "reviewed"
-      },
-      "reason": "The owned boundary serializes metadata, URLs, JSON, plain text, JavaScript, an image, or an SSE stream; its documented content type is not a CSS/public-token producer.",
-      "reviewStatus": "reviewed"
-    },
-    {
-      "category": "caller-controlled-style-color-input",
-      "identity": {
-        "column": 78,
-        "expression": "message",
-        "file": "packages/playground/src/playground-server.ts",
-        "kind": "runtime-html-interpolation",
-        "line": 757,
-        "property": null
-      },
-      "mappings": [],
-      "producer": {
-        "description": "Owned serialization or transport boundary inspected at the reported sink.",
-        "emitsPublicVar": false,
-        "line": 757,
-        "path": "packages/playground/src/playground-server.ts",
-        "status": "reviewed"
-      },
-      "reason": "The owned boundary serializes metadata, URLs, JSON, plain text, JavaScript, an image, or an SSE stream; its documented content type is not a CSS/public-token producer.",
-      "reviewStatus": "reviewed"
-    },
-    {
       "category": "shipped-public-token-mapping",
       "identity": {
         "column": 16,
@@ -8180,27 +8043,6 @@
     {
       "category": "caller-controlled-style-color-input",
       "identity": {
-        "column": 18,
-        "expression": "new ReadableStream<string>({\n    start(c) {\n      controller = c;\n      sseClients.add(c);\n      // Send an initial comment to establish the connection.\n      c.enqueue(': connected\\n\\n');\n    },\n    cancel() {\n      if (controller) sseClients.delete(controller);\n    },\n  })",
-        "file": "packages/playground/src/sse-broadcast.ts",
-        "kind": "runtime-html-unresolved",
-        "line": 33,
-        "property": null
-      },
-      "mappings": [],
-      "producer": {
-        "description": "Owned serialization or transport boundary inspected at the reported sink.",
-        "emitsPublicVar": false,
-        "line": 33,
-        "path": "packages/playground/src/sse-broadcast.ts",
-        "status": "reviewed"
-      },
-      "reason": "handleEventsRoute returns an event-stream transport with text/event-stream content, not HTML/CSS.",
-      "reviewStatus": "reviewed"
-    },
-    {
-      "category": "caller-controlled-style-color-input",
-      "identity": {
         "column": 21,
         "expression": "cssFile.text()",
         "file": "packages/playground/src/static-assets.ts",
@@ -8302,6 +8144,938 @@
       },
       "reason": "handlePackageComponentStyleRoute reads CSS beneath the selected owned package component root after resolveSafePath validation. This function changes only package @import URLs and preserves the input declarations, including public variables. Their terminal uses remain tied to the inventoried physical CSS sources.",
       "reviewStatus": "reviewed"
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 537,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 543,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 549,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 555,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 561,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 571,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 593,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 603,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 609,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 615,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 621,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 627,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 633,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 639,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 645,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 651,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 657,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 671,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 681,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 691,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 701,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 707,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 713,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 719,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 725,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 731,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 794,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 800,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 836,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 842,
+        "column": 10,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/adapter-push/+page.svelte",
+        "line": 289,
+        "column": 3,
+        "kind": "svelte-style-directive",
+        "property": "padding",
+        "expression": "style:padding={error ? '0.5rem 1rem' : '0'}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "geometric-numeric-runtime-value",
+      "reason": "error is owned nullable state populated by the adapter-push page's own send/adapter error handlers; the expression selects the finite padding literals 0.5rem 1rem or 0. It cannot emit a public var() reference or arbitrary caller style input.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/adapter-push/+page.svelte",
+        "line": 45,
+        "description": "error is owned nullable state populated by the adapter-push page's own send/adapter error handlers; the expression selects the finite padding literals 0.5rem 1rem or 0.",
+        "emitsPublicVar": false,
+        "status": "reviewed"
+      },
+      "mappings": []
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 775,
+        "column": 41,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{paneStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "geometric-numeric-runtime-value",
+      "reason": "paneStyle is an owned constant containing only min-height: 30rem; it is a fixed geometry declaration and has no public var() reference or caller-controlled input.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 495,
+        "description": "const paneStyle = 'min-height: 30rem;';",
+        "emitsPublicVar": false,
+        "status": "reviewed"
+      },
+      "mappings": []
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 513,
+        "column": 42,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{paneStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "geometric-numeric-runtime-value",
+      "reason": "paneStyle is an owned constant containing only min-height: 30rem; it is a fixed geometry declaration and has no public var() reference or caller-controlled input.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 495,
+        "description": "const paneStyle = 'min-height: 30rem;';",
+        "emitsPublicVar": false,
+        "status": "reviewed"
+      },
+      "mappings": []
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 815,
+        "column": 42,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{paneStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "geometric-numeric-runtime-value",
+      "reason": "paneStyle is an owned constant containing only min-height: 30rem; it is a fixed geometry declaration and has no public var() reference or caller-controlled input.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 495,
+        "description": "const paneStyle = 'min-height: 30rem;';",
+        "emitsPublicVar": false,
+        "status": "reviewed"
+      },
+      "mappings": []
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 746,
+        "column": 44,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{paneStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "geometric-numeric-runtime-value",
+      "reason": "paneStyle is an owned constant containing only min-height: 30rem; it is a fixed geometry declaration and has no public var() reference or caller-controlled input.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 495,
+        "description": "const paneStyle = 'min-height: 30rem;';",
+        "emitsPublicVar": false,
+        "status": "reviewed"
+      },
+      "mappings": []
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/+page.svelte",
+        "line": 85,
+        "column": 72,
+        "kind": "svelte-style-attribute",
+        "property": "padding",
+        "expression": "{failure\n\t\t\t? '0.5rem 1rem'\n\t\t\t: '0'}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "geometric-numeric-runtime-value",
+      "reason": "failure is owned BannerFailure state populated by this page's adapter/session error handlers; the expression selects the finite padding literals 0.5rem 1rem or 0. It cannot emit a public var() reference or arbitrary caller style input.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/+page.svelte",
+        "line": 18,
+        "description": "failure is owned BannerFailure state populated by this page's adapter/session error handlers; the expression selects the finite padding literals 0.5rem 1rem or 0.",
+        "emitsPublicVar": false,
+        "status": "reviewed"
+      },
+      "mappings": []
+    },
+    {
+      "identity": {
+        "file": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 565,
+        "column": 77,
+        "kind": "svelte-style-attribute",
+        "property": null,
+        "expression": "{outputStyle}"
+      },
+      "reviewStatus": "reviewed",
+      "category": "shipped-public-token-mapping",
+      "reason": "outputStyle is an owned constant with fixed width/min-height/font-size geometry and the shipped public --cinder-font-mono reference at the terminal font-family declaration.",
+      "producer": {
+        "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+        "line": 496,
+        "description": "const outputStyle contains width/min-height/font-family: var(--cinder-font-mono, monospace)/font-size declarations.",
+        "emitsPublicVar": true,
+        "status": "reviewed"
+      },
+      "mappings": [
+        {
+          "tokenProperty": "--cinder-font-mono",
+          "property": "font-family"
+        }
+      ]
     }
   ],
   "sourceFiles": [
@@ -8744,6 +9518,18 @@
       "path": "packages/playground/src/static-assets.ts",
       "role": "added combined-inventory source or reviewed producer chain",
       "sha256": "b3081740bc6edcaed1dc002c6cc8cb89b39612144f691512d52b4a4cc28bc164"
+    },
+    {
+      "path": "labs/chat-room/src/routes/+page.svelte",
+      "sha256": "708b8f13b39bb6c798ce58c45df277b2efe25169c453ce2f7e35ccfd0770badf"
+    },
+    {
+      "path": "labs/chat-room/src/routes/exercises/adapter-push/+page.svelte",
+      "sha256": "216205e633f13092272fc9db00744e42327c8e3cf1230f634570a27b9d62c336"
+    },
+    {
+      "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+      "sha256": "80860983a92049887b8abe540b8498749dacbda92ec716b7bba582c8dc830417"
     }
   ],
   "producerEvidence": [
@@ -9305,6 +10091,26 @@
       "path": "packages/playground/src/static-assets.ts",
       "role": "owned producer source or chain inspected for added combined-inventory surface",
       "sha256": "b3081740bc6edcaed1dc002c6cc8cb89b39612144f691512d52b4a4cc28bc164"
+    },
+    {
+      "path": "labs/chat-room/src/routes/+page.svelte",
+      "sha256": "708b8f13b39bb6c798ce58c45df277b2efe25169c453ce2f7e35ccfd0770badf"
+    },
+    {
+      "path": "labs/chat-room/src/routes/exercises/adapter-push/+page.svelte",
+      "sha256": "216205e633f13092272fc9db00744e42327c8e3cf1230f634570a27b9d62c336"
+    },
+    {
+      "path": "labs/chat-room/src/routes/exercises/review-form-and-exports/+page.svelte",
+      "sha256": "80860983a92049887b8abe540b8498749dacbda92ec716b7bba582c8dc830417"
+    },
+    {
+      "path": "packages/components/src/components/statistic/statistic.css",
+      "sha256": "1b9bee74ac12aba33e5fe75d784a52d24b378f9243fe7d96e1a7f8f875d4fce1"
+    },
+    {
+      "path": "packages/components/src/tokens/registry.generated.ts",
+      "sha256": "3c5093431ef895107a61c62bd95851fe62e4982062285ce84b467d80331121de"
     }
   ]
 }

@@ -243,9 +243,47 @@ export function extractLiveLiterals(sourceFile: ts.SourceFile): LiveLiteralResul
     }
   }
 
+  const hasNonMarkupContentType = (response: ts.NewExpression): boolean => {
+    const options = response.arguments?.[1];
+    if (!options) return false;
+    const optionsValue = unwrap(options);
+    if (!ts.isObjectLiteralExpression(optionsValue)) return false;
+
+    let headers: ts.Expression | undefined;
+    for (const property of optionsValue.properties) {
+      if (!ts.isPropertyAssignment(property) || ts.isComputedPropertyName(property.name))
+        return false;
+      if (property.name.text !== 'headers') continue;
+      if (headers) return false;
+      headers = property.initializer;
+    }
+    if (!headers) return false;
+    const headersValue = unwrap(headers);
+    if (!ts.isObjectLiteralExpression(headersValue)) return false;
+
+    let contentType: string | undefined;
+    for (const property of headersValue.properties) {
+      if (!ts.isPropertyAssignment(property) || ts.isComputedPropertyName(property.name))
+        return false;
+      const name = property.name.text;
+      if (!ts.isStringLiteralLike(property.initializer)) return false;
+      if (name.toLowerCase() !== 'content-type') continue;
+      if (contentType !== undefined) return false;
+      contentType = property.initializer.text;
+    }
+    if (!contentType) return false;
+    const essence = contentType.split(';', 1)[0]?.trim().toLowerCase();
+    return (
+      essence === 'application/json' ||
+      essence === 'application/x-ndjson' ||
+      essence === 'text/event-stream' ||
+      essence === 'text/plain'
+    );
+  };
+
   const markResponseBody = (response: ts.NewExpression): void => {
     const body = response.arguments?.[0];
-    if (body) markValue(body, result.responseUnresolved);
+    if (body && !hasNonMarkupContentType(response)) markValue(body, result.responseUnresolved);
   };
   // Return-value traversal may discover a nested helper that returns Response.
   // Ordinary strings found here are not emission sinks and remain unmarked.

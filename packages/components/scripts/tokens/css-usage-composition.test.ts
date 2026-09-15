@@ -322,4 +322,122 @@ describe('CSS same-element composition', () => {
     );
     expect(report.uses.filter((use) => use.file === 'styles/shared.css')).toHaveLength(1);
   });
+
+  test('matches supported state and pseudo-element terminals to their originating element', () => {
+    const report = inventoryFromSources(
+      [
+        source(
+          'styles/shared.css',
+          '.control:focus-visible { box-shadow: var(--_ring); }\n' +
+            '.fade::before { background: var(--_before); }\n' +
+            '.fade::after { background: var(--_after); }\n' +
+            '.fade::after { border-color: var(--_before-only); }\n' +
+            '.fade { color: var(--_before-only); }\n' +
+            '.functional:is(.fade)::before { color: var(--_unsupported); }\n' +
+            '::before { color: var(--_pseudo-only); }',
+          true,
+        ),
+        source(
+          'components/owner/owner.css',
+          '.control { --_ring: var(--public-a); }\n' +
+            '.fade { --_before: var(--public-b); --_after: var(--public-a); }\n' +
+            '.fade::before { --_before: var(--public-a); }\n' +
+            '.fade::after { --_after: var(--public-b); }\n' +
+            '.fade::before { --_before-only: var(--public-a); }',
+          true,
+        ),
+        source(
+          'components/owner/owner.svelte',
+          '<button class="control"></button><div class="fade functional"></div><div class="unrelated"></div>',
+        ),
+      ],
+      new Set(['--public-a', '--public-b']),
+    );
+    expect(
+      report.uses
+        .filter((use) => use.file === 'styles/shared.css')
+        .map((use) => [use.value, use.tokenProperty])
+        .toSorted((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
+    ).toEqual([
+      ['var(--_after)', '--public-a'],
+      ['var(--_after)', '--public-b'],
+      ['var(--_before)', '--public-a'],
+      ['var(--_before)', '--public-b'],
+      ['var(--_ring)', '--public-a'],
+    ]);
+    expect(report.uses.some((use) => use.value === 'var(--_unsupported)')).toBe(false);
+    expect(report.uses.some((use) => use.value === 'var(--_before-only)')).toBe(false);
+    expect(report.uses.some((use) => use.value === 'var(--_pseudo-only)')).toBe(false);
+  });
+
+  test('reaches real control-item and scroll-fade recipes through pseudo terminals', () => {
+    const root = resolve(import.meta.dir, '../../src');
+    const read = (path: string): string => readFileSync(resolve(root, path), 'utf8');
+    const report = inventoryFromSources(
+      [
+        source(
+          'packages/components/src/styles/foundation.css',
+          read('styles/foundation.css'),
+          true,
+        ),
+        source(
+          'packages/components/src/styles/components/_control-item.css',
+          read('styles/components/_control-item.css'),
+          true,
+        ),
+        source(
+          'packages/components/src/styles/components/_scroll-fade.css',
+          read('styles/components/_scroll-fade.css'),
+          true,
+        ),
+        source(
+          'packages/components/src/components/code-block/code-block.css',
+          read('components/code-block/code-block.css'),
+          true,
+        ),
+        source(
+          'packages/components/src/components/fixture/fixture.svelte',
+          '<script>\n' +
+            "import '../../styles/foundation.css';\n" +
+            "import '../../styles/components/_control-item.css';\n" +
+            "import '../../styles/components/_scroll-fade.css';\n" +
+            "import '../code-block/code-block.css';\n" +
+            '</script>\n' +
+            '<div data-theme="dark" class="cinder-_control-item cinder-code-block cinder-code-block__viewport cinder-_scroll-fade cinder-_scroll-fade-start"></div>',
+        ),
+      ],
+      new Set([
+        '--cinder-ring-offset-color',
+        '--cinder-ring-offset',
+        '--cinder-ring-width',
+        '--cinder-ring-color',
+        '--cinder-space-6',
+        '--cinder-code-block-background',
+      ]),
+    );
+    expect(
+      report.uses.some(
+        (use) =>
+          use.file.endsWith('_control-item.css') &&
+          use.property === 'box-shadow' &&
+          use.value.includes('--_cinder-focus-ring-shadow'),
+      ),
+    ).toBe(true);
+    expect(
+      report.uses.some(
+        (use) =>
+          use.file.endsWith('_scroll-fade.css') &&
+          use.property === 'background' &&
+          use.value.includes('--_cinder-scroll-fade-color'),
+      ),
+    ).toBe(true);
+    expect(
+      report.uses.some(
+        (use) =>
+          use.file.endsWith('_scroll-fade.css') &&
+          use.property === 'block-size' &&
+          use.tokenProperty === '--cinder-space-6',
+      ),
+    ).toBe(true);
+  });
 });

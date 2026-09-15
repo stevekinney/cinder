@@ -1037,6 +1037,10 @@
               {
                 "property": "stroke",
                 "profile": "color"
+              },
+              {
+                "property": "text-decoration-color",
+                "profile": "color"
               }
             ]
           }

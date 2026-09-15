@@ -401,6 +401,106 @@ describe('css usage inventory', () => {
     ).toBe(true);
   });
 
+  test('skips response bodies with an unambiguous non-HTML content type', () => {
+    const report = inventoryFromSources(
+      [
+        source(
+          'response-content-types.ts',
+          [
+            `new Response('<style>.x { color: var(--public-a) }</style>', { headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8' } });`,
+            `new Response('<style>.x { color: var(--public-b) }</style>', { headers: { 'content-type': 'TEXT/PLAIN; charset=utf-8' } });`,
+            `new Response('<style>.x { color: var(--not-in-catalogue) }</style>', { headers: { 'Content-Type': 'application/json' } });`,
+            `new Response('<style>.x { color: var(--not-in-catalogue) }</style>', { headers: { 'Content-Type': 'text/event-stream' } });`,
+            `new Response('<style>.x { color: var(--public-c) }</style>', { headers: { 'Content-Type': 'text/html' } });`,
+            `new Response(renderMarkup(), { headers: { 'Content-Type': getContentType() } });`,
+            `new Response(new ReadableStream(), { headers: { 'Content-Type': 'text/html' } });`,
+          ].join('\n'),
+        ),
+      ],
+      publicProperties,
+    );
+    expect(report.uses.map((use) => use.tokenProperty)).toEqual(['--public-c']);
+    expect(report.dynamic).toMatchObject([
+      { kind: 'runtime-html-unresolved', expression: 'renderMarkup()' },
+      { kind: 'runtime-html-unresolved', expression: 'new ReadableStream()' },
+    ]);
+    expect(report.diagnostics).toHaveLength(2);
+  });
+
+  test('skips the chat-room NDJSON response producer', () => {
+    const path = resolve(
+      import.meta.dir,
+      '../../../../labs/chat-room/src/lib/chat-run-response.ts',
+    );
+    const report = inventoryFromSources(
+      [source('labs/chat-room/src/lib/chat-run-response.ts', readFileSync(path, 'utf8'))],
+      publicProperties,
+    );
+    expect(report.dynamic.some((record) => record.kind === 'runtime-html-unresolved')).toBe(false);
+    expect(
+      report.diagnostics.some((diagnostic) => diagnostic.reason.includes('Live response HTML')),
+    ).toBe(false);
+  });
+
+  test('keeps ambiguous response headers conservative', () => {
+    const report = inventoryFromSources(
+      [
+        source(
+          'ambiguous-response-content-types.ts',
+          [
+            `new Response('<style>.x { color: var(--public-a) }</style>', { ...options });`,
+            `new Response('<style>.x { color: var(--public-b) }</style>', { headers: { ...headers, 'Content-Type': 'application/json' } });`,
+            `new Response('<style>.x { color: var(--public-c) }</style>', { headers: { ['Content-Type']: 'application/json' } });`,
+            `new Response('<style>.x { color: var(--public-d) }</style>', { headers: { 'Content-Type': 'application/json', 'content-type': 'text/html' } });`,
+          ].join('\n'),
+        ),
+      ],
+      publicProperties,
+    );
+    expect(report.uses.map((use) => use.tokenProperty)).toEqual([
+      '--public-a',
+      '--public-b',
+      '--public-c',
+      '--public-d',
+    ]);
+    expect(report.diagnostics).toHaveLength(0);
+  });
+
+  test('does not case-fold JavaScript options keys or infer aliased and accessor headers', () => {
+    const report = inventoryFromSources(
+      [
+        source(
+          'response-content-type-boundaries.ts',
+          [
+            `new Response('<style>.x { color: var(--public-a) }</style>', { Headers: { 'Content-Type': 'application/json' } });`,
+            `new Response('<style>.x { color: var(--public-b) }</style>', { HEADERS: { 'Content-Type': 'application/json' } });`,
+            `new Response('<style>.x { color: var(--not-in-catalogue) }</style>', { Headers: { 'Content-Type': 'text/html' }, headers: { 'Content-Type': 'application/json' } });`,
+            `new Response('<style>.x { color: var(--public-c) }</style>', responseOptions);`,
+            `new Response('<style>.x { color: var(--public-d) }</style>', { get headers() { return { 'Content-Type': 'application/json' }; } });`,
+            `new Response('<style>.x { color: var(--public-a) }</style>', { headers: { 'Content-Type': 'application/json' }, headers: { 'Content-Type': 'text/html' } });`,
+            `new Response('<style>.x { color: var(--public-b) }</style>', { headers: { 'Content-Type': 'application/octet-stream' } });`,
+            `new Response('<style>.x { color: var(--public-c) }</style>', { headers: { 'Content-Type': 'text/css' } });`,
+            `new Response('<style>.x { color: var(--public-d) }</style>', { headers: { 'Content-Type': 'image/svg+xml' } });`,
+            `new Response('<style>.x { color: var(--public-a) }</style>', { headers: { 'Content-Type': 'application/xhtml+xml' } });`,
+          ].join('\n'),
+        ),
+      ],
+      publicProperties,
+    );
+    expect(report.uses.map((use) => use.tokenProperty)).toEqual([
+      '--public-a',
+      '--public-b',
+      '--public-c',
+      '--public-d',
+      '--public-a',
+      '--public-b',
+      '--public-c',
+      '--public-d',
+      '--public-a',
+    ]);
+    expect(report.diagnostics).toHaveLength(0);
+  });
+
   test('reports dynamic emitted markup and ignores ordinary strings', () => {
     const report = inventoryFromSources(
       [

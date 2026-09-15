@@ -34,6 +34,7 @@ function location(value: Pick<DynamicRecord, 'file' | 'line' | 'column'>): strin
 }
 const categories = new Set([
   'caller-controlled-style-color-input',
+  'computed-style-color-input',
   'geometric-numeric-runtime-value',
   'shipped-public-token-mapping',
 ]);

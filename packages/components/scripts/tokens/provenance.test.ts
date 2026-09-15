@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 
-import { isToken, mergeDocuments, mergeTraceMetadata } from './resolve-merge.ts';
+import { clone, isToken, mergeDocuments, mergeTraceMetadata } from './resolve-merge.ts';
 import { resolveDocuments, resolveDocumentsWithTrace } from './resolve.ts';
-import type { TraceMetadata } from './trace.ts';
+import type { TraceMetadata, TraceState } from './trace.ts';
 import { TokenValidationError, type TokenDocument } from './types.ts';
 
 function traced(documents: TokenDocument[], identifiers: string[]) {
@@ -12,6 +12,87 @@ function traced(documents: TokenDocument[], identifiers: string[]) {
 }
 
 describe('resolver provenance', () => {
+  test('deeply isolates copied node, group, and group-type provenance', () => {
+    const location = (documentId: string, tokenPath: string) => ({
+      documentId,
+      tokenPath,
+      sourcePointer: `/${tokenPath}`,
+      sourceIndex: 0,
+    });
+    const source = { group: { token: { $value: 1 } } } as TokenDocument;
+    const sourceGroup = source['group'] as Record<string, unknown>;
+    const sourceToken = sourceGroup['token'] as Record<string, unknown>;
+    const state: TraceState = {
+      nodes: new WeakMap(),
+      groups: new WeakMap(),
+      groupTypes: new WeakMap(),
+    };
+    state.nodes.set(sourceToken, {
+      location: location('source.json', 'group.token'),
+      contributions: [location('base.json', 'group.token')],
+      typeOrigin: location('types.json', 'group/$type'),
+      dependencies: [
+        {
+          kind: 'alias',
+          source: location('source.json', 'group.token'),
+          targetPath: 'target',
+          target: location('source.json', 'target'),
+        },
+        { kind: 'reference', source: location('source.json', 'group.token'), targetPath: 'other' },
+      ],
+    });
+    state.groups.set(sourceGroup, location('source.json', 'group'));
+    state.groupTypes.set(sourceGroup, location('types.json', 'group/$type'));
+
+    const copy = clone(source, undefined, state);
+    const copyGroup = copy['group'] as Record<string, unknown>;
+    const copyToken = copyGroup['token'] as Record<string, unknown>;
+    const copyMetadata = state.nodes.get(copyToken)!;
+    copyMetadata.location.documentId = 'copy.json';
+    copyMetadata.contributions[0]!.tokenPath = 'copy.token';
+    copyMetadata.typeOrigin!.sourcePointer = '/copy/$type';
+    copyMetadata.dependencies[0]!.source.documentId = 'copy.json';
+    copyMetadata.dependencies[0]!.target!.tokenPath = 'copy.target';
+    copyMetadata.dependencies[1]!.source.documentId = 'copy.json';
+    state.groups.get(copyGroup)!.documentId = 'copy.json';
+    state.groupTypes.get(copyGroup)!.sourcePointer = '/copy/$type';
+
+    expect(state.nodes.get(sourceToken)).toMatchObject({
+      location: { documentId: 'source.json' },
+      contributions: [{ tokenPath: 'group.token' }],
+      typeOrigin: { sourcePointer: '/group/$type' },
+      dependencies: [
+        { source: { documentId: 'source.json' }, target: { tokenPath: 'target' } },
+        { source: { documentId: 'source.json' } },
+      ],
+    });
+    expect(state.groups.get(sourceGroup)).toEqual(location('source.json', 'group'));
+    expect(state.groupTypes.get(sourceGroup)).toEqual(location('types.json', 'group/$type'));
+    expect(copyMetadata.dependencies[1]).not.toHaveProperty('target');
+
+    state.nodes.get(sourceToken)!.location.documentId = 'source-mutated.json';
+    state.nodes.get(sourceToken)!.contributions[0]!.tokenPath = 'source-mutated.token';
+    state.nodes.get(sourceToken)!.typeOrigin!.sourcePointer = '/source-mutated/$type';
+    state.nodes.get(sourceToken)!.dependencies[0]!.source.documentId = 'source-mutated.json';
+    state.nodes.get(sourceToken)!.dependencies[0]!.target!.tokenPath = 'source-mutated.target';
+    state.groups.get(sourceGroup)!.documentId = 'source-mutated.json';
+    state.groupTypes.get(sourceGroup)!.sourcePointer = '/source-mutated/$type';
+    expect(state.nodes.get(copyToken)).toMatchObject({
+      location: { documentId: 'copy.json' },
+      contributions: [{ tokenPath: 'copy.token' }],
+      typeOrigin: { sourcePointer: '/copy/$type' },
+      dependencies: [
+        { source: { documentId: 'copy.json' }, target: { tokenPath: 'copy.target' } },
+        { source: { documentId: 'copy.json' } },
+      ],
+    });
+    expect(state.groups.get(copyGroup)).toEqual(location('copy.json', 'group'));
+    expect(state.groupTypes.get(copyGroup)).toMatchObject({
+      documentId: 'types.json',
+      sourcePointer: '/copy/$type',
+    });
+  });
+
   test('deeply isolates merged dependency locations', () => {
     const location = (documentId: string, tokenPath: string) => ({
       documentId,

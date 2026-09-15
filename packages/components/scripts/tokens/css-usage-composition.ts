@@ -21,6 +21,7 @@ export type ElementEvidence = {
   classes: ReadonlySet<string>;
   attributes: ReadonlyMap<string, string | undefined>;
   ownerStylesheets: ReadonlySet<string>;
+  pseudoElement?: string;
 };
 
 export type SelectorEvidence = {
@@ -37,10 +38,25 @@ type SelectorAlternative = {
   }[];
   tagName: string | undefined;
   id: string | undefined;
+  pseudoElement: string | undefined;
   supported: boolean;
 };
 
 type CssImport = { from: string; to: string };
+
+const supportedStatePseudos = new Set(
+  ':hover :focus :focus-visible :focus-within :active :disabled :enabled :checked :indeterminate :visited :link'.split(
+    ' ',
+  ),
+);
+const attributeMatchers: Record<string, (left: string, right: string) => boolean> = {
+  '=': (left, right) => left === right,
+  '~=': (left, right) => right !== '' && left.split(/\s+/).includes(right),
+  '|=': (left, right) => left === right || left.startsWith(`${right}-`),
+  '^=': (left, right) => right !== '' && left.startsWith(right),
+  '$=': (left, right) => right !== '' && left.endsWith(right),
+  '*=': (left, right) => right !== '' && left.includes(right),
+};
 
 export type CompositionCaches = {
   selectors: Map<string, SelectorEvidence | undefined>;
@@ -51,15 +67,12 @@ export type CompositionCaches = {
 export function createCompositionCaches(): CompositionCaches {
   return { selectors: new Map(), candidates: new Map(), terminals: new Map() };
 }
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
-
 function lineAt(source: string, offset: number): number {
   return source.slice(0, Math.max(0, offset)).split('\n').length;
 }
-
 function staticString(value: unknown): string | undefined {
   if (typeof value === 'string') return value;
   if (!isRecord(value)) return undefined;
@@ -74,7 +87,6 @@ function staticString(value: unknown): string | undefined {
   }
   return undefined;
 }
-
 function attributeValue(value: unknown): string | undefined {
   if (value === true) return '';
   if (!Array.isArray(value)) return staticString(value);
@@ -84,7 +96,6 @@ function attributeValue(value: unknown): string | undefined {
   });
   return parts.every((part) => part !== undefined) ? parts.join('') : undefined;
 }
-
 function addClasses(value: unknown, classes: Set<string>): void {
   const text = staticString(value);
   if (text !== undefined) {
@@ -120,7 +131,6 @@ function addClasses(value: unknown, classes: Set<string>): void {
     } else addClasses(propertyKey, classes);
   }
 }
-
 function elementEvidence(
   source: CompositionSource,
   ownerStylesheets: ReadonlySet<string>,
@@ -182,7 +192,6 @@ function elementEvidence(
   visit(ast['html'] ?? ast['fragment']);
   return evidence;
 }
-
 function finalCompound(selector: string): SelectorEvidence | undefined {
   const alternatives: SelectorAlternative[] = [];
   try {
@@ -197,6 +206,7 @@ function finalCompound(selector: string): SelectorEvidence | undefined {
         const attributes: SelectorAlternative['attributes'][number][] = [];
         let tagName: string | undefined;
         let id: string | undefined;
+        let pseudoElement: string | undefined;
         let supported = compound.length > 0;
         for (const node of compound) {
           if (node.type === 'class') classes.add(node.value);
@@ -209,11 +219,16 @@ function finalCompound(selector: string): SelectorEvidence | undefined {
             });
           else if (node.type === 'tag') tagName = node.value;
           else if (node.type === 'id') id = node.value;
-          else if (node.type === 'pseudo' || node.type === 'universal') supported = false;
+          else if (node.type === 'pseudo') {
+            const pseudo = node.value.toLowerCase();
+            if (pseudo === '::before' || pseudo === ':before') pseudoElement = 'before';
+            else if (pseudo === '::after' || pseudo === ':after') pseudoElement = 'after';
+            else if (!supportedStatePseudos.has(pseudo)) supported = false;
+          } else if (node.type === 'universal') supported = false;
         }
         if (compound.length === 0 || (!classes.size && !attributes.length && !tagName && !id))
           supported = false;
-        alternatives.push({ classes, attributes, tagName, id, supported });
+        alternatives.push({ classes, attributes, tagName, id, pseudoElement, supported });
       });
     }).processSync(selector);
   } catch {
@@ -221,11 +236,18 @@ function finalCompound(selector: string): SelectorEvidence | undefined {
   }
   return alternatives.length ? { alternatives } : undefined;
 }
-
 export function selectorEvidence(selector: string | null): SelectorEvidence | undefined {
   return selector === null ? undefined : finalCompound(selector);
 }
-
+function selectorFor(
+  selector: string | null,
+  caches?: CompositionCaches,
+): SelectorEvidence | undefined {
+  if (!caches) return selectorEvidence(selector);
+  const key = selector ?? '';
+  if (!caches.selectors.has(key)) caches.selectors.set(key, selectorEvidence(selector));
+  return caches.selectors.get(key);
+}
 export function selectorMatchesElement(
   selector: SelectorEvidence,
   element: ElementEvidence,
@@ -233,6 +255,8 @@ export function selectorMatchesElement(
   return selector.alternatives.some(
     (alternative) =>
       alternative.supported &&
+      (alternative.pseudoElement === undefined ||
+        alternative.pseudoElement === element.pseudoElement) &&
       (!alternative.tagName || alternative.tagName === element.tagName) &&
       (!alternative.id || alternative.id === element.id) &&
       [...alternative.classes].every((name) => element.classes.has(name)) &&
@@ -243,26 +267,10 @@ export function selectorMatchesElement(
         const left = attribute.insensitive ? actual.toLowerCase() : actual;
         const right = attribute.insensitive ? attribute.value?.toLowerCase() : attribute.value;
         if (right === undefined) return false;
-        switch (attribute.operator) {
-          case '=':
-            return left === right;
-          case '~=':
-            return right !== '' && left.split(/\s+/).includes(right);
-          case '|=':
-            return left === right || left.startsWith(`${right}-`);
-          case '^=':
-            return right !== '' && left.startsWith(right);
-          case '$=':
-            return right !== '' && left.endsWith(right);
-          case '*=':
-            return right !== '' && left.includes(right);
-          default:
-            return false;
-        }
+        return attributeMatchers[attribute.operator]?.(left, right) ?? false;
       }),
   );
 }
-
 export function declarationIdentityKey(identity: DeclarationIdentity): string {
   return JSON.stringify([
     identity.file,
@@ -274,22 +282,14 @@ export function declarationIdentityKey(identity: DeclarationIdentity): string {
     identity.atRules,
   ]);
 }
-
 export function declarationMatchesElement(
   declaration: DeclarationRecord,
   element: ElementEvidence,
   caches?: CompositionCaches,
 ): boolean {
-  const selector = caches
-    ? caches.selectors.has(declaration.selector ?? '')
-      ? caches.selectors.get(declaration.selector ?? '')
-      : caches.selectors
-          .set(declaration.selector ?? '', selectorEvidence(declaration.selector))
-          .get(declaration.selector ?? '')
-    : selectorEvidence(declaration.selector);
+  const selector = selectorFor(declaration.selector, caches);
   return selector !== undefined && selectorMatchesElement(selector, element);
 }
-
 function resolveImport(
   from: string,
   imported: string,
@@ -310,7 +310,6 @@ function resolveImport(
     if (files.has(option)) return option;
   return undefined;
 }
-
 function cssImports(source: CompositionSource, files: ReadonlySet<string>): CssImport[] {
   if (!source.path.endsWith('.css')) return [];
   const imports: CssImport[] = [];
@@ -326,7 +325,6 @@ function cssImports(source: CompositionSource, files: ReadonlySet<string>): CssI
   }
   return imports;
 }
-
 export function importedStylesheets(
   source: CompositionSource,
   files: ReadonlySet<string>,
@@ -387,7 +385,6 @@ export function importedStylesheets(
   }
   return [...imports].sort();
 }
-
 export function reachableStylesheets(sources: readonly CompositionSource[]): ReadonlySet<string> {
   const files = new Set(
     sources.filter((source) => source.path.endsWith('.css')).map((source) => source.path),
@@ -411,7 +408,6 @@ export function reachableStylesheets(sources: readonly CompositionSource[]): Rea
   }
   return reachable;
 }
-
 export function compositionElements(sources: readonly CompositionSource[]): ElementEvidence[] {
   const files = new Set(
     sources.filter((source) => source.path.endsWith('.css')).map((source) => source.path),
@@ -448,7 +444,6 @@ export function compositionElements(sources: readonly CompositionSource[]): Elem
       return elementEvidence(source, ownerStylesheets);
     });
 }
-
 export function compositionCandidates(
   name: string,
   element: ElementEvidence,
@@ -456,7 +451,7 @@ export function compositionCandidates(
   reachable: ReadonlySet<string>,
   caches?: CompositionCaches,
 ): DeclarationRecord[] {
-  const key = `${name}|${element.sourceFile}|${element.offset}`;
+  const key = `${name}|${element.sourceFile}|${element.offset}|${element.pseudoElement ?? ''}`;
   if (caches?.candidates.has(key)) return caches.candidates.get(key)!;
   const candidates = declarations.filter(
     (declaration) =>
@@ -469,7 +464,6 @@ export function compositionCandidates(
   caches?.candidates.set(key, candidates);
   return candidates;
 }
-
 export function terminalElements(
   declaration: DeclarationRecord,
   elements: readonly ElementEvidence[],
@@ -479,9 +473,19 @@ export function terminalElements(
   if (!reachable.has(declaration.sourceFile)) return [];
   const key = declarationIdentityKey(declaration);
   if (caches?.terminals.has(key)) return caches.terminals.get(key)!;
-  const terminals = elements.filter((element) =>
-    declarationMatchesElement(declaration, element, caches),
-  );
+  const selector = selectorFor(declaration.selector, caches);
+  const terminals =
+    selector === undefined
+      ? []
+      : elements.flatMap((element) => {
+          return selector.alternatives.flatMap((candidate) => {
+            const candidateElement = candidate.pseudoElement
+              ? { ...element, pseudoElement: candidate.pseudoElement }
+              : element;
+            if (!selectorMatchesElement({ alternatives: [candidate] }, candidateElement)) return [];
+            return [candidateElement];
+          });
+        });
   caches?.terminals.set(key, terminals);
   return terminals;
 }
