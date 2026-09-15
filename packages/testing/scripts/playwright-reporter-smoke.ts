@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { cp, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { caseIdentities, expectedCases, readShardEvidence } from './static-playground-evidence.ts';
@@ -34,12 +35,12 @@ async function main(): Promise<void> {
     await mkdir(join(root, 'static'));
     await writeFile(join(root, 'static/index.html'), '<h1>Fixture</h1>');
     await mkdir(join(root, 'specifications'));
-    const testModule = import.meta.resolve('@playwright/test');
+    const testModule = createRequire(import.meta.url).resolve('@playwright/test');
     await writeFile(
       join(root, 'specifications/playground-production.playwright.ts'),
       [
         `import { expect, test } from ${JSON.stringify(testModule)};`,
-        `const routes = ${JSON.stringify(routes.slice(1))};`,
+        `const routes = ${JSON.stringify(routes)};`,
         `for (const route of routes) for (const viewport of ['desktop', 'mobile']) {`,
         `  if (process.env.SMOKE_OMIT_LAST && route === '/four' && viewport === 'mobile') continue;`,
         '  test(`${route} documentation and playground at ${viewport}`, () => { expect(route.startsWith("/")).toBe(true); });',
@@ -80,10 +81,10 @@ async function main(): Promise<void> {
     await mkdir(mergeInput);
     for (let index = 1; index <= 8; index++) {
       const result = launch(index, 8);
-      assert.equal(result.exitCode, 0, result.stderr.toString());
+      assert.equal(result.exitCode, 0, result.stdout.toString() + result.stderr.toString());
       const evidence = await readShardEvidence(join(root, 'evidence', `shard-${index}`));
       const cases = caseIdentities(evidence.report);
-      assert.equal(cases.size, 1);
+      assert(cases.size > 0, `shard ${index} must collect cases`);
       for (const item of cases) {
         assert(!union.has(item));
         union.add(item);
@@ -112,7 +113,7 @@ async function main(): Promise<void> {
     ]);
     assert.equal(aggregate.exitCode, 0, aggregate.stderr.toString());
     const aggregateReport = await Bun.file(join(root, 'aggregate.json')).json();
-    assert.equal(aggregateReport.cases, 8);
+    assert.equal(aggregateReport.cases, expectedCases(routes).size);
     const mergedJson = join(root, 'merged.json');
     const merge = Bun.spawnSync(
       [

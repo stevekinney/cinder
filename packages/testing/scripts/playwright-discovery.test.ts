@@ -16,6 +16,8 @@ function listTests(
   environment: Record<string, string | undefined> = {},
 ): ReturnType<typeof Bun.spawnSync> {
   const env = { ...process.env, ...environment };
+  // This child runs Playwright independently of the parent Bun/Jest-compatible runner.
+  delete env['JEST_WORKER_ID'];
   for (const [name, value] of Object.entries(env)) if (value === undefined) delete env[name];
   return Bun.spawnSync(
     ['bunx', 'playwright', 'test', '--config', config, '--list', ...argumentsList],
@@ -29,15 +31,17 @@ function output(result: ReturnType<typeof Bun.spawnSync>): string {
 
 describe('Playwright discovery lane ownership', () => {
   test('ordinary discovery excludes the artifact-only production spec before importing it', () => {
+    const parentWorkerId = process.env['JEST_WORKER_ID'];
     const result = listTests(
       'packages/testing/playwright.config.ts',
       ['playground-production|playground-landing'],
-      { PLAYGROUND_STATIC_REPORT: undefined },
+      { PLAYGROUND_STATIC_REPORT: undefined, JEST_WORKER_ID: 'parent-discovery-test' },
     );
 
-    expect(result.exitCode).toBe(0);
+    expect(result.exitCode, output(result) + result.stderr?.toString()).toBe(0);
     expect(output(result)).toContain('Total: 2 tests in 1 file');
     expect(output(result)).not.toContain('PLAYGROUND_STATIC_REPORT is required');
+    expect(process.env['JEST_WORKER_ID']).toBe(parentWorkerId);
   });
 
   test('dedicated discovery loads the production matrix from its positive report fixture', async () => {
@@ -56,8 +60,10 @@ describe('Playwright discovery lane ownership', () => {
         PLAYWRIGHT_TEST_MATCH: '**/production-wrapper.playwright.ts',
       });
 
-      expect(result.exitCode).toBe(0);
-      expect(output(result)).toContain('Total: 4 tests in 1 file');
+      expect(result.exitCode, output(result) + result.stderr?.toString()).toBe(0);
+      expect(output(result)).toContain('Total: 6 tests in 1 file');
+      expect(output(result)).toContain('/ documentation and playground at desktop');
+      expect(output(result)).toContain('/ documentation and playground at mobile');
       expect(output(result)).toContain('desktop');
       expect(output(result)).toContain('mobile');
       const missingReport = listTests('packages/testing/playwright-static.config.ts', [], {

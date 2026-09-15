@@ -236,7 +236,7 @@ jobs:
       - uses: ./.github/actions/install-dependencies
       - name: Verify browser-runner descendant cleanup
         run: |
-          bun test packages/testing/scripts/start-server.test.ts packages/testing/scripts/kill-playground.test.ts packages/testing/scripts/playground-exit-report.test.ts
+          bun test packages/testing/scripts/start-server.test.ts packages/testing/scripts/kill-playground.test.ts packages/testing/scripts/playground-exit-report.test.ts packages/testing/scripts/managed-process-spawn.test.ts
           bun run --filter=@cinder/testing typecheck
 
   component:

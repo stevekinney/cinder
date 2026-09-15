@@ -1,4 +1,4 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { dirname, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -10,6 +10,7 @@ import {
   type BaselineComponentScope,
 } from './baseline-provenance.ts';
 import { checkDockerAuthenticity, formatFailures } from './docker-authenticity.ts';
+import { spawnManagedProcess } from './managed-process-spawn.ts';
 import {
   installSignalCleanupHandlers,
   manageChildProcess,
@@ -83,7 +84,7 @@ async function main(): Promise<void> {
   const extraArgs = process.argv.slice(2);
   const startServer = resolvePath(packageRoot, 'scripts/start-server.ts');
   const renderedSourceSha = readRenderedSourceSha(repoRoot);
-  const child = spawn('bun', startServerArguments(startServer, extraArgs), {
+  const child = spawnManagedProcess('bun', startServerArguments(startServer, extraArgs), {
     cwd: packageRoot,
     stdio: 'inherit',
     // CINDER_VISUAL_DIFF=block ensures toHaveScreenshot is active so

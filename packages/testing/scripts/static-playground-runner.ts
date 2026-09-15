@@ -1,6 +1,6 @@
-import { spawn } from 'node:child_process';
 import { copyFile, mkdir, readdir, stat } from 'node:fs/promises';
 import { join, resolve as resolvePath } from 'node:path';
+import { spawnManagedProcess } from './managed-process-spawn.ts';
 import {
   cleanupManagedChildren,
   installSignalCleanupHandlers,
@@ -60,7 +60,7 @@ export async function runStaticPlaywright(
     'test-results/playground-production.json',
   );
   const blobPath = join(evidencePath, 'blob', 'report.zip');
-  const child = spawn(process.env['BUN_BIN'] ?? 'bun', playwrightArguments(shard), {
+  const child = spawnManagedProcess(process.env['BUN_BIN'] ?? 'bun', playwrightArguments(shard), {
     cwd: resolvePath(import.meta.dirname, '..'),
     env: {
       ...process.env,

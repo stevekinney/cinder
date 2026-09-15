@@ -51,9 +51,9 @@ for (const [name, definition] of Object.entries(fullFormats)) {
           : typeof definition === 'object' && definition !== null && 'validate' in definition
             ? typeof definition.validate === 'function' && definition.type === 'number'
               ? typeof data === 'number' && definition.validate(data)
-              : typeof definition.validate === 'function' && typeof data === 'string'
-                ? Reflect.apply(definition.validate, definition, [data]) === true
-                : false
+              : typeof definition.validate === 'function' &&
+                typeof data === 'string' &&
+                Reflect.apply(definition.validate, definition, [data]) === true
             : false;
     return valid
       ? undefined

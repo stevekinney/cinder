@@ -30,7 +30,7 @@ for (const theme of ['light', 'dark'] as const) {
         const metrics = await page.evaluate(() => {
           const root = document.querySelector<HTMLElement>('.dx-shell');
           const body = document.body;
-          if (root === null) throw new Error('missing .dx root');
+          if (root === null) throw new Error('missing .dx-shell root');
           const rootStyles = getComputedStyle(root);
           const bodyStyles = getComputedStyle(body);
           const importElement = document.querySelector('.dx-import');

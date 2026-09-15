@@ -5,6 +5,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { forceStopUnverifiedSupervisor, spawnManagedProcess } from './managed-process-spawn.ts';
 
 import {
   parseDarwinProcessInfo,
@@ -15,6 +16,7 @@ import {
 import {
   childProcessHasFinished,
   cleanupManagedChildren,
+  createCleanupOnce,
   descendantProcessIds,
   installSignalCleanupHandlers,
   manageChildProcess,
@@ -567,7 +569,7 @@ describe('child process cleanup', () => {
       const ownershipFile = join(temporaryRoot, 'playground-port.txt');
       writeFileSync(ownershipFile, 'owned');
       const serverLifetimeMs = 1_000;
-      const server = spawn(
+      const server = spawnManagedProcess(
         process.execPath,
         [
           '-e',
@@ -580,9 +582,9 @@ describe('child process cleanup', () => {
             `setTimeout(() => process.exit(${serverExit}), ${serverLifetimeMs});`,
           ].join(' '),
         ],
-        { detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'ignore'] },
+        { detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] },
       );
-      const browser = spawn(
+      const browser = spawnManagedProcess(
         process.execPath,
         [
           '-e',
@@ -593,7 +595,7 @@ describe('child process cleanup', () => {
             'setInterval(() => {}, 1000);',
           ].join(' '),
         ],
-        { detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'ignore'] },
+        { detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] },
       );
       const sentinel = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
         detached: process.platform !== 'win32',
@@ -613,8 +615,8 @@ describe('child process cleanup', () => {
       const browserClosed = once(browser, 'close');
 
       try {
-        const [serverOutput] = await once(server.stdout, 'data');
-        const [browserOutput] = await once(browser.stdout, 'data');
+        const [serverOutput] = await once(server.stdout!, 'data');
+        const [browserOutput] = await once(browser.stdout!, 'data');
         const serverDetails = JSON.parse(String(serverOutput).trim()) as {
           grandchildPid: number;
           port: number;
@@ -660,7 +662,7 @@ describe('child process cleanup', () => {
   );
 
   test('cleans up a real child and grandchild while preserving a sentinel', async () => {
-    const fixture = spawn(
+    const fixture = spawnManagedProcess(
       process.execPath,
       [
         '-e',
@@ -671,7 +673,7 @@ describe('child process cleanup', () => {
           'setInterval(() => {}, 1000);',
         ].join(' '),
       ],
-      { detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'ignore'] },
+      { detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] },
     );
     const managedFixture = manageChildProcess(fixture, 'descendant fixture');
     const sentinel = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
@@ -680,7 +682,7 @@ describe('child process cleanup', () => {
     });
 
     try {
-      const [output] = await once(fixture.stdout, 'data');
+      const [output] = await once(fixture.stdout!, 'data');
       const grandchildPid = Number(String(output).trim());
       await terminateChildProcess(managedFixture);
       expect(fixture.exitCode === null && fixture.signalCode === null).toBe(false);
@@ -693,19 +695,29 @@ describe('child process cleanup', () => {
   });
 
   test('cleans up immediate descendants after the finite build root fails', async () => {
-    const fixture = spawn(
-      process.execPath,
+    const failureTrigger =
+      process.platform === 'linux'
+        ? 'setImmediate(() => process.exit(7));'
+        : "process.stdin.once('data', () => process.exit(7));";
+    const fixtureArguments = [
+      '-e',
       [
-        '-e',
-        [
-          "const { spawn } = require('node:child_process');",
-          "const grandchild = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });",
-          "process.stdout.write(String(grandchild.pid) + '\\n');",
-          "process.stdin.once('data', () => process.exit(7));",
-        ].join(' '),
-      ],
-      { detached: process.platform !== 'win32', stdio: ['pipe', 'pipe', 'ignore'] },
-    );
+        "const { spawn } = require('node:child_process');",
+        "const grandchild = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });",
+        "process.stdout.write(String(grandchild.pid) + '\\n');",
+        failureTrigger,
+      ].join(' '),
+    ];
+    const fixture =
+      process.platform === 'linux'
+        ? spawnManagedProcess(process.execPath, fixtureArguments, {
+            detached: true,
+            stdio: ['ignore', 'pipe', 'pipe'],
+          })
+        : spawn(process.execPath, fixtureArguments, {
+            detached: true,
+            stdio: ['pipe', 'pipe', 'ignore'],
+          });
 
     const managedFixture = playgroundBundleDependencyBuildProcess(
       fixture,
@@ -716,9 +728,9 @@ describe('child process cleanup', () => {
       detached: process.platform !== 'win32',
       stdio: 'ignore',
     });
-    const [output] = await once(fixture.stdout, 'data');
+    const [output] = await once(fixture.stdout!, 'data');
     const grandchildPid = Number(String(output).trim());
-    fixture.stdin.write('fail\n');
+    if (process.platform !== 'linux') fixture.stdin!.write('fail\n');
     await once(fixture, 'exit');
     await terminateChildProcess(managedFixture);
     await terminateChildProcess(managedFixture);
@@ -808,6 +820,25 @@ describe('child process cleanup', () => {
       expect(() => process.kill(grandchildPid, 0)).toThrow();
     } finally {
       if (wrapper.exitCode === null && wrapper.signalCode === null) wrapper.kill('SIGKILL');
+    }
+  });
+
+  test('aggregates sibling cleanup and port-file failures after every attempt', async () => {
+    const directory = mkdtempSync(`${tmpdir()}/cinder-cleanup-`);
+    const children = await Promise.all(
+      [1, 2].map(async () => {
+        const child = spawn(process.execPath, ['-e', 'process.exit(0)'], { stdio: 'ignore' });
+        await once(child, 'exit');
+        return manageChildProcess(child, 'finished fixture', false, () => null);
+      }),
+    );
+    try {
+      const error = await cleanupManagedChildren(children, directory).catch((value) => value);
+      expect(error).toBeInstanceOf(AggregateError);
+      expect((error as AggregateError).errors).toHaveLength(3);
+      expect(existsSync(directory)).toBe(true);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
     }
   });
 });
@@ -949,6 +980,38 @@ describe('stalePlaygroundServerMessage', () => {
 });
 
 describe('installSignalCleanupHandlers', () => {
+  test('force-stops a live supervisor after unverified KILL-stage cleanup', () => {
+    const signals: NodeJS.Signals[] = [];
+    const child = {
+      pid: 42,
+      exitCode: null,
+      signalCode: null,
+      kill: (signal: NodeJS.Signals) => {
+        signals.push(signal);
+        return true;
+      },
+    };
+    forceStopUnverifiedSupervisor(child, 'unverified supervisor');
+    expect(signals).toEqual(['SIGKILL']);
+  });
+
+  test('shares one cleanup promise across overlapping callers', async () => {
+    let calls = 0;
+    let resolveCleanup!: () => void;
+    const cleanup = createCleanupOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          calls += 1;
+          resolveCleanup = resolve;
+        }),
+    );
+    const first = cleanup();
+    const second = cleanup();
+    expect(calls).toBe(1);
+    resolveCleanup();
+    await Promise.all([first, second]);
+  });
+
   test('registers exactly one SIGINT and one SIGTERM handler', () => {
     const sigintCountBefore = process.listenerCount('SIGINT');
     const sigtermCountBefore = process.listenerCount('SIGTERM');

@@ -1,8 +1,9 @@
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { spawnSync, type ChildProcess } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve as resolvePath, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REQUIRED_BASELINE_ARCHITECTURE } from './baseline-provenance.ts';
+import { spawnManagedProcess } from './managed-process-spawn.ts';
 import {
   installSignalCleanupHandlers,
   manageChildProcess,
@@ -127,7 +128,7 @@ export function run(
   options: { cwd?: string; onSpawn?: (child: ChildProcess) => void } = {},
 ): Promise<number> {
   return new Promise((resolve) => {
-    const child = spawn(command, args, {
+    const child = spawnManagedProcess(command, args, {
       cwd: options.cwd,
       stdio: 'inherit',
     });

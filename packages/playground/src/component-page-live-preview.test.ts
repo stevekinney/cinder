@@ -76,9 +76,7 @@ const ACCESSIBLE_PREVIEW_CASES = [
 ] as const;
 
 async function loadAccessiblePreviewComponent(componentName: string): Promise<unknown> {
-  const module = await import(
-    `../../components/src/components/${componentName}/${componentName}.svelte`
-  );
+  const module = await import(`@lostgradient/cinder/${componentName}`);
   return module.default;
 }
 

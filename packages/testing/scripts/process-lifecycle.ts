@@ -3,6 +3,11 @@ import { once } from 'node:events';
 import { rmSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
 import {
+  forceStopUnverifiedSupervisor,
+  requestSupervisorKill,
+  supervisorState,
+} from './managed-process-spawn.ts';
+import {
   captureProcessSnapshot,
   snapshotIdentities,
   snapshotIsComplete,
@@ -10,9 +15,7 @@ import {
   type ProcessSnapshot,
   type ProcessSnapshotReader,
 } from './process-identity.ts';
-
 const CHILD_PROCESS_TERMINATION_GRACE_MS = 5_000;
-
 export type ManagedChildProcess = {
   childProcess: ChildProcess;
   name: string;
@@ -22,7 +25,6 @@ export type ManagedChildProcess = {
   ownershipTimer?: ReturnType<typeof setInterval>;
   ownedProcessGroupId?: number;
 };
-
 export function childProcessHasFinished(
   childProcess: Pick<ChildProcess, 'pid' | 'exitCode' | 'signalCode'>,
 ): boolean {
@@ -32,10 +34,8 @@ export function childProcessHasFinished(
     childProcess.signalCode !== null
   );
 }
-
 type ProcessTreeEntry = { pid: number; parentPid: number };
 type ProcessGroupEntry = { pid: number; groupId: number };
-
 export function parseProcessTreeSnapshot(output: string): ProcessTreeEntry[] {
   return output
     .split('\n')
@@ -49,7 +49,6 @@ export function parseProcessTreeSnapshot(output: string): ProcessTreeEntry[] {
         : [];
     });
 }
-
 export function parseProcessGroupSnapshot(output: string): ProcessGroupEntry[] {
   return output
     .split('\n')
@@ -63,7 +62,6 @@ export function parseProcessGroupSnapshot(output: string): ProcessGroupEntry[] {
         : [];
     });
 }
-
 export function descendantProcessIds(
   rootPid: number,
   snapshot: readonly ProcessTreeEntry[],
@@ -80,7 +78,6 @@ export function descendantProcessIds(
   }
   return descendants;
 }
-
 function descendantProcessIdentities(
   rootPid: number,
   snapshot: readonly ProcessIdentity[],
@@ -100,18 +97,15 @@ function descendantProcessIdentities(
   }
   return descendants;
 }
-
 function processGroupIdentities(
   groupId: number,
   snapshot: readonly ProcessIdentity[],
 ): ProcessIdentity[] {
   return snapshot.filter((identity) => identity.groupId === groupId && identity.pid !== groupId);
 }
-
 function identityMatches(current: ProcessIdentity, expected: ProcessIdentity): boolean {
   return current.pid === expected.pid && current.startTime === expected.startTime;
 }
-
 function rootIdentityIsAnchored(
   snapshot: readonly ProcessIdentity[],
   rootIdentity: ProcessIdentity | undefined,
@@ -121,16 +115,13 @@ function rootIdentityIsAnchored(
     snapshot.some((identity) => identityMatches(identity, rootIdentity))
   );
 }
-
 function snapshotObservedProcess(
   snapshot: readonly ProcessIdentity[] | { observedPids: readonly number[] },
   pid: number,
 ): boolean {
   return !('observedPids' in snapshot) || snapshot.observedPids.includes(pid);
 }
-
 type IdentityState = 'alive' | 'gone' | 'unknown';
-
 function classifyIdentity(
   snapshot: readonly ProcessIdentity[] | ProcessSnapshot,
   expected: ProcessIdentity,
@@ -141,14 +132,12 @@ function classifyIdentity(
     return 'gone';
   return 'unknown';
 }
-
 function classifyIdentities(
   snapshot: readonly ProcessIdentity[] | ProcessSnapshot,
   expected: readonly ProcessIdentity[],
 ): IdentityState[] {
   return expected.map((identity) => classifyIdentity(snapshot, identity));
 }
-
 function signalProcessId(pid: number, signal: NodeJS.Signals): void {
   try {
     process.kill(pid, signal);
@@ -160,7 +149,6 @@ function signalProcessId(pid: number, signal: NodeJS.Signals): void {
     if (code !== 'ESRCH') console.error(`Failed to send ${signal} to descendant ${pid}:`, error);
   }
 }
-
 async function waitForProcessIdentitiesToExit(
   processIdentities: readonly ProcessIdentity[],
   snapshotReader: ProcessSnapshotReader,
@@ -182,11 +170,15 @@ async function waitForProcessIdentitiesToExit(
   if (snapshot === null) return false;
   return classifyIdentities(snapshot, processIdentities).every((state) => state === 'gone');
 }
-
+async function verifySupervisor(childProcess: ChildProcess, name: string): Promise<void> {
+  const state = supervisorState(childProcess);
+  if (state === undefined) return;
+  await state.completion;
+  if (state.error !== null) throw new Error(`${name} supervisor failed: ${state.error.message}`);
+}
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError';
 }
-
 async function waitForExitOrTimeout(
   childProcess: ChildProcess,
   timeoutMs: number,
@@ -214,7 +206,6 @@ async function waitForExitOrTimeout(
   abortController.abort();
   return result === 'exited' || childProcessHasFinished(childProcess);
 }
-
 async function waitForStdioCloseOrTimeout(
   childProcess: ChildProcess,
   timeoutMs: number,
@@ -236,7 +227,6 @@ async function waitForStdioCloseOrTimeout(
   abortController.abort();
   return result === 'closed';
 }
-
 export function manageChildProcess(
   childProcess: ChildProcess,
   name: string,
@@ -248,17 +238,21 @@ export function manageChildProcess(
     initialSnapshot === null
       ? undefined
       : snapshotIdentities(initialSnapshot).find((identity) => identity.pid === childProcess.pid);
+  const supervisorManaged = supervisorState(childProcess) !== undefined;
   const managedChildProcess: ManagedChildProcess = {
     childProcess,
     name,
     ownedProcessIdentities: new Map<number, ProcessIdentity>(),
     processSnapshot,
     ...(rootProcessIdentity === undefined ? {} : { rootProcessIdentity }),
-    ...(ownsProcessGroup && process.platform !== 'win32' && childProcess.pid !== undefined
+    ...(ownsProcessGroup &&
+    !supervisorManaged &&
+    process.platform !== 'win32' &&
+    childProcess.pid !== undefined
       ? { ownedProcessGroupId: childProcess.pid }
       : {}),
   };
-  if (childProcess.pid === undefined) return managedChildProcess;
+  if (childProcess.pid === undefined || supervisorManaged) return managedChildProcess;
   const trackDescendants = (): void => {
     if (childProcess.pid === undefined || childProcessHasFinished(childProcess)) return;
     const snapshot = processSnapshot();
@@ -281,29 +275,38 @@ export function manageChildProcess(
   managedChildProcess.ownershipTimer = setInterval(trackDescendants, 25);
   return managedChildProcess;
 }
-
 export function waitForExit(childProcess: ChildProcess): Promise<number> {
   return new Promise((resolve) => {
     let settled = false;
-    const settle = (code: number): void => {
+    const settle = async (code: number): Promise<void> => {
       if (settled) return;
       settled = true;
       childProcess.off('exit', onExit);
       childProcess.off('error', onError);
+      const state = supervisorState(childProcess);
+      if (state !== undefined) {
+        await state.completion;
+        if (state.error !== null) {
+          console.error(`Supervisor failed: ${state.error.message}`);
+          resolve(code === 0 ? 1 : code);
+          return;
+        }
+      }
       resolve(code);
     };
-    const onExit = (code: number | null): void => settle(code ?? 1);
+    const onExit = (code: number | null): void => {
+      void settle(code ?? 1);
+    };
     const onError = (error: Error): void => {
       console.error('Child process error:', error);
-      settle(1);
+      void settle(1);
     };
     childProcess.on('exit', onExit);
     childProcess.on('error', onError);
-    if (childProcess.exitCode !== null) settle(childProcess.exitCode);
-    else if (childProcess.signalCode !== null) settle(1);
+    if (childProcess.exitCode !== null) void settle(childProcess.exitCode);
+    else if (childProcess.signalCode !== null) void settle(1);
   });
 }
-
 export async function terminateChildProcess(
   managedChildProcess: ManagedChildProcess,
 ): Promise<void> {
@@ -312,6 +315,12 @@ export async function terminateChildProcess(
   if (processId === undefined) return;
   const processSnapshot = managedChildProcess.processSnapshot ?? captureProcessSnapshot;
   const childFinishedAtStart = childProcessHasFinished(childProcess);
+  const supervisor = supervisorState(childProcess);
+  if (childFinishedAtStart && supervisor !== undefined) {
+    await supervisor.completion;
+    if (supervisor.error !== null)
+      throw new Error(`${name} supervisor failed: ${supervisor.error.message}`);
+  }
   const cachedIdentities = new Map(managedChildProcess.ownedProcessIdentities ?? []);
   const initialProcessSnapshot = processSnapshot();
   let snapshotUnavailable = initialProcessSnapshot === null;
@@ -321,7 +330,7 @@ export async function terminateChildProcess(
       identities,
       managedChildProcess.rootProcessIdentity,
     );
-    if (!childFinishedAtStart && rootIsAnchored)
+    if (supervisor === undefined && !childFinishedAtStart && rootIsAnchored)
       for (const identity of descendantProcessIdentities(processId, identities))
         cachedIdentities.set(identity.pid, identity);
     if (
@@ -386,7 +395,7 @@ export async function terminateChildProcess(
       if (code !== 'ESRCH') console.error(`Failed to send SIGTERM to ${name}:`, error);
     }
   }
-  const [rootExited, descendantsExited] = await Promise.all([
+  const [rootExited, descendantsExited, termStdioClosed] = await Promise.all([
     rootFinishedBeforeTermination
       ? Promise.resolve(true)
       : waitForExitOrTimeout(childProcess, CHILD_PROCESS_TERMINATION_GRACE_MS),
@@ -395,19 +404,17 @@ export async function terminateChildProcess(
       processSnapshot,
       CHILD_PROCESS_TERMINATION_GRACE_MS,
     ),
+    waitForStdioCloseOrTimeout(childProcess, CHILD_PROCESS_TERMINATION_GRACE_MS),
   ]);
-  if (rootExited && descendantsExited && !snapshotUnavailable) {
-    const stdioClosed = await waitForStdioCloseOrTimeout(
-      childProcess,
-      CHILD_PROCESS_TERMINATION_GRACE_MS,
-    );
-    if (!stdioClosed) throw new Error(`${name} cleanup could not verify stdio closure.`);
+  if (rootExited && descendantsExited && termStdioClosed && !snapshotUnavailable) {
+    await verifySupervisor(childProcess, name);
     return;
   }
   console.error(`${name} did not exit after SIGTERM; sending SIGKILL.`);
   signalDescendants('SIGKILL');
+  const supervisorEscalated = requestSupervisorKill(childProcess);
   const rootFinishedBeforeKill = childProcessHasFinished(childProcess);
-  if (!rootFinishedBeforeKill) {
+  if (!supervisorEscalated && !rootFinishedBeforeKill) {
     try {
       childProcess.kill('SIGKILL');
     } catch (error) {
@@ -418,36 +425,57 @@ export async function terminateChildProcess(
       if (code !== 'ESRCH') console.error(`Failed to send SIGKILL to ${name}:`, error);
     }
   }
-  const [killedRoot, killedDescendants] = await Promise.all([
+  const [killedRoot, killedDescendants, stdioClosed] = await Promise.all([
     waitForExitOrTimeout(childProcess, CHILD_PROCESS_TERMINATION_GRACE_MS),
     waitForProcessIdentitiesToExit(
       descendantIdentities,
       processSnapshot,
       CHILD_PROCESS_TERMINATION_GRACE_MS,
     ),
+    waitForStdioCloseOrTimeout(childProcess, CHILD_PROCESS_TERMINATION_GRACE_MS),
   ]);
-  const stdioClosed = await waitForStdioCloseOrTimeout(
-    childProcess,
-    CHILD_PROCESS_TERMINATION_GRACE_MS,
-  );
-  if (!(killedRoot && killedDescendants && stdioClosed && !snapshotUnavailable))
+  if (!(killedRoot && killedDescendants && stdioClosed && !snapshotUnavailable)) {
+    if (supervisorEscalated && !childProcessHasFinished(childProcess))
+      forceStopUnverifiedSupervisor(childProcess, name);
     throw new Error(`${name} cleanup could not verify process termination.`);
+  }
+  await verifySupervisor(childProcess, name);
 }
-
 export async function cleanupManagedChildren(
   children: ManagedChildProcess[],
   playgroundPortFile: string | null,
 ): Promise<void> {
-  await Promise.all(children.map((child) => terminateChildProcess(child)));
-  if (playgroundPortFile !== null) rmSync(playgroundPortFile, { force: true });
+  const failures: unknown[] = [];
+  try {
+    await Promise.all(
+      children.map(async (child) => {
+        try {
+          await terminateChildProcess(child);
+        } catch (error) {
+          failures.push(error);
+        }
+      }),
+    );
+  } finally {
+    if (playgroundPortFile !== null) {
+      try {
+        rmSync(playgroundPortFile, { force: true });
+      } catch (error) {
+        failures.push(error);
+      }
+    }
+  }
+  if (failures.length > 0) throw new AggregateError(failures, 'Managed child cleanup failed');
 }
-
-export function installSignalCleanupHandlers(runCleanup: () => Promise<void>): void {
+export function createCleanupOnce(runCleanup: () => Promise<void>): () => Promise<void> {
   let cleanupPromise: Promise<void> | null = null;
-  const cleanupOnce = async (): Promise<void> => {
+  return async (): Promise<void> => {
     cleanupPromise ??= runCleanup();
     await cleanupPromise;
   };
+}
+export function installSignalCleanupHandlers(runCleanup: () => Promise<void>): void {
+  const cleanupOnce = createCleanupOnce(runCleanup);
   const exitAfterCleanup = async (code: number): Promise<never> => {
     try {
       await cleanupOnce();
@@ -456,10 +484,6 @@ export function installSignalCleanupHandlers(runCleanup: () => Promise<void>): v
     }
     process.exit(code);
   };
-  process.on('SIGINT', () => {
-    void exitAfterCleanup(130);
-  });
-  process.on('SIGTERM', () => {
-    void exitAfterCleanup(143);
-  });
+  process.on('SIGINT', () => void exitAfterCleanup(130));
+  process.on('SIGTERM', () => void exitAfterCleanup(143));
 }

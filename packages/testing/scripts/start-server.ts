@@ -1,8 +1,9 @@
-import { spawn, type ChildProcess } from 'node:child_process';
+import { type ChildProcess } from 'node:child_process';
 import { mkdirSync, rmSync, watch, type FSWatcher } from 'node:fs';
 import { dirname, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PLAYGROUND_URL } from '../src/helpers/playground-url.ts';
+import { spawnManagedProcess } from './managed-process-spawn.ts';
 import { DEFAULT_PLAYGROUND_URL, isLocalDefaultPlaygroundUrl } from './playground-server-url';
 import {
   childProcessHasFinished,
@@ -398,16 +399,20 @@ async function buildPlaygroundBundleDependencies(
   for (const packageName of playgroundBundleDependencyPackages) {
     if (!shouldContinueStartingChildProcesses()) return;
 
-    const buildProcess = spawn('bun', playgroundBundleDependencyBuildArguments(packageName), {
-      cwd: repoRoot,
-      // Give each finite build its own process group so a build that exits
-      // immediately after spawning a descendant cannot orphan that descendant
-      // before cleanup observes it. The root is still awaited for its true
-      // build exit code, including inside Docker.
-      detached: process.platform !== 'win32',
-      stdio: 'inherit',
-      env: process.env,
-    });
+    const buildProcess = spawnManagedProcess(
+      'bun',
+      playgroundBundleDependencyBuildArguments(packageName),
+      {
+        cwd: repoRoot,
+        // Give each finite build its own process group so a build that exits
+        // immediately after spawning a descendant cannot orphan that descendant
+        // before cleanup observes it. The root is still awaited for its true
+        // build exit code, including inside Docker.
+        detached: process.platform !== 'win32',
+        stdio: 'inherit',
+        env: process.env,
+      },
+    );
     registerChildProcess(
       playgroundBundleDependencyBuildProcess(
         buildProcess,
@@ -504,12 +509,16 @@ function startPlaygroundBundleDependencyWatchers(
         return;
       }
       activeBuild = true;
-      state.buildProcess = spawn('bun', playgroundBundleDependencyBuildArguments(packageName), {
-        cwd: repoRoot,
-        detached: process.platform !== 'win32',
-        stdio: 'inherit',
-        env: process.env,
-      });
+      state.buildProcess = spawnManagedProcess(
+        'bun',
+        playgroundBundleDependencyBuildArguments(packageName),
+        {
+          cwd: repoRoot,
+          detached: process.platform !== 'win32',
+          stdio: 'inherit',
+          env: process.env,
+        },
+      );
       const currentBuild = state.buildProcess;
       if (currentBuild === null) return;
       registerChildProcess(
@@ -585,7 +594,7 @@ const isLocalDefault = isLocalDefaultPlaygroundUrl(PLAYGROUND_URL);
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
 
-  let serverProcess: ReturnType<typeof spawn> | null = null;
+  let serverProcess: ChildProcess | null = null;
   let playgroundTermination: PlaygroundTermination | null = null;
   // Reads the server's output as it stands when the report is written; the
   // buffer itself lives in the block that spawns the server, and stays null
@@ -690,7 +699,7 @@ async function main(): Promise<void> {
     let reportedPlaygroundPort: number | null = null;
     mkdirSync(resolvePath(repoRoot, 'tmp'), { recursive: true });
     rmSync(playgroundPortFile, { force: true });
-    serverProcess = spawn('bun', playgroundServerArguments(), {
+    serverProcess = spawnManagedProcess('bun', playgroundServerArguments(), {
       cwd: playgroundServerWorkingDirectory(),
       detached: process.platform !== 'win32',
       // stderr is piped rather than inherited so an uncaught exception's stack
@@ -828,7 +837,7 @@ async function main(): Promise<void> {
   );
   await exitIfShuttingDown();
 
-  const prep = spawn('bun', ['run', 'scripts/prepare-manifest.ts'], {
+  const prep = spawnManagedProcess('bun', ['run', 'scripts/prepare-manifest.ts'], {
     cwd: packageRoot,
     stdio: 'inherit',
     env: { ...process.env, PLAYGROUND_URL: targetPlaygroundUrl },
@@ -846,7 +855,7 @@ async function main(): Promise<void> {
   );
   await exitIfShuttingDown();
 
-  const playwright = spawn('bunx', playwrightCommandArguments(args), {
+  const playwright = spawnManagedProcess('bunx', playwrightCommandArguments(args), {
     cwd: packageRoot,
     detached: process.platform !== 'win32',
     stdio: 'inherit',
@@ -894,7 +903,7 @@ async function main(): Promise<void> {
     await exitAfterCleanup(1);
   }
 
-  const summary = spawn('bun', ['run', 'scripts/summarize-axe.ts'], {
+  const summary = spawnManagedProcess('bun', ['run', 'scripts/summarize-axe.ts'], {
     cwd: packageRoot,
     stdio: 'inherit',
     env: { ...process.env, PLAYGROUND_URL: targetPlaygroundUrl },

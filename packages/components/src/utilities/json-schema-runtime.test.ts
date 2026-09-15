@@ -96,6 +96,20 @@ describe('JSON Schema runtime', () => {
     });
   });
 
+  test('rejects an override that contradicts the declared schema draft', () => {
+    const schema = { $schema: 'http://json-schema.org/draft-07/schema#', type: 'string' };
+
+    expect(() => compileJsonSchemaRuntime(schema, '2020-12')).toThrow(
+      'Schema draft draft-07 does not match override 2020-12',
+    );
+    expect(
+      validateJsonSchemaRuntime(compileJsonSchemaRuntime(schema, 'draft-07'), 'value'),
+    ).toEqual({
+      valid: true,
+      errors: [],
+    });
+  });
+
   test('rejects an unknown declared draft', () => {
     expect(() =>
       compileJsonSchemaRuntime({
