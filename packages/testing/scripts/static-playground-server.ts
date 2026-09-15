@@ -103,45 +103,60 @@ export async function startStaticServer(
 ): Promise<StaticServer> {
   assertSupportedConfig(config);
   const server = createServer(async (request: IncomingMessage, response: ServerResponse) => {
-    const pathname = new URL(request.url ?? '/', 'http://static.test').pathname;
-    const redirect = redirectFor(config, pathname);
-    if (redirect) {
-      const name = pathname.split('/').at(-1)!;
-      response.writeHead(redirect.statusCode, {
-        ...Object.fromEntries(headerRules(config, pathname).map(({ key, value }) => [key, value])),
-        Location: redirect.destination.replace(':name', name),
-      });
-      response.end();
-      return;
-    }
-    const candidate = await routeFile(directory, pathname, config.cleanUrls === true);
-    const target =
-      candidate === undefined ? undefined : await stat(candidate).catch(() => undefined);
-    if (candidate === undefined || !target?.isFile()) {
+    let pathname = '/';
+    try {
+      pathname = new URL(request.url ?? '/', 'http://static.test').pathname;
+      const redirect = redirectFor(config, pathname);
+      if (redirect) {
+        const name = pathname.split('/').at(-1)!;
+        response.writeHead(redirect.statusCode, {
+          ...Object.fromEntries(
+            headerRules(config, pathname).map(({ key, value }) => [key, value]),
+          ),
+          Location: redirect.destination.replace(':name', name),
+        });
+        response.end();
+        return;
+      }
+      const candidate = await routeFile(directory, pathname, config.cleanUrls === true);
+      const target =
+        candidate === undefined ? undefined : await stat(candidate).catch(() => undefined);
+      if (candidate === undefined || !target?.isFile()) {
+        response.writeHead(
+          404,
+          Object.fromEntries(headerRules(config, pathname).map(({ key, value }) => [key, value])),
+        );
+        response.end('Not Found');
+        return;
+      }
+      const body = await readFile(candidate);
+      const headers = Object.fromEntries(
+        headerRules(config, pathname).map(({ key, value }) => [key, value]),
+      );
+      const contentTypes: Record<string, string> = {
+        '.css': 'text/css; charset=utf-8',
+        '.html': 'text/html; charset=utf-8',
+        '.js': 'text/javascript; charset=utf-8',
+        '.json': 'application/json; charset=utf-8',
+        '.svg': 'image/svg+xml',
+        '.png': 'image/png',
+        '.woff2': 'font/woff2',
+      };
+      headers['Content-Type'] ??=
+        contentTypes[extname(candidate).toLowerCase()] ?? 'application/octet-stream';
+      response.writeHead(200, headers);
+      response.end(body);
+    } catch {
+      if (response.headersSent) {
+        response.destroy();
+        return;
+      }
       response.writeHead(
-        404,
+        500,
         Object.fromEntries(headerRules(config, pathname).map(({ key, value }) => [key, value])),
       );
-      response.end('Not Found');
-      return;
+      response.end('Internal Server Error');
     }
-    const body = await readFile(candidate);
-    const headers = Object.fromEntries(
-      headerRules(config, pathname).map(({ key, value }) => [key, value]),
-    );
-    const contentTypes: Record<string, string> = {
-      '.css': 'text/css; charset=utf-8',
-      '.html': 'text/html; charset=utf-8',
-      '.js': 'text/javascript; charset=utf-8',
-      '.json': 'application/json; charset=utf-8',
-      '.svg': 'image/svg+xml',
-      '.png': 'image/png',
-      '.woff2': 'font/woff2',
-    };
-    headers['Content-Type'] ??=
-      contentTypes[extname(candidate).toLowerCase()] ?? 'application/octet-stream';
-    response.writeHead(200, headers);
-    response.end(body);
   });
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);

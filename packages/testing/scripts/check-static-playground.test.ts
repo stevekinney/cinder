@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -210,6 +210,31 @@ describe('verifyStaticArtifact', () => {
     } finally {
       await rm(root, { recursive: true, force: true });
       await rm(outside, { recursive: true, force: true });
+    }
+  });
+
+  test('returns a generic 500 for rejected file reads and serves the next request', async () => {
+    const { root, directory } = await fixture();
+    const indexPath = join(directory, 'index.html');
+    await chmod(indexPath, 0o000);
+    try {
+      const server = await startStaticServer(directory, VERCEL_CONFIG);
+      try {
+        const failed = await fetch(`${server.origin}/`);
+        expect(failed.status).toBe(500);
+        expect(failed.headers.get('X-Content-Type-Options')).toBe('nosniff');
+        expect(await failed.text()).toBe('Internal Server Error');
+
+        await chmod(indexPath, 0o644);
+        const healthy = await fetch(`${server.origin}/`);
+        expect(healthy.status).toBe(200);
+        expect(await healthy.text()).toContain('<h1>Cinder</h1>');
+      } finally {
+        await server.close();
+      }
+    } finally {
+      await chmod(indexPath, 0o644).catch(() => {});
+      await rm(root, { recursive: true, force: true });
     }
   });
 
