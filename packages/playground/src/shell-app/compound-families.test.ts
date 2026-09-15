@@ -5,19 +5,52 @@ import { COMPOSE_ONLY_COMPONENTS, discoverExamples } from '../discover.ts';
 import {
   COMPOUND_COMPONENT_FAMILIES,
   COMPOUND_COMPONENT_PARENTS,
-  previewSourceComponentName,
+  resolvePreviewSourceComponentName,
 } from './compound-families.ts';
 
 describe('compound-families registry completeness', () => {
   test('every compound part receives its authored composition instead of missing children or ancestors', async () => {
     for (const [part, parent] of Object.entries(COMPOUND_COMPONENT_PARENTS)) {
-      expect(previewSourceComponentName(part)).toBe(parent);
       expect(canBareMount(part, false)).toBe(false);
-      const examples = await discoverExamples(parent);
-      expect(examples.length).toBeGreaterThan(0);
+      const source = await resolvePreviewSourceComponentName(part, async (name) => {
+        const examples = await discoverExamples(name);
+        return examples.length > 0;
+      });
+      const partExamples = await discoverExamples(part);
+      const expected = partExamples.length > 0 ? part : parent;
+      expect(source).toBe(expected);
+      expect(await discoverExamples(source)).not.toHaveLength(0);
     }
-    expect(previewSourceComponentName('button')).toBe('button');
+    await expect(resolvePreviewSourceComponentName('button', async () => false)).resolves.toBe(
+      'button',
+    );
     expect(canBareMount('button', false)).toBe(true);
+  });
+
+  test('retains authored Chat and FeedBoundary examples while empty parts use parents', async () => {
+    const hasExamples = async (name: string) => {
+      const examples = await discoverExamples(name);
+      return examples.length > 0;
+    };
+    await expect(
+      resolvePreviewSourceComponentName('chat-composer-popover', hasExamples),
+    ).resolves.toBe('chat-composer-popover');
+    await expect(
+      resolvePreviewSourceComponentName('chat-conversation-header', hasExamples),
+    ).resolves.toBe('chat-conversation-header');
+    await expect(
+      resolvePreviewSourceComponentName('chat-conversation-list', hasExamples),
+    ).resolves.toBe('chat-conversation-list');
+    await expect(resolvePreviewSourceComponentName('feed-boundary', hasExamples)).resolves.toBe(
+      'feed-boundary',
+    );
+    await expect(
+      resolvePreviewSourceComponentName('side-navigation-item', hasExamples),
+    ).resolves.toBe('side-navigation');
+    await expect(resolvePreviewSourceComponentName('table-cell', hasExamples)).resolves.toBe(
+      'table',
+    );
+    await expect(resolvePreviewSourceComponentName('tree-item', hasExamples)).resolves.toBe('tree');
   });
   test('every compose-only leaf has a parent entry', () => {
     for (const leaf of COMPOSE_ONLY_COMPONENTS) {

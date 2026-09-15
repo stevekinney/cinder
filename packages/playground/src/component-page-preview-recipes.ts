@@ -78,12 +78,41 @@ const LAYOUT_RECIPE: PreviewRecipe = {
 };
 
 export const PREVIEW_RECIPES: Readonly<Record<string, PreviewRecipe>> = {
+  checkbox: { props: { id: 'playground-checkbox', label: 'Preview checkbox' } },
+  'color-field': {
+    props: { id: 'playground-color-field', 'aria-label': 'Preview color' },
+  },
+  combobox: {
+    props: { id: 'playground-combobox', label: 'Preview option' },
+  },
+  'file-upload': {
+    props: { id: 'playground-file-upload', 'aria-label': 'Preview file' },
+  },
   'floating-action': { props: { 'aria-label': 'Create item' } },
+  footer: {
+    props: {
+      role: 'group',
+      label: 'Preview footer',
+      brand: 'Cinder',
+      copyright: '© 2026 Cinder',
+    },
+  },
+  input: { props: { id: 'playground-input', label: 'Preview input' } },
   meter: { props: { ariaLabel: 'Storage usage' } },
+  'number-input': { props: { id: 'playground-number-input', label: 'Preview number' } },
   'phone-input': { props: { id: 'playground-phone-input', label: 'Phone number' } },
   'pin-input': { props: { id: 'playground-pin-input', label: 'Verification code' } },
   progress: { props: { ariaLabel: 'Task progress' } },
   rating: { props: { id: 'playground-rating', label: 'Rating' } },
+  'search-field': {
+    props: { id: 'playground-search-field', 'aria-label': 'Preview search' },
+  },
+  select: { props: { id: 'playground-select', label: 'Preview selection' } },
+  'tag-input': {
+    props: { id: 'playground-tag-input', 'aria-label': 'Preview tags' },
+  },
+  textarea: { props: { id: 'playground-textarea', label: 'Preview text' } },
+  'time-field': { props: { id: 'playground-time-field', label: 'Preview time' } },
   container: LAYOUT_RECIPE,
   grid: LAYOUT_RECIPE,
   'grid-item': LAYOUT_RECIPE,

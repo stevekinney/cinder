@@ -170,6 +170,25 @@ describe('schema-form validation', () => {
     expect(result.issues[0]?.message).toMatch(/Invalid JSON Schema/i);
   });
 
+  test('reports validator runtime exceptions as root issues', async () => {
+    const value = new Proxy(
+      {},
+      {
+        get() {
+          throw new Error('validator probe failed');
+        },
+      },
+    );
+
+    await expect(
+      validateSchemaValue({ type: 'object', properties: { name: { type: 'string' } } }, value),
+    ).resolves.toEqual({
+      valid: false,
+      value,
+      issues: [{ path: [], message: 'Invalid JSON Schema: validator probe failed' }],
+    });
+  });
+
   test('does not cache failed JSON Schema compilation attempts', async () => {
     const schema = {
       type: 'object',

@@ -70,10 +70,14 @@ export const COMPOUND_COMPONENT_PARENTS: Readonly<Record<string, string>> = {
 };
 
 /**
- * Compound parts need their parent's authored composition to supply children,
- * ancestors, and selection state. Documentation identity stays with the part;
- * only its preview examples come from the parent.
+ * Keep an authored part example when one exists. Compose-only parts without
+ * their own examples use the parent's authored composition instead.
  */
-export function previewSourceComponentName(componentName: string): string {
+export async function resolvePreviewSourceComponentName(
+  componentName: string,
+  hasAuthoredExamples: (componentName: string) => Promise<boolean>,
+): Promise<string> {
+  if (COMPOUND_COMPONENT_PARENTS[componentName] === undefined) return componentName;
+  if (await hasAuthoredExamples(componentName)) return componentName;
   return COMPOUND_COMPONENT_PARENTS[componentName] ?? componentName;
 }

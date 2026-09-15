@@ -50,11 +50,9 @@ async function validateJsonSchemaValue(
     return validationFailure(value, readableSchemaError(error));
   }
 
-  let valid: unknown;
   try {
     const { validateJsonSchemaRuntime } = await loadJsonSchemaRuntime();
     const result = validateJsonSchemaRuntime(node, value);
-    valid = result.valid;
     if (!result.valid) {
       return {
         valid: false,
@@ -66,8 +64,7 @@ async function validateJsonSchemaValue(
     return validationFailure(value, readableSchemaError(error));
   }
 
-  if (valid) return { valid: true, value, issues: [] };
-  return validationFailure(value, 'Invalid JSON Schema.');
+  return { valid: true, value, issues: [] };
 }
 
 function validationFailure(value: unknown, message: string): SchemaFormValidationResult {

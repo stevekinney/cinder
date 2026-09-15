@@ -170,6 +170,15 @@ describe('tryCompile', () => {
     expect(result.ok).toBe(true);
   });
 
+  test('reports an unrecognised schema draft as a compile failure', async () => {
+    await expect(
+      tryCompile({ $schema: 'https://example.invalid/draft/future/schema', type: 'string' }),
+    ).resolves.toEqual({
+      ok: false,
+      error: 'Unknown JSON Schema draft: https://example.invalid/draft/future/schema',
+    });
+  });
+
   test('non-object schemas do not compile', async () => {
     const result = await tryCompile('not a schema');
     expect(result.ok).toBe(false);

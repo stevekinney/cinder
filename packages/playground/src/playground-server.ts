@@ -105,7 +105,7 @@ import {
 import { repositorySourceHref, rewriteRelativeRenderedMarkdownLinks } from './repository-links.ts';
 import { matchRoute, type RouteDefinition } from './route-table.ts';
 import { buildBundle } from './scenario-bundle.ts';
-import { previewSourceComponentName } from './shell-app/compound-families.ts';
+import { resolvePreviewSourceComponentName } from './shell-app/compound-families.ts';
 import { humanizeComponentName } from './shell-app/humanize.ts';
 import { buildShellBundle } from './shell-bundle.ts';
 import {
@@ -338,7 +338,10 @@ async function renderComponentPage(
   baseUrl: string,
 ): Promise<string> {
   const componentDefinition = await discoverComponentDefinition(componentName);
-  const previewSourceName = previewSourceComponentName(componentName);
+  const previewSourceName = await resolvePreviewSourceComponentName(componentName, async (name) => {
+    const examples = await discoverExamples(name);
+    return examples.length > 0;
+  });
   const scenarios = await discoverExamples(previewSourceName);
   const componentStylesheetUrl =
     componentDefinition === undefined
@@ -807,7 +810,10 @@ async function handlePageRoute(url: URL, componentName: string): Promise<Respons
 
 async function handleExampleSrcRoute(componentName: string, scenario: string): Promise<Response> {
   if (!isSafeSegment(componentName) || !isSafeSegment(scenario)) return notFound();
-  const previewSourceName = previewSourceComponentName(componentName);
+  const previewSourceName = await resolvePreviewSourceComponentName(componentName, async (name) => {
+    const examples = await discoverExamples(name);
+    return examples.length > 0;
+  });
   const examplePath = join(
     PLAYGROUND_ROOT,
     'src',
@@ -945,7 +951,14 @@ export const ROUTES: RouteDefinition[] = [
       const componentName = match[1]!;
       const scenario = match[2]!;
       if (!isSafeSegment(componentName) || !isSafeSegment(scenario)) return notFound();
-      const code = await buildBundle(previewSourceComponentName(componentName), scenario);
+      const previewSourceName = await resolvePreviewSourceComponentName(
+        componentName,
+        async (name) => {
+          const examples = await discoverExamples(name);
+          return examples.length > 0;
+        },
+      );
+      const code = await buildBundle(previewSourceName, scenario);
       if (code === null) {
         return notFound(`Example "${componentName}/${scenario}" not found or failed to build`);
       }

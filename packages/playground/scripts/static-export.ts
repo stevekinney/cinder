@@ -49,7 +49,7 @@ import {
 import { handleRequest } from '../src/playground-server.ts';
 import {
   COMPOUND_COMPONENT_FAMILIES,
-  previewSourceComponentName,
+  resolvePreviewSourceComponentName,
 } from '../src/shell-app/compound-families.ts';
 import { fingerprintStaticAssets } from './static-asset-fingerprints.ts';
 
@@ -570,7 +570,11 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
     await renderJsBundleGraph(`/page-bundle/${name}.js`, context);
     await render(`/api/manifest/${name}`, context);
     await render(`/api/documentation/${name}`, context);
-    for (const scenario of await discoverExamples(previewSourceComponentName(name))) {
+    const previewSourceName = await resolvePreviewSourceComponentName(name, async (candidate) => {
+      const examples = await discoverExamples(candidate);
+      return examples.length > 0;
+    });
+    for (const scenario of await discoverExamples(previewSourceName)) {
       await render(`/example-src/${name}/${scenario}`, context);
     }
   }

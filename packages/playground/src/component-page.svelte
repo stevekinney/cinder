@@ -1,6 +1,6 @@
 <!-- dev-only playground scaffold; immutable page data is injected server-side -->
 <script lang="ts">
-  import { type Snippet } from 'svelte';
+  import { type Snippet, untrack } from 'svelte';
   import { Accordion } from '@lostgradient/cinder/accordion';
   import { AccordionItem } from '@lostgradient/cinder/accordion-item';
   import { Alert } from '@lostgradient/cinder/alert';
@@ -159,7 +159,7 @@
     onThemeChange,
   }: Props = $props();
 
-  let bareComponentModule = $state(bareComponentModuleProp);
+  let bareComponentModule = $state(untrack(() => bareComponentModuleProp));
   let bareComponentLoadState = $state<'pending' | 'settled'>('pending');
 
   /** True on `/`, which renders the README through this same chrome. */
@@ -177,7 +177,7 @@
     return Array.isArray(raw) ? raw : [];
   }
 
-  const examples: CinderExampleDescriptor[] = examplesProp ?? readExamples();
+  const examples: CinderExampleDescriptor[] = untrack(() => examplesProp ?? readExamples());
   const explicitlyFeatured = examples.filter((example) => example.featured === true);
 
   // Snapshot mode (`?snapshot=1`) is how the visual-regression and a11y test
@@ -185,10 +185,12 @@
   // (e.g. exactly one `.cinder-section-heading`), so we must not mount the
   // featured example twice. The Overview live preview is therefore suppressed in
   // snapshot mode — the Examples section still mounts each scenario exactly once.
-  const snapshotMode =
-    snapshotModeProp ??
-    (typeof window !== 'undefined' &&
-      new URLSearchParams(window.location.search).get('snapshot') === '1');
+  const snapshotMode = untrack(
+    () =>
+      snapshotModeProp ??
+      (typeof window !== 'undefined' &&
+        new URLSearchParams(window.location.search).get('snapshot') === '1'),
+  );
 
   // The Overview live preview uses the first featured example, or the first
   // example overall. Undefined when there are no examples at all, and suppressed
@@ -205,7 +207,7 @@
     return window.location.pathname.replace(/^\/page\//, '').split('/')[0] ?? '';
   }
 
-  const componentName: string = componentNameProp ?? readComponentNameFromLocation();
+  const componentName: string = untrack(() => componentNameProp ?? readComponentNameFromLocation());
 
   // Snapshot consumers need the scenario mounts, not merely the outer page
   // chrome. Expose the actual completion promise so the browser harness can
@@ -554,10 +556,10 @@
   // in the page HTML and the client reads it synchronously before first render.
   let documentation: ComponentDocumentationPayload | null = $state(null);
   let documentationError: string | null = $state(null);
-  if (documentationProp !== undefined || documentationErrorProp !== undefined) {
+  if (untrack(() => documentationProp !== undefined || documentationErrorProp !== undefined)) {
     // Supplied by the render path (server SSR or the client bundle entry).
-    documentation = documentationProp ?? null;
-    documentationError = documentationErrorProp ?? null;
+    documentation = untrack(() => documentationProp ?? null);
+    documentationError = untrack(() => documentationErrorProp ?? null);
   } else if (typeof document !== 'undefined') {
     try {
       documentation = readComponentDocumentationDataIsland();
@@ -791,8 +793,9 @@
   // in which case the section degrades to the static featured-example mount.
   //
   // Compound roots and parts use authored examples that supply their complete
-  // composition. A part keeps its documentation identity and previews its
-  // parent's example; see `canBareMount` and `previewSourceComponentName`.
+  // composition. A part keeps its documentation identity and authored examples,
+  // falling back to its parent's examples only when it has none. See
+  // `canBareMount` and `resolvePreviewSourceComponentName`.
   const canMountBare = $derived(
     documentation !== null &&
       canBareMount(documentation.propsManifest.kebabName, documentation.propsManifest.isCompound),

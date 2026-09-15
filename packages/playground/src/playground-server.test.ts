@@ -1545,6 +1545,16 @@ describe('/page/:name', () => {
     expect(html).toContain('cinder-accordion');
   });
 
+  it('retains authored Chat leaf scenarios on Chat part routes', async () => {
+    const response = await handleRequest(req('/page/chat-composer-popover?snapshot=1'));
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('"scenario":"slash-commands"');
+    expect(html).not.toContain('"scenario":"basic"');
+    expect(html).toContain('/page-bundle/chat-composer-popover.js');
+    expect(html).toContain('Chat Composer Popover');
+  });
+
   it('server-renders highlighted README code and the featured overview example', async () => {
     const response = await handleRequest(req('/page/banner'));
     expect(response.status).toBe(200);
