@@ -139,10 +139,18 @@ describe('Editor package ownership boundary', () => {
     ).toBeDefined();
     if (typeof cinderPeerRange !== 'string') return;
 
-    expect(cinderPeerRange).toMatch(/^\^\d+\.\d+\.\d+$/u);
+    const peerRanges = cinderPeerRange.split(' || ');
+    expect(peerRanges.length).toBeGreaterThan(0);
+    for (const peerRange of peerRanges) {
+      expect(peerRange).toMatch(/^\^0\.\d+\.\d+$/u);
+    }
     expect(
-      Bun.semver.satisfies(plannedCinderVersion, cinderPeerRange),
+      peerRanges.some((peerRange) => Bun.semver.satisfies(plannedCinderVersion, peerRange)),
       'Editor’s Cinder peer range must cover the planned Cinder release.',
+    ).toBe(true);
+    expect(
+      peerRanges.some((peerRange) => Bun.semver.satisfies(cinderManifest.version, peerRange)),
+      'Editor’s Cinder peer range must continue covering the current Cinder release.',
     ).toBe(true);
   });
 
