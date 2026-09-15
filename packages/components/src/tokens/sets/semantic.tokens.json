@@ -15,7 +15,25 @@
           "public": true,
           "category": "color",
           "contrastPairs": ["text.default"],
-          "cssRecipe": "light-dark(oklch(99.4% 0.002 255), oklch(21% 0.04 245))"
+          "cssRecipe": "light-dark(oklch(99.4% 0.002 255), oklch(21% 0.04 245))",
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            },
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "box-shadow",
+              "profile": "color"
+            },
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -32,7 +50,41 @@
             "public": true,
             "category": "color",
             "contrastPairs": ["text.default"],
-            "cssRecipe": "light-dark(oklch(100% 0 255), oklch(28% 0.045 245))"
+            "cssRecipe": "light-dark(oklch(100% 0 255), oklch(28% 0.045 245))",
+            "usageContracts": [
+              {
+                "property": "background",
+                "profile": "color"
+              },
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
+                "property": "border-bottom",
+                "profile": "color"
+              },
+              {
+                "property": "border-left",
+                "profile": "color"
+              },
+              {
+                "property": "border-right",
+                "profile": "color"
+              },
+              {
+                "property": "border-top",
+                "profile": "color"
+              },
+              {
+                "property": "box-shadow",
+                "profile": "color"
+              },
+              {
+                "property": "stroke",
+                "profile": "color"
+              }
+            ]
           }
         }
       },
@@ -47,7 +99,18 @@
             "cssProperty": "--cinder-surface-raised-hover",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark( color-mix(in oklch, var(--cinder-surface-raised), var(--cinder-accent-solid) 6%), color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 2.5%) )"
+            "cssRecipe": "light-dark( color-mix(in oklch, var(--cinder-surface-raised), var(--cinder-accent-solid) 6%), color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 2.5%) )",
+            "usageContracts": [
+              {
+                "property": "background",
+                "profile": "color"
+              },
+              {
+                "property": "background-color",
+                "profile": "color"
+              }
+            ],
+            "recipeInputs": ["accent.solid", "surface.raised"]
           }
         }
       },
@@ -62,7 +125,18 @@
             "cssProperty": "--cinder-surface-raised-pressed",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark( color-mix(in oklch, var(--cinder-surface-raised), var(--cinder-accent-solid) 12%), color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 6%) )"
+            "cssRecipe": "light-dark( color-mix(in oklch, var(--cinder-surface-raised), var(--cinder-accent-solid) 12%), color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 6%) )",
+            "usageContracts": [
+              {
+                "property": "background",
+                "profile": "color"
+              },
+              {
+                "property": "background-color",
+                "profile": "color"
+              }
+            ],
+            "recipeInputs": ["accent.solid", "surface.raised"]
           }
         }
       }
@@ -78,7 +152,25 @@
           "cssProperty": "--cinder-surface-inset",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(96% 0.005 255), oklch(11% 0.03 245))"
+          "cssRecipe": "light-dark(oklch(96% 0.005 255), oklch(11% 0.03 245))",
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            },
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "fill",
+              "profile": "color"
+            },
+            {
+              "property": "stroke",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -93,7 +185,18 @@
           "cssProperty": "--cinder-surface-hover",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark( color-mix(in oklch, var(--cinder-surface), var(--cinder-accent-solid) 6%), color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 2.5%) )"
+          "cssRecipe": "light-dark( color-mix(in oklch, var(--cinder-surface), var(--cinder-accent-solid) 6%), color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 2.5%) )",
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            },
+            {
+              "property": "background-color",
+              "profile": "color"
+            }
+          ],
+          "recipeInputs": ["accent.solid", "surface.base"]
         }
       }
     },
@@ -108,7 +211,18 @@
           "cssProperty": "--cinder-surface-pressed",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark( color-mix(in oklch, var(--cinder-surface), var(--cinder-accent-solid) 12%), color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 6%) )"
+          "cssRecipe": "light-dark( color-mix(in oklch, var(--cinder-surface), var(--cinder-accent-solid) 12%), color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 6%) )",
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            },
+            {
+              "property": "background-color",
+              "profile": "color"
+            }
+          ],
+          "recipeInputs": ["accent.solid", "surface.base"]
         }
       }
     },
@@ -123,7 +237,18 @@
           "cssProperty": "--cinder-surface-inverse",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(var(--cinder-text-default), var(--cinder-surface-raised))"
+          "cssRecipe": "light-dark(var(--cinder-text-default), var(--cinder-surface-raised))",
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            },
+            {
+              "property": "background-color",
+              "profile": "color"
+            }
+          ],
+          "recipeInputs": ["surface.raised", "text.default"]
         }
       }
     },
@@ -138,7 +263,14 @@
           "cssProperty": "--cinder-surface-upcoming-marker",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(var(--cinder-surface-inset), var(--cinder-surface))"
+          "cssRecipe": "light-dark(var(--cinder-surface-inset), var(--cinder-surface))",
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            }
+          ],
+          "recipeInputs": ["surface.base", "surface.inset"]
         }
       }
     },
@@ -154,7 +286,17 @@
           "cssProperty": "--cinder-surface-canvas",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(98.4% 0.003 255), oklch(15% 0.035 245))"
+          "cssRecipe": "light-dark(oklch(98.4% 0.003 255), oklch(15% 0.035 245))",
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            },
+            {
+              "property": "background-color",
+              "profile": "color"
+            }
+          ]
         }
       }
     }
@@ -172,7 +314,25 @@
           "cssProperty": "--cinder-polarity-ink",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(0% 0 0), oklch(100% 0 0))"
+          "cssRecipe": "light-dark(oklch(0% 0 0), oklch(100% 0 0))",
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            },
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "color",
+              "profile": "color"
+            },
+            {
+              "property": "scrollbar-color",
+              "profile": "color"
+            }
+          ]
         }
       }
     }
@@ -190,7 +350,77 @@
           "cssProperty": "--cinder-border-ink",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(20% 0.02 255), oklch(86% 0.065 250))"
+          "cssRecipe": "light-dark(oklch(20% 0.02 255), oklch(86% 0.065 250))",
+          "usageContracts": [
+            {
+              "property": "border-color",
+              "profile": "color"
+            },
+            {
+              "property": "border-bottom",
+              "profile": "color"
+            },
+            {
+              "property": "border-inline-start",
+              "profile": "color"
+            },
+            {
+              "property": "border",
+              "profile": "color"
+            },
+            {
+              "property": "border-block-start",
+              "profile": "color"
+            },
+            {
+              "property": "border-top",
+              "profile": "color"
+            },
+            {
+              "property": "background",
+              "profile": "color"
+            },
+            {
+              "property": "border-block-end",
+              "profile": "color"
+            },
+            {
+              "property": "border-block",
+              "profile": "color"
+            },
+            {
+              "property": "background-image",
+              "profile": "color"
+            },
+            {
+              "property": "border-inline-end",
+              "profile": "color"
+            },
+            {
+              "property": "box-shadow",
+              "profile": "color"
+            },
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "border-right",
+              "profile": "color"
+            },
+            {
+              "property": "border-left",
+              "profile": "color"
+            },
+            {
+              "property": "color",
+              "profile": "color"
+            },
+            {
+              "property": "outline",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -207,7 +437,74 @@
           "public": true,
           "category": "color",
           "contrastPairs": ["surface.base", "surface.raised"],
-          "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 52%)"
+          "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 52%)",
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            },
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "background-image",
+              "profile": "color"
+            },
+            {
+              "property": "border",
+              "profile": "color"
+            },
+            {
+              "property": "border-block",
+              "profile": "color"
+            },
+            {
+              "property": "border-block-end",
+              "profile": "color"
+            },
+            {
+              "property": "border-block-start",
+              "profile": "color"
+            },
+            {
+              "property": "border-bottom",
+              "profile": "color"
+            },
+            {
+              "property": "border-color",
+              "profile": "color"
+            },
+            {
+              "property": "border-inline-end",
+              "profile": "color"
+            },
+            {
+              "property": "border-inline-start",
+              "profile": "color"
+            },
+            {
+              "property": "border-left",
+              "profile": "color"
+            },
+            {
+              "property": "border-right",
+              "profile": "color"
+            },
+            {
+              "property": "border-top",
+              "profile": "color"
+            },
+            {
+              "property": "outline",
+              "profile": "color"
+            },
+            {
+              "property": "box-shadow",
+              "profile": "color"
+            }
+          ],
+          "recipeInputs": ["border.ink"]
         }
       }
     },
@@ -222,7 +519,33 @@
           "cssProperty": "--cinder-border-faint",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(92% 0.003 255), oklch(33% 0.03 245))"
+          "cssRecipe": "light-dark(oklch(92% 0.003 255), oklch(33% 0.03 245))",
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            },
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "border",
+              "profile": "color"
+            },
+            {
+              "property": "border-block-end",
+              "profile": "color"
+            },
+            {
+              "property": "border-block-start",
+              "profile": "color"
+            },
+            {
+              "property": "border-top",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -238,7 +561,54 @@
           "cssProperty": "--cinder-border-muted",
           "public": true,
           "category": "color",
-          "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 81%)"
+          "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 81%)",
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            },
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "border",
+              "profile": "color"
+            },
+            {
+              "property": "border-block-end",
+              "profile": "color"
+            },
+            {
+              "property": "border-block-start",
+              "profile": "color"
+            },
+            {
+              "property": "border-bottom",
+              "profile": "color"
+            },
+            {
+              "property": "border-color",
+              "profile": "color"
+            },
+            {
+              "property": "border-inline-end",
+              "profile": "color"
+            },
+            {
+              "property": "border-inline-start",
+              "profile": "color"
+            },
+            {
+              "property": "border-top",
+              "profile": "color"
+            },
+            {
+              "property": "box-shadow",
+              "profile": "color"
+            }
+          ],
+          "recipeInputs": ["border.ink"]
         }
       }
     },
@@ -254,7 +624,38 @@
           "cssProperty": "--cinder-border-strong",
           "public": true,
           "category": "color",
-          "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 42%)"
+          "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 42%)",
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            },
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "border",
+              "profile": "color"
+            },
+            {
+              "property": "border-block-end",
+              "profile": "color"
+            },
+            {
+              "property": "border-color",
+              "profile": "color"
+            },
+            {
+              "property": "border-inline-start",
+              "profile": "color"
+            },
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ],
+          "recipeInputs": ["border.ink"]
         }
       }
     },
@@ -270,7 +671,18 @@
           "cssProperty": "--cinder-border-inverse",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(transparent, var(--cinder-border-strong))"
+          "cssRecipe": "light-dark(transparent, var(--cinder-border-strong))",
+          "usageContracts": [
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "border",
+              "profile": "color"
+            }
+          ],
+          "recipeInputs": ["border.strong"]
         }
       }
     }
@@ -288,7 +700,29 @@
           "cssProperty": "--cinder-text-muted",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(32% 0.014 245), oklch(82% 0.02 245))"
+          "cssRecipe": "light-dark(oklch(32% 0.014 245), oklch(82% 0.02 245))",
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            },
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "border",
+              "profile": "color"
+            },
+            {
+              "property": "color",
+              "profile": "color"
+            },
+            {
+              "property": "fill",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -303,7 +737,17 @@
           "cssProperty": "--cinder-text-subtle",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(42% 0.012 245), oklch(72% 0.02 245))"
+          "cssRecipe": "light-dark(oklch(42% 0.012 245), oklch(72% 0.02 245))",
+          "usageContracts": [
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -318,7 +762,17 @@
           "cssProperty": "--cinder-text-disabled",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(52% 0.01 245), oklch(64% 0.02 245))"
+          "cssRecipe": "light-dark(oklch(52% 0.01 245), oklch(64% 0.02 245))",
+          "usageContracts": [
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -333,7 +787,22 @@
           "cssProperty": "--cinder-text-inverse",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(var(--cinder-surface), var(--cinder-text-default))"
+          "cssRecipe": "light-dark(var(--cinder-surface), var(--cinder-text-default))",
+          "usageContracts": [
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "color",
+              "profile": "color"
+            },
+            {
+              "property": "fill",
+              "profile": "color"
+            }
+          ],
+          "recipeInputs": ["surface.base", "text.default"]
         }
       }
     },
@@ -349,7 +818,33 @@
           "cssProperty": "--cinder-text-default",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(20% 0.018 245), oklch(92% 0.02 245))"
+          "cssRecipe": "light-dark(oklch(20% 0.018 245), oklch(92% 0.02 245))",
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            },
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "border-top-color",
+              "profile": "color"
+            },
+            {
+              "property": "box-shadow",
+              "profile": "color"
+            },
+            {
+              "property": "caret-color",
+              "profile": "color"
+            },
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     }
@@ -367,7 +862,17 @@
           "cssProperty": "--cinder-fill-disabled",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(86% 0.006 255), oklch(30% 0.015 245))"
+          "cssRecipe": "light-dark(oklch(86% 0.006 255), oklch(30% 0.015 245))",
+          "usageContracts": [
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "border-color",
+              "profile": "color"
+            }
+          ]
         }
       }
     }
@@ -386,7 +891,21 @@
           "cssProperty": "--cinder-accent-contrast",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(100% 0 0), oklch(15% 0.035 245))"
+          "cssRecipe": "light-dark(oklch(100% 0 0), oklch(15% 0.035 245))",
+          "usageContracts": [
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "box-shadow",
+              "profile": "color"
+            },
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -403,7 +922,17 @@
             "cssProperty": "--cinder-accent-text",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(45% 0.22 270), oklch(72% 0.14 270))"
+            "cssRecipe": "light-dark(oklch(45% 0.22 270), oklch(72% 0.14 270))",
+            "usageContracts": [
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
+                "property": "color",
+                "profile": "color"
+              }
+            ]
           }
         }
       },
@@ -418,7 +947,18 @@
             "cssProperty": "--cinder-accent-text-hover",
             "public": true,
             "category": "color",
-            "cssRecipe": "oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)"
+            "cssRecipe": "oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)",
+            "usageContracts": [
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
+                "property": "color",
+                "profile": "color"
+              }
+            ],
+            "recipeInputs": ["accent.text"]
           }
         }
       }
@@ -436,7 +976,73 @@
             "cssProperty": "--cinder-accent-solid",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(50% 0.22 270), oklch(72% 0.14 270))"
+            "cssRecipe": "light-dark(oklch(50% 0.22 270), oklch(72% 0.14 270))",
+            "usageContracts": [
+              {
+                "property": "accent-color",
+                "profile": "color"
+              },
+              {
+                "property": "background",
+                "profile": "color"
+              },
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
+                "property": "border",
+                "profile": "color"
+              },
+              {
+                "property": "border-block-end-color",
+                "profile": "color"
+              },
+              {
+                "property": "border-bottom",
+                "profile": "color"
+              },
+              {
+                "property": "border-bottom-color",
+                "profile": "color"
+              },
+              {
+                "property": "border-color",
+                "profile": "color"
+              },
+              {
+                "property": "border-inline-start",
+                "profile": "color"
+              },
+              {
+                "property": "border-inline-start-color",
+                "profile": "color"
+              },
+              {
+                "property": "border-top-color",
+                "profile": "color"
+              },
+              {
+                "property": "box-shadow",
+                "profile": "color"
+              },
+              {
+                "property": "color",
+                "profile": "color"
+              },
+              {
+                "property": "outline",
+                "profile": "color"
+              },
+              {
+                "property": "stroke",
+                "profile": "color"
+              },
+              {
+                "property": "text-decoration-color",
+                "profile": "color"
+              }
+            ]
           }
         }
       },
@@ -453,7 +1059,18 @@
               "cssProperty": "--cinder-accent-solid-active",
               "public": true,
               "category": "color",
-              "cssRecipe": "oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h)"
+              "cssRecipe": "oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h)",
+              "usageContracts": [
+                {
+                  "property": "background",
+                  "profile": "color"
+                },
+                {
+                  "property": "background-color",
+                  "profile": "color"
+                }
+              ],
+              "recipeInputs": ["accent.solid"]
             }
           }
         },
@@ -469,7 +1086,18 @@
               "cssProperty": "--cinder-accent-solid-active-on-fill",
               "public": true,
               "category": "color",
-              "cssRecipe": "oklch(from var(--cinder-accent-solid) calc(l - 0.11) c h)"
+              "cssRecipe": "oklch(from var(--cinder-accent-solid) calc(l - 0.11) c h)",
+              "usageContracts": [
+                {
+                  "property": "background",
+                  "profile": "color"
+                },
+                {
+                  "property": "background-color",
+                  "profile": "color"
+                }
+              ],
+              "recipeInputs": ["accent.solid"]
             }
           }
         }
@@ -486,7 +1114,22 @@
             "cssProperty": "--cinder-accent-solid-hover",
             "public": true,
             "category": "color",
-            "cssRecipe": "oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h)"
+            "cssRecipe": "oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h)",
+            "usageContracts": [
+              {
+                "property": "background",
+                "profile": "color"
+              },
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
+                "property": "border-color",
+                "profile": "color"
+              }
+            ],
+            "recipeInputs": ["accent.solid"]
           }
         }
       }
@@ -522,7 +1165,33 @@
           "cssProperty": "--cinder-ring-width",
           "public": true,
           "category": "size",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "box-shadow",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "margin-block",
+              "profile": "signed-length"
+            },
+            {
+              "property": "outline",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "outline-offset",
+              "profile": "signed-length"
+            },
+            {
+              "property": "padding-block",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "stroke-width",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -538,7 +1207,29 @@
           "cssProperty": "--cinder-ring-offset",
           "public": true,
           "category": "size",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "box-shadow",
+              "profile": "signed-length"
+            },
+            {
+              "property": "margin-block",
+              "profile": "signed-length"
+            },
+            {
+              "property": "outline-offset",
+              "profile": "signed-length"
+            },
+            {
+              "property": "padding-block",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "stroke-width",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -551,7 +1242,21 @@
           "cssProperty": "--cinder-ring-offset-color",
           "public": true,
           "category": "color",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "box-shadow",
+              "profile": "color"
+            },
+            {
+              "property": "stroke",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -567,7 +1272,30 @@
           "cssProperty": "--cinder-ring-color",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark( oklch(from var(--cinder-accent-solid) 0.55 0.16 h), oklch(from var(--cinder-accent-solid) 0.7 0.14 h) )"
+          "cssRecipe": "light-dark( oklch(from var(--cinder-accent-solid) 0.55 0.16 h), oklch(from var(--cinder-accent-solid) 0.7 0.14 h) )",
+          "usageContracts": [
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "border-color",
+              "profile": "color"
+            },
+            {
+              "property": "box-shadow",
+              "profile": "color"
+            },
+            {
+              "property": "outline",
+              "profile": "color"
+            },
+            {
+              "property": "stroke",
+              "profile": "color"
+            }
+          ],
+          "recipeInputs": ["accent.solid"]
         }
       }
     },
@@ -583,7 +1311,17 @@
           "cssProperty": "--cinder-ring-on-accent",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(15% 0.035 245), oklch(100% 0 0))"
+          "cssRecipe": "light-dark(oklch(15% 0.035 245), oklch(100% 0 0))",
+          "usageContracts": [
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "box-shadow",
+              "profile": "color"
+            }
+          ]
         }
       }
     }
@@ -602,7 +1340,17 @@
           "cssProperty": "--cinder-scrollbar-size",
           "public": true,
           "category": "size",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "block-size",
+              "profile": "nonnegative-length"
+            },
+            {
+              "property": "inline-size",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -619,7 +1367,22 @@
           "cssProperty": "--cinder-scrollbar-track",
           "public": true,
           "category": "color",
-          "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 96%)"
+          "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 96%)",
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            },
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "scrollbar-color",
+              "profile": "color"
+            }
+          ],
+          "recipeInputs": ["polarity.ink"]
         }
       }
     },
@@ -636,7 +1399,22 @@
           "cssProperty": "--cinder-scrollbar-thumb",
           "public": true,
           "category": "color",
-          "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 55%)"
+          "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 55%)",
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            },
+            {
+              "property": "background-color",
+              "profile": "color"
+            },
+            {
+              "property": "scrollbar-color",
+              "profile": "color"
+            }
+          ],
+          "recipeInputs": ["polarity.ink"]
         }
       }
     },
@@ -653,7 +1431,18 @@
           "cssProperty": "--cinder-scrollbar-thumb-hover",
           "public": true,
           "category": "color",
-          "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 35%)"
+          "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 35%)",
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            },
+            {
+              "property": "background-color",
+              "profile": "color"
+            }
+          ],
+          "recipeInputs": ["polarity.ink"]
         }
       }
     }
@@ -673,7 +1462,17 @@
           "cssProperty": "--cinder-overlay-backdrop",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(20% 0.03 245 / 0.5), oklch(8% 0.02 245 / 0.65))"
+          "cssRecipe": "light-dark(oklch(20% 0.03 245 / 0.5), oklch(8% 0.02 245 / 0.65))",
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            },
+            {
+              "property": "background-color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -689,7 +1488,13 @@
           "cssProperty": "--cinder-overlay-blur",
           "public": true,
           "category": "size",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "backdrop-filter",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -702,7 +1507,13 @@
           "cssProperty": "--cinder-overlay-padding",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -715,7 +1526,13 @@
           "cssProperty": "--cinder-overlay-radius",
           "public": true,
           "category": "radius",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "border-radius",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     }
@@ -735,7 +1552,29 @@
             "cssProperty": "--cinder-chart-series-1",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(33% 0.121 8), oklch(58% 0.089 205))"
+            "cssRecipe": "light-dark(oklch(33% 0.121 8), oklch(58% 0.089 205))",
+            "usageContracts": [
+              {
+                "property": "background",
+                "profile": "color"
+              },
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
+                "property": "fill",
+                "profile": "color"
+              },
+              {
+                "property": "stop-color",
+                "profile": "color"
+              },
+              {
+                "property": "stroke",
+                "profile": "color"
+              }
+            ]
           }
         }
       },
@@ -750,7 +1589,29 @@
             "cssProperty": "--cinder-chart-series-2",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(36% 0.069 80), oklch(67% 0.275 330))"
+            "cssRecipe": "light-dark(oklch(36% 0.069 80), oklch(67% 0.275 330))",
+            "usageContracts": [
+              {
+                "property": "background",
+                "profile": "color"
+              },
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
+                "property": "fill",
+                "profile": "color"
+              },
+              {
+                "property": "stop-color",
+                "profile": "color"
+              },
+              {
+                "property": "stroke",
+                "profile": "color"
+              }
+            ]
           }
         }
       },
@@ -765,7 +1626,29 @@
             "cssProperty": "--cinder-chart-series-3",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(40% 0.082 160), oklch(69% 0.182 44))"
+            "cssRecipe": "light-dark(oklch(40% 0.082 160), oklch(69% 0.182 44))",
+            "usageContracts": [
+              {
+                "property": "background",
+                "profile": "color"
+              },
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
+                "property": "fill",
+                "profile": "color"
+              },
+              {
+                "property": "stop-color",
+                "profile": "color"
+              },
+              {
+                "property": "stroke",
+                "profile": "color"
+              }
+            ]
           }
         }
       },
@@ -780,7 +1663,29 @@
             "cssProperty": "--cinder-chart-series-4",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(45% 0.087 235), oklch(70% 0.144 160))"
+            "cssRecipe": "light-dark(oklch(45% 0.087 235), oklch(70% 0.144 160))",
+            "usageContracts": [
+              {
+                "property": "background",
+                "profile": "color"
+              },
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
+                "property": "fill",
+                "profile": "color"
+              },
+              {
+                "property": "stop-color",
+                "profile": "color"
+              },
+              {
+                "property": "stroke",
+                "profile": "color"
+              }
+            ]
           }
         }
       },
@@ -795,7 +1700,29 @@
             "cssProperty": "--cinder-chart-series-5",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(53% 0.218 330), oklch(78% 0.12 8))"
+            "cssRecipe": "light-dark(oklch(53% 0.218 330), oklch(78% 0.12 8))",
+            "usageContracts": [
+              {
+                "property": "background",
+                "profile": "color"
+              },
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
+                "property": "fill",
+                "profile": "color"
+              },
+              {
+                "property": "stop-color",
+                "profile": "color"
+              },
+              {
+                "property": "stroke",
+                "profile": "color"
+              }
+            ]
           }
         }
       },
@@ -810,7 +1737,29 @@
             "cssProperty": "--cinder-chart-series-6",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(56% 0.148 44), oklch(81% 0.152 80))"
+            "cssRecipe": "light-dark(oklch(56% 0.148 44), oklch(81% 0.152 80))",
+            "usageContracts": [
+              {
+                "property": "background",
+                "profile": "color"
+              },
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
+                "property": "fill",
+                "profile": "color"
+              },
+              {
+                "property": "stop-color",
+                "profile": "color"
+              },
+              {
+                "property": "stroke",
+                "profile": "color"
+              }
+            ]
           }
         }
       },
@@ -825,7 +1774,29 @@
             "cssProperty": "--cinder-chart-series-7",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(59% 0.126 120), oklch(85% 0.078 235))"
+            "cssRecipe": "light-dark(oklch(59% 0.126 120), oklch(85% 0.078 235))",
+            "usageContracts": [
+              {
+                "property": "background",
+                "profile": "color"
+              },
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
+                "property": "fill",
+                "profile": "color"
+              },
+              {
+                "property": "stop-color",
+                "profile": "color"
+              },
+              {
+                "property": "stroke",
+                "profile": "color"
+              }
+            ]
           }
         }
       },
@@ -840,7 +1811,29 @@
             "cssProperty": "--cinder-chart-series-8",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(63% 0.098 205), oklch(89% 0.19 120))"
+            "cssRecipe": "light-dark(oklch(63% 0.098 205), oklch(89% 0.19 120))",
+            "usageContracts": [
+              {
+                "property": "background",
+                "profile": "color"
+              },
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
+                "property": "fill",
+                "profile": "color"
+              },
+              {
+                "property": "stop-color",
+                "profile": "color"
+              },
+              {
+                "property": "stroke",
+                "profile": "color"
+              }
+            ]
           }
         }
       }
@@ -857,7 +1850,13 @@
           "cssProperty": "--cinder-gap-stack",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -869,7 +1868,13 @@
           "cssProperty": "--cinder-gap-inline",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "gap",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     }
@@ -885,7 +1890,13 @@
           "cssProperty": "--cinder-pad-control",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -897,7 +1908,13 @@
           "cssProperty": "--cinder-pad-card",
           "public": true,
           "category": "spacing",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "padding",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     }
@@ -913,7 +1930,13 @@
           "cssProperty": "--cinder-radius-control",
           "public": true,
           "category": "radius",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "border-radius",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     },
@@ -925,7 +1948,13 @@
           "cssProperty": "--cinder-radius-surface",
           "public": true,
           "category": "radius",
-          "cssRecipe": null
+          "cssRecipe": null,
+          "usageContracts": [
+            {
+              "property": "border-radius",
+              "profile": "nonnegative-length"
+            }
+          ]
         }
       }
     }
@@ -944,7 +1973,17 @@
             "cssProperty": "--cinder-status-success-contrast",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(100% 0 0), oklch(15% 0.03 145))"
+            "cssRecipe": "light-dark(oklch(100% 0 0), oklch(15% 0.03 145))",
+            "usageContracts": [
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
+                "property": "color",
+                "profile": "color"
+              }
+            ]
           }
         }
       },
@@ -961,7 +2000,37 @@
               "cssProperty": "--cinder-status-success-solid",
               "public": true,
               "category": "color",
-              "cssRecipe": "light-dark(oklch(50% 0.157 145), oklch(78% 0.14 145))"
+              "cssRecipe": "light-dark(oklch(50% 0.157 145), oklch(78% 0.14 145))",
+              "usageContracts": [
+                {
+                  "property": "background",
+                  "profile": "color"
+                },
+                {
+                  "property": "background-color",
+                  "profile": "color"
+                },
+                {
+                  "property": "border-color",
+                  "profile": "color"
+                },
+                {
+                  "property": "border-inline-start-color",
+                  "profile": "color"
+                },
+                {
+                  "property": "box-shadow",
+                  "profile": "color"
+                },
+                {
+                  "property": "color",
+                  "profile": "color"
+                },
+                {
+                  "property": "text-decoration-color",
+                  "profile": "color"
+                }
+              ]
             }
           }
         },
@@ -977,7 +2046,17 @@
               "cssProperty": "--cinder-status-success-solid-active",
               "public": true,
               "category": "color",
-              "cssRecipe": "light-dark(oklch(35% 0.1 145), oklch(62% 0.14 145))"
+              "cssRecipe": "light-dark(oklch(35% 0.1 145), oklch(62% 0.14 145))",
+              "usageContracts": [
+                {
+                  "property": "background",
+                  "profile": "color"
+                },
+                {
+                  "property": "background-color",
+                  "profile": "color"
+                }
+              ]
             }
           }
         },
@@ -993,7 +2072,17 @@
               "cssProperty": "--cinder-status-success-solid-hover",
               "public": true,
               "category": "color",
-              "cssRecipe": "light-dark(oklch(42% 0.12 145), oklch(70% 0.14 145))"
+              "cssRecipe": "light-dark(oklch(42% 0.12 145), oklch(70% 0.14 145))",
+              "usageContracts": [
+                {
+                  "property": "background",
+                  "profile": "color"
+                },
+                {
+                  "property": "background-color",
+                  "profile": "color"
+                }
+              ]
             }
           }
         }
@@ -1012,7 +2101,17 @@
             "cssProperty": "--cinder-status-warning-contrast",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(100% 0 0), oklch(20% 0.04 75))"
+            "cssRecipe": "light-dark(oklch(100% 0 0), oklch(20% 0.04 75))",
+            "usageContracts": [
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
+                "property": "color",
+                "profile": "color"
+              }
+            ]
           }
         }
       },
@@ -1029,7 +2128,41 @@
               "cssProperty": "--cinder-status-warning-solid",
               "public": true,
               "category": "color",
-              "cssRecipe": "light-dark(oklch(54% 0.113 75), oklch(82% 0.156 75))"
+              "cssRecipe": "light-dark(oklch(54% 0.113 75), oklch(82% 0.156 75))",
+              "usageContracts": [
+                {
+                  "property": "background",
+                  "profile": "color"
+                },
+                {
+                  "property": "background-color",
+                  "profile": "color"
+                },
+                {
+                  "property": "border-color",
+                  "profile": "color"
+                },
+                {
+                  "property": "border-inline-start",
+                  "profile": "color"
+                },
+                {
+                  "property": "border-inline-start-color",
+                  "profile": "color"
+                },
+                {
+                  "property": "box-shadow",
+                  "profile": "color"
+                },
+                {
+                  "property": "color",
+                  "profile": "color"
+                },
+                {
+                  "property": "text-decoration",
+                  "profile": "color"
+                }
+              ]
             }
           }
         },
@@ -1045,7 +2178,17 @@
               "cssProperty": "--cinder-status-warning-solid-active",
               "public": true,
               "category": "color",
-              "cssRecipe": "light-dark(oklch(38% 0.07 75), oklch(66% 0.13 75))"
+              "cssRecipe": "light-dark(oklch(38% 0.07 75), oklch(66% 0.13 75))",
+              "usageContracts": [
+                {
+                  "property": "background",
+                  "profile": "color"
+                },
+                {
+                  "property": "background-color",
+                  "profile": "color"
+                }
+              ]
             }
           }
         },
@@ -1061,7 +2204,17 @@
               "cssProperty": "--cinder-status-warning-solid-hover",
               "public": true,
               "category": "color",
-              "cssRecipe": "light-dark(oklch(42% 0.08 75), oklch(74% 0.156 75))"
+              "cssRecipe": "light-dark(oklch(42% 0.08 75), oklch(74% 0.156 75))",
+              "usageContracts": [
+                {
+                  "property": "background",
+                  "profile": "color"
+                },
+                {
+                  "property": "background-color",
+                  "profile": "color"
+                }
+              ]
             }
           }
         }
@@ -1080,7 +2233,17 @@
             "cssProperty": "--cinder-status-danger-contrast",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(100% 0 0), oklch(12% 0.02 25))"
+            "cssRecipe": "light-dark(oklch(100% 0 0), oklch(12% 0.02 25))",
+            "usageContracts": [
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
+                "property": "color",
+                "profile": "color"
+              }
+            ]
           }
         }
       },
@@ -1097,7 +2260,41 @@
               "cssProperty": "--cinder-status-danger-solid",
               "public": true,
               "category": "color",
-              "cssRecipe": "light-dark(oklch(50% 0.202 25), oklch(72% 0.172 25))"
+              "cssRecipe": "light-dark(oklch(50% 0.202 25), oklch(72% 0.172 25))",
+              "usageContracts": [
+                {
+                  "property": "background",
+                  "profile": "color"
+                },
+                {
+                  "property": "background-color",
+                  "profile": "color"
+                },
+                {
+                  "property": "border",
+                  "profile": "color"
+                },
+                {
+                  "property": "border-color",
+                  "profile": "color"
+                },
+                {
+                  "property": "border-inline-start-color",
+                  "profile": "color"
+                },
+                {
+                  "property": "box-shadow",
+                  "profile": "color"
+                },
+                {
+                  "property": "color",
+                  "profile": "color"
+                },
+                {
+                  "property": "text-decoration",
+                  "profile": "color"
+                }
+              ]
             }
           }
         },
@@ -1113,7 +2310,17 @@
               "cssProperty": "--cinder-status-danger-solid-active",
               "public": true,
               "category": "color",
-              "cssRecipe": "light-dark(oklch(35% 0.142 25), oklch(60% 0.172 25))"
+              "cssRecipe": "light-dark(oklch(35% 0.142 25), oklch(60% 0.172 25))",
+              "usageContracts": [
+                {
+                  "property": "background",
+                  "profile": "color"
+                },
+                {
+                  "property": "background-color",
+                  "profile": "color"
+                }
+              ]
             }
           }
         },
@@ -1129,7 +2336,17 @@
               "cssProperty": "--cinder-status-danger-solid-hover",
               "public": true,
               "category": "color",
-              "cssRecipe": "light-dark(oklch(42% 0.171 25), oklch(64% 0.172 25))"
+              "cssRecipe": "light-dark(oklch(42% 0.171 25), oklch(64% 0.172 25))",
+              "usageContracts": [
+                {
+                  "property": "background",
+                  "profile": "color"
+                },
+                {
+                  "property": "background-color",
+                  "profile": "color"
+                }
+              ]
             }
           }
         }
@@ -1148,7 +2365,17 @@
             "cssProperty": "--cinder-status-info-contrast",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(100% 0 0), oklch(15% 0.03 230))"
+            "cssRecipe": "light-dark(oklch(100% 0 0), oklch(15% 0.03 230))",
+            "usageContracts": [
+              {
+                "property": "background-color",
+                "profile": "color"
+              },
+              {
+                "property": "color",
+                "profile": "color"
+              }
+            ]
           }
         }
       },
@@ -1165,7 +2392,33 @@
               "cssProperty": "--cinder-status-info-solid",
               "public": true,
               "category": "color",
-              "cssRecipe": "light-dark(oklch(50% 0.098 230), oklch(78% 0.13 230))"
+              "cssRecipe": "light-dark(oklch(50% 0.098 230), oklch(78% 0.13 230))",
+              "usageContracts": [
+                {
+                  "property": "background",
+                  "profile": "color"
+                },
+                {
+                  "property": "background-color",
+                  "profile": "color"
+                },
+                {
+                  "property": "border-color",
+                  "profile": "color"
+                },
+                {
+                  "property": "border-inline-start-color",
+                  "profile": "color"
+                },
+                {
+                  "property": "box-shadow",
+                  "profile": "color"
+                },
+                {
+                  "property": "color",
+                  "profile": "color"
+                }
+              ]
             }
           }
         },
@@ -1181,7 +2434,17 @@
               "cssProperty": "--cinder-status-info-solid-active",
               "public": true,
               "category": "color",
-              "cssRecipe": "light-dark(oklch(35% 0.065 230), oklch(62% 0.12 230))"
+              "cssRecipe": "light-dark(oklch(35% 0.065 230), oklch(62% 0.12 230))",
+              "usageContracts": [
+                {
+                  "property": "background",
+                  "profile": "color"
+                },
+                {
+                  "property": "background-color",
+                  "profile": "color"
+                }
+              ]
             }
           }
         },
@@ -1197,7 +2460,17 @@
               "cssProperty": "--cinder-status-info-solid-hover",
               "public": true,
               "category": "color",
-              "cssRecipe": "light-dark(oklch(42% 0.079 230), oklch(70% 0.13 230))"
+              "cssRecipe": "light-dark(oklch(42% 0.079 230), oklch(70% 0.13 230))",
+              "usageContracts": [
+                {
+                  "property": "background",
+                  "profile": "color"
+                },
+                {
+                  "property": "background-color",
+                  "profile": "color"
+                }
+              ]
             }
           }
         }
@@ -1217,7 +2490,17 @@
           "cssProperty": "--cinder-severity-critical",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(38% 0.18 25), oklch(95% 0.04 25))"
+          "cssRecipe": "light-dark(oklch(38% 0.18 25), oklch(95% 0.04 25))",
+          "usageContracts": [
+            {
+              "property": "border-color",
+              "profile": "color"
+            },
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -1232,7 +2515,13 @@
           "cssProperty": "--cinder-severity-critical-background",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(93% 0.045 25), oklch(24% 0.11 25))"
+          "cssRecipe": "light-dark(oklch(93% 0.045 25), oklch(24% 0.11 25))",
+          "usageContracts": [
+            {
+              "property": "background",
+              "profile": "color"
+            }
+          ]
         }
       }
     }
@@ -1250,7 +2539,13 @@
           "cssProperty": "--cinder-terminal-ansi-black",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(25% 0 0), oklch(82% 0 0))"
+          "cssRecipe": "light-dark(oklch(25% 0 0), oklch(82% 0 0))",
+          "usageContracts": [
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -1264,7 +2559,13 @@
           "cssProperty": "--cinder-terminal-ansi-red",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(42% 0.16 25), oklch(72% 0.14 25))"
+          "cssRecipe": "light-dark(oklch(42% 0.16 25), oklch(72% 0.14 25))",
+          "usageContracts": [
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -1278,7 +2579,13 @@
           "cssProperty": "--cinder-terminal-ansi-green",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(38% 0.13 145), oklch(72% 0.13 145))"
+          "cssRecipe": "light-dark(oklch(38% 0.13 145), oklch(72% 0.13 145))",
+          "usageContracts": [
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -1292,7 +2599,13 @@
           "cssProperty": "--cinder-terminal-ansi-yellow",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(48% 0.14 85), oklch(82% 0.13 85))"
+          "cssRecipe": "light-dark(oklch(48% 0.14 85), oklch(82% 0.13 85))",
+          "usageContracts": [
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -1306,7 +2619,13 @@
           "cssProperty": "--cinder-terminal-ansi-blue",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(40% 0.16 260), oklch(72% 0.15 260))"
+          "cssRecipe": "light-dark(oklch(40% 0.16 260), oklch(72% 0.15 260))",
+          "usageContracts": [
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -1320,7 +2639,13 @@
           "cssProperty": "--cinder-terminal-ansi-magenta",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(42% 0.16 325), oklch(75% 0.14 325))"
+          "cssRecipe": "light-dark(oklch(42% 0.16 325), oklch(75% 0.14 325))",
+          "usageContracts": [
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -1334,7 +2659,13 @@
           "cssProperty": "--cinder-terminal-ansi-cyan",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(35% 0.11 205), oklch(75% 0.12 205))"
+          "cssRecipe": "light-dark(oklch(35% 0.11 205), oklch(75% 0.12 205))",
+          "usageContracts": [
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -1348,7 +2679,13 @@
           "cssProperty": "--cinder-terminal-ansi-white",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(18% 0 0), oklch(94% 0 0))"
+          "cssRecipe": "light-dark(oklch(18% 0 0), oklch(94% 0 0))",
+          "usageContracts": [
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -1362,7 +2699,13 @@
           "cssProperty": "--cinder-terminal-ansi-bright-black",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(42% 0 0), oklch(68% 0 0))"
+          "cssRecipe": "light-dark(oklch(42% 0 0), oklch(68% 0 0))",
+          "usageContracts": [
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -1376,7 +2719,13 @@
           "cssProperty": "--cinder-terminal-ansi-bright-red",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(52% 0.18 25), oklch(78% 0.15 25))"
+          "cssRecipe": "light-dark(oklch(52% 0.18 25), oklch(78% 0.15 25))",
+          "usageContracts": [
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -1390,7 +2739,13 @@
           "cssProperty": "--cinder-terminal-ansi-bright-green",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(48% 0.15 145), oklch(80% 0.14 145))"
+          "cssRecipe": "light-dark(oklch(48% 0.15 145), oklch(80% 0.14 145))",
+          "usageContracts": [
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -1404,7 +2759,13 @@
           "cssProperty": "--cinder-terminal-ansi-bright-yellow",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(52% 0.16 85), oklch(88% 0.14 85))"
+          "cssRecipe": "light-dark(oklch(52% 0.16 85), oklch(88% 0.14 85))",
+          "usageContracts": [
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -1418,7 +2779,13 @@
           "cssProperty": "--cinder-terminal-ansi-bright-blue",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(50% 0.18 260), oklch(80% 0.16 260))"
+          "cssRecipe": "light-dark(oklch(50% 0.18 260), oklch(80% 0.16 260))",
+          "usageContracts": [
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -1432,7 +2799,13 @@
           "cssProperty": "--cinder-terminal-ansi-bright-magenta",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(54% 0.18 325), oklch(82% 0.15 325))"
+          "cssRecipe": "light-dark(oklch(54% 0.18 325), oklch(82% 0.15 325))",
+          "usageContracts": [
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -1446,7 +2819,13 @@
           "cssProperty": "--cinder-terminal-ansi-bright-cyan",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(45% 0.13 205), oklch(82% 0.13 205))"
+          "cssRecipe": "light-dark(oklch(45% 0.13 205), oklch(82% 0.13 205))",
+          "usageContracts": [
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     },
@@ -1460,7 +2839,13 @@
           "cssProperty": "--cinder-terminal-ansi-bright-white",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(10% 0 0), oklch(98% 0 0))"
+          "cssRecipe": "light-dark(oklch(10% 0 0), oklch(98% 0 0))",
+          "usageContracts": [
+            {
+              "property": "color",
+              "profile": "color"
+            }
+          ]
         }
       }
     }

@@ -35,6 +35,7 @@
  */
 
 import { mkdir, readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 
 import { format } from 'prettier';
 import babelPlugin from 'prettier/plugins/babel';
@@ -43,10 +44,11 @@ import markdownPlugin from 'prettier/plugins/markdown';
 import typescriptPlugin from 'prettier/plugins/typescript';
 import { assertPrettierResolvesToRoot } from '../lib/prettier-resolution.ts';
 
+import { buildThemeTokenCatalogue, type ThemeTokenCatalogue } from './catalogue.ts';
+import { loadRepositorySources } from './css-usage-inventory.ts';
 import {
   buildGeneratedOutputs,
   colorTokenRegistryGeneratedPath,
-  type CorpusEntry,
   findDriftedPaths,
   JSON_PLUGINS,
   loadCorpus,
@@ -58,18 +60,20 @@ import {
   RESOLVED_CONTEXT_COMBOS,
   resolvedDirectory,
   serializeEntryValue,
+  themeTokenCatalogueGeneratedPath,
   tokenIndexPath,
   tokensDocPath,
+  type CorpusEntry,
 } from './generate.ts';
+import { buildInventoryForCorpus } from './prospective-token-inventory.ts';
 import {
   buildBaseDocuments,
   buildBaseIndex,
-  buildTokenRegistryFromIndexes,
   serializeTokenRegistry,
-  themeAwarePaths,
   type TokenRegistry,
 } from './registry.ts';
 import { createValueResolver, type ValueResolver } from './resolve.ts';
+import { observedUsageProperties } from './reviewed-css-usage.ts';
 import type { ResolverDocument, TokenDocument } from './types.ts';
 
 const MARKDOWN_PLUGINS = [markdownPlugin];
@@ -1336,6 +1340,23 @@ export default TOKEN_REGISTRY;
   return format(source, { ...PRETTIER_OPTIONS, parser: 'typescript', plugins: TYPESCRIPT_PLUGINS });
 }
 
+async function buildThemeTokenCatalogueModule(catalogue: ThemeTokenCatalogue): Promise<string> {
+  const source = `/**
+ * GENERATED FILE. Do not edit by hand.
+ *
+ * Source: the DTCG token corpus under packages/components/src/tokens/.
+ * Regenerate: ${REGENERATE_COMMAND}
+ */
+
+export const THEME_TOKEN_CATALOGUE = ${JSON.stringify(catalogue)} as const;
+export type ThemeTokenCatalogue = typeof THEME_TOKEN_CATALOGUE;
+
+export default THEME_TOKEN_CATALOGUE;
+`;
+  assertPrettierResolvesToRoot();
+  return format(source, { ...PRETTIER_OPTIONS, parser: 'typescript', plugins: TYPESCRIPT_PLUGINS });
+}
+
 /**
  * The `@lostgradient/cinder/tokens` index: what the token surface contains and
  * which subpath each part is published at.
@@ -1383,15 +1404,15 @@ async function buildTokenIndex(
 // ---------------------------------------------------------------------------
 
 async function buildAllGeneratedOutputs(): Promise<Map<string, string>> {
-  const cssAndResolved = await buildGeneratedOutputs();
-
   const { resolver, documentsByPath } = await loadCorpus();
+  const cssAndResolved = await buildGeneratedOutputs({ resolver, documentsByPath });
   const baseIndex = buildBaseIndex(resolver, documentsByPath);
   const baseDocuments = buildBaseDocuments(resolver, documentsByPath);
   const baseResolveReferences = createValueResolver(baseDocuments);
-  const registry = buildTokenRegistryFromIndexes(
-    baseIndex,
-    themeAwarePaths(resolver, documentsByPath),
+  const { inventory, registry, publicProperties } = await buildInventoryForCorpus(
+    await loadRepositorySources(resolve(import.meta.dir, '../../../..')),
+    resolver,
+    documentsByPath,
   );
 
   validateDocSections(registry);
@@ -1399,18 +1420,33 @@ async function buildAllGeneratedOutputs(): Promise<Map<string, string>> {
   const existingDocMarkdown = await readFile(tokensDocPath, 'utf8');
   // Guards every formatter in the Promise.all below, at a statement boundary.
   assertPrettierResolvesToRoot();
-  const [docMarkdown, registryJson, colorTokenRegistryModule, registryModule, tokenIndex] =
-    await Promise.all([
-      buildTokensDocMarkdown(existingDocMarkdown, baseIndex, baseResolveReferences),
-      format(serializeTokenRegistry(registry), {
-        ...PRETTIER_OPTIONS,
-        parser: 'json',
-        plugins: JSON_PLUGINS,
-      }),
-      buildColorTokenRegistryModule(resolver, registry),
-      buildTokenRegistryModule(registry),
-      buildTokenIndex(documentsByPath, registry),
-    ]);
+  const review: unknown = JSON.parse(
+    await readFile(resolve(import.meta.dir, 'css-usage-review.json'), 'utf8'),
+  );
+  const catalogue = buildThemeTokenCatalogue(
+    resolver,
+    documentsByPath,
+    observedUsageProperties(inventory, review, publicProperties),
+  );
+  const [
+    docMarkdown,
+    registryJson,
+    colorTokenRegistryModule,
+    registryModule,
+    tokenIndex,
+    themeTokenCatalogueModule,
+  ] = await Promise.all([
+    buildTokensDocMarkdown(existingDocMarkdown, baseIndex, baseResolveReferences),
+    format(serializeTokenRegistry(registry), {
+      ...PRETTIER_OPTIONS,
+      parser: 'json',
+      plugins: JSON_PLUGINS,
+    }),
+    buildColorTokenRegistryModule(resolver, registry),
+    buildTokenRegistryModule(registry),
+    buildTokenIndex(documentsByPath, registry),
+    buildThemeTokenCatalogueModule(catalogue),
+  ]);
 
   const generated = new Map(cssAndResolved);
   generated.set(registryJsonPath, registryJson);
@@ -1418,6 +1454,7 @@ async function buildAllGeneratedOutputs(): Promise<Map<string, string>> {
   generated.set(colorTokenRegistryGeneratedPath, colorTokenRegistryModule);
   generated.set(registryModulePath, registryModule);
   generated.set(tokenIndexPath, tokenIndex);
+  generated.set(themeTokenCatalogueGeneratedPath, themeTokenCatalogueModule);
   return generated;
 }
 

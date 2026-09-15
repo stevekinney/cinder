@@ -1,0 +1,55 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "$type": "dimension",
+  "color": { "$type": "color", "$value": { "colorSpace": "srgb", "components": [0, 0, 0] } },
+  "dimension": { "$value": { "value": 1, "unit": "rem" } },
+  "fontFamily": { "$type": "fontFamily", "$value": ["system-ui", "sans-serif"] },
+  "fontWeight": { "$type": "fontWeight", "$value": 400 },
+  "duration": { "$type": "duration", "$value": { "value": 1, "unit": "s" } },
+  "cubicBezier": { "$type": "cubicBezier", "$value": [0, 0, 1, 1] },
+  "number": { "$type": "number", "$value": 1 },
+  "strokeStyle": { "$type": "strokeStyle", "$value": "solid" },
+  "border": {
+    "$type": "border",
+    "$value": {
+      "color": { "colorSpace": "srgb", "components": [0, 0, 0] },
+      "width": { "value": 1, "unit": "px" },
+      "style": "solid"
+    }
+  },
+  "transition": {
+    "$type": "transition",
+    "$value": {
+      "duration": { "value": 1, "unit": "s" },
+      "delay": { "value": 0, "unit": "s" },
+      "timingFunction": [0, 0, 1, 1]
+    }
+  },
+  "shadow": {
+    "$type": "shadow",
+    "$value": {
+      "color": { "colorSpace": "srgb", "components": [0, 0, 0] },
+      "offsetX": { "value": 0, "unit": "px" },
+      "offsetY": { "value": 1, "unit": "px" },
+      "blur": { "value": 2, "unit": "px" },
+      "spread": { "value": 0, "unit": "px" }
+    }
+  },
+  "gradient": {
+    "$type": "gradient",
+    "$value": [
+      { "color": { "colorSpace": "srgb", "components": [0, 0, 0] }, "position": 0 },
+      { "color": { "colorSpace": "srgb", "components": [1, 1, 1] }, "position": 1 }
+    ]
+  },
+  "typography": {
+    "$type": "typography",
+    "$value": {
+      "fontFamily": ["system-ui"],
+      "fontSize": { "value": 1, "unit": "rem" },
+      "fontWeight": 400,
+      "letterSpacing": { "value": 0, "unit": "rem" },
+      "lineHeight": 1.5
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "carousel": {
+    "slide-size": {
+      "$type": "number",
+      "$value": 100,
+      "$extensions": { "com.lostgradient.cinder": { "cssRecipe": "100%" } }
+    },
+    "aspect-ratio": {
+      "$type": "number",
+      "$value": 1.7778,
+      "$extensions": { "com.lostgradient.cinder": { "cssRecipe": "16 / 9" } }
+    }
+  },
+  "code-block": {
+    "height": {
+      "$type": "dimension",
+      "$value": { "value": 0, "unit": "rem" },
+      "$extensions": { "com.lostgradient.cinder": { "cssRecipe": "auto" } }
+    }
+  },
+  "spinner": {
+    "indicator": {
+      "$type": "color",
+      "$value": "{text.default}",
+      "$extensions": { "com.lostgradient.cinder": { "cssRecipe": "currentColor" } }
+    }
+  }
+}
