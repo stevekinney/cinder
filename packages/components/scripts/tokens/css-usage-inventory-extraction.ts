@@ -3,6 +3,10 @@ import valueParser from 'postcss-value-parser';
 import { parse as parseSvelte } from 'svelte/compiler';
 import { dynamicRecord, isRecord, numberField } from './css-inventory-diagnostics';
 import type { Diagnostic, DynamicRecord, Source } from './css-usage-inventory';
+import {
+  extractEmittedLiterals,
+  extractEmittedMarkup,
+} from './css-usage-inventory-literal-extraction';
 import { runtimeExtract } from './css-usage-inventory-runtime';
 import {
   extractSvelteStyleAttribute,
@@ -57,12 +61,18 @@ function declarationIdentity(
   file: string,
   declaration: Declaration,
   source: string,
+  generatedText: string,
   rootOffset: number,
   lineOffset: number,
   selectorOverride: string | null | undefined,
+  offsetMap?: readonly number[],
 ): DeclarationRecord {
   const start = declaration.source?.start ?? { line: 1, column: 1 };
-  const offset = offsetAt(source, rootOffset, Math.max(1, start.line - lineOffset), start.column);
+  const generatedOffset =
+    offsetMap === undefined
+      ? offsetAt(source, rootOffset, Math.max(1, start.line - lineOffset), start.column)
+      : offsetAt(generatedText, 0, start.line, start.column);
+  const offset = offsetMap?.[generatedOffset] ?? generatedOffset;
   const pos = position(source, offset);
   const atRules: AtRuleLocation[] = [];
   let selector: string | null = selectorOverride ?? null;
@@ -95,9 +105,16 @@ export function parseSurface(
   offset: number,
   kind: string,
   diagnostics: Diagnostic[],
+  offsetMap?: readonly number[],
 ): DeclarationRecord[] {
   const wrapped =
     kind === 'svelte-inline' || kind === 'runtime-style' ? `:root {\n${text}\n}` : text;
+  const wrappedMap =
+    offsetMap === undefined
+      ? undefined
+      : kind === 'svelte-inline' || kind === 'runtime-style'
+        ? [...Array(8).fill(offsetMap[0] ?? 0), ...offsetMap, offsetMap.at(-1) ?? 0]
+        : offsetMap;
   const lineOffset = kind === 'svelte-inline' || kind === 'runtime-style' ? 1 : 0;
   try {
     const root = parseCss(wrapped, { from: file });
@@ -106,7 +123,16 @@ export function parseSurface(
       const selectorOverride =
         kind === 'svelte-inline' || kind === 'runtime-style' ? null : undefined;
       records.push(
-        declarationIdentity(file, declaration, source, offset, lineOffset, selectorOverride),
+        declarationIdentity(
+          file,
+          declaration,
+          source,
+          wrapped,
+          offset,
+          lineOffset,
+          selectorOverride,
+          wrappedMap,
+        ),
       );
     });
     return records;
@@ -287,7 +313,15 @@ export function extractSource(source: Source): ExtractedSource {
     };
   }
   if (source.path.endsWith('.svelte')) return svelteExtract(source);
-  if (/[.]tsx?$|[.](jsx?|mjs|cjs)$/.test(source.path))
-    return runtimeExtract(source, 0, source.content, parseSurface);
+  if (source.path.endsWith('.html')) return extractEmittedMarkup(source, parseSurface);
+  if (/[.]tsx?$|[.](jsx?|mjs|cjs)$/.test(source.path)) {
+    const runtime = runtimeExtract(source, 0, source.content, parseSurface);
+    const emitted = extractEmittedLiterals(source, parseSurface);
+    return {
+      declarations: [...runtime.declarations, ...emitted.declarations],
+      dynamic: [...runtime.dynamic, ...emitted.dynamic],
+      diagnostics: [...runtime.diagnostics, ...emitted.diagnostics],
+    };
+  }
   return { declarations: [], dynamic: [], diagnostics: [] };
 }

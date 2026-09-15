@@ -51,6 +51,7 @@ export type CatalogueContextRecord = {
   effectiveType: TokenType | null;
   typeOrigin: ResolverSourceLocation | null;
   directDependencies: readonly ResolverTraceDependency[];
+  recipeInputs: readonly string[];
   resolvedValue: unknown;
 };
 
@@ -62,7 +63,6 @@ export type ThemeTokenCatalogueEntry = {
   public: true;
   sourceType: TokenType | null;
   usageContracts: readonly { property: string; profile: string }[];
-  recipeInputs: readonly string[];
   observedProperties: readonly string[];
   scale: 'spacing' | null;
   source: CatalogueDisposition;
@@ -190,6 +190,7 @@ export function buildThemeTokenCatalogue(
           effectiveType: resolved?.$type ?? entry.type ?? null,
           typeOrigin: trace?.typeOrigin ?? null,
           directDependencies: [...(trace?.directDependencies ?? []), ...recipeDependencies],
+          recipeInputs,
           resolvedValue: value,
         };
       });
@@ -219,7 +220,6 @@ export function buildThemeTokenCatalogue(
         public: true as const,
         sourceType: sourceType(entry),
         usageContracts: usage.usageContracts,
-        recipeInputs: usage.recipeInputs,
         observedProperties: [...(observedProperties.get(registryEntry.cssProperty) ?? [])].sort(),
         scale: usage.scale,
         source: { status: 'supported' as const, reason: null, value: entry.value },

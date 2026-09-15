@@ -149,6 +149,121 @@ describe('authoritative token usage contracts', () => {
     expect(validateUsageContracts([{ ...length(), type: 'number', value: 0 }]).size).toBe(1);
   });
 
+  test('enforces known numeric and dimension profile bounds', () => {
+    const numeric = (profile: string, value: unknown): UsageToken => ({
+      path: `fixture.${profile}`,
+      cssProperty: `--cinder-${profile}`,
+      type:
+        profile === 'nonnegative-length' || profile === 'positive-font-size'
+          ? 'dimension'
+          : 'number',
+      value,
+      metadata: {
+        usageContracts: [
+          {
+            property:
+              profile === 'opacity'
+                ? 'opacity'
+                : profile === 'positive-font-size'
+                  ? 'font-size'
+                  : profile === 'layer-index'
+                    ? 'z-index'
+                    : 'padding',
+            profile,
+          },
+        ],
+      },
+    });
+
+    expect(() => validateUsageContracts([numeric('opacity', 2)])).toThrow('maximum');
+    expect(() =>
+      validateUsageContracts([numeric('nonnegative-length', { value: -1, unit: 'px' })]),
+    ).toThrow('minimum');
+    expect(() =>
+      validateUsageContracts([numeric('nonnegative-length', { value: 1, unit: 'em' })]),
+    ).toThrow('units');
+    expect(() =>
+      validateUsageContracts([numeric('positive-font-size', { value: 0, unit: 'px' })]),
+    ).toThrow('exclusiveMinimum');
+    expect(() => validateUsageContracts([numeric('layer-index', 1.5)])).toThrow('integer');
+    expect(() => validateUsageContracts([numeric('opacity', Number.NaN)])).toThrow('finite');
+    expect(() => validateUsageContracts([numeric('opacity', Number.POSITIVE_INFINITY)])).toThrow(
+      'finite',
+    );
+    expect(() =>
+      validateUsageContracts([
+        {
+          ...numeric('opacity', 0),
+          metadata: {
+            usageContracts: [{ property: 'opacity', profile: 'opacity' }],
+            cssRecipe: '1e309',
+            recipeInputs: [],
+          },
+        },
+      ]),
+    ).toThrow('finite');
+    expect(() =>
+      validateUsageContracts([
+        {
+          ...numeric('opacity', 0),
+          metadata: {
+            usageContracts: [{ property: 'opacity', profile: 'opacity' }],
+            cssRecipe: '-1e309',
+            recipeInputs: [],
+          },
+        },
+      ]),
+    ).toThrow('finite');
+
+    expect(validateUsageContracts([numeric('opacity', 0)]).size).toBe(1);
+    expect(validateUsageContracts([numeric('opacity', 1)]).size).toBe(1);
+    expect(validateUsageContracts([numeric('layer-index', -2147483648)]).size).toBe(1);
+    expect(validateUsageContracts([numeric('layer-index', 2147483647)]).size).toBe(1);
+  });
+
+  test('preserves allowed keywords while rejecting statically invalid recipes', () => {
+    const keyword: UsageToken = {
+      ...length(),
+      type: undefined,
+      value: undefined,
+      metadata: {
+        usageContracts: [{ property: 'height', profile: 'auto-size' }],
+        cssRecipe: 'auto',
+        recipeInputs: [],
+      },
+    };
+    expect(validateUsageContracts([keyword]).size).toBe(1);
+
+    expect(() =>
+      validateUsageContracts([
+        {
+          ...length(),
+          type: 'number',
+          value: 0,
+          metadata: {
+            usageContracts: [{ property: 'opacity', profile: 'opacity' }],
+            cssRecipe: '2',
+            recipeInputs: [],
+          },
+        },
+      ]),
+    ).toThrow('maximum');
+
+    const dynamic = {
+      ...length(),
+      path: 'space.dynamic',
+      cssProperty: '--cinder-space-dynamic',
+      type: undefined,
+      value: undefined,
+      metadata: {
+        usageContracts: [{ property: 'height', profile: 'auto-size' }],
+        cssRecipe: 'var(--cinder-space-small)',
+        recipeInputs: ['space.small'],
+      },
+    } satisfies UsageToken;
+    expect(validateUsageContracts([length(), dynamic]).size).toBe(2);
+  });
+
   test('rejects a recipe-backed color token claiming a length profile', () => {
     expect(() =>
       validateUsageContracts([
@@ -203,6 +318,21 @@ describe('authoritative token usage contracts', () => {
           },
         ]).size,
       ).toBe(1);
+
+      expect(() =>
+        validateUsageContracts([
+          {
+            ...length(),
+            type: 'number',
+            value: 0,
+            metadata: {
+              usageContracts: [{ property: 'opacity', profile: 'opacity' }],
+              cssRecipe: 'banana',
+              recipeInputs: [],
+            },
+          },
+        ]),
+      ).toThrow('keyword');
     },
   );
 

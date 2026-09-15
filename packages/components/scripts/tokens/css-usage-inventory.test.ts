@@ -10,6 +10,12 @@ const source = (path: string, content: string, globalDefinitions = false) => ({
   globalDefinitions,
 });
 
+function authoredPosition(content: string, offset: number): { line: number; column: number } {
+  const prefix = content.slice(0, offset);
+  const lineStart = prefix.lastIndexOf('\n') + 1;
+  return { line: prefix.split('\n').length, column: offset - lineStart + 1 };
+}
+
 describe('css usage inventory', () => {
   test('records every multiline declaration reference and nested fallback', () => {
     const report = inventoryFromSources(
@@ -355,6 +361,280 @@ describe('css usage inventory', () => {
     ]);
   });
 
+  test('extracts CSS from returned HTML and live preview recipe literals', () => {
+    const report = inventoryFromSources(
+      [
+        source(
+          'emitted.ts',
+          [
+            'function render() {',
+            '  return `<style>.shell { color: var(--public-a); }</style><div style="padding: var(--public-b)"></div>`;',
+            '}',
+            'function handle() { return new Response(render()); }',
+            'const PREVIEW_RECIPES = {',
+            '  recipe: {',
+            '    childrenHtml: \'<div style="margin: var(--public-c)"></div>\',',
+            '    referenceHtml: \'<div style="border-color: var(--public-d)"></div>\',',
+            '    snippetChildren: \'<div style="color: var(--public-a)"></div>\',',
+            '  },',
+            '};',
+          ].join('\n'),
+        ),
+      ],
+      publicProperties,
+    );
+    expect(report.uses.map((use) => use.tokenProperty)).toEqual([
+      '--public-a',
+      '--public-b',
+      '--public-c',
+      '--public-d',
+    ]);
+    expect(report.uses.map((use) => use.property)).toEqual([
+      'color',
+      'padding',
+      'margin',
+      'border-color',
+    ]);
+    expect(report.uses.find((use) => use.tokenProperty === '--public-c')?.line).toBe(7);
+    expect(
+      report.uses.some((use) => use.value.includes('--public-a') && use.property === 'color'),
+    ).toBe(true);
+  });
+
+  test('reports dynamic emitted markup and ignores ordinary strings', () => {
+    const report = inventoryFromSources(
+      [
+        source(
+          'emitted-dynamic.ts',
+          [
+            'function render(color: string) {',
+            '  return `<style>.shell { color: ${color}; }</style>`;',
+            '}',
+            'function handle() { return new Response(render("red")); }',
+            'function escaped() {',
+            '  return escapeHtml(\'<div style="color: var(--public-a)"></div>\');',
+            '}',
+            'const ordinary = \'<div style="color: var(--public-a)"></div>\';',
+            'const unrelated = { childrenHtml: \'<div style="color: var(--public-a)"></div>\' };',
+          ].join('\n'),
+        ),
+      ],
+      publicProperties,
+    );
+    expect(report.uses).toHaveLength(0);
+    expect(report.dynamic.some((record) => record.kind === 'runtime-html-interpolation')).toBe(
+      true,
+    );
+    expect(
+      report.diagnostics.some(
+        (diagnostic) =>
+          diagnostic.kind === 'unsupported-surface' &&
+          diagnostic.reason ===
+            'Dynamic emitted HTML interpolation may introduce CSS and requires reviewed mapping',
+      ),
+    ).toBe(true);
+  });
+
+  test('decodes escaped response markup while preserving authored positions', () => {
+    const content = [
+      String.raw`const markup = "<div style=\"color: var(--public-a);\n padding: var(--public-b)\"></div>";`,
+      'function handle() { return new Response(markup); }',
+    ].join('\n');
+    const report = inventoryFromSources([source('escaped-response.ts', content)], publicProperties);
+    expect(report.uses.map((use) => use.tokenProperty)).toEqual(['--public-a', '--public-b']);
+    expect(report.uses.map((use) => [use.line, use.column])).toEqual([
+      [1, authoredPosition(content, content.indexOf('color')).column],
+      [1, authoredPosition(content, content.indexOf('padding')).column],
+    ]);
+    expect(report.diagnostics).toHaveLength(0);
+  });
+
+  test('keeps UTF-16 source mapping after an astral escape', () => {
+    const content = String.raw`
+const markup = "😀\\u{1F600}<div style=\"color: var(--public-a)\"></div>";
+function handle() { return new Response(markup); }`;
+    const report = inventoryFromSources([source('astral-response.ts', content)], publicProperties);
+    const color = content.indexOf('color');
+    expect(report.uses).toHaveLength(1);
+    expect(report.uses[0]).toMatchObject(authoredPosition(content, color));
+  });
+
+  test('rejects malformed escapes without guessing emitted declarations', () => {
+    const malformedEscape = '\\u{nope}';
+    const content = [
+      `const markup = "<div style=\\"color: var(--public-a)${malformedEscape}\\"></div>";`,
+      'function handle() { return new Response(markup); }',
+    ].join('\n');
+    const report = inventoryFromSources(
+      [source('malformed-response.ts', content)],
+      publicProperties,
+    );
+    expect(report.uses).toHaveLength(0);
+    expect(
+      report.diagnostics.some(
+        (diagnostic) =>
+          diagnostic.kind === 'unsupported-surface' &&
+          diagnostic.reason ===
+            'Malformed or unmappable JavaScript escape prevented emitted markup decoding',
+      ),
+    ).toBe(true);
+  });
+
+  test('excludes nested unused responses and redirect URLs from emitted HTML', () => {
+    const content = [
+      'function outer() {',
+      '  function unused() { return new Response(\'<div style="color: var(--public-a)"></div>\'); }',
+      '  return new Response(\'<div style="color: var(--public-b)"></div>\');',
+      '}',
+      'function redirectOnly() { return Response.redirect(\'<div style=\\"color: var(--public-c)\\"></div>\'); }',
+    ].join('\n');
+    const report = inventoryFromSources(
+      [source('response-boundary.ts', content)],
+      publicProperties,
+    );
+    expect(report.uses.map((use) => use.tokenProperty)).toEqual(['--public-b']);
+  });
+
+  test('reports unresolved preview recipe producers', () => {
+    const content = [
+      'function makeMarkup() { return getMarkup(); }',
+      'const PREVIEW_RECIPES = { recipe: { childrenHtml: makeMarkup() } };',
+    ].join('\n');
+    const report = inventoryFromSources([source('recipe-boundary.ts', content)], publicProperties);
+    expect(report.uses).toHaveLength(0);
+    expect(
+      report.diagnostics.some(
+        (diagnostic) =>
+          diagnostic.kind === 'unsupported-surface' &&
+          diagnostic.reason === 'Live preview recipe producer could not be statically resolved',
+      ),
+    ).toBe(true);
+  });
+
+  test('keeps shadowed aliases separate and reports unresolved live response producers', () => {
+    const content = [
+      'const BOXES = \'<div style="color: var(--public-a)"></div>\';',
+      'function unused() { const BOXES = \'<div style="color: var(--public-b)"></div>\'; return BOXES; }',
+      'function dynamicMarkup() { return getMarkup(); }',
+      'function handle() { return new Response(dynamicMarkup()); }',
+      'const PREVIEW_RECIPES = { recipe: { childrenHtml: BOXES } };',
+    ].join('\n');
+    const report = inventoryFromSources([source('scoped-response.ts', content)], publicProperties);
+    expect(report.uses.map((use) => use.tokenProperty)).toEqual(['--public-a']);
+    expect(report.uses.some((use) => use.tokenProperty === '--public-b')).toBe(false);
+    expect(report.dynamic).toMatchObject([
+      { kind: 'runtime-html-unresolved', expression: 'getMarkup()' },
+    ]);
+    expect(
+      report.diagnostics.some(
+        (diagnostic) =>
+          diagnostic.reason === 'Live response HTML producer could not be statically resolved',
+      ),
+    ).toBe(true);
+  });
+
+  test('maps static declarations after a multiline interpolation to authored offsets', () => {
+    const content = [
+      'function render(value: string) {',
+      '  return `<div',
+      '    style="color: ${value};',
+      '      padding: var(--public-a)',
+      '    "',
+      '  ></div>`;',
+      '}',
+      'function handle() { return new Response(render("red")); }',
+    ].join('\n');
+    const report = inventoryFromSources(
+      [source('multiline-response.ts', content)],
+      publicProperties,
+    );
+    const padding = content.indexOf('padding');
+    expect(report.uses.map((use) => use.tokenProperty)).toEqual(['--public-a']);
+    expect(report.uses[0]).toMatchObject({
+      line: authoredPosition(content, padding).line,
+      column: authoredPosition(content, padding).column,
+    });
+    expect(report.dynamic).toMatchObject([
+      { kind: 'runtime-html-interpolation', expression: 'value' },
+    ]);
+  });
+
+  test('extracts the actual Playground recipe producer without treating snippet source as emitted', () => {
+    const path = resolve(
+      import.meta.dir,
+      '../../../playground/src/component-page-preview-recipes.ts',
+    );
+    const content = readFileSync(path, 'utf8');
+    const report = inventoryFromSources(
+      [source('packages/playground/src/component-page-preview-recipes.ts', content)],
+      new Set(['--cinder-space-4', '--cinder-surface-inset']),
+    );
+    expect(report.uses.some((use) => use.tokenProperty === '--cinder-space-4')).toBe(true);
+    expect(report.uses.some((use) => use.tokenProperty === '--cinder-surface-inset')).toBe(true);
+    expect(report.uses.some((use) => use.value.includes('--cinder-space-4'))).toBe(true);
+  });
+
+  test('follows live layout producers and preserves interpolation locations', () => {
+    const report = inventoryFromSources(
+      [
+        source(
+          'layout.ts',
+          [
+            'const BOXES = [1].map((n) =>',
+            '  `<div style = "margin: var(--public-a); padding: ${n}px; border-color: var(--public-b)"></div>`',
+            ").join('');",
+            'const LAYOUT_RECIPE = { childrenHtml: BOXES };',
+            'const PREVIEW_RECIPES = { layout: LAYOUT_RECIPE };',
+          ].join('\n'),
+        ),
+      ],
+      publicProperties,
+    );
+    const layoutSource = [
+      'const BOXES = [1].map((n) =>',
+      '  `<div style = "margin: var(--public-a); padding: ${n}px; border-color: var(--public-b)"></div>`',
+      ").join('');",
+      'const LAYOUT_RECIPE = { childrenHtml: BOXES };',
+      'const PREVIEW_RECIPES = { layout: LAYOUT_RECIPE };',
+    ].join('\n');
+    expect(report.uses.map((use) => [use.tokenProperty, use.line, use.column])).toEqual([
+      [
+        '--public-a',
+        authoredPosition(layoutSource, layoutSource.indexOf('margin')).line,
+        authoredPosition(layoutSource, layoutSource.indexOf('margin')).column,
+      ],
+      [
+        '--public-b',
+        authoredPosition(layoutSource, layoutSource.indexOf('border-color')).line,
+        authoredPosition(layoutSource, layoutSource.indexOf('border-color')).column,
+      ],
+    ]);
+    expect(report.dynamic).toMatchObject([
+      {
+        kind: 'runtime-html-interpolation',
+        line: 2,
+        expression: 'n',
+      },
+    ]);
+  });
+
+  test('extracts raw HTML styles while ignoring comments and script text', () => {
+    const report = inventoryFromSources(
+      [
+        source(
+          'index.html',
+          '<!-- <style>.comment { color: var(--public-a); }</style> -->\n' +
+            "<script>const text = '<style>.script { color: var(--public-b); }</style>';</script>\n" +
+            '<style>.page { color: var(--public-c); }</style>\n' +
+            '<div style="background: var(--public-d)"></div>',
+        ),
+      ],
+      publicProperties,
+    );
+    expect(report.uses.map((use) => use.tokenProperty)).toEqual(['--public-c', '--public-d']);
+    expect(report.uses.every((use) => use.line >= 3)).toBe(true);
+  });
+
   test('is byte-for-byte stable when source input order is permuted', () => {
     const sources = [
       source('b.css', '.b { color: var(--public-b); }'),
@@ -645,4 +925,166 @@ test('records owned dynamic presentation sinks in shipped chart sources', () => 
       .filter((record) => record.file.endsWith('matrix-chart.svelte'))
       .map((record) => record.property),
   ).toEqual(['fill', 'fill']);
+});
+
+describe('emitted value ownership', () => {
+  test('excludes helper output used only by logging or a discarded call', () => {
+    const report = inventoryFromSources(
+      [
+        source(
+          'response-flow.ts',
+          `
+      function helper() { return '<div style="color: var(--public-a)"></div>'; }
+      function handle() { console.log(helper()); helper(); return new Response('<div style="color: var(--public-b)"></div>'); }
+    `,
+        ),
+      ],
+      publicProperties,
+    );
+    expect(report.uses.map((use) => use.tokenProperty)).toEqual(['--public-b']);
+  });
+  test('follows local arrow returns and nested response returns only through returned values', () => {
+    const report = inventoryFromSources(
+      [
+        source(
+          'nested-output.ts',
+          `
+      function handle() {
+        const content = () => '<div style="color: var(--public-a)"></div>';
+        const response = () => new Response(content());
+        const unused = () => new Response('<div style="color: var(--public-b)"></div>');
+        return response();
+      }
+    `,
+        ),
+      ],
+      publicProperties,
+    );
+    expect(report.uses.map((use) => use.tokenProperty)).toEqual(['--public-a']);
+  });
+  test('keeps escaped body helpers unsupported instead of counting their input as HTML', () => {
+    const report = inventoryFromSources(
+      [
+        source(
+          'escaped-output.ts',
+          `
+      function escape(html: string) { return html.replaceAll('<', '&lt;'); }
+      function handle() { return new Response(escape('<div style="color: var(--public-a)"></div>')); }
+    `,
+        ),
+      ],
+      publicProperties,
+    );
+    expect(report.uses).toEqual([]);
+    expect(report.diagnostics.some((item) => item.kind === 'unsupported-surface')).toBe(true);
+  });
+  test('does not assign built-in Response behavior to a shadowing constructor', () => {
+    const report = inventoryFromSources(
+      [
+        source(
+          'shadowed-response.ts',
+          `
+      class Response { constructor(value: string) { console.log(value); } }
+      new Response('<div style="color: var(--public-a)"></div>');
+    `,
+        ),
+      ],
+      publicProperties,
+    );
+    expect(report.uses).toEqual([]);
+  });
+  test('only reads top-level recipe records and their emitted fields', () => {
+    const report = inventoryFromSources(
+      [
+        source(
+          'recipe-ownership.ts',
+          `
+      const PREVIEW_RECIPES = { button: { childrenHtml: '<i style="color: var(--public-a)"></i>', props: { childrenHtml: '<i style="color: var(--public-b)"></i>' } } };
+      function unused() { const PREVIEW_RECIPES = { button: { childrenHtml: '<i style="color: var(--public-c)"></i>' } }; }
+    `,
+        ),
+      ],
+      publicProperties,
+    );
+    expect(report.uses.map((use) => use.tokenProperty)).toEqual(['--public-a']);
+  });
+  test('records circular body aliases as unsupported without recursion overflow', () => {
+    const report = inventoryFromSources(
+      [
+        source(
+          'circular-body.ts',
+          `
+      const first = second; const second = first;
+      function handle() { return new Response(first); }
+    `,
+        ),
+      ],
+      publicProperties,
+    );
+    expect(report.uses).toEqual([]);
+    expect(report.diagnostics.some((item) => item.kind === 'unsupported-surface')).toBe(true);
+  });
+  test('does not pretend an unknown receiver implements Array.map', () => {
+    const report = inventoryFromSources(
+      [
+        source(
+          'unknown-map.ts',
+          `
+      declare const items: unknown;
+      const PREVIEW_RECIPES = { button: { childrenHtml: items.map(() => '<i style="color: var(--public-a)"></i>').join('') } };
+    `,
+        ),
+      ],
+      publicProperties,
+    );
+    expect(report.uses).toEqual([]);
+    expect(report.diagnostics.some((item) => item.kind === 'unsupported-surface')).toBe(true);
+  });
+});
+
+describe('emitted HTML parser boundaries', () => {
+  test('does not mistake text or quoted attribute contents for style attributes', () => {
+    const content = `<p>style="color: var(--public-a)"</p><div title='style="color: var(--public-a)"' style="color: var(--public-b)"></div>`;
+    const report = inventoryFromSources([source('attributes.html', content)], publicProperties);
+    expect(report.uses.map((use) => use.tokenProperty)).toEqual(['--public-b']);
+    expect(report.uses[0]?.column).toBe(content.lastIndexOf('color:') + 1);
+  });
+  test('covers document root styles, multiple style blocks, and unquoted attributes', () => {
+    const content =
+      '<html style="color:var(--public-a)"><head><style>.one{color:var(--public-b)}</style><style>.two{padding:var(--public-c)}</style></head><body><i style=color:var(--public-a)></i></body></html>';
+    const report = inventoryFromSources([source('document.html', content)], publicProperties);
+    expect(report.uses.map((use) => use.tokenProperty)).toEqual([
+      '--public-a',
+      '--public-b',
+      '--public-c',
+      '--public-a',
+    ]);
+  });
+  test('keeps entity-encoded style attributes explicit rather than inventing source offsets', () => {
+    const content = '<i style="color:var(&#45;&#45;public-a)"></i>';
+    const report = inventoryFromSources([source('encoded.html', content)], publicProperties);
+    expect(report.uses).toEqual([]);
+    expect(report.dynamic).toHaveLength(1);
+    expect(report.diagnostics).toContainEqual(
+      expect.objectContaining({ kind: 'unsupported-surface' }),
+    );
+  });
+  test('records markup interpolation and preserves offsets around spaced expressions', () => {
+    const content =
+      'function handle(body:string){return new Response(`<section>${ /* gap */ body }</section><i style="color:var(--public-a)"></i>`)}';
+    const report = inventoryFromSources([source('interpolated.ts', content)], publicProperties);
+    expect(report.uses).toEqual([
+      expect.objectContaining({
+        tokenProperty: '--public-a',
+        column: content.indexOf('color:') + 1,
+      }),
+    ]);
+    expect(report.dynamic).toContainEqual(
+      expect.objectContaining({
+        kind: 'runtime-html-interpolation',
+        expression: 'body',
+        column: content.indexOf('${') + 1,
+      }),
+    );
+  });
 });

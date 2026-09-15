@@ -319,7 +319,8 @@ export function resolveToken(
   resolving.add(path);
   if (token.$ref !== undefined)
     resolveRefToken(path, token, tokens, rawRefs, roots, resolving, groups, completed, traceState);
-  else
+  else {
+    const sourcePointer = traceState?.nodes.get(token)?.location.sourcePointer;
     token.$value = resolveValue(
       token.$value,
       tokens,
@@ -330,8 +331,9 @@ export function resolveToken(
       completed,
       traceState,
       path,
-      traceState?.nodes.get(token)?.location.sourcePointer + '/$value',
+      sourcePointer === undefined ? undefined : `${sourcePointer}/$value`,
     );
+  }
   resolving.delete(path);
   completed.add(path);
   return token;

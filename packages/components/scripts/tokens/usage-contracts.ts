@@ -1,5 +1,6 @@
 import valueParser from 'postcss-value-parser';
 import type { TokenType } from './types.ts';
+import { profileValueViolation } from './usage-contract-value-validation.ts';
 
 export type UsageContract = { property: string; profile: string };
 export type UsageProfile = {
@@ -7,6 +8,7 @@ export type UsageProfile = {
   cssGrammar: Readonly<Record<string, string>>;
   /** Insert a serialized token into this property grammar; omitted properties use {value}. */
   validationTemplates?: Readonly<Record<string, string>>;
+  /** Editable DTCG dimension units; trusted CSS projections retain their property grammar. */
   units?: readonly string[];
   keywords?: readonly string[];
   minimum?: number;
@@ -467,11 +469,20 @@ export function validateUsageContracts(
         typeof recipe === 'string')
     )
       fail('spacing scale requires a public literal dimension without a recipe');
-    for (const contract of contracts)
-      if (!matchesProfileType(token, PROFILE_DEFINITIONS[contract.profile]!))
+    for (const contract of contracts) {
+      const profile = PROFILE_DEFINITIONS[contract.profile]!;
+      if (!matchesProfileType(token, profile))
         fail(
           `incompatible token type ${token.type ?? 'unknown'} for usage profile ${contract.profile}`,
         );
+      const violation = profileValueViolation(
+        token.value,
+        typeof recipe === 'string' ? recipe : undefined,
+        profile,
+      );
+      if (violation !== null)
+        fail(`usage profile ${contract.profile} violates ${violation} for effective value`);
+    }
     if (result.has(token.path)) fail('duplicate token classification');
     result.set(token.path, {
       usageContracts: contracts,

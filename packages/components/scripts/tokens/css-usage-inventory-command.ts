@@ -1,6 +1,8 @@
 import { mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
-import { inventoryFromSources, loadRepositorySources } from './css-usage-inventory';
+import { loadRepositorySources } from './css-usage-inventory';
+import { loadCorpus } from './generate.ts';
+import { buildInventoryForCorpus } from './prospective-token-inventory.ts';
 
 const root = resolve(import.meta.dir, '../../../..');
 const outputIndex = process.argv.indexOf('--output');
@@ -11,31 +13,12 @@ if (outputIndex < 0 || !process.argv[outputIndex + 1])
 const outputArgument = process.argv[outputIndex + 1];
 if (!outputArgument) throw new Error('Missing output path');
 const output = resolve(root, outputArgument);
-const parsed: unknown = JSON.parse(
-  await Bun.file(resolve(root, 'packages/components/src/tokens/registry.generated.json')).text(),
+const { resolver, documentsByPath } = await loadCorpus();
+const { inventory: report } = await buildInventoryForCorpus(
+  await loadRepositorySources(root),
+  resolver,
+  documentsByPath,
 );
-if (
-  !parsed ||
-  typeof parsed !== 'object' ||
-  !('entries' in parsed) ||
-  !Array.isArray(parsed.entries)
-)
-  throw new Error('Invalid token registry');
-const properties = new Set(
-  parsed.entries.flatMap((entry: unknown) => {
-    if (
-      !entry ||
-      typeof entry !== 'object' ||
-      !('public' in entry) ||
-      entry.public !== true ||
-      !('cssProperty' in entry) ||
-      typeof entry.cssProperty !== 'string'
-    )
-      return [];
-    return [entry.cssProperty];
-  }),
-);
-const report = inventoryFromSources(await loadRepositorySources(root), properties);
 await mkdir(dirname(output), { recursive: true });
 await Bun.write(output, `${JSON.stringify(report, null, 2)}\n`);
 console.log(

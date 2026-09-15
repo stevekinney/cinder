@@ -95,13 +95,13 @@ export function inventoryFromSources(
   publicProperties: ReadonlySet<string>,
 ): Inventory {
   const paths = new Set<string>();
-  let globalCount = 0;
+  const globalPaths = new Set<string>();
   for (const source of sources) {
     if (paths.has(source.path)) throw new Error(`Duplicate source path: ${source.path}`);
     paths.add(source.path);
-    if (source.globalDefinitions) globalCount++;
+    if (source.globalDefinitions) globalPaths.add(source.path);
   }
-  if (globalCount > 1) throw new Error('At most one source may set globalDefinitions');
+  if (globalPaths.size > 1) throw new Error('At most one source may set globalDefinitions');
   const declarations: DeclarationRecord[] = [];
   const dynamic: DynamicRecord[] = [];
   const diagnostics: Diagnostic[] = [];
@@ -111,9 +111,7 @@ export function inventoryFromSources(
     dynamic.push(...extracted.dynamic);
     diagnostics.push(...extracted.diagnostics);
   }
-  const globals = declarations.filter(
-    (record) => sources.find((source) => source.path === record.sourceFile)?.globalDefinitions,
-  );
+  const globals = declarations.filter((record) => globalPaths.has(record.sourceFile));
   const reachable = new Set(reachableStylesheets(sources));
   const elements = compositionElements(sources);
   const compositionCaches = createCompositionCaches();
@@ -270,7 +268,7 @@ export async function loadRepositorySources(root: string): Promise<Source[]> {
     'packages/markdown/src',
     'packages/playground/src',
   ];
-  const extensions = new Set(['.css', '.svelte', '.ts', '.tsx', '.js', '.jsx']);
+  const extensions = new Set(['.css', '.html', '.svelte', '.ts', '.tsx', '.js', '.jsx']);
   const sources: Source[] = [];
   const glob = new Bun.Glob('**/*');
   for (const base of bases)
@@ -280,6 +278,7 @@ export async function loadRepositorySources(root: string): Promise<Source[]> {
       if (
         !extensions.has(extension) ||
         /(^|\/)__tests__(\/|$)/.test(relativePath) ||
+        /^(?:lib\/)?test(?:\/|$)/.test(path.replaceAll('\\', '/')) ||
         /\.(test|spec|playwright)\.[^.]+$/.test(relativePath)
       )
         continue;

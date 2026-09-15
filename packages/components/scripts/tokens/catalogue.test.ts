@@ -202,3 +202,64 @@ test('new public tokens enter every context automatically while private entries 
   for (const context of added[0]!.contexts) expect(context.resolvedValue).toEqual(token.$value);
   expect(catalogue.entries.some((entry) => entry.path === 'catalogue-private')).toBe(false);
 });
+
+test('exposes recipe inputs in their effective theme and motion context only', async () => {
+  const { resolver, documentsByPath } = await loadCorpus();
+  const catalogue = buildThemeTokenCatalogue(resolver, documentsByPath);
+  for (const entry of catalogue.entries) {
+    expect(entry).not.toHaveProperty('recipeInputs');
+    for (const context of entry.contexts) {
+      expect(context.recipeInputs).toEqual(
+        context.directDependencies
+          .filter((dependency) => dependency.kind === 'recipe')
+          .map((dependency) => dependency.targetPath),
+      );
+    }
+  }
+  const background = catalogue.entries.find((entry) => entry.path === 'code-block.background')!;
+  expect(
+    background.contexts
+      .filter((record) => record.context.theme === 'light')
+      .every((record) => record.recipeInputs.length > 0),
+  ).toBe(true);
+  expect(
+    background.contexts
+      .filter((record) => record.context.theme === 'dark')
+      .every((record) => record.recipeInputs.length === 0),
+  ).toBe(true);
+});
+
+test('retains inputs introduced only by a dark recipe override', async () => {
+  const { resolver, documentsByPath } = await loadCorpus();
+  documentsByPath.get('sets/foundation.tokens.json')!['context-probe'] = {
+    $type: 'dimension',
+    $value: { value: 1, unit: 'rem' },
+    $extensions: {
+      'com.lostgradient.cinder': {
+        public: true,
+        cssProperty: '--cinder-context-probe',
+        usageContracts: [{ property: 'gap', profile: 'nonnegative-length' }],
+      },
+    },
+  };
+  documentsByPath.get('themes/dark.tokens.json')!['context-probe'] = {
+    $value: { value: 1, unit: 'rem' },
+    $extensions: {
+      'com.lostgradient.cinder': {
+        cssRecipe: 'var(--cinder-space-4)',
+        recipeInputs: ['space.4'],
+      },
+    },
+  };
+  const entry = buildThemeTokenCatalogue(resolver, documentsByPath).entries.find(
+    (entry) => entry.path === 'context-probe',
+  )!;
+  for (const context of entry.contexts) {
+    expect(context.recipeInputs).toEqual(context.context.theme === 'dark' ? ['space.4'] : []);
+    expect(
+      context.directDependencies
+        .filter((dependency) => dependency.kind === 'recipe')
+        .map((dependency) => dependency.targetPath),
+    ).toEqual([...context.recipeInputs]);
+  }
+});

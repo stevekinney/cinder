@@ -2465,8 +2465,10 @@ export async function loadCorpus(): Promise<{
 }
 
 /** Absolute output path -> generated file content, for every file `tokens:generate` produces. */
-export async function buildGeneratedOutputs(): Promise<Map<string, string>> {
-  const { resolver, documentsByPath } = await loadCorpus();
+export async function buildGeneratedOutputs(
+  corpus?: Awaited<ReturnType<typeof loadCorpus>>,
+): Promise<Map<string, string>> {
+  const { resolver, documentsByPath } = corpus ?? (await loadCorpus());
   const css = await buildTokensBaseCss(resolver, documentsByPath);
   const resolvedContexts = await buildResolvedContexts(resolver, documentsByPath);
 

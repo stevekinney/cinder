@@ -365,7 +365,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'margin', profile: 'signed-length' },
         { property: 'gap', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: [],
       scale: 'spacing',
       source: { status: 'supported', reason: null, value: { value: 0, unit: 'rem' } },
@@ -397,6 +396,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'rem' },
         },
         {
@@ -423,6 +423,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'rem' },
         },
         {
@@ -449,6 +450,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'rem' },
         },
         {
@@ -475,6 +477,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'rem' },
         },
         {
@@ -501,6 +504,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'rem' },
         },
         {
@@ -527,6 +531,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'rem' },
         },
       ],
@@ -577,7 +582,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'top', profile: 'signed-length' },
         { property: 'width', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'block-size',
         'border-radius',
@@ -647,6 +651,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -673,6 +678,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -699,6 +705,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -725,6 +732,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -751,6 +759,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -777,6 +786,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
       ],
@@ -810,7 +820,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'padding-block-end', profile: 'nonnegative-length' },
         { property: 'margin-inline-start', profile: 'signed-length' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'column-gap',
         'gap',
@@ -863,6 +872,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -889,6 +899,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -915,6 +926,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -941,6 +953,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -967,6 +980,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -993,6 +1007,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
       ],
@@ -1036,7 +1051,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'top', profile: 'signed-length' },
         { property: 'width', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'block-size',
         'bottom',
@@ -1099,6 +1113,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -1125,6 +1140,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -1151,6 +1167,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -1177,6 +1194,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -1203,6 +1221,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -1229,6 +1248,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
       ],
@@ -1250,7 +1270,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'padding-inline-end', profile: 'nonnegative-length' },
         { property: 'padding-inline-start', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'gap',
         'inline-size',
@@ -1291,6 +1310,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -1317,6 +1337,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -1343,6 +1364,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -1369,6 +1391,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -1395,6 +1418,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -1421,6 +1445,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
       ],
@@ -1452,7 +1477,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'inset-inline-start', profile: 'signed-length' },
         { property: 'transform', profile: 'signed-length' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'block-size',
         'gap',
@@ -1503,6 +1527,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -1529,6 +1554,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -1555,6 +1581,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -1581,6 +1608,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -1607,6 +1635,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -1633,6 +1662,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
       ],
@@ -1652,7 +1682,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'padding-inline-start', profile: 'nonnegative-length' },
         { property: 'width', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'height',
         'margin-block-start',
@@ -1691,6 +1720,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.75, unit: 'rem' },
         },
         {
@@ -1717,6 +1747,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.75, unit: 'rem' },
         },
         {
@@ -1743,6 +1774,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.75, unit: 'rem' },
         },
         {
@@ -1769,6 +1801,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.75, unit: 'rem' },
         },
         {
@@ -1795,6 +1828,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.75, unit: 'rem' },
         },
         {
@@ -1821,6 +1855,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.75, unit: 'rem' },
         },
       ],
@@ -1843,7 +1878,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'padding-inline-start', profile: 'nonnegative-length' },
         { property: 'width', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'gap',
         'max-block-size',
@@ -1885,6 +1919,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'rem' },
         },
         {
@@ -1911,6 +1946,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'rem' },
         },
         {
@@ -1937,6 +1973,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'rem' },
         },
         {
@@ -1963,6 +2000,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'rem' },
         },
         {
@@ -1989,6 +2027,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'rem' },
         },
         {
@@ -2015,6 +2054,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'rem' },
         },
       ],
@@ -2033,7 +2073,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'padding-block', profile: 'nonnegative-length' },
         { property: 'padding-inline-end', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'block-size',
         'inline-size',
@@ -2071,6 +2110,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.5, unit: 'rem' },
         },
         {
@@ -2097,6 +2137,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.5, unit: 'rem' },
         },
         {
@@ -2123,6 +2164,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.5, unit: 'rem' },
         },
         {
@@ -2149,6 +2191,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.5, unit: 'rem' },
         },
         {
@@ -2175,6 +2218,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.5, unit: 'rem' },
         },
         {
@@ -2201,6 +2245,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.5, unit: 'rem' },
         },
       ],
@@ -2218,7 +2263,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'min-block-size', profile: 'nonnegative-length' },
         { property: 'padding-block', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['block-size', 'inline-size', 'min-block-size', 'padding-block'],
       scale: 'spacing',
       source: { status: 'supported', reason: null, value: { value: 3, unit: 'rem' } },
@@ -2250,6 +2294,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 3, unit: 'rem' },
         },
         {
@@ -2276,6 +2321,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 3, unit: 'rem' },
         },
         {
@@ -2302,6 +2348,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 3, unit: 'rem' },
         },
         {
@@ -2328,6 +2375,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 3, unit: 'rem' },
         },
         {
@@ -2354,6 +2402,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 3, unit: 'rem' },
         },
         {
@@ -2380,6 +2429,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 3, unit: 'rem' },
         },
       ],
@@ -2395,7 +2445,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'block-size', profile: 'nonnegative-length' },
         { property: 'inline-size', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['block-size', 'inline-size'],
       scale: 'spacing',
       source: { status: 'supported', reason: null, value: { value: 4, unit: 'rem' } },
@@ -2427,6 +2476,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 4, unit: 'rem' },
         },
         {
@@ -2453,6 +2503,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 4, unit: 'rem' },
         },
         {
@@ -2479,6 +2530,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 4, unit: 'rem' },
         },
         {
@@ -2505,6 +2557,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 4, unit: 'rem' },
         },
         {
@@ -2531,6 +2584,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 4, unit: 'rem' },
         },
         {
@@ -2557,6 +2611,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 4, unit: 'rem' },
         },
       ],
@@ -2573,7 +2628,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'margin', profile: 'signed-length' },
         { property: 'gap', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: [],
       scale: 'spacing',
       source: { status: 'supported', reason: null, value: { value: 5, unit: 'rem' } },
@@ -2605,6 +2659,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 5, unit: 'rem' },
         },
         {
@@ -2631,6 +2686,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 5, unit: 'rem' },
         },
         {
@@ -2657,6 +2713,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 5, unit: 'rem' },
         },
         {
@@ -2683,6 +2740,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 5, unit: 'rem' },
         },
         {
@@ -2709,6 +2767,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 5, unit: 'rem' },
         },
         {
@@ -2735,6 +2794,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 5, unit: 'rem' },
         },
       ],
@@ -2751,7 +2811,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'margin', profile: 'signed-length' },
         { property: 'gap', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: [],
       scale: 'spacing',
       source: { status: 'supported', reason: null, value: { value: 6, unit: 'rem' } },
@@ -2783,6 +2842,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 6, unit: 'rem' },
         },
         {
@@ -2809,6 +2869,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 6, unit: 'rem' },
         },
         {
@@ -2835,6 +2896,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 6, unit: 'rem' },
         },
         {
@@ -2861,6 +2923,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 6, unit: 'rem' },
         },
         {
@@ -2887,6 +2950,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 6, unit: 'rem' },
         },
         {
@@ -2913,6 +2977,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 6, unit: 'rem' },
         },
       ],
@@ -2929,7 +2994,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'margin', profile: 'signed-length' },
         { property: 'gap', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: [],
       scale: 'spacing',
       source: { status: 'supported', reason: null, value: { value: 8, unit: 'rem' } },
@@ -2961,6 +3025,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 8, unit: 'rem' },
         },
         {
@@ -2987,6 +3052,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 8, unit: 'rem' },
         },
         {
@@ -3013,6 +3079,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 8, unit: 'rem' },
         },
         {
@@ -3039,6 +3106,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 8, unit: 'rem' },
         },
         {
@@ -3065,6 +3133,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 8, unit: 'rem' },
         },
         {
@@ -3091,6 +3160,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 8, unit: 'rem' },
         },
       ],
@@ -3112,7 +3182,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'padding', profile: 'nonnegative-length' },
         { property: 'padding-block', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'bottom',
         'gap',
@@ -3153,6 +3222,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.125, unit: 'rem' },
         },
         {
@@ -3179,6 +3249,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.125, unit: 'rem' },
         },
         {
@@ -3205,6 +3276,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.125, unit: 'rem' },
         },
         {
@@ -3231,6 +3303,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.125, unit: 'rem' },
         },
         {
@@ -3257,6 +3330,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.125, unit: 'rem' },
         },
         {
@@ -3283,6 +3357,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.125, unit: 'rem' },
         },
       ],
@@ -3324,7 +3399,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'top', profile: 'signed-length' },
         { property: 'width', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'border-radius',
         'bottom',
@@ -3385,6 +3459,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -3411,6 +3486,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -3437,6 +3513,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -3463,6 +3540,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -3489,6 +3567,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -3515,6 +3594,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
       ],
@@ -3535,7 +3615,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'padding-inline', profile: 'nonnegative-length' },
         { property: 'margin-block-end', profile: 'signed-length' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'gap',
         'margin',
@@ -3575,6 +3654,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -3601,6 +3681,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -3627,6 +3708,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -3653,6 +3735,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -3679,6 +3762,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -3705,6 +3789,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
       ],
@@ -3722,7 +3807,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'padding-block', profile: 'nonnegative-length' },
         { property: 'padding-inline', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['gap', 'padding', 'padding-block', 'padding-inline'],
       scale: 'spacing',
       source: { status: 'supported', reason: null, value: { value: 0.625, unit: 'rem' } },
@@ -3754,6 +3838,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -3780,6 +3865,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -3806,6 +3892,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -3832,6 +3919,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -3858,6 +3946,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -3884,6 +3973,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
       ],
@@ -3896,7 +3986,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['padding'],
       scale: 'spacing',
       source: { status: 'supported', reason: null, value: { value: 0.875, unit: 'rem' } },
@@ -3928,6 +4017,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -3954,6 +4044,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -3980,6 +4071,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -4006,6 +4098,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -4032,6 +4125,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -4058,6 +4152,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
       ],
@@ -4070,7 +4165,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'border-radius', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['border-radius'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 0.375, unit: 'rem' } },
@@ -4102,6 +4196,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -4128,6 +4223,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -4154,6 +4250,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -4180,6 +4277,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -4206,6 +4304,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -4232,6 +4331,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
       ],
@@ -4249,7 +4349,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'border-radius', profile: 'nonnegative-length' },
         { property: 'border-start-start-radius', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'border-end-end-radius',
         'border-end-start-radius',
@@ -4286,6 +4385,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -4312,6 +4412,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -4338,6 +4439,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -4364,6 +4466,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -4390,6 +4493,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -4416,6 +4520,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
       ],
@@ -4436,7 +4541,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'border-top-left-radius', profile: 'nonnegative-length' },
         { property: 'border-top-right-radius', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'border-end-end-radius',
         'border-end-start-radius',
@@ -4476,6 +4580,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -4502,6 +4607,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -4528,6 +4634,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -4554,6 +4661,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -4580,6 +4688,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -4606,6 +4715,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
       ],
@@ -4618,7 +4728,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'border-radius', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['border-radius'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 9999, unit: 'px' } },
@@ -4650,6 +4759,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 9999, unit: 'px' },
         },
         {
@@ -4676,6 +4786,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 9999, unit: 'px' },
         },
         {
@@ -4702,6 +4813,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 9999, unit: 'px' },
         },
         {
@@ -4728,6 +4840,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 9999, unit: 'px' },
         },
         {
@@ -4754,6 +4867,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 9999, unit: 'px' },
         },
         {
@@ -4780,6 +4894,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 9999, unit: 'px' },
         },
       ],
@@ -4792,7 +4907,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'border-radius', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: [],
       scale: null,
       source: { status: 'supported', reason: null, value: '{radius.medium}' },
@@ -4841,6 +4955,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -4884,6 +4999,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -4927,6 +5043,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -4970,6 +5087,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -5013,6 +5131,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -5056,6 +5175,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
       ],
@@ -5068,7 +5188,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'border-radius', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: [],
       scale: null,
       source: { status: 'supported', reason: null, value: '{radius.large}' },
@@ -5117,6 +5236,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -5160,6 +5280,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -5203,6 +5324,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -5246,6 +5368,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -5289,6 +5412,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -5332,6 +5456,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
       ],
@@ -5344,7 +5469,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'shadow',
       usageContracts: [{ property: 'box-shadow', profile: 'shadow' }],
-      recipeInputs: [],
       observedProperties: ['box-shadow'],
       scale: null,
       source: {
@@ -5444,6 +5568,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.1 },
@@ -5491,6 +5616,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.1 },
@@ -5538,6 +5664,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.1 },
@@ -5585,6 +5712,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [1, 0, 0], alpha: 0.09 },
@@ -5632,6 +5760,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [1, 0, 0], alpha: 0.09 },
@@ -5679,6 +5808,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [1, 0, 0], alpha: 0.09 },
@@ -5706,7 +5836,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'shadow',
       usageContracts: [{ property: 'box-shadow', profile: 'shadow' }],
-      recipeInputs: [],
       observedProperties: ['box-shadow'],
       scale: null,
       source: {
@@ -5806,6 +5935,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.12 },
@@ -5853,6 +5983,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.12 },
@@ -5900,6 +6031,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.12 },
@@ -5947,6 +6079,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [1, 0, 0], alpha: 0.09 },
@@ -5994,6 +6127,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [1, 0, 0], alpha: 0.09 },
@@ -6041,6 +6175,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [1, 0, 0], alpha: 0.09 },
@@ -6068,7 +6203,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'shadow',
       usageContracts: [{ property: 'box-shadow', profile: 'shadow' }],
-      recipeInputs: [],
       observedProperties: ['box-shadow'],
       scale: null,
       source: {
@@ -6168,6 +6302,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.14 },
@@ -6215,6 +6350,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.14 },
@@ -6262,6 +6398,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.14 },
@@ -6309,6 +6446,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [1, 0, 0], alpha: 0.11 },
@@ -6356,6 +6494,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [1, 0, 0], alpha: 0.11 },
@@ -6403,6 +6542,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [1, 0, 0], alpha: 0.11 },
@@ -6430,7 +6570,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'shadow',
       usageContracts: [{ property: 'box-shadow', profile: 'shadow' }],
-      recipeInputs: [],
       observedProperties: ['box-shadow'],
       scale: null,
       source: {
@@ -6530,6 +6669,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.14 },
@@ -6577,6 +6717,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.14 },
@@ -6624,6 +6765,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.14 },
@@ -6671,6 +6813,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.45 },
@@ -6718,6 +6861,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.45 },
@@ -6765,6 +6909,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             {
               color: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.45 },
@@ -6796,7 +6941,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'min-height', profile: 'nonnegative-length' },
         { property: 'min-width', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['min-height', 'min-width'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 1.5, unit: 'rem' } },
@@ -6828,6 +6972,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -6854,6 +6999,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -6880,6 +7026,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -6906,6 +7053,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -6932,6 +7080,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -6958,6 +7107,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
       ],
@@ -6974,7 +7124,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'min-block-size', profile: 'nonnegative-length' },
         { property: 'min-height', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['block-size', 'min-block-size', 'min-height'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 2, unit: 'rem' } },
@@ -7006,6 +7155,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'rem' },
         },
         {
@@ -7032,6 +7182,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'rem' },
         },
         {
@@ -7058,6 +7209,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'rem' },
         },
         {
@@ -7084,6 +7236,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'rem' },
         },
         {
@@ -7110,6 +7263,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'rem' },
         },
         {
@@ -7136,6 +7290,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'rem' },
         },
       ],
@@ -7148,7 +7303,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'min-height', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['min-height'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 2.75, unit: 'rem' } },
@@ -7180,6 +7334,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.75, unit: 'rem' },
         },
         {
@@ -7206,6 +7361,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.75, unit: 'rem' },
         },
         {
@@ -7232,6 +7388,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.75, unit: 'rem' },
         },
         {
@@ -7258,6 +7415,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.75, unit: 'rem' },
         },
         {
@@ -7284,6 +7442,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.75, unit: 'rem' },
         },
         {
@@ -7310,6 +7469,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.75, unit: 'rem' },
         },
       ],
@@ -7325,7 +7485,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'font', profile: 'font-family' },
         { property: 'font-family', profile: 'font-family' },
       ],
-      recipeInputs: [],
       observedProperties: ['font', 'font-family'],
       scale: null,
       source: {
@@ -7398,6 +7557,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             'system-ui',
             '-apple-system',
@@ -7432,6 +7592,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             'system-ui',
             '-apple-system',
@@ -7466,6 +7627,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             'system-ui',
             '-apple-system',
@@ -7500,6 +7662,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             'system-ui',
             '-apple-system',
@@ -7534,6 +7697,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             'system-ui',
             '-apple-system',
@@ -7568,6 +7732,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             'system-ui',
             '-apple-system',
@@ -7588,7 +7753,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'fontFamily',
       usageContracts: [{ property: 'font-family', profile: 'font-family' }],
-      recipeInputs: [],
       observedProperties: ['font-family'],
       scale: null,
       source: {
@@ -7661,6 +7825,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             'ui-monospace',
             'SFMono-Regular',
@@ -7695,6 +7860,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             'ui-monospace',
             'SFMono-Regular',
@@ -7729,6 +7895,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             'ui-monospace',
             'SFMono-Regular',
@@ -7763,6 +7930,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             'ui-monospace',
             'SFMono-Regular',
@@ -7797,6 +7965,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             'ui-monospace',
             'SFMono-Regular',
@@ -7831,6 +8000,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [
             'ui-monospace',
             'SFMono-Regular',
@@ -7851,7 +8021,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'fontWeight',
       usageContracts: [{ property: 'font-weight', profile: 'font-weight' }],
-      recipeInputs: [],
       observedProperties: ['font-weight'],
       scale: null,
       source: { status: 'supported', reason: null, value: 400 },
@@ -7883,6 +8052,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 400,
         },
         {
@@ -7909,6 +8079,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 400,
         },
         {
@@ -7935,6 +8106,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 400,
         },
         {
@@ -7961,6 +8133,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 400,
         },
         {
@@ -7987,6 +8160,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 400,
         },
         {
@@ -8013,6 +8187,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 400,
         },
       ],
@@ -8028,7 +8203,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'font', profile: 'font-weight' },
         { property: 'font-weight', profile: 'font-weight' },
       ],
-      recipeInputs: [],
       observedProperties: ['font', 'font-weight'],
       scale: null,
       source: { status: 'supported', reason: null, value: 500 },
@@ -8060,6 +8234,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 500,
         },
         {
@@ -8086,6 +8261,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 500,
         },
         {
@@ -8112,6 +8288,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 500,
         },
         {
@@ -8138,6 +8315,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 500,
         },
         {
@@ -8164,6 +8342,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 500,
         },
         {
@@ -8190,6 +8369,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 500,
         },
       ],
@@ -8205,7 +8385,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'font', profile: 'font-weight' },
         { property: 'font-weight', profile: 'font-weight' },
       ],
-      recipeInputs: [],
       observedProperties: ['font', 'font-weight'],
       scale: null,
       source: { status: 'supported', reason: null, value: 600 },
@@ -8237,6 +8416,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 600,
         },
         {
@@ -8263,6 +8443,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 600,
         },
         {
@@ -8289,6 +8470,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 600,
         },
         {
@@ -8315,6 +8497,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 600,
         },
         {
@@ -8341,6 +8524,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 600,
         },
         {
@@ -8367,6 +8551,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 600,
         },
       ],
@@ -8379,7 +8564,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'fontWeight',
       usageContracts: [{ property: 'font-weight', profile: 'font-weight' }],
-      recipeInputs: [],
       observedProperties: ['font-weight'],
       scale: null,
       source: { status: 'supported', reason: null, value: 700 },
@@ -8411,6 +8595,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 700,
         },
         {
@@ -8437,6 +8622,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 700,
         },
         {
@@ -8463,6 +8649,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 700,
         },
         {
@@ -8489,6 +8676,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 700,
         },
         {
@@ -8515,6 +8703,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 700,
         },
         {
@@ -8541,6 +8730,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 700,
         },
       ],
@@ -8553,7 +8743,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 0.6875, unit: 'rem' } },
@@ -8589,6 +8778,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.6875, unit: 'rem' },
         },
         {
@@ -8615,6 +8805,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.6875, unit: 'rem' },
         },
         {
@@ -8641,6 +8832,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.6875, unit: 'rem' },
         },
         {
@@ -8667,6 +8859,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.6875, unit: 'rem' },
         },
         {
@@ -8693,6 +8886,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.6875, unit: 'rem' },
         },
         {
@@ -8719,6 +8913,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.6875, unit: 'rem' },
         },
       ],
@@ -8734,7 +8929,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'font', profile: 'positive-font-size' },
         { property: 'font-size', profile: 'positive-font-size' },
       ],
-      recipeInputs: [],
       observedProperties: ['font', 'font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 0.75, unit: 'rem' } },
@@ -8766,6 +8960,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -8792,6 +8987,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -8818,6 +9014,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -8844,6 +9041,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -8870,6 +9068,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -8896,6 +9095,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
       ],
@@ -8911,7 +9111,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'font', profile: 'positive-font-size' },
         { property: 'font-size', profile: 'positive-font-size' },
       ],
-      recipeInputs: [],
       observedProperties: ['font', 'font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 0.8125, unit: 'rem' } },
@@ -8947,6 +9146,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -8973,6 +9173,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -8999,6 +9200,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -9025,6 +9227,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -9051,6 +9254,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -9077,6 +9281,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
       ],
@@ -9089,7 +9294,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 0.875, unit: 'rem' } },
@@ -9121,6 +9325,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -9147,6 +9352,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -9173,6 +9379,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -9199,6 +9406,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -9225,6 +9433,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -9251,6 +9460,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
       ],
@@ -9263,7 +9473,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 0.9375, unit: 'rem' } },
@@ -9299,6 +9508,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.9375, unit: 'rem' },
         },
         {
@@ -9325,6 +9535,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.9375, unit: 'rem' },
         },
         {
@@ -9351,6 +9562,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.9375, unit: 'rem' },
         },
         {
@@ -9377,6 +9589,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.9375, unit: 'rem' },
         },
         {
@@ -9403,6 +9616,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.9375, unit: 'rem' },
         },
         {
@@ -9429,6 +9643,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.9375, unit: 'rem' },
         },
       ],
@@ -9444,7 +9659,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'font', profile: 'positive-font-size' },
         { property: 'font-size', profile: 'positive-font-size' },
       ],
-      recipeInputs: [],
       observedProperties: ['font', 'font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 1, unit: 'rem' } },
@@ -9476,6 +9690,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -9502,6 +9717,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -9528,6 +9744,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -9554,6 +9771,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -9580,6 +9798,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -9606,6 +9825,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
       ],
@@ -9618,7 +9838,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 1.125, unit: 'rem' } },
@@ -9650,6 +9869,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.125, unit: 'rem' },
         },
         {
@@ -9676,6 +9896,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.125, unit: 'rem' },
         },
         {
@@ -9702,6 +9923,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.125, unit: 'rem' },
         },
         {
@@ -9728,6 +9950,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.125, unit: 'rem' },
         },
         {
@@ -9754,6 +9977,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.125, unit: 'rem' },
         },
         {
@@ -9780,6 +10004,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.125, unit: 'rem' },
         },
       ],
@@ -9792,7 +10017,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 1.25, unit: 'rem' } },
@@ -9824,6 +10048,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -9850,6 +10075,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -9876,6 +10102,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -9902,6 +10129,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -9928,6 +10156,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -9954,6 +10183,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
       ],
@@ -9966,7 +10196,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 1.5, unit: 'rem' } },
@@ -9998,6 +10227,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -10024,6 +10254,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -10050,6 +10281,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -10076,6 +10308,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -10102,6 +10335,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -10128,6 +10362,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
       ],
@@ -10140,7 +10375,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 1.875, unit: 'rem' } },
@@ -10172,6 +10406,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.875, unit: 'rem' },
         },
         {
@@ -10198,6 +10433,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.875, unit: 'rem' },
         },
         {
@@ -10224,6 +10460,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.875, unit: 'rem' },
         },
         {
@@ -10250,6 +10487,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.875, unit: 'rem' },
         },
         {
@@ -10276,6 +10514,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.875, unit: 'rem' },
         },
         {
@@ -10302,6 +10541,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.875, unit: 'rem' },
         },
       ],
@@ -10314,7 +10554,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 2.25, unit: 'rem' } },
@@ -10346,6 +10585,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.25, unit: 'rem' },
         },
         {
@@ -10372,6 +10612,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.25, unit: 'rem' },
         },
         {
@@ -10398,6 +10639,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.25, unit: 'rem' },
         },
         {
@@ -10424,6 +10666,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.25, unit: 'rem' },
         },
         {
@@ -10450,6 +10693,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.25, unit: 'rem' },
         },
         {
@@ -10476,6 +10720,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.25, unit: 'rem' },
         },
       ],
@@ -10488,7 +10733,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'line-height', profile: 'line-height' }],
-      recipeInputs: [],
       observedProperties: ['line-height'],
       scale: null,
       source: { status: 'supported', reason: null, value: 1 },
@@ -10520,6 +10764,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1,
         },
         {
@@ -10546,6 +10791,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1,
         },
         {
@@ -10572,6 +10818,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1,
         },
         {
@@ -10598,6 +10845,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1,
         },
         {
@@ -10624,6 +10872,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1,
         },
         {
@@ -10650,6 +10899,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1,
         },
       ],
@@ -10662,7 +10912,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'line-height', profile: 'line-height' }],
-      recipeInputs: [],
       observedProperties: ['line-height'],
       scale: null,
       source: { status: 'supported', reason: null, value: 1.15 },
@@ -10694,6 +10943,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.15,
         },
         {
@@ -10720,6 +10970,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.15,
         },
         {
@@ -10746,6 +10997,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.15,
         },
         {
@@ -10772,6 +11024,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.15,
         },
         {
@@ -10798,6 +11051,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.15,
         },
         {
@@ -10824,6 +11078,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.15,
         },
       ],
@@ -10836,7 +11091,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'line-height', profile: 'line-height' }],
-      recipeInputs: [],
       observedProperties: ['line-height'],
       scale: null,
       source: { status: 'supported', reason: null, value: 1.3 },
@@ -10868,6 +11122,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.3,
         },
         {
@@ -10894,6 +11149,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.3,
         },
         {
@@ -10920,6 +11176,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.3,
         },
         {
@@ -10946,6 +11203,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.3,
         },
         {
@@ -10972,6 +11230,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.3,
         },
         {
@@ -10998,6 +11257,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.3,
         },
       ],
@@ -11010,7 +11270,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'line-height', profile: 'line-height' }],
-      recipeInputs: [],
       observedProperties: ['line-height'],
       scale: null,
       source: { status: 'supported', reason: null, value: 1.5 },
@@ -11042,6 +11301,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.5,
         },
         {
@@ -11068,6 +11328,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.5,
         },
         {
@@ -11094,6 +11355,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.5,
         },
         {
@@ -11120,6 +11382,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.5,
         },
         {
@@ -11146,6 +11409,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.5,
         },
         {
@@ -11172,6 +11436,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.5,
         },
       ],
@@ -11184,7 +11449,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'line-height', profile: 'line-height' }],
-      recipeInputs: [],
       observedProperties: ['line-height'],
       scale: null,
       source: { status: 'supported', reason: null, value: 1.625 },
@@ -11216,6 +11480,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.625,
         },
         {
@@ -11242,6 +11507,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.625,
         },
         {
@@ -11268,6 +11534,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.625,
         },
         {
@@ -11294,6 +11561,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.625,
         },
         {
@@ -11320,6 +11588,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.625,
         },
         {
@@ -11346,6 +11615,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.625,
         },
       ],
@@ -11358,7 +11628,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'letter-spacing', profile: 'signed-length' }],
-      recipeInputs: [],
       observedProperties: [],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 0, unit: 'rem' } },
@@ -11390,6 +11659,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'rem' },
         },
         {
@@ -11416,6 +11686,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'rem' },
         },
         {
@@ -11442,6 +11713,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'rem' },
         },
         {
@@ -11468,6 +11740,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'rem' },
         },
         {
@@ -11494,6 +11767,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'rem' },
         },
         {
@@ -11520,6 +11794,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'rem' },
         },
       ],
@@ -11532,7 +11807,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'letter-spacing', profile: 'signed-length' }],
-      recipeInputs: [],
       observedProperties: ['letter-spacing'],
       scale: null,
       source: { status: 'supported', reason: null, value: -0.01 },
@@ -11564,6 +11838,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: -0.01,
         },
         {
@@ -11590,6 +11865,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: -0.01,
         },
         {
@@ -11616,6 +11892,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: -0.01,
         },
         {
@@ -11642,6 +11919,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: -0.01,
         },
         {
@@ -11668,6 +11946,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: -0.01,
         },
         {
@@ -11694,6 +11973,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: -0.01,
         },
       ],
@@ -11706,7 +11986,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'letter-spacing', profile: 'signed-length' }],
-      recipeInputs: [],
       observedProperties: ['letter-spacing'],
       scale: null,
       source: { status: 'supported', reason: null, value: 0.02 },
@@ -11738,6 +12017,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.02,
         },
         {
@@ -11764,6 +12044,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.02,
         },
         {
@@ -11790,6 +12071,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.02,
         },
         {
@@ -11816,6 +12098,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.02,
         },
         {
@@ -11842,6 +12125,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.02,
         },
         {
@@ -11868,6 +12152,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.02,
         },
       ],
@@ -11880,7 +12165,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'tab-size', profile: 'tab-size' }],
-      recipeInputs: [],
       observedProperties: ['tab-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: 2 },
@@ -11912,6 +12196,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 2,
         },
         {
@@ -11938,6 +12223,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 2,
         },
         {
@@ -11964,6 +12250,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 2,
         },
         {
@@ -11990,6 +12277,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 2,
         },
         {
@@ -12016,6 +12304,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 2,
         },
         {
@@ -12042,6 +12331,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 2,
         },
       ],
@@ -12067,7 +12357,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'top', profile: 'signed-length' },
         { property: 'width', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'block-size',
         'height',
@@ -12112,6 +12401,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 44, unit: 'px' },
         },
         {
@@ -12138,6 +12428,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 44, unit: 'px' },
         },
         {
@@ -12164,6 +12455,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 44, unit: 'px' },
         },
         {
@@ -12190,6 +12482,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 44, unit: 'px' },
         },
         {
@@ -12216,6 +12509,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 44, unit: 'px' },
         },
         {
@@ -12242,6 +12536,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 44, unit: 'px' },
         },
       ],
@@ -12254,7 +12549,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'max-inline-size', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['max-inline-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 72, unit: 'rem' } },
@@ -12286,6 +12580,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 72, unit: 'rem' },
         },
         {
@@ -12312,6 +12607,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 72, unit: 'rem' },
         },
         {
@@ -12338,6 +12634,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 72, unit: 'rem' },
         },
         {
@@ -12364,6 +12661,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 72, unit: 'rem' },
         },
         {
@@ -12390,6 +12688,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 72, unit: 'rem' },
         },
         {
@@ -12416,6 +12715,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 72, unit: 'rem' },
         },
       ],
@@ -12428,7 +12728,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'max-inline-size', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['max-inline-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 40, unit: 'rem' } },
@@ -12460,6 +12759,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 40, unit: 'rem' },
         },
         {
@@ -12486,6 +12786,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 40, unit: 'rem' },
         },
         {
@@ -12512,6 +12813,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 40, unit: 'rem' },
         },
         {
@@ -12538,6 +12840,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 40, unit: 'rem' },
         },
         {
@@ -12564,6 +12867,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 40, unit: 'rem' },
         },
         {
@@ -12590,6 +12894,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 40, unit: 'rem' },
         },
       ],
@@ -12606,7 +12911,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'margin-inline', profile: 'signed-length' },
         { property: 'max-inline-size', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['inline-size', 'margin-inline', 'max-inline-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 90, unit: 'rem' } },
@@ -12638,6 +12942,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 90, unit: 'rem' },
         },
         {
@@ -12664,6 +12969,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 90, unit: 'rem' },
         },
         {
@@ -12690,6 +12996,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 90, unit: 'rem' },
         },
         {
@@ -12716,6 +13023,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 90, unit: 'rem' },
         },
         {
@@ -12742,6 +13050,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 90, unit: 'rem' },
         },
         {
@@ -12768,6 +13077,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 90, unit: 'rem' },
         },
       ],
@@ -12780,7 +13090,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'max-inline-size', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['max-inline-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: 65 },
@@ -12812,6 +13121,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 65,
         },
         {
@@ -12838,6 +13148,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 65,
         },
         {
@@ -12864,6 +13175,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 65,
         },
         {
@@ -12890,6 +13202,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 65,
         },
         {
@@ -12916,6 +13229,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 65,
         },
         {
@@ -12942,6 +13256,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 65,
         },
       ],
@@ -12957,7 +13272,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'animation', profile: 'easing' },
         { property: 'transition', profile: 'easing' },
       ],
-      recipeInputs: [],
       observedProperties: ['animation', 'transition'],
       scale: null,
       source: { status: 'supported', reason: null, value: [0.2, 0, 0, 1] },
@@ -12989,6 +13303,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.2, 0, 0, 1],
         },
         {
@@ -13015,6 +13330,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.2, 0, 0, 1],
         },
         {
@@ -13041,6 +13357,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.2, 0, 0, 1],
         },
         {
@@ -13067,6 +13384,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.2, 0, 0, 1],
         },
         {
@@ -13093,6 +13411,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.2, 0, 0, 1],
         },
         {
@@ -13119,6 +13438,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.2, 0, 0, 1],
         },
       ],
@@ -13131,7 +13451,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'cubicBezier',
       usageContracts: [{ property: 'animation', profile: 'easing' }],
-      recipeInputs: [],
       observedProperties: ['animation'],
       scale: null,
       source: { status: 'supported', reason: null, value: [0, 0, 0, 1] },
@@ -13163,6 +13482,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0, 0, 0, 1],
         },
         {
@@ -13189,6 +13509,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0, 0, 0, 1],
         },
         {
@@ -13215,6 +13536,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0, 0, 0, 1],
         },
         {
@@ -13241,6 +13563,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0, 0, 0, 1],
         },
         {
@@ -13267,6 +13590,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0, 0, 0, 1],
         },
         {
@@ -13293,6 +13617,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0, 0, 0, 1],
         },
       ],
@@ -13305,7 +13630,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'cubicBezier',
       usageContracts: [{ property: 'transition-timing-function', profile: 'easing' }],
-      recipeInputs: [],
       observedProperties: [],
       scale: null,
       source: { status: 'supported', reason: null, value: [0.3, 0, 1, 1] },
@@ -13337,6 +13661,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.3, 0, 1, 1],
         },
         {
@@ -13363,6 +13688,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.3, 0, 1, 1],
         },
         {
@@ -13389,6 +13715,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.3, 0, 1, 1],
         },
         {
@@ -13415,6 +13742,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.3, 0, 1, 1],
         },
         {
@@ -13441,6 +13769,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.3, 0, 1, 1],
         },
         {
@@ -13467,6 +13796,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.3, 0, 1, 1],
         },
       ],
@@ -13479,7 +13809,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'cubicBezier',
       usageContracts: [{ property: 'transition', profile: 'easing' }],
-      recipeInputs: [],
       observedProperties: ['transition'],
       scale: null,
       source: { status: 'supported', reason: null, value: [0.4, 0, 0.2, 1] },
@@ -13511,6 +13840,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.4, 0, 0.2, 1],
         },
         {
@@ -13537,6 +13867,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.4, 0, 0.2, 1],
         },
         {
@@ -13563,6 +13894,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.4, 0, 0.2, 1],
         },
         {
@@ -13589,6 +13921,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.4, 0, 0.2, 1],
         },
         {
@@ -13615,6 +13948,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.4, 0, 0.2, 1],
         },
         {
@@ -13641,6 +13975,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.4, 0, 0.2, 1],
         },
       ],
@@ -13653,7 +13988,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'cubicBezier',
       usageContracts: [{ property: 'transition', profile: 'easing' }],
-      recipeInputs: [],
       observedProperties: ['transition'],
       scale: null,
       source: { status: 'supported', reason: null, value: [0.22, 1, 0.36, 1] },
@@ -13685,6 +14019,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.22, 1, 0.36, 1],
         },
         {
@@ -13711,6 +14046,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.22, 1, 0.36, 1],
         },
         {
@@ -13737,6 +14073,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.22, 1, 0.36, 1],
         },
         {
@@ -13763,6 +14100,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.22, 1, 0.36, 1],
         },
         {
@@ -13789,6 +14127,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.22, 1, 0.36, 1],
         },
         {
@@ -13815,6 +14154,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: [0.22, 1, 0.36, 1],
         },
       ],
@@ -13827,7 +14167,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'duration',
       usageContracts: [{ property: 'transition-duration', profile: 'duration' }],
-      recipeInputs: [],
       observedProperties: [],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 0, unit: 'ms' } },
@@ -13859,6 +14198,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -13891,6 +14231,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -13923,6 +14264,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -13949,6 +14291,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -13981,6 +14324,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -14013,6 +14357,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
       ],
@@ -14028,7 +14373,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'animation', profile: 'duration' },
         { property: 'transition', profile: 'duration' },
       ],
-      recipeInputs: [],
       observedProperties: ['animation', 'transition'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 120, unit: 'ms' } },
@@ -14060,6 +14404,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 120, unit: 'ms' },
         },
         {
@@ -14092,6 +14437,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -14124,6 +14470,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -14150,6 +14497,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 120, unit: 'ms' },
         },
         {
@@ -14182,6 +14530,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -14214,6 +14563,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
       ],
@@ -14226,7 +14576,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'duration',
       usageContracts: [{ property: 'transition', profile: 'duration' }],
-      recipeInputs: [],
       observedProperties: ['transition'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{motion.base}' },
@@ -14275,6 +14624,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 200, unit: 'ms' },
         },
         {
@@ -14307,6 +14657,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -14339,6 +14690,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -14382,6 +14734,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 200, unit: 'ms' },
         },
         {
@@ -14414,6 +14767,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -14446,6 +14800,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
       ],
@@ -14458,7 +14813,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'duration',
       usageContracts: [{ property: 'transition', profile: 'duration' }],
-      recipeInputs: [],
       observedProperties: ['transition'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 280, unit: 'ms' } },
@@ -14490,6 +14844,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 280, unit: 'ms' },
         },
         {
@@ -14522,6 +14877,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -14554,6 +14910,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -14580,6 +14937,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 280, unit: 'ms' },
         },
         {
@@ -14612,6 +14970,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -14644,6 +15003,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
       ],
@@ -14656,7 +15016,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'duration',
       usageContracts: [{ property: 'transition-duration', profile: 'duration' }],
-      recipeInputs: [],
       observedProperties: [],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 400, unit: 'ms' } },
@@ -14688,6 +15047,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 400, unit: 'ms' },
         },
         {
@@ -14720,6 +15080,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -14752,6 +15113,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -14778,6 +15140,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 400, unit: 'ms' },
         },
         {
@@ -14810,6 +15173,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -14842,6 +15206,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
       ],
@@ -14854,7 +15219,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'duration',
       usageContracts: [{ property: 'animation', profile: 'duration' }],
-      recipeInputs: [],
       observedProperties: ['animation'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 750, unit: 'ms' } },
@@ -14886,6 +15250,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 750, unit: 'ms' },
         },
         {
@@ -14918,6 +15283,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -14950,6 +15316,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -14976,6 +15343,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 750, unit: 'ms' },
         },
         {
@@ -15008,6 +15376,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -15040,6 +15409,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
       ],
@@ -15052,7 +15422,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'duration',
       usageContracts: [{ property: 'animation', profile: 'duration' }],
-      recipeInputs: [],
       observedProperties: ['animation'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 1.4, unit: 's' } },
@@ -15084,6 +15453,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.4, unit: 's' },
         },
         {
@@ -15116,6 +15486,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -15148,6 +15519,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -15174,6 +15546,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.4, unit: 's' },
         },
         {
@@ -15206,6 +15579,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -15238,6 +15612,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
       ],
@@ -15250,7 +15625,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'duration',
       usageContracts: [{ property: 'animation', profile: 'duration' }],
-      recipeInputs: [],
       observedProperties: ['animation'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 1.6, unit: 's' } },
@@ -15282,6 +15656,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.6, unit: 's' },
         },
         {
@@ -15314,6 +15689,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -15346,6 +15722,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -15372,6 +15749,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.6, unit: 's' },
         },
         {
@@ -15404,6 +15782,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -15436,6 +15815,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
       ],
@@ -15448,7 +15828,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'duration',
       usageContracts: [{ property: 'animation', profile: 'duration' }],
-      recipeInputs: [],
       observedProperties: ['animation'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 1.4, unit: 's' } },
@@ -15480,6 +15859,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.4, unit: 's' },
         },
         {
@@ -15512,6 +15892,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -15544,6 +15925,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -15570,6 +15952,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.4, unit: 's' },
         },
         {
@@ -15602,6 +15985,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -15634,6 +16018,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
       ],
@@ -15649,7 +16034,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'animation', profile: 'duration' },
         { property: 'transition', profile: 'duration' },
       ],
-      recipeInputs: [],
       observedProperties: ['animation', 'transition'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 200, unit: 'ms' } },
@@ -15681,6 +16065,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 200, unit: 'ms' },
         },
         {
@@ -15713,6 +16098,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -15745,6 +16131,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -15771,6 +16158,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 200, unit: 'ms' },
         },
         {
@@ -15803,6 +16191,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
         {
@@ -15835,6 +16224,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 5,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'ms' },
         },
       ],
@@ -15847,7 +16237,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'opacity', profile: 'opacity' }],
-      recipeInputs: [],
       observedProperties: [],
       scale: null,
       source: { status: 'supported', reason: null, value: 0.55 },
@@ -15879,6 +16268,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.55,
         },
         {
@@ -15905,6 +16295,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.55,
         },
         {
@@ -15931,6 +16322,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.55,
         },
         {
@@ -15957,6 +16349,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.55,
         },
         {
@@ -15983,6 +16376,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.55,
         },
         {
@@ -16009,6 +16403,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.55,
         },
       ],
@@ -16021,7 +16416,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'opacity', profile: 'opacity' }],
-      recipeInputs: [],
       observedProperties: [],
       scale: null,
       source: { status: 'supported', reason: null, value: 0.72 },
@@ -16053,6 +16447,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.72,
         },
         {
@@ -16079,6 +16474,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.72,
         },
         {
@@ -16105,6 +16501,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.72,
         },
         {
@@ -16131,6 +16528,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.72,
         },
         {
@@ -16157,6 +16555,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.72,
         },
         {
@@ -16183,6 +16582,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.72,
         },
       ],
@@ -16195,7 +16595,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'opacity', profile: 'opacity' }],
-      recipeInputs: [],
       observedProperties: [],
       scale: null,
       source: { status: 'supported', reason: null, value: 0.4 },
@@ -16227,6 +16626,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.4,
         },
         {
@@ -16253,6 +16653,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.4,
         },
         {
@@ -16279,6 +16680,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.4,
         },
         {
@@ -16305,6 +16707,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.4,
         },
         {
@@ -16331,6 +16734,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.4,
         },
         {
@@ -16357,6 +16761,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.4,
         },
       ],
@@ -16369,7 +16774,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'z-index', profile: 'layer-index' }],
-      recipeInputs: [],
       observedProperties: ['z-index'],
       scale: null,
       source: { status: 'supported', reason: null, value: 1000 },
@@ -16401,6 +16805,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1000,
         },
         {
@@ -16427,6 +16832,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1000,
         },
         {
@@ -16453,6 +16859,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1000,
         },
         {
@@ -16479,6 +16886,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1000,
         },
         {
@@ -16505,6 +16913,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1000,
         },
         {
@@ -16531,6 +16940,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1000,
         },
       ],
@@ -16543,7 +16953,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'z-index', profile: 'layer-index' }],
-      recipeInputs: [],
       observedProperties: ['z-index'],
       scale: null,
       source: { status: 'supported', reason: null, value: 1100 },
@@ -16575,6 +16984,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1100,
         },
         {
@@ -16601,6 +17011,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1100,
         },
         {
@@ -16627,6 +17038,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1100,
         },
         {
@@ -16653,6 +17065,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1100,
         },
         {
@@ -16679,6 +17092,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1100,
         },
         {
@@ -16705,6 +17119,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1100,
         },
       ],
@@ -16717,7 +17132,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'z-index', profile: 'layer-index' }],
-      recipeInputs: [],
       observedProperties: ['z-index'],
       scale: null,
       source: { status: 'supported', reason: null, value: 1100 },
@@ -16749,6 +17163,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1100,
         },
         {
@@ -16775,6 +17190,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1100,
         },
         {
@@ -16801,6 +17217,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1100,
         },
         {
@@ -16827,6 +17244,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1100,
         },
         {
@@ -16853,6 +17271,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1100,
         },
         {
@@ -16879,6 +17298,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1100,
         },
       ],
@@ -16891,7 +17311,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'z-index', profile: 'layer-index' }],
-      recipeInputs: [],
       observedProperties: ['z-index'],
       scale: null,
       source: { status: 'supported', reason: null, value: 1150 },
@@ -16923,6 +17342,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1150,
         },
         {
@@ -16949,6 +17369,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1150,
         },
         {
@@ -16975,6 +17396,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1150,
         },
         {
@@ -17001,6 +17423,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1150,
         },
         {
@@ -17027,6 +17450,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1150,
         },
         {
@@ -17053,6 +17477,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1150,
         },
       ],
@@ -17065,7 +17490,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'z-index', profile: 'layer-index' }],
-      recipeInputs: [],
       observedProperties: ['z-index'],
       scale: null,
       source: { status: 'supported', reason: null, value: 1200 },
@@ -17097,6 +17521,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1200,
         },
         {
@@ -17123,6 +17548,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1200,
         },
         {
@@ -17149,6 +17575,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1200,
         },
         {
@@ -17175,6 +17602,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1200,
         },
         {
@@ -17201,6 +17629,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1200,
         },
         {
@@ -17227,6 +17656,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1200,
         },
       ],
@@ -17239,7 +17669,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'z-index', profile: 'layer-index' }],
-      recipeInputs: [],
       observedProperties: ['z-index'],
       scale: null,
       source: { status: 'supported', reason: null, value: 1300 },
@@ -17271,6 +17700,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1300,
         },
         {
@@ -17297,6 +17727,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1300,
         },
         {
@@ -17323,6 +17754,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1300,
         },
         {
@@ -17349,6 +17781,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1300,
         },
         {
@@ -17375,6 +17808,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1300,
         },
         {
@@ -17401,6 +17835,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1300,
         },
       ],
@@ -17413,7 +17848,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'z-index', profile: 'layer-index' }],
-      recipeInputs: [],
       observedProperties: ['z-index'],
       scale: null,
       source: { status: 'supported', reason: null, value: 1350 },
@@ -17445,6 +17879,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1350,
         },
         {
@@ -17471,6 +17906,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1350,
         },
         {
@@ -17497,6 +17933,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1350,
         },
         {
@@ -17523,6 +17960,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1350,
         },
         {
@@ -17549,6 +17987,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1350,
         },
         {
@@ -17575,6 +18014,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1350,
         },
       ],
@@ -17587,7 +18027,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'z-index', profile: 'layer-index' }],
-      recipeInputs: [],
       observedProperties: ['z-index'],
       scale: null,
       source: { status: 'supported', reason: null, value: 1400 },
@@ -17619,6 +18058,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1400,
         },
         {
@@ -17645,6 +18085,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1400,
         },
         {
@@ -17671,6 +18112,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1400,
         },
         {
@@ -17697,6 +18139,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1400,
         },
         {
@@ -17723,6 +18166,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1400,
         },
         {
@@ -17749,6 +18193,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 0,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1400,
         },
       ],
@@ -17766,7 +18211,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'box-shadow', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color', 'box-shadow', 'color'],
       scale: null,
       source: {
@@ -17820,6 +18264,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.994, 0.002, 255] },
         },
         {
@@ -17852,6 +18297,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.994, 0.002, 255] },
         },
         {
@@ -17884,6 +18330,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.994, 0.002, 255] },
         },
         {
@@ -17916,6 +18363,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.21, 0.04, 245] },
         },
         {
@@ -17948,6 +18396,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.21, 0.04, 245] },
         },
         {
@@ -17980,6 +18429,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.21, 0.04, 245] },
         },
       ],
@@ -18001,7 +18451,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'box-shadow', profile: 'color' },
         { property: 'stroke', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'background',
         'background-color',
@@ -18064,6 +18513,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 255] },
         },
         {
@@ -18096,6 +18546,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 255] },
         },
         {
@@ -18128,6 +18579,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 255] },
         },
         {
@@ -18160,6 +18612,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.045, 245] },
         },
         {
@@ -18192,6 +18645,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.045, 245] },
         },
         {
@@ -18224,6 +18678,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.045, 245] },
         },
       ],
@@ -18239,7 +18694,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: ['accent.solid', 'surface.raised'],
       observedProperties: ['background', 'background-color'],
       scale: null,
       source: {
@@ -18329,6 +18783,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid', 'surface.raised'],
           resolvedValue: { colorSpace: 'oklch', components: [0.97, 0.0132, 255.9] },
         },
         {
@@ -18396,6 +18851,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid', 'surface.raised'],
           resolvedValue: { colorSpace: 'oklch', components: [0.97, 0.0132, 255.9] },
         },
         {
@@ -18463,6 +18919,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid', 'surface.raised'],
           resolvedValue: { colorSpace: 'oklch', components: [0.97, 0.0132, 255.9] },
         },
         {
@@ -18513,6 +18970,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['surface.raised'],
           resolvedValue: { colorSpace: 'oklch', components: [0.298, 0.04387, 245] },
         },
         {
@@ -18563,6 +19021,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['surface.raised'],
           resolvedValue: { colorSpace: 'oklch', components: [0.298, 0.04387, 245] },
         },
         {
@@ -18613,6 +19072,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['surface.raised'],
           resolvedValue: { colorSpace: 'oklch', components: [0.298, 0.04387, 245] },
         },
       ],
@@ -18628,7 +19088,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: ['accent.solid', 'surface.raised'],
       observedProperties: ['background', 'background-color'],
       scale: null,
       source: {
@@ -18718,6 +19177,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid', 'surface.raised'],
           resolvedValue: { colorSpace: 'oklch', components: [0.94, 0.0264, 256.8] },
         },
         {
@@ -18785,6 +19245,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid', 'surface.raised'],
           resolvedValue: { colorSpace: 'oklch', components: [0.94, 0.0264, 256.8] },
         },
         {
@@ -18852,6 +19313,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid', 'surface.raised'],
           resolvedValue: { colorSpace: 'oklch', components: [0.94, 0.0264, 256.8] },
         },
         {
@@ -18902,6 +19364,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['surface.raised'],
           resolvedValue: { colorSpace: 'oklch', components: [0.3232, 0.0423, 245] },
         },
         {
@@ -18952,6 +19415,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['surface.raised'],
           resolvedValue: { colorSpace: 'oklch', components: [0.3232, 0.0423, 245] },
         },
         {
@@ -19002,6 +19466,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['surface.raised'],
           resolvedValue: { colorSpace: 'oklch', components: [0.3232, 0.0423, 245] },
         },
       ],
@@ -19019,7 +19484,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'fill', profile: 'color' },
         { property: 'stroke', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color', 'fill', 'stroke'],
       scale: null,
       source: {
@@ -19073,6 +19537,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.96, 0.005, 255] },
         },
         {
@@ -19105,6 +19570,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.96, 0.005, 255] },
         },
         {
@@ -19137,6 +19603,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.96, 0.005, 255] },
         },
         {
@@ -19169,6 +19636,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.11, 0.03, 245] },
         },
         {
@@ -19201,6 +19669,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.11, 0.03, 245] },
         },
         {
@@ -19233,6 +19702,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.11, 0.03, 245] },
         },
       ],
@@ -19248,7 +19718,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: ['accent.solid', 'surface.base'],
       observedProperties: ['background', 'background-color'],
       scale: null,
       source: {
@@ -19336,6 +19805,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.96436, 0.01508, 255.9] },
         },
         {
@@ -19401,6 +19871,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.96436, 0.01508, 255.9] },
         },
         {
@@ -19466,6 +19937,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.96436, 0.01508, 255.9] },
         },
         {
@@ -19515,6 +19987,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.22975, 0.039, 245] },
         },
         {
@@ -19564,6 +20037,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.22975, 0.039, 245] },
         },
         {
@@ -19613,6 +20087,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.22975, 0.039, 245] },
         },
       ],
@@ -19628,7 +20103,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: ['accent.solid', 'surface.base'],
       observedProperties: ['background', 'background-color'],
       scale: null,
       source: {
@@ -19716,6 +20190,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.93472, 0.02816, 256.8] },
         },
         {
@@ -19781,6 +20256,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.93472, 0.02816, 256.8] },
         },
         {
@@ -19846,6 +20322,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.93472, 0.02816, 256.8] },
         },
         {
@@ -19895,6 +20372,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.2574, 0.0376, 245] },
         },
         {
@@ -19944,6 +20422,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.2574, 0.0376, 245] },
         },
         {
@@ -19993,6 +20472,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.2574, 0.0376, 245] },
         },
       ],
@@ -20008,7 +20488,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color'],
       scale: null,
       source: {
@@ -20079,6 +20558,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245] },
         },
         {
@@ -20128,6 +20608,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245] },
         },
         {
@@ -20177,6 +20658,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245] },
         },
         {
@@ -20226,6 +20708,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.045, 245] },
         },
         {
@@ -20275,6 +20758,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.045, 245] },
         },
         {
@@ -20324,6 +20808,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.045, 245] },
         },
       ],
@@ -20336,7 +20821,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'background', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['background'],
       scale: null,
       source: {
@@ -20407,6 +20891,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.96, 0.005, 255] },
         },
         {
@@ -20456,6 +20941,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.96, 0.005, 255] },
         },
         {
@@ -20505,6 +20991,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.96, 0.005, 255] },
         },
         {
@@ -20554,6 +21041,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.21, 0.04, 245] },
         },
         {
@@ -20603,6 +21091,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.21, 0.04, 245] },
         },
         {
@@ -20652,6 +21141,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.21, 0.04, 245] },
         },
       ],
@@ -20667,7 +21157,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color'],
       scale: null,
       source: {
@@ -20721,6 +21210,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.984, 0.003, 255] },
         },
         {
@@ -20753,6 +21243,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.984, 0.003, 255] },
         },
         {
@@ -20785,6 +21276,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.984, 0.003, 255] },
         },
         {
@@ -20817,6 +21309,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.15, 0.035, 245] },
         },
         {
@@ -20849,6 +21342,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.15, 0.035, 245] },
         },
         {
@@ -20881,6 +21375,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.15, 0.035, 245] },
         },
       ],
@@ -20898,7 +21393,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'color', profile: 'color' },
         { property: 'scrollbar-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color', 'scrollbar-color'],
       scale: null,
       source: {
@@ -20952,6 +21446,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0, 0, 0] },
         },
         {
@@ -20984,6 +21479,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0, 0, 0] },
         },
         {
@@ -21016,6 +21512,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0, 0, 0] },
         },
         {
@@ -21048,6 +21545,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
         {
@@ -21080,6 +21578,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
         {
@@ -21112,6 +21611,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
       ],
@@ -21142,7 +21642,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'color', profile: 'color' },
         { property: 'outline', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'background',
         'background-color',
@@ -21214,6 +21713,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255] },
         },
         {
@@ -21246,6 +21746,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255] },
         },
         {
@@ -21278,6 +21779,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255] },
         },
         {
@@ -21310,6 +21812,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250] },
         },
         {
@@ -21342,6 +21845,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250] },
         },
         {
@@ -21374,6 +21878,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250] },
         },
       ],
@@ -21403,7 +21908,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'outline', profile: 'color' },
         { property: 'box-shadow', profile: 'color' },
       ],
-      recipeInputs: ['border.ink'],
       observedProperties: [
         'background',
         'background-color',
@@ -21491,6 +21995,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['border.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.48 },
         },
         {
@@ -21540,6 +22045,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['border.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.48 },
         },
         {
@@ -21589,6 +22095,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['border.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.48 },
         },
         {
@@ -21638,6 +22145,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['border.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.48 },
         },
         {
@@ -21687,6 +22195,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['border.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.48 },
         },
         {
@@ -21736,6 +22245,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['border.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.48 },
         },
       ],
@@ -21755,7 +22265,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'border-block-start', profile: 'color' },
         { property: 'border-top', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'background',
         'background-color',
@@ -21816,6 +22325,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.003, 255] },
         },
         {
@@ -21848,6 +22358,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.003, 255] },
         },
         {
@@ -21880,6 +22391,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.003, 255] },
         },
         {
@@ -21912,6 +22424,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.33, 0.03, 245] },
         },
         {
@@ -21944,6 +22457,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.33, 0.03, 245] },
         },
         {
@@ -21976,6 +22490,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.33, 0.03, 245] },
         },
       ],
@@ -22000,7 +22515,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'border-top', profile: 'color' },
         { property: 'box-shadow', profile: 'color' },
       ],
-      recipeInputs: ['border.ink'],
       observedProperties: [
         'background',
         'background-color',
@@ -22083,6 +22597,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['border.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.19 },
         },
         {
@@ -22132,6 +22647,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['border.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.19 },
         },
         {
@@ -22181,6 +22697,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['border.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.19 },
         },
         {
@@ -22230,6 +22747,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['border.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.19 },
         },
         {
@@ -22279,6 +22797,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['border.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.19 },
         },
         {
@@ -22328,6 +22847,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['border.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.19 },
         },
       ],
@@ -22348,7 +22868,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'border-inline-start', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: ['border.ink'],
       observedProperties: [
         'background',
         'background-color',
@@ -22427,6 +22946,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['border.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.58 },
         },
         {
@@ -22476,6 +22996,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['border.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.58 },
         },
         {
@@ -22525,6 +23046,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['border.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.58 },
         },
         {
@@ -22574,6 +23096,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['border.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.58 },
         },
         {
@@ -22623,6 +23146,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['border.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.58 },
         },
         {
@@ -22672,6 +23196,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['border.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.58 },
         },
       ],
@@ -22687,7 +23212,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'border', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'border'],
       scale: null,
       source: {
@@ -22741,6 +23265,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'srgb', components: [0, 0, 0], alpha: 0 },
         },
         {
@@ -22773,6 +23298,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'srgb', components: [0, 0, 0], alpha: 0 },
         },
         {
@@ -22805,6 +23331,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'srgb', components: [0, 0, 0], alpha: 0 },
         },
         {
@@ -22854,6 +23381,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.58 },
         },
         {
@@ -22903,6 +23431,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.58 },
         },
         {
@@ -22952,6 +23481,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.58 },
         },
       ],
@@ -22970,7 +23500,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'color', profile: 'color' },
         { property: 'fill', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color', 'border', 'color', 'fill'],
       scale: null,
       source: {
@@ -23024,6 +23553,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.32, 0.014, 245] },
         },
         {
@@ -23056,6 +23586,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.32, 0.014, 245] },
         },
         {
@@ -23088,6 +23619,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.32, 0.014, 245] },
         },
         {
@@ -23120,6 +23652,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.02, 245] },
         },
         {
@@ -23152,6 +23685,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.02, 245] },
         },
         {
@@ -23184,6 +23718,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.02, 245] },
         },
       ],
@@ -23199,7 +23734,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'color'],
       scale: null,
       source: {
@@ -23253,6 +23787,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.012, 245] },
         },
         {
@@ -23285,6 +23820,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.012, 245] },
         },
         {
@@ -23317,6 +23853,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.012, 245] },
         },
         {
@@ -23349,6 +23886,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.02, 245] },
         },
         {
@@ -23381,6 +23919,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.02, 245] },
         },
         {
@@ -23413,6 +23952,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.02, 245] },
         },
       ],
@@ -23428,7 +23968,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'color'],
       scale: null,
       source: {
@@ -23482,6 +24021,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.52, 0.01, 245] },
         },
         {
@@ -23514,6 +24054,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.52, 0.01, 245] },
         },
         {
@@ -23546,6 +24087,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.52, 0.01, 245] },
         },
         {
@@ -23578,6 +24120,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.64, 0.02, 245] },
         },
         {
@@ -23610,6 +24153,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.64, 0.02, 245] },
         },
         {
@@ -23642,6 +24186,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.64, 0.02, 245] },
         },
       ],
@@ -23658,7 +24203,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'color', profile: 'color' },
         { property: 'fill', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'color', 'fill'],
       scale: null,
       source: {
@@ -23729,6 +24273,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.994, 0.002, 255] },
         },
         {
@@ -23778,6 +24323,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.994, 0.002, 255] },
         },
         {
@@ -23827,6 +24373,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.994, 0.002, 255] },
         },
         {
@@ -23876,6 +24423,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245] },
         },
         {
@@ -23925,6 +24473,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245] },
         },
         {
@@ -23974,6 +24523,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245] },
         },
       ],
@@ -23993,7 +24543,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'caret-color', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'background',
         'background-color',
@@ -24054,6 +24603,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245] },
         },
         {
@@ -24086,6 +24636,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245] },
         },
         {
@@ -24118,6 +24669,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245] },
         },
         {
@@ -24150,6 +24702,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245] },
         },
         {
@@ -24182,6 +24735,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245] },
         },
         {
@@ -24214,6 +24768,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245] },
         },
       ],
@@ -24229,7 +24784,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'border-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'border-color'],
       scale: null,
       source: {
@@ -24283,6 +24837,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.006, 255] },
         },
         {
@@ -24315,6 +24870,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.006, 255] },
         },
         {
@@ -24347,6 +24903,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.006, 255] },
         },
         {
@@ -24379,6 +24936,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.3, 0.015, 245] },
         },
         {
@@ -24411,6 +24969,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.3, 0.015, 245] },
         },
         {
@@ -24443,6 +25002,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.3, 0.015, 245] },
         },
       ],
@@ -24459,7 +25019,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'box-shadow', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'box-shadow', 'color'],
       scale: null,
       source: {
@@ -24513,6 +25072,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
         {
@@ -24545,6 +25105,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
         {
@@ -24577,6 +25138,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
         {
@@ -24609,6 +25171,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.15, 0.035, 245] },
         },
         {
@@ -24641,6 +25204,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.15, 0.035, 245] },
         },
         {
@@ -24673,6 +25237,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.15, 0.035, 245] },
         },
       ],
@@ -24688,7 +25253,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'color'],
       scale: null,
       source: {
@@ -24742,6 +25306,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.22, 270] },
         },
         {
@@ -24774,6 +25339,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.22, 270] },
         },
         {
@@ -24806,6 +25372,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.22, 270] },
         },
         {
@@ -24838,6 +25405,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.14, 270] },
         },
         {
@@ -24870,6 +25438,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.14, 270] },
         },
         {
@@ -24902,6 +25471,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.14, 270] },
         },
       ],
@@ -24917,7 +25487,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: ['accent.text'],
       observedProperties: ['background-color', 'color'],
       scale: null,
       source: {
@@ -24988,6 +25557,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.text'],
           resolvedValue: { colorSpace: 'oklch', components: [0.37, 0.22, 270] },
         },
         {
@@ -25037,6 +25607,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.text'],
           resolvedValue: { colorSpace: 'oklch', components: [0.37, 0.22, 270] },
         },
         {
@@ -25086,6 +25657,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.text'],
           resolvedValue: { colorSpace: 'oklch', components: [0.37, 0.22, 270] },
         },
         {
@@ -25135,6 +25707,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.text'],
           resolvedValue: { colorSpace: 'oklch', components: [0.64, 0.14, 270] },
         },
         {
@@ -25184,6 +25757,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.text'],
           resolvedValue: { colorSpace: 'oklch', components: [0.64, 0.14, 270] },
         },
         {
@@ -25233,6 +25807,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.text'],
           resolvedValue: { colorSpace: 'oklch', components: [0.64, 0.14, 270] },
         },
       ],
@@ -25261,7 +25836,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'outline', profile: 'color' },
         { property: 'stroke', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'accent-color',
         'background',
@@ -25331,6 +25905,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.22, 270] },
         },
         {
@@ -25363,6 +25938,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.22, 270] },
         },
         {
@@ -25395,6 +25971,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.22, 270] },
         },
         {
@@ -25427,6 +26004,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.14, 270] },
         },
         {
@@ -25459,6 +26037,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.14, 270] },
         },
         {
@@ -25491,6 +26070,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.14, 270] },
         },
       ],
@@ -25506,7 +26086,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: ['accent.solid'],
       observedProperties: ['background-color'],
       scale: null,
       source: {
@@ -25578,6 +26157,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.35, 0.22, 270] },
         },
         {
@@ -25628,6 +26208,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.35, 0.22, 270] },
         },
         {
@@ -25678,6 +26259,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.35, 0.22, 270] },
         },
         {
@@ -25728,6 +26310,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.57, 0.14, 270] },
         },
         {
@@ -25778,6 +26361,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.57, 0.14, 270] },
         },
         {
@@ -25828,6 +26412,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.57, 0.14, 270] },
         },
       ],
@@ -25843,7 +26428,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: ['accent.solid'],
       observedProperties: ['background', 'background-color'],
       scale: null,
       source: {
@@ -25915,6 +26499,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.39, 0.22, 270] },
         },
         {
@@ -25965,6 +26550,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.39, 0.22, 270] },
         },
         {
@@ -26015,6 +26601,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.39, 0.22, 270] },
         },
         {
@@ -26065,6 +26652,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.61, 0.14, 270] },
         },
         {
@@ -26115,6 +26703,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.61, 0.14, 270] },
         },
         {
@@ -26165,6 +26754,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.61, 0.14, 270] },
         },
       ],
@@ -26181,7 +26771,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'border-color', profile: 'color' },
       ],
-      recipeInputs: ['accent.solid'],
       observedProperties: ['background', 'background-color', 'border-color'],
       scale: null,
       source: {
@@ -26252,6 +26841,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.22, 270] },
         },
         {
@@ -26301,6 +26891,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.22, 270] },
         },
         {
@@ -26350,6 +26941,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.22, 270] },
         },
         {
@@ -26399,6 +26991,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.64, 0.14, 270] },
         },
         {
@@ -26448,6 +27041,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.64, 0.14, 270] },
         },
         {
@@ -26497,6 +27091,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.64, 0.14, 270] },
         },
       ],
@@ -26512,7 +27107,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: ['accent.solid', 'surface.base'],
       observedProperties: ['background', 'background-color'],
       scale: null,
       source: {
@@ -26599,6 +27193,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.93472, 0.02816, 256.8] },
         },
         {
@@ -26664,6 +27259,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.93472, 0.02816, 256.8] },
         },
         {
@@ -26729,6 +27325,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.93472, 0.02816, 256.8] },
         },
         {
@@ -26794,6 +27391,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.2712, 0.052, 248] },
         },
         {
@@ -26859,6 +27457,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.2712, 0.052, 248] },
         },
         {
@@ -26924,6 +27523,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.2712, 0.052, 248] },
         },
       ],
@@ -26939,7 +27539,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'border-color', profile: 'color' },
       ],
-      recipeInputs: ['accent.solid'],
       observedProperties: ['background-color', 'border-color'],
       scale: null,
       source: {
@@ -27010,6 +27609,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.22, 270], alpha: 0.4 },
         },
         {
@@ -27059,6 +27659,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.22, 270], alpha: 0.4 },
         },
         {
@@ -27108,6 +27709,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.22, 270], alpha: 0.4 },
         },
         {
@@ -27157,6 +27759,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.14, 270], alpha: 0.4 },
         },
         {
@@ -27206,6 +27809,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.14, 270], alpha: 0.4 },
         },
         {
@@ -27255,6 +27859,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.14, 270], alpha: 0.4 },
         },
       ],
@@ -27274,7 +27879,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'padding-block', profile: 'nonnegative-length' },
         { property: 'stroke-width', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'box-shadow',
         'margin-block',
@@ -27313,6 +27917,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'px' },
         },
         {
@@ -27339,6 +27944,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'px' },
         },
         {
@@ -27365,6 +27971,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'px' },
         },
         {
@@ -27391,6 +27998,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'px' },
         },
         {
@@ -27417,6 +28025,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'px' },
         },
         {
@@ -27443,6 +28052,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'px' },
         },
       ],
@@ -27461,7 +28071,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'padding-block', profile: 'nonnegative-length' },
         { property: 'stroke-width', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'box-shadow',
         'margin-block',
@@ -27499,6 +28108,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'px' },
         },
         {
@@ -27525,6 +28135,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'px' },
         },
         {
@@ -27551,6 +28162,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'px' },
         },
         {
@@ -27577,6 +28189,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'px' },
         },
         {
@@ -27603,6 +28216,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'px' },
         },
         {
@@ -27629,6 +28243,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'px' },
         },
       ],
@@ -27645,7 +28260,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'box-shadow', profile: 'color' },
         { property: 'stroke', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'box-shadow', 'stroke'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{surface.raised}' },
@@ -27708,6 +28322,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 255] },
         },
         {
@@ -27757,6 +28372,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 255] },
         },
         {
@@ -27806,6 +28422,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 255] },
         },
         {
@@ -27855,6 +28472,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.045, 245] },
         },
         {
@@ -27904,6 +28522,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.045, 245] },
         },
         {
@@ -27953,6 +28572,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.045, 245] },
         },
       ],
@@ -27971,7 +28591,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'outline', profile: 'color' },
         { property: 'stroke', profile: 'color' },
       ],
-      recipeInputs: ['accent.solid'],
       observedProperties: ['background-color', 'border-color', 'box-shadow', 'outline', 'stroke'],
       scale: null,
       source: {
@@ -28043,6 +28662,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.55, 0.16, 270] },
         },
         {
@@ -28092,6 +28712,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.55, 0.16, 270] },
         },
         {
@@ -28141,6 +28762,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.55, 0.16, 270] },
         },
         {
@@ -28190,6 +28812,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.7, 0.14, 270] },
         },
         {
@@ -28239,6 +28862,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.7, 0.14, 270] },
         },
         {
@@ -28288,6 +28912,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['accent.solid'],
           resolvedValue: { colorSpace: 'oklch', components: [0.7, 0.14, 270] },
         },
       ],
@@ -28303,7 +28928,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'box-shadow', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'box-shadow'],
       scale: null,
       source: {
@@ -28357,6 +28981,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.15, 0.035, 245] },
         },
         {
@@ -28389,6 +29014,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.15, 0.035, 245] },
         },
         {
@@ -28421,6 +29047,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.15, 0.035, 245] },
         },
         {
@@ -28453,6 +29080,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
         {
@@ -28485,6 +29113,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
         {
@@ -28517,6 +29146,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
       ],
@@ -28532,7 +29162,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'block-size', profile: 'nonnegative-length' },
         { property: 'inline-size', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['block-size', 'inline-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 0.625, unit: 'rem' } },
@@ -28564,6 +29193,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -28590,6 +29220,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -28616,6 +29247,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -28642,6 +29274,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -28668,6 +29301,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -28694,6 +29328,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
       ],
@@ -28710,7 +29345,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'scrollbar-color', profile: 'color' },
       ],
-      recipeInputs: ['polarity.ink'],
       observedProperties: ['background', 'background-color', 'scrollbar-color'],
       scale: null,
       source: {
@@ -28781,6 +29415,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['polarity.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.04 },
         },
         {
@@ -28830,6 +29465,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['polarity.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.04 },
         },
         {
@@ -28879,6 +29515,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['polarity.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.04 },
         },
         {
@@ -28928,6 +29565,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['polarity.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0], alpha: 0.04 },
         },
         {
@@ -28977,6 +29615,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['polarity.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0], alpha: 0.04 },
         },
         {
@@ -29026,6 +29665,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['polarity.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0], alpha: 0.04 },
         },
       ],
@@ -29042,7 +29682,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'scrollbar-color', profile: 'color' },
       ],
-      recipeInputs: ['polarity.ink'],
       observedProperties: ['background', 'background-color', 'scrollbar-color'],
       scale: null,
       source: {
@@ -29113,6 +29752,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['polarity.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.45 },
         },
         {
@@ -29162,6 +29802,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['polarity.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.45 },
         },
         {
@@ -29211,6 +29852,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['polarity.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.45 },
         },
         {
@@ -29260,6 +29902,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['polarity.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0], alpha: 0.45 },
         },
         {
@@ -29309,6 +29952,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['polarity.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0], alpha: 0.45 },
         },
         {
@@ -29358,6 +30002,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['polarity.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0], alpha: 0.45 },
         },
       ],
@@ -29373,7 +30018,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: ['polarity.ink'],
       observedProperties: ['background', 'background-color'],
       scale: null,
       source: {
@@ -29445,6 +30089,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['polarity.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.65 },
         },
         {
@@ -29495,6 +30140,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['polarity.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.65 },
         },
         {
@@ -29545,6 +30191,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['polarity.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [0, 0, 0], alpha: 0.65 },
         },
         {
@@ -29595,6 +30242,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['polarity.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0], alpha: 0.65 },
         },
         {
@@ -29645,6 +30293,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['polarity.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0], alpha: 0.65 },
         },
         {
@@ -29695,6 +30344,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['polarity.ink'],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0], alpha: 0.65 },
         },
       ],
@@ -29710,7 +30360,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color'],
       scale: null,
       source: {
@@ -29764,6 +30413,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.03, 245], alpha: 0.5 },
         },
         {
@@ -29796,6 +30446,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.03, 245], alpha: 0.5 },
         },
         {
@@ -29828,6 +30479,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.03, 245], alpha: 0.5 },
         },
         {
@@ -29860,6 +30512,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.08, 0.02, 245], alpha: 0.65 },
         },
         {
@@ -29892,6 +30545,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.08, 0.02, 245], alpha: 0.65 },
         },
         {
@@ -29924,6 +30578,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.08, 0.02, 245], alpha: 0.65 },
         },
       ],
@@ -29936,7 +30591,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'backdrop-filter', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['backdrop-filter'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 4, unit: 'px' } },
@@ -29968,6 +30622,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 4, unit: 'px' },
         },
         {
@@ -29994,6 +30649,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 4, unit: 'px' },
         },
         {
@@ -30020,6 +30676,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 4, unit: 'px' },
         },
         {
@@ -30046,6 +30703,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 4, unit: 'px' },
         },
         {
@@ -30072,6 +30730,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 4, unit: 'px' },
         },
         {
@@ -30098,6 +30757,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 4, unit: 'px' },
         },
       ],
@@ -30110,7 +30770,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: [],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.6}' },
@@ -30159,6 +30818,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -30202,6 +30862,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -30245,6 +30906,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -30288,6 +30950,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -30331,6 +30994,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -30374,6 +31038,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
       ],
@@ -30386,7 +31051,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'border-radius', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: [],
       scale: null,
       source: { status: 'supported', reason: null, value: '{radius.large}' },
@@ -30435,6 +31099,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -30478,6 +31143,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -30521,6 +31187,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -30564,6 +31231,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -30607,6 +31275,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -30650,6 +31319,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
       ],
@@ -30668,7 +31338,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'stop-color', profile: 'color' },
         { property: 'stroke', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color', 'fill', 'stop-color', 'stroke'],
       scale: null,
       source: {
@@ -30722,6 +31391,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.33, 0.121, 8] },
         },
         {
@@ -30754,6 +31424,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.33, 0.121, 8] },
         },
         {
@@ -30786,6 +31457,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.33, 0.121, 8] },
         },
         {
@@ -30818,6 +31490,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.58, 0.089, 205] },
         },
         {
@@ -30850,6 +31523,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.58, 0.089, 205] },
         },
         {
@@ -30882,6 +31556,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.58, 0.089, 205] },
         },
       ],
@@ -30900,7 +31575,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'stop-color', profile: 'color' },
         { property: 'stroke', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color', 'fill', 'stop-color', 'stroke'],
       scale: null,
       source: {
@@ -30954,6 +31628,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.36, 0.069, 80] },
         },
         {
@@ -30986,6 +31661,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.36, 0.069, 80] },
         },
         {
@@ -31018,6 +31694,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.36, 0.069, 80] },
         },
         {
@@ -31050,6 +31727,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.67, 0.275, 330] },
         },
         {
@@ -31082,6 +31760,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.67, 0.275, 330] },
         },
         {
@@ -31114,6 +31793,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.67, 0.275, 330] },
         },
       ],
@@ -31132,7 +31812,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'stop-color', profile: 'color' },
         { property: 'stroke', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color', 'fill', 'stop-color', 'stroke'],
       scale: null,
       source: {
@@ -31186,6 +31865,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.4, 0.082, 160] },
         },
         {
@@ -31218,6 +31898,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.4, 0.082, 160] },
         },
         {
@@ -31250,6 +31931,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.4, 0.082, 160] },
         },
         {
@@ -31282,6 +31964,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.69, 0.182, 44] },
         },
         {
@@ -31314,6 +31997,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.69, 0.182, 44] },
         },
         {
@@ -31346,6 +32030,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.69, 0.182, 44] },
         },
       ],
@@ -31364,7 +32049,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'stop-color', profile: 'color' },
         { property: 'stroke', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color', 'fill', 'stop-color', 'stroke'],
       scale: null,
       source: {
@@ -31418,6 +32102,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.087, 235] },
         },
         {
@@ -31450,6 +32135,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.087, 235] },
         },
         {
@@ -31482,6 +32168,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.087, 235] },
         },
         {
@@ -31514,6 +32201,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.7, 0.144, 160] },
         },
         {
@@ -31546,6 +32234,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.7, 0.144, 160] },
         },
         {
@@ -31578,6 +32267,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.7, 0.144, 160] },
         },
       ],
@@ -31596,7 +32286,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'stop-color', profile: 'color' },
         { property: 'stroke', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color', 'fill', 'stop-color', 'stroke'],
       scale: null,
       source: {
@@ -31650,6 +32339,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.53, 0.218, 330] },
         },
         {
@@ -31682,6 +32372,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.53, 0.218, 330] },
         },
         {
@@ -31714,6 +32405,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.53, 0.218, 330] },
         },
         {
@@ -31746,6 +32438,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.78, 0.12, 8] },
         },
         {
@@ -31778,6 +32471,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.78, 0.12, 8] },
         },
         {
@@ -31810,6 +32504,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.78, 0.12, 8] },
         },
       ],
@@ -31828,7 +32523,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'stop-color', profile: 'color' },
         { property: 'stroke', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color', 'fill', 'stop-color', 'stroke'],
       scale: null,
       source: {
@@ -31882,6 +32576,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.56, 0.148, 44] },
         },
         {
@@ -31914,6 +32609,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.56, 0.148, 44] },
         },
         {
@@ -31946,6 +32642,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.56, 0.148, 44] },
         },
         {
@@ -31978,6 +32675,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.81, 0.152, 80] },
         },
         {
@@ -32010,6 +32708,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.81, 0.152, 80] },
         },
         {
@@ -32042,6 +32741,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.81, 0.152, 80] },
         },
       ],
@@ -32060,7 +32760,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'stop-color', profile: 'color' },
         { property: 'stroke', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color', 'fill', 'stop-color', 'stroke'],
       scale: null,
       source: {
@@ -32114,6 +32813,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.59, 0.126, 120] },
         },
         {
@@ -32146,6 +32846,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.59, 0.126, 120] },
         },
         {
@@ -32178,6 +32879,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.59, 0.126, 120] },
         },
         {
@@ -32210,6 +32912,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.85, 0.078, 235] },
         },
         {
@@ -32242,6 +32945,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.85, 0.078, 235] },
         },
         {
@@ -32274,6 +32978,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.85, 0.078, 235] },
         },
       ],
@@ -32292,7 +32997,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'stop-color', profile: 'color' },
         { property: 'stroke', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color', 'fill', 'stop-color', 'stroke'],
       scale: null,
       source: {
@@ -32346,6 +33050,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.63, 0.098, 205] },
         },
         {
@@ -32378,6 +33083,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.63, 0.098, 205] },
         },
         {
@@ -32410,6 +33116,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.63, 0.098, 205] },
         },
         {
@@ -32442,6 +33149,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.89, 0.19, 120] },
         },
         {
@@ -32474,6 +33182,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.89, 0.19, 120] },
         },
         {
@@ -32506,6 +33215,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.89, 0.19, 120] },
         },
       ],
@@ -32518,7 +33228,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'gap', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: [],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.3}' },
@@ -32567,6 +33276,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -32610,6 +33320,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -32653,6 +33364,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -32696,6 +33408,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -32739,6 +33452,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -32782,6 +33496,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
       ],
@@ -32794,7 +33509,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'gap', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: [],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.2}' },
@@ -32843,6 +33557,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -32886,6 +33601,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -32929,6 +33645,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -32972,6 +33689,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -33015,6 +33733,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -33058,6 +33777,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
       ],
@@ -33070,7 +33790,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: [],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.2-5}' },
@@ -33119,6 +33838,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -33162,6 +33882,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -33205,6 +33926,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -33248,6 +33970,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -33291,6 +34014,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -33334,6 +34058,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
       ],
@@ -33346,7 +34071,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: [],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.4}' },
@@ -33395,6 +34119,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -33438,6 +34163,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -33481,6 +34207,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -33524,6 +34251,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -33567,6 +34295,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -33610,6 +34339,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
       ],
@@ -33625,7 +34355,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'color'],
       scale: null,
       source: {
@@ -33679,6 +34408,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
         {
@@ -33711,6 +34441,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
         {
@@ -33743,6 +34474,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
         {
@@ -33775,6 +34507,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.15, 0.03, 145] },
         },
         {
@@ -33807,6 +34540,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.15, 0.03, 145] },
         },
         {
@@ -33839,6 +34573,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.15, 0.03, 145] },
         },
       ],
@@ -33859,7 +34594,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'color', profile: 'color' },
         { property: 'text-decoration-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'background',
         'background-color',
@@ -33921,6 +34655,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.157, 145] },
         },
         {
@@ -33953,6 +34688,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.157, 145] },
         },
         {
@@ -33985,6 +34721,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.157, 145] },
         },
         {
@@ -34017,6 +34754,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.78, 0.14, 145] },
         },
         {
@@ -34049,6 +34787,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.78, 0.14, 145] },
         },
         {
@@ -34081,6 +34820,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.78, 0.14, 145] },
         },
       ],
@@ -34096,7 +34836,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color'],
       scale: null,
       source: {
@@ -34150,6 +34889,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.35, 0.1, 145] },
         },
         {
@@ -34182,6 +34922,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.35, 0.1, 145] },
         },
         {
@@ -34214,6 +34955,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.35, 0.1, 145] },
         },
         {
@@ -34246,6 +34988,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.62, 0.14, 145] },
         },
         {
@@ -34278,6 +35021,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.62, 0.14, 145] },
         },
         {
@@ -34310,6 +35054,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.62, 0.14, 145] },
         },
       ],
@@ -34325,7 +35070,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color'],
       scale: null,
       source: {
@@ -34379,6 +35123,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.12, 145] },
         },
         {
@@ -34411,6 +35156,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.12, 145] },
         },
         {
@@ -34443,6 +35189,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.12, 145] },
         },
         {
@@ -34475,6 +35222,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.7, 0.14, 145] },
         },
         {
@@ -34507,6 +35255,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.7, 0.14, 145] },
         },
         {
@@ -34539,6 +35288,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.7, 0.14, 145] },
         },
       ],
@@ -34554,7 +35304,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color'],
       scale: null,
       source: {
@@ -34608,6 +35357,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.945, 0.045, 145] },
         },
         {
@@ -34640,6 +35390,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.945, 0.045, 145] },
         },
         {
@@ -34672,6 +35423,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.945, 0.045, 145] },
         },
         {
@@ -34704,6 +35456,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.07, 145] },
         },
         {
@@ -34736,6 +35489,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.07, 145] },
         },
         {
@@ -34768,6 +35522,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.07, 145] },
         },
       ],
@@ -34783,7 +35538,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'color'],
       scale: null,
       source: {
@@ -34837,6 +35591,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.4, 0.127, 145] },
         },
         {
@@ -34869,6 +35624,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.4, 0.127, 145] },
         },
         {
@@ -34901,6 +35657,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.4, 0.127, 145] },
         },
         {
@@ -34933,6 +35690,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.88, 0.11, 145] },
         },
         {
@@ -34965,6 +35723,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.88, 0.11, 145] },
         },
         {
@@ -34997,6 +35756,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.88, 0.11, 145] },
         },
       ],
@@ -35014,7 +35774,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'border-color', profile: 'color' },
         { property: 'box-shadow', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color', 'border-color', 'box-shadow'],
       scale: null,
       source: {
@@ -35068,6 +35827,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.8, 0.05, 145] },
         },
         {
@@ -35100,6 +35860,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.8, 0.05, 145] },
         },
         {
@@ -35132,6 +35893,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.8, 0.05, 145] },
         },
         {
@@ -35164,6 +35926,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.09, 145] },
         },
         {
@@ -35196,6 +35959,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.09, 145] },
         },
         {
@@ -35228,6 +35992,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.09, 145] },
         },
       ],
@@ -35243,7 +36008,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: ['status.success.solid', 'text.default'],
       observedProperties: ['background-color'],
       scale: null,
       source: {
@@ -35333,6 +36097,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.success.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.392, 0.05, 181] },
         },
         {
@@ -35400,6 +36165,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.success.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.392, 0.05, 181] },
         },
         {
@@ -35467,6 +36233,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.success.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.392, 0.05, 181] },
         },
         {
@@ -35534,6 +36301,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.success.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.8304, 0.05, 181] },
         },
         {
@@ -35601,6 +36369,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.success.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.8304, 0.05, 181] },
         },
         {
@@ -35668,6 +36437,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.success.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.8304, 0.05, 181] },
         },
       ],
@@ -35680,7 +36450,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'background-color', profile: 'color' }],
-      recipeInputs: ['status.success.solid', 'surface.base'],
       observedProperties: ['background-color'],
       scale: null,
       source: {
@@ -35770,6 +36539,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.success.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.67784, 0.05, 184.6] },
         },
         {
@@ -35837,6 +36607,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.success.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.67784, 0.05, 184.6] },
         },
         {
@@ -35904,6 +36675,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.success.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.67784, 0.05, 184.6] },
         },
         {
@@ -35971,6 +36743,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.success.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.5748, 0.05, 181] },
         },
         {
@@ -36038,6 +36811,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.success.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.5748, 0.05, 181] },
         },
         {
@@ -36105,6 +36879,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.success.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.5748, 0.05, 181] },
         },
       ],
@@ -36120,7 +36895,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'color'],
       scale: null,
       source: {
@@ -36174,6 +36948,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
         {
@@ -36206,6 +36981,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
         {
@@ -36238,6 +37014,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
         {
@@ -36270,6 +37047,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.04, 75] },
         },
         {
@@ -36302,6 +37080,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.04, 75] },
         },
         {
@@ -36334,6 +37113,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.04, 75] },
         },
       ],
@@ -36355,7 +37135,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'color', profile: 'color' },
         { property: 'text-decoration', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'background',
         'background-color',
@@ -36418,6 +37197,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.54, 0.113, 75] },
         },
         {
@@ -36450,6 +37230,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.54, 0.113, 75] },
         },
         {
@@ -36482,6 +37263,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.54, 0.113, 75] },
         },
         {
@@ -36514,6 +37296,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.156, 75] },
         },
         {
@@ -36546,6 +37329,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.156, 75] },
         },
         {
@@ -36578,6 +37362,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.156, 75] },
         },
       ],
@@ -36593,7 +37378,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color'],
       scale: null,
       source: {
@@ -36647,6 +37431,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.38, 0.07, 75] },
         },
         {
@@ -36679,6 +37464,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.38, 0.07, 75] },
         },
         {
@@ -36711,6 +37497,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.38, 0.07, 75] },
         },
         {
@@ -36743,6 +37530,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.66, 0.13, 75] },
         },
         {
@@ -36775,6 +37563,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.66, 0.13, 75] },
         },
         {
@@ -36807,6 +37596,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.66, 0.13, 75] },
         },
       ],
@@ -36822,7 +37612,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color'],
       scale: null,
       source: {
@@ -36876,6 +37665,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.08, 75] },
         },
         {
@@ -36908,6 +37698,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.08, 75] },
         },
         {
@@ -36940,6 +37731,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.08, 75] },
         },
         {
@@ -36972,6 +37764,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.74, 0.156, 75] },
         },
         {
@@ -37004,6 +37797,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.74, 0.156, 75] },
         },
         {
@@ -37036,6 +37830,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.74, 0.156, 75] },
         },
       ],
@@ -37051,7 +37846,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color'],
       scale: null,
       source: {
@@ -37105,6 +37899,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.945, 0.042, 75] },
         },
         {
@@ -37137,6 +37932,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.945, 0.042, 75] },
         },
         {
@@ -37169,6 +37965,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.945, 0.042, 75] },
         },
         {
@@ -37201,6 +37998,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.06, 75] },
         },
         {
@@ -37233,6 +38031,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.06, 75] },
         },
         {
@@ -37265,6 +38064,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.06, 75] },
         },
       ],
@@ -37280,7 +38080,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'color'],
       scale: null,
       source: {
@@ -37334,6 +38133,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.4, 0.085, 75] },
         },
         {
@@ -37366,6 +38166,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.4, 0.085, 75] },
         },
         {
@@ -37398,6 +38199,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.4, 0.085, 75] },
         },
         {
@@ -37430,6 +38232,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.9, 0.08, 75] },
         },
         {
@@ -37462,6 +38265,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.9, 0.08, 75] },
         },
         {
@@ -37494,6 +38298,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.9, 0.08, 75] },
         },
       ],
@@ -37510,7 +38315,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'border-bottom', profile: 'color' },
         { property: 'border-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'border-bottom', 'border-color'],
       scale: null,
       source: {
@@ -37564,6 +38368,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.8, 0.06, 75] },
         },
         {
@@ -37596,6 +38401,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.8, 0.06, 75] },
         },
         {
@@ -37628,6 +38434,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.8, 0.06, 75] },
         },
         {
@@ -37660,6 +38467,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.1, 75] },
         },
         {
@@ -37692,6 +38500,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.1, 75] },
         },
         {
@@ -37724,6 +38533,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.1, 75] },
         },
       ],
@@ -37739,7 +38549,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: ['status.warning.solid', 'text.default'],
       observedProperties: ['background-color'],
       scale: null,
       source: {
@@ -37829,6 +38638,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.warning.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.4176, 0.05, 136.2] },
         },
         {
@@ -37896,6 +38706,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.warning.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.4176, 0.05, 136.2] },
         },
         {
@@ -37963,6 +38774,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.warning.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.4176, 0.05, 136.2] },
         },
         {
@@ -38030,6 +38842,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.warning.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.856, 0.05, 136.2] },
         },
         {
@@ -38097,6 +38910,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.warning.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.856, 0.05, 136.2] },
         },
         {
@@ -38164,6 +38978,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.warning.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.856, 0.05, 136.2] },
         },
       ],
@@ -38176,7 +38991,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'background-color', profile: 'color' }],
-      recipeInputs: ['status.warning.solid', 'surface.base'],
       observedProperties: ['background-color'],
       scale: null,
       source: {
@@ -38266,6 +39080,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.warning.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.70344, 0.05, 139.8] },
         },
         {
@@ -38333,6 +39148,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.warning.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.70344, 0.05, 139.8] },
         },
         {
@@ -38400,6 +39216,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.warning.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.70344, 0.05, 139.8] },
         },
         {
@@ -38467,6 +39284,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.warning.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.6004, 0.05, 136.2] },
         },
         {
@@ -38534,6 +39352,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.warning.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.6004, 0.05, 136.2] },
         },
         {
@@ -38601,6 +39420,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.warning.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.6004, 0.05, 136.2] },
         },
       ],
@@ -38616,7 +39436,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'color'],
       scale: null,
       source: {
@@ -38670,6 +39489,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
         {
@@ -38702,6 +39522,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
         {
@@ -38734,6 +39555,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
         {
@@ -38766,6 +39588,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.12, 0.02, 25] },
         },
         {
@@ -38798,6 +39621,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.12, 0.02, 25] },
         },
         {
@@ -38830,6 +39654,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.12, 0.02, 25] },
         },
       ],
@@ -38851,7 +39676,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'color', profile: 'color' },
         { property: 'text-decoration', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'background',
         'background-color',
@@ -38914,6 +39738,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.202, 25] },
         },
         {
@@ -38946,6 +39771,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.202, 25] },
         },
         {
@@ -38978,6 +39804,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.202, 25] },
         },
         {
@@ -39010,6 +39837,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.172, 25] },
         },
         {
@@ -39042,6 +39870,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.172, 25] },
         },
         {
@@ -39074,6 +39903,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.172, 25] },
         },
       ],
@@ -39089,7 +39919,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color'],
       scale: null,
       source: {
@@ -39143,6 +39972,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.35, 0.142, 25] },
         },
         {
@@ -39175,6 +40005,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.35, 0.142, 25] },
         },
         {
@@ -39207,6 +40038,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.35, 0.142, 25] },
         },
         {
@@ -39239,6 +40071,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.6, 0.172, 25] },
         },
         {
@@ -39271,6 +40104,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.6, 0.172, 25] },
         },
         {
@@ -39303,6 +40137,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.6, 0.172, 25] },
         },
       ],
@@ -39318,7 +40153,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color'],
       scale: null,
       source: {
@@ -39372,6 +40206,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.171, 25] },
         },
         {
@@ -39404,6 +40239,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.171, 25] },
         },
         {
@@ -39436,6 +40272,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.171, 25] },
         },
         {
@@ -39468,6 +40305,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.64, 0.172, 25] },
         },
         {
@@ -39500,6 +40338,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.64, 0.172, 25] },
         },
         {
@@ -39532,6 +40371,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.64, 0.172, 25] },
         },
       ],
@@ -39547,7 +40387,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color'],
       scale: null,
       source: {
@@ -39601,6 +40440,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.945, 0.026, 25] },
         },
         {
@@ -39633,6 +40473,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.945, 0.026, 25] },
         },
         {
@@ -39665,6 +40506,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.945, 0.026, 25] },
         },
         {
@@ -39697,6 +40539,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.09, 25] },
         },
         {
@@ -39729,6 +40572,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.09, 25] },
         },
         {
@@ -39761,6 +40605,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.09, 25] },
         },
       ],
@@ -39776,7 +40621,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'color'],
       scale: null,
       source: {
@@ -39830,6 +40674,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.16, 25] },
         },
         {
@@ -39862,6 +40707,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.16, 25] },
         },
         {
@@ -39894,6 +40740,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.16, 25] },
         },
         {
@@ -39926,6 +40773,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.9, 0.05, 25] },
         },
         {
@@ -39958,6 +40806,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.9, 0.05, 25] },
         },
         {
@@ -39990,6 +40839,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.9, 0.05, 25] },
         },
       ],
@@ -40011,7 +40861,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'border-top-color', profile: 'color' },
         { property: 'box-shadow', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'background',
         'background-color',
@@ -40074,6 +40923,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.8, 0.06, 25] },
         },
         {
@@ -40106,6 +40956,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.8, 0.06, 25] },
         },
         {
@@ -40138,6 +40989,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.8, 0.06, 25] },
         },
         {
@@ -40170,6 +41022,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.11, 25] },
         },
         {
@@ -40202,6 +41055,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.11, 25] },
         },
         {
@@ -40234,6 +41088,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.11, 25] },
         },
       ],
@@ -40249,7 +41104,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: ['status.danger.solid', 'text.default'],
       observedProperties: ['background-color'],
       scale: null,
       source: {
@@ -40339,6 +41193,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.danger.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.392, 0.05, 334.6] },
         },
         {
@@ -40406,6 +41261,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.danger.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.392, 0.05, 334.6] },
         },
         {
@@ -40473,6 +41329,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.danger.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.392, 0.05, 334.6] },
         },
         {
@@ -40540,6 +41397,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.danger.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.792, 0.05, 334.6] },
         },
         {
@@ -40607,6 +41465,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.danger.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.792, 0.05, 334.6] },
         },
         {
@@ -40674,6 +41533,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.danger.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.792, 0.05, 334.6] },
         },
       ],
@@ -40686,7 +41546,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'background-color', profile: 'color' }],
-      recipeInputs: ['status.danger.solid', 'surface.base'],
       observedProperties: ['background-color'],
       scale: null,
       source: {
@@ -40774,6 +41633,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.danger.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.67784, 0.05, 338.2] },
         },
         {
@@ -40839,6 +41699,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.danger.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.67784, 0.05, 338.2] },
         },
         {
@@ -40904,6 +41765,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.danger.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.67784, 0.05, 338.2] },
         },
         {
@@ -40969,6 +41831,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.danger.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.5364, 0.05, 334.6] },
         },
         {
@@ -41034,6 +41897,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.danger.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.5364, 0.05, 334.6] },
         },
         {
@@ -41099,6 +41963,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.danger.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.5364, 0.05, 334.6] },
         },
       ],
@@ -41114,7 +41979,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'color'],
       scale: null,
       source: {
@@ -41168,6 +42032,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
         {
@@ -41200,6 +42065,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
         {
@@ -41232,6 +42098,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 0] },
         },
         {
@@ -41264,6 +42131,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.15, 0.03, 230] },
         },
         {
@@ -41296,6 +42164,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.15, 0.03, 230] },
         },
         {
@@ -41328,6 +42197,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.15, 0.03, 230] },
         },
       ],
@@ -41347,7 +42217,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'box-shadow', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: [
         'background',
         'background-color',
@@ -41408,6 +42277,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.098, 230] },
         },
         {
@@ -41440,6 +42310,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.098, 230] },
         },
         {
@@ -41472,6 +42343,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.098, 230] },
         },
         {
@@ -41504,6 +42376,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.78, 0.13, 230] },
         },
         {
@@ -41536,6 +42409,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.78, 0.13, 230] },
         },
         {
@@ -41568,6 +42442,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.78, 0.13, 230] },
         },
       ],
@@ -41583,7 +42458,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color'],
       scale: null,
       source: {
@@ -41637,6 +42511,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.35, 0.065, 230] },
         },
         {
@@ -41669,6 +42544,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.35, 0.065, 230] },
         },
         {
@@ -41701,6 +42577,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.35, 0.065, 230] },
         },
         {
@@ -41733,6 +42610,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.62, 0.12, 230] },
         },
         {
@@ -41765,6 +42643,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.62, 0.12, 230] },
         },
         {
@@ -41797,6 +42676,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.62, 0.12, 230] },
         },
       ],
@@ -41812,7 +42692,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color'],
       scale: null,
       source: {
@@ -41866,6 +42745,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.079, 230] },
         },
         {
@@ -41898,6 +42778,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.079, 230] },
         },
         {
@@ -41930,6 +42811,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.079, 230] },
         },
         {
@@ -41962,6 +42844,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.7, 0.13, 230] },
         },
         {
@@ -41994,6 +42877,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.7, 0.13, 230] },
         },
         {
@@ -42026,6 +42910,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.7, 0.13, 230] },
         },
       ],
@@ -42041,7 +42926,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color'],
       scale: null,
       source: {
@@ -42095,6 +42979,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.945, 0.03, 230] },
         },
         {
@@ -42127,6 +43012,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.945, 0.03, 230] },
         },
         {
@@ -42159,6 +43045,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.945, 0.03, 230] },
         },
         {
@@ -42191,6 +43078,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.057, 230] },
         },
         {
@@ -42223,6 +43111,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.057, 230] },
         },
         {
@@ -42255,6 +43144,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.057, 230] },
         },
       ],
@@ -42270,7 +43160,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'color'],
       scale: null,
       source: {
@@ -42324,6 +43213,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.4, 0.079, 230] },
         },
         {
@@ -42356,6 +43246,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.4, 0.079, 230] },
         },
         {
@@ -42388,6 +43279,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.4, 0.079, 230] },
         },
         {
@@ -42420,6 +43312,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.88, 0.071, 230] },
         },
         {
@@ -42452,6 +43345,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.88, 0.071, 230] },
         },
         {
@@ -42484,6 +43378,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.88, 0.071, 230] },
         },
       ],
@@ -42499,7 +43394,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'border-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'border-color'],
       scale: null,
       source: {
@@ -42553,6 +43447,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.8, 0.05, 230] },
         },
         {
@@ -42585,6 +43480,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.8, 0.05, 230] },
         },
         {
@@ -42617,6 +43513,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.8, 0.05, 230] },
         },
         {
@@ -42649,6 +43546,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.08, 230] },
         },
         {
@@ -42681,6 +43579,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.08, 230] },
         },
         {
@@ -42713,6 +43612,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.08, 230] },
         },
       ],
@@ -42728,7 +43628,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: ['status.info.solid', 'text.default'],
       observedProperties: ['background-color'],
       scale: null,
       source: {
@@ -42816,6 +43715,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.info.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.392, 0.05, 235.4] },
         },
         {
@@ -42881,6 +43781,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.info.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.392, 0.05, 235.4] },
         },
         {
@@ -42946,6 +43847,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.info.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.392, 0.05, 235.4] },
         },
         {
@@ -43011,6 +43913,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.info.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.8304, 0.05, 235.4] },
         },
         {
@@ -43076,6 +43979,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.info.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.8304, 0.05, 235.4] },
         },
         {
@@ -43141,6 +44045,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.info.solid', 'text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.8304, 0.05, 235.4] },
         },
       ],
@@ -43153,7 +44058,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'background-color', profile: 'color' }],
-      recipeInputs: ['status.info.solid', 'surface.base'],
       observedProperties: ['background-color'],
       scale: null,
       source: {
@@ -43241,6 +44145,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.info.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.67784, 0.05, 239] },
         },
         {
@@ -43306,6 +44211,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.info.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.67784, 0.05, 239] },
         },
         {
@@ -43371,6 +44277,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.info.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.67784, 0.05, 239] },
         },
         {
@@ -43436,6 +44343,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.info.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.5748, 0.05, 235.4] },
         },
         {
@@ -43501,6 +44409,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.info.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.5748, 0.05, 235.4] },
         },
         {
@@ -43566,6 +44475,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['status.info.solid', 'surface.base'],
           resolvedValue: { colorSpace: 'oklch', components: [0.5748, 0.05, 235.4] },
         },
       ],
@@ -43581,7 +44491,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'background-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'background-color'],
       scale: null,
       source: {
@@ -43635,6 +44544,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.945, 0.004, 255] },
         },
         {
@@ -43667,6 +44577,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.945, 0.004, 255] },
         },
         {
@@ -43699,6 +44610,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.945, 0.004, 255] },
         },
         {
@@ -43731,6 +44643,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.04, 245] },
         },
         {
@@ -43763,6 +44676,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.04, 245] },
         },
         {
@@ -43795,6 +44709,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.04, 245] },
         },
       ],
@@ -43810,7 +44725,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background-color', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'color'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{text.default}' },
@@ -43873,6 +44787,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245] },
         },
         {
@@ -43922,6 +44837,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245] },
         },
         {
@@ -43971,6 +44887,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245] },
         },
         {
@@ -44020,6 +44937,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245] },
         },
         {
@@ -44069,6 +44987,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245] },
         },
         {
@@ -44118,6 +45037,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245] },
         },
       ],
@@ -44134,7 +45054,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'border-block', profile: 'color' },
         { property: 'border-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'border-block', 'border-color'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{border.control}' },
@@ -44197,6 +45116,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.48 },
         },
         {
@@ -44246,6 +45166,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.48 },
         },
         {
@@ -44295,6 +45216,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.48 },
         },
         {
@@ -44344,6 +45266,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.48 },
         },
         {
@@ -44393,6 +45316,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.48 },
         },
         {
@@ -44442,6 +45366,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.48 },
         },
       ],
@@ -44457,7 +45382,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'border-color', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['border-color', 'color'],
       scale: null,
       source: {
@@ -44505,6 +45429,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.38, 0.18, 25] },
         },
         {
@@ -44531,6 +45456,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.38, 0.18, 25] },
         },
         {
@@ -44557,6 +45483,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.38, 0.18, 25] },
         },
         {
@@ -44589,6 +45516,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.95, 0.04, 25] },
         },
         {
@@ -44621,6 +45549,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.95, 0.04, 25] },
         },
         {
@@ -44653,6 +45582,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.95, 0.04, 25] },
         },
       ],
@@ -44665,7 +45595,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'background', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['background'],
       scale: null,
       source: {
@@ -44713,6 +45642,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.93, 0.045, 25] },
         },
         {
@@ -44739,6 +45669,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.93, 0.045, 25] },
         },
         {
@@ -44765,6 +45696,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.93, 0.045, 25] },
         },
         {
@@ -44797,6 +45729,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.24, 0.11, 25] },
         },
         {
@@ -44829,6 +45762,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.24, 0.11, 25] },
         },
         {
@@ -44861,6 +45795,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.24, 0.11, 25] },
         },
       ],
@@ -44873,7 +45808,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['color'],
       scale: null,
       source: {
@@ -44921,6 +45855,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.25, 0, 0] },
         },
         {
@@ -44947,6 +45882,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.25, 0, 0] },
         },
         {
@@ -44973,6 +45909,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.25, 0, 0] },
         },
         {
@@ -45005,6 +45942,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0, 0] },
         },
         {
@@ -45037,6 +45975,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0, 0] },
         },
         {
@@ -45069,6 +46008,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0, 0] },
         },
       ],
@@ -45081,7 +46021,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['color'],
       scale: null,
       source: {
@@ -45129,6 +46068,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.16, 25] },
         },
         {
@@ -45155,6 +46095,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.16, 25] },
         },
         {
@@ -45181,6 +46122,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.16, 25] },
         },
         {
@@ -45213,6 +46155,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.14, 25] },
         },
         {
@@ -45245,6 +46188,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.14, 25] },
         },
         {
@@ -45277,6 +46221,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.14, 25] },
         },
       ],
@@ -45289,7 +46234,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['color'],
       scale: null,
       source: {
@@ -45337,6 +46281,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.38, 0.13, 145] },
         },
         {
@@ -45363,6 +46308,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.38, 0.13, 145] },
         },
         {
@@ -45389,6 +46335,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.38, 0.13, 145] },
         },
         {
@@ -45421,6 +46368,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.13, 145] },
         },
         {
@@ -45453,6 +46401,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.13, 145] },
         },
         {
@@ -45485,6 +46434,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.13, 145] },
         },
       ],
@@ -45497,7 +46447,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['color'],
       scale: null,
       source: {
@@ -45545,6 +46494,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.48, 0.14, 85] },
         },
         {
@@ -45571,6 +46521,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.48, 0.14, 85] },
         },
         {
@@ -45597,6 +46548,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.48, 0.14, 85] },
         },
         {
@@ -45629,6 +46581,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.13, 85] },
         },
         {
@@ -45661,6 +46614,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.13, 85] },
         },
         {
@@ -45693,6 +46647,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.13, 85] },
         },
       ],
@@ -45705,7 +46660,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['color'],
       scale: null,
       source: {
@@ -45753,6 +46707,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.4, 0.16, 260] },
         },
         {
@@ -45779,6 +46734,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.4, 0.16, 260] },
         },
         {
@@ -45805,6 +46761,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.4, 0.16, 260] },
         },
         {
@@ -45837,6 +46794,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.15, 260] },
         },
         {
@@ -45869,6 +46827,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.15, 260] },
         },
         {
@@ -45901,6 +46860,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.15, 260] },
         },
       ],
@@ -45913,7 +46873,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['color'],
       scale: null,
       source: {
@@ -45961,6 +46920,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.16, 325] },
         },
         {
@@ -45987,6 +46947,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.16, 325] },
         },
         {
@@ -46013,6 +46974,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0.16, 325] },
         },
         {
@@ -46045,6 +47007,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.75, 0.14, 325] },
         },
         {
@@ -46077,6 +47040,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.75, 0.14, 325] },
         },
         {
@@ -46109,6 +47073,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.75, 0.14, 325] },
         },
       ],
@@ -46121,7 +47086,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['color'],
       scale: null,
       source: {
@@ -46169,6 +47133,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.35, 0.11, 205] },
         },
         {
@@ -46195,6 +47160,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.35, 0.11, 205] },
         },
         {
@@ -46221,6 +47187,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.35, 0.11, 205] },
         },
         {
@@ -46253,6 +47220,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.75, 0.12, 205] },
         },
         {
@@ -46285,6 +47253,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.75, 0.12, 205] },
         },
         {
@@ -46317,6 +47286,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.75, 0.12, 205] },
         },
       ],
@@ -46329,7 +47299,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['color'],
       scale: null,
       source: {
@@ -46377,6 +47346,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.18, 0, 0] },
         },
         {
@@ -46403,6 +47373,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.18, 0, 0] },
         },
         {
@@ -46429,6 +47400,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.18, 0, 0] },
         },
         {
@@ -46461,6 +47433,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.94, 0, 0] },
         },
         {
@@ -46493,6 +47466,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.94, 0, 0] },
         },
         {
@@ -46525,6 +47499,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.94, 0, 0] },
         },
       ],
@@ -46537,7 +47512,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['color'],
       scale: null,
       source: {
@@ -46585,6 +47559,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0, 0] },
         },
         {
@@ -46611,6 +47586,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0, 0] },
         },
         {
@@ -46637,6 +47613,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.42, 0, 0] },
         },
         {
@@ -46669,6 +47646,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.68, 0, 0] },
         },
         {
@@ -46701,6 +47679,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.68, 0, 0] },
         },
         {
@@ -46733,6 +47712,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.68, 0, 0] },
         },
       ],
@@ -46745,7 +47725,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['color'],
       scale: null,
       source: {
@@ -46793,6 +47772,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.52, 0.18, 25] },
         },
         {
@@ -46819,6 +47799,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.52, 0.18, 25] },
         },
         {
@@ -46845,6 +47826,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.52, 0.18, 25] },
         },
         {
@@ -46877,6 +47859,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.78, 0.15, 25] },
         },
         {
@@ -46909,6 +47892,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.78, 0.15, 25] },
         },
         {
@@ -46941,6 +47925,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.78, 0.15, 25] },
         },
       ],
@@ -46953,7 +47938,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['color'],
       scale: null,
       source: {
@@ -47001,6 +47985,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.48, 0.15, 145] },
         },
         {
@@ -47027,6 +48012,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.48, 0.15, 145] },
         },
         {
@@ -47053,6 +48039,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.48, 0.15, 145] },
         },
         {
@@ -47085,6 +48072,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.8, 0.14, 145] },
         },
         {
@@ -47117,6 +48105,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.8, 0.14, 145] },
         },
         {
@@ -47149,6 +48138,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.8, 0.14, 145] },
         },
       ],
@@ -47161,7 +48151,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['color'],
       scale: null,
       source: {
@@ -47209,6 +48198,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.52, 0.16, 85] },
         },
         {
@@ -47235,6 +48225,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.52, 0.16, 85] },
         },
         {
@@ -47261,6 +48252,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.52, 0.16, 85] },
         },
         {
@@ -47293,6 +48285,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.88, 0.14, 85] },
         },
         {
@@ -47325,6 +48318,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.88, 0.14, 85] },
         },
         {
@@ -47357,6 +48351,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.88, 0.14, 85] },
         },
       ],
@@ -47369,7 +48364,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['color'],
       scale: null,
       source: {
@@ -47417,6 +48411,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.18, 260] },
         },
         {
@@ -47443,6 +48438,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.18, 260] },
         },
         {
@@ -47469,6 +48465,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.18, 260] },
         },
         {
@@ -47501,6 +48498,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.8, 0.16, 260] },
         },
         {
@@ -47533,6 +48531,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.8, 0.16, 260] },
         },
         {
@@ -47565,6 +48564,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.8, 0.16, 260] },
         },
       ],
@@ -47577,7 +48577,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['color'],
       scale: null,
       source: {
@@ -47625,6 +48624,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.54, 0.18, 325] },
         },
         {
@@ -47651,6 +48651,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.54, 0.18, 325] },
         },
         {
@@ -47677,6 +48678,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.54, 0.18, 325] },
         },
         {
@@ -47709,6 +48711,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.15, 325] },
         },
         {
@@ -47741,6 +48744,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.15, 325] },
         },
         {
@@ -47773,6 +48777,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.15, 325] },
         },
       ],
@@ -47785,7 +48790,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['color'],
       scale: null,
       source: {
@@ -47833,6 +48837,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.13, 205] },
         },
         {
@@ -47859,6 +48864,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.13, 205] },
         },
         {
@@ -47885,6 +48891,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.13, 205] },
         },
         {
@@ -47917,6 +48924,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.13, 205] },
         },
         {
@@ -47949,6 +48957,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.13, 205] },
         },
         {
@@ -47981,6 +48990,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.13, 205] },
         },
       ],
@@ -47993,7 +49003,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['color'],
       scale: null,
       source: {
@@ -48041,6 +49050,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.1, 0, 0] },
         },
         {
@@ -48067,6 +49077,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.1, 0, 0] },
         },
         {
@@ -48093,6 +49104,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 1,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.1, 0, 0] },
         },
         {
@@ -48125,6 +49137,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.98, 0, 0] },
         },
         {
@@ -48157,6 +49170,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.98, 0, 0] },
         },
         {
@@ -48189,6 +49203,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.98, 0, 0] },
         },
       ],
@@ -48201,7 +49216,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'background-color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['background-color'],
       scale: null,
       source: {
@@ -48251,6 +49265,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'srgb', components: [1, 1, 1], hex: '#ffffff' },
         },
         {
@@ -48283,6 +49298,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'srgb', components: [1, 1, 1], hex: '#ffffff' },
         },
         {
@@ -48315,6 +49331,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'srgb', components: [1, 1, 1], hex: '#ffffff' },
         },
         {
@@ -48347,6 +49364,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.02, 245] },
         },
         {
@@ -48379,6 +49397,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.02, 245] },
         },
         {
@@ -48411,6 +49430,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.02, 245] },
         },
       ],
@@ -48423,7 +49443,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'background-image', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['background-image'],
       scale: null,
       source: {
@@ -48473,6 +49492,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'srgb', components: [0.8, 0.8, 0.8], hex: '#cccccc' },
         },
         {
@@ -48505,6 +49525,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'srgb', components: [0.8, 0.8, 0.8], hex: '#cccccc' },
         },
         {
@@ -48537,6 +49558,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'srgb', components: [0.8, 0.8, 0.8], hex: '#cccccc' },
         },
         {
@@ -48569,6 +49591,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.38, 0.02, 245] },
         },
         {
@@ -48601,6 +49624,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.38, 0.02, 245] },
         },
         {
@@ -48633,6 +49657,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.38, 0.02, 245] },
         },
       ],
@@ -48645,7 +49670,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'background', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['background'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{surface.raised}' },
@@ -48708,6 +49732,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 255] },
         },
         {
@@ -48757,6 +49782,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 255] },
         },
         {
@@ -48806,6 +49832,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 255] },
         },
         {
@@ -48855,6 +49882,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.045, 245] },
         },
         {
@@ -48904,6 +49932,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.045, 245] },
         },
         {
@@ -48953,6 +49982,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.045, 245] },
         },
       ],
@@ -48965,7 +49995,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['color'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{text.default}' },
@@ -49028,6 +50057,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245] },
         },
         {
@@ -49077,6 +50107,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245] },
         },
         {
@@ -49126,6 +50157,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245] },
         },
         {
@@ -49175,6 +50207,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245] },
         },
         {
@@ -49224,6 +50257,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245] },
         },
         {
@@ -49273,6 +50307,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245] },
         },
       ],
@@ -49288,7 +50323,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'border', profile: 'color' },
         { property: 'border-color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['border', 'border-color'],
       scale: null,
       source: {
@@ -49359,6 +50393,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.48 },
         },
         {
@@ -49408,6 +50443,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.48 },
         },
         {
@@ -49457,6 +50493,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.48 },
         },
         {
@@ -49506,6 +50543,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.58 },
         },
         {
@@ -49555,6 +50593,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.58 },
         },
         {
@@ -49604,6 +50643,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.58 },
         },
       ],
@@ -49616,7 +50656,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'border-radius', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['border-radius'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{radius.medium}' },
@@ -49665,6 +50704,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -49708,6 +50748,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -49751,6 +50792,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -49794,6 +50836,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -49837,6 +50880,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -49880,6 +50924,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
       ],
@@ -49892,7 +50937,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'border-radius', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['border-radius'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{radius.small}' },
@@ -49941,6 +50985,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -49984,6 +51029,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -50027,6 +51073,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -50070,6 +51117,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -50113,6 +51161,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -50156,6 +51205,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
       ],
@@ -50168,7 +51218,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'border-radius', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['border-radius'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{radius.small}' },
@@ -50217,6 +51266,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -50260,6 +51310,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -50303,6 +51354,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -50346,6 +51398,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -50389,6 +51442,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -50432,6 +51486,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
       ],
@@ -50444,7 +51499,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'border-radius', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['border-radius'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{radius.medium}' },
@@ -50493,6 +51547,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -50536,6 +51591,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -50579,6 +51635,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -50622,6 +51679,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -50665,6 +51723,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -50708,6 +51767,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
       ],
@@ -50720,7 +51780,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'border-radius', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['border-radius'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{radius.medium}' },
@@ -50769,6 +51828,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -50812,6 +51872,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -50855,6 +51916,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -50898,6 +51960,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -50941,6 +52004,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -50984,6 +52048,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
       ],
@@ -50996,7 +52061,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'border-radius', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['border-radius'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{radius.medium}' },
@@ -51045,6 +52109,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -51088,6 +52153,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -51131,6 +52197,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -51174,6 +52241,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -51217,6 +52285,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -51260,6 +52329,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
       ],
@@ -51275,7 +52345,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'min-height', profile: 'nonnegative-length' },
         { property: 'min-width', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['min-height', 'min-width'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{control.height.xs}' },
@@ -51324,6 +52393,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -51367,6 +52437,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -51410,6 +52481,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -51453,6 +52525,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -51496,6 +52569,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -51539,6 +52613,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
       ],
@@ -51554,7 +52629,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'min-height', profile: 'nonnegative-length' },
         { property: 'min-width', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['min-height', 'min-width'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 1.75, unit: 'rem' } },
@@ -51586,6 +52660,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.75, unit: 'rem' },
         },
         {
@@ -51612,6 +52687,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.75, unit: 'rem' },
         },
         {
@@ -51638,6 +52714,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.75, unit: 'rem' },
         },
         {
@@ -51664,6 +52741,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.75, unit: 'rem' },
         },
         {
@@ -51690,6 +52768,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.75, unit: 'rem' },
         },
         {
@@ -51716,6 +52795,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.75, unit: 'rem' },
         },
       ],
@@ -51732,7 +52812,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'min-height', profile: 'nonnegative-length' },
         { property: 'min-width', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['min-block-size', 'min-height', 'min-width'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 2, unit: 'rem' } },
@@ -51764,6 +52843,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'rem' },
         },
         {
@@ -51790,6 +52870,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'rem' },
         },
         {
@@ -51816,6 +52897,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'rem' },
         },
         {
@@ -51842,6 +52924,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'rem' },
         },
         {
@@ -51868,6 +52951,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'rem' },
         },
         {
@@ -51894,6 +52978,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'rem' },
         },
       ],
@@ -51909,7 +52994,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'min-height', profile: 'nonnegative-length' },
         { property: 'min-width', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['min-height', 'min-width'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 2.25, unit: 'rem' } },
@@ -51941,6 +53025,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.25, unit: 'rem' },
         },
         {
@@ -51967,6 +53052,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.25, unit: 'rem' },
         },
         {
@@ -51993,6 +53079,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.25, unit: 'rem' },
         },
         {
@@ -52019,6 +53106,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.25, unit: 'rem' },
         },
         {
@@ -52045,6 +53133,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.25, unit: 'rem' },
         },
         {
@@ -52071,6 +53160,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.25, unit: 'rem' },
         },
       ],
@@ -52086,7 +53176,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'min-height', profile: 'nonnegative-length' },
         { property: 'min-width', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['min-height', 'min-width'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 2.5, unit: 'rem' } },
@@ -52118,6 +53207,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.5, unit: 'rem' },
         },
         {
@@ -52144,6 +53234,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.5, unit: 'rem' },
         },
         {
@@ -52170,6 +53261,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.5, unit: 'rem' },
         },
         {
@@ -52196,6 +53288,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.5, unit: 'rem' },
         },
         {
@@ -52222,6 +53315,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.5, unit: 'rem' },
         },
         {
@@ -52248,6 +53342,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.5, unit: 'rem' },
         },
       ],
@@ -52260,7 +53355,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['padding'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.1-5}' },
@@ -52309,6 +53403,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -52352,6 +53447,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -52395,6 +53491,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -52438,6 +53535,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -52481,6 +53579,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -52524,6 +53623,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
       ],
@@ -52536,7 +53636,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['padding'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.2}' },
@@ -52585,6 +53684,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -52628,6 +53728,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -52671,6 +53772,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -52714,6 +53816,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -52757,6 +53860,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -52800,6 +53904,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
       ],
@@ -52815,7 +53920,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'padding', profile: 'nonnegative-length' },
         { property: 'padding-inline', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['padding', 'padding-inline'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.2-5}' },
@@ -52864,6 +53968,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -52907,6 +54012,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -52950,6 +54056,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -52993,6 +54100,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -53036,6 +54144,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -53079,6 +54188,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
       ],
@@ -53091,7 +54201,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['padding'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.3}' },
@@ -53140,6 +54249,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -53183,6 +54293,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -53226,6 +54337,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -53269,6 +54381,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -53312,6 +54425,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -53355,6 +54469,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
       ],
@@ -53367,7 +54482,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['padding'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.3-5}' },
@@ -53416,6 +54530,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -53459,6 +54574,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -53502,6 +54618,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -53545,6 +54662,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -53588,6 +54706,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -53631,6 +54750,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
       ],
@@ -53643,7 +54763,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['padding'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.0-5}' },
@@ -53692,6 +54811,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.125, unit: 'rem' },
         },
         {
@@ -53735,6 +54855,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.125, unit: 'rem' },
         },
         {
@@ -53778,6 +54899,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.125, unit: 'rem' },
         },
         {
@@ -53821,6 +54943,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.125, unit: 'rem' },
         },
         {
@@ -53864,6 +54987,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.125, unit: 'rem' },
         },
         {
@@ -53907,6 +55031,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.125, unit: 'rem' },
         },
       ],
@@ -53919,7 +55044,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['padding'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.one}' },
@@ -53968,6 +55092,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -54011,6 +55136,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -54054,6 +55180,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -54097,6 +55224,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -54140,6 +55268,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -54183,6 +55312,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
       ],
@@ -54198,7 +55328,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'padding', profile: 'nonnegative-length' },
         { property: 'padding-block', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['padding', 'padding-block'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.1-5}' },
@@ -54247,6 +55376,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -54290,6 +55420,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -54333,6 +55464,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -54376,6 +55508,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -54419,6 +55552,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
         {
@@ -54462,6 +55596,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.375, unit: 'rem' },
         },
       ],
@@ -54474,7 +55609,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['padding'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.2}' },
@@ -54523,6 +55657,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -54566,6 +55701,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -54609,6 +55745,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -54652,6 +55789,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -54695,6 +55833,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -54738,6 +55877,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
       ],
@@ -54750,7 +55890,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['padding'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.2-5}' },
@@ -54799,6 +55938,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -54842,6 +55982,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -54885,6 +56026,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -54928,6 +56070,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -54971,6 +56114,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -55014,6 +56158,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
       ],
@@ -55026,7 +56171,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{font.size.xs}' },
@@ -55075,6 +56219,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -55118,6 +56263,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -55161,6 +56307,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -55204,6 +56351,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -55247,6 +56395,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -55290,6 +56439,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
       ],
@@ -55302,7 +56452,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{font.size.sm}' },
@@ -55355,6 +56504,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -55398,6 +56548,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -55441,6 +56592,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -55484,6 +56636,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -55527,6 +56680,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -55570,6 +56724,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
       ],
@@ -55582,7 +56737,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{font.size.sm}' },
@@ -55635,6 +56789,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -55678,6 +56833,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -55721,6 +56877,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -55764,6 +56921,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -55807,6 +56965,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -55850,6 +57009,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
       ],
@@ -55862,7 +57022,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{font.size.md}' },
@@ -55915,6 +57074,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.9375, unit: 'rem' },
         },
         {
@@ -55958,6 +57118,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.9375, unit: 'rem' },
         },
         {
@@ -56001,6 +57162,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.9375, unit: 'rem' },
         },
         {
@@ -56044,6 +57206,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.9375, unit: 'rem' },
         },
         {
@@ -56087,6 +57250,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.9375, unit: 'rem' },
         },
         {
@@ -56130,6 +57294,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.9375, unit: 'rem' },
         },
       ],
@@ -56142,7 +57307,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{font.size.lg}' },
@@ -56191,6 +57355,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -56234,6 +57399,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -56277,6 +57443,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -56320,6 +57487,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -56363,6 +57531,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -56406,6 +57575,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
       ],
@@ -56418,7 +57588,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'background', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['background'],
       scale: null,
       source: {
@@ -56489,6 +57658,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.19 },
         },
         {
@@ -56538,6 +57708,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.19 },
         },
         {
@@ -56587,6 +57758,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.19 },
         },
         {
@@ -56619,6 +57791,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.02, 245] },
         },
         {
@@ -56651,6 +57824,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.02, 245] },
         },
         {
@@ -56683,6 +57857,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.02, 245] },
         },
       ],
@@ -56695,7 +57870,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'background', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['background'],
       scale: null,
       source: {
@@ -56766,6 +57940,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.48 },
         },
         {
@@ -56815,6 +57990,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.48 },
         },
         {
@@ -56864,6 +58040,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.48 },
         },
         {
@@ -56896,6 +58073,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.52, 0.02, 245] },
         },
         {
@@ -56928,6 +58106,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.52, 0.02, 245] },
         },
         {
@@ -56960,6 +58139,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.52, 0.02, 245] },
         },
       ],
@@ -56972,7 +58152,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'gap', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['gap'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.4}' },
@@ -57021,6 +58200,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -57064,6 +58244,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -57107,6 +58288,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -57150,6 +58332,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -57193,6 +58376,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -57236,6 +58420,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
       ],
@@ -57248,7 +58433,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['padding'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.4}' },
@@ -57297,6 +58481,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -57340,6 +58525,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -57383,6 +58569,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -57426,6 +58613,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -57469,6 +58657,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -57512,6 +58701,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
       ],
@@ -57524,7 +58714,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['padding'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.5}' },
@@ -57573,6 +58762,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -57616,6 +58806,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -57659,6 +58850,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -57702,6 +58894,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -57745,6 +58938,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -57788,6 +58982,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
       ],
@@ -57800,7 +58995,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{font.size.base}' },
@@ -57849,6 +59043,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -57892,6 +59087,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -57935,6 +59131,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -57978,6 +59175,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -58021,6 +59219,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -58064,6 +59263,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
       ],
@@ -58076,7 +59276,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'fontWeight',
       usageContracts: [{ property: 'font-weight', profile: 'font-weight' }],
-      recipeInputs: [],
       observedProperties: ['font-weight'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{font.semibold}' },
@@ -58125,6 +59324,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 600,
         },
         {
@@ -58168,6 +59368,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 600,
         },
         {
@@ -58211,6 +59412,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 600,
         },
         {
@@ -58254,6 +59456,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 600,
         },
         {
@@ -58297,6 +59500,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 600,
         },
         {
@@ -58340,6 +59544,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 600,
         },
       ],
@@ -58352,7 +59557,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['padding'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.4}' },
@@ -58401,6 +59605,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -58444,6 +59649,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -58487,6 +59693,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -58530,6 +59737,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -58573,6 +59781,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -58616,6 +59825,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
       ],
@@ -58628,7 +59838,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['padding'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.5}' },
@@ -58677,6 +59886,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -58720,6 +59930,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -58763,6 +59974,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -58806,6 +60018,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -58849,6 +60062,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -58892,6 +60106,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
       ],
@@ -58904,7 +60119,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['padding'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.5}' },
@@ -58953,6 +60167,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -58996,6 +60211,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -59039,6 +60255,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -59082,6 +60299,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -59125,6 +60343,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
         {
@@ -59168,6 +60387,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.25, unit: 'rem' },
         },
       ],
@@ -59180,7 +60400,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{font.size.base}' },
@@ -59229,6 +60448,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -59272,6 +60492,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -59315,6 +60536,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -59358,6 +60580,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -59401,6 +60624,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
         {
@@ -59444,6 +60668,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.875, unit: 'rem' },
         },
       ],
@@ -59456,7 +60681,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'line-height', profile: 'line-height' }],
-      recipeInputs: [],
       observedProperties: ['line-height'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{leading.normal}' },
@@ -59505,6 +60729,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 1.5,
         },
         {
@@ -59548,6 +60773,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 1.5,
         },
         {
@@ -59591,6 +60817,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 1.5,
         },
         {
@@ -59634,6 +60861,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 1.5,
         },
         {
@@ -59677,6 +60905,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 1.5,
         },
         {
@@ -59720,6 +60949,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 1.5,
         },
       ],
@@ -59732,7 +60962,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['padding'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.3}' },
@@ -59781,6 +61010,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -59824,6 +61054,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -59867,6 +61098,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -59910,6 +61142,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -59953,6 +61186,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -59996,6 +61230,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
       ],
@@ -60008,7 +61243,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['padding'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.4}' },
@@ -60057,6 +61291,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -60100,6 +61335,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -60143,6 +61379,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -60186,6 +61423,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -60229,6 +61467,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -60272,6 +61511,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
       ],
@@ -60284,7 +61524,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'column-gap', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['column-gap'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.3}' },
@@ -60333,6 +61572,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -60376,6 +61616,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -60419,6 +61660,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -60462,6 +61704,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -60505,6 +61748,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -60548,6 +61792,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
       ],
@@ -60560,7 +61805,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'row-gap', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['row-gap'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.2}' },
@@ -60609,6 +61853,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -60652,6 +61897,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -60695,6 +61941,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -60738,6 +61985,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -60781,6 +62029,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -60824,6 +62073,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
       ],
@@ -60836,7 +62086,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'gap', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['gap'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.one}' },
@@ -60885,6 +62134,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -60928,6 +62178,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -60971,6 +62222,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -61014,6 +62266,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -61057,6 +62310,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -61100,6 +62354,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
       ],
@@ -61112,7 +62367,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{font.size.sm}' },
@@ -61165,6 +62419,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -61208,6 +62463,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -61251,6 +62507,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -61294,6 +62551,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -61337,6 +62595,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -61380,6 +62639,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
       ],
@@ -61392,7 +62652,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{font.size.sm}' },
@@ -61445,6 +62704,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -61488,6 +62748,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -61531,6 +62792,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -61574,6 +62836,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -61617,6 +62880,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -61660,6 +62924,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
       ],
@@ -61672,7 +62937,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{font.size.xs}' },
@@ -61721,6 +62985,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -61764,6 +63029,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -61807,6 +63073,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -61850,6 +63117,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -61893,6 +63161,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -61936,6 +63205,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
       ],
@@ -61948,7 +63218,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'gap', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['gap'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.2}' },
@@ -61997,6 +63266,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -62040,6 +63310,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -62083,6 +63354,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -62126,6 +63398,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -62169,6 +63442,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -62212,6 +63486,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
       ],
@@ -62229,7 +63504,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'box-shadow', profile: 'color' },
         { property: 'color', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background-color', 'border-color', 'box-shadow', 'color'],
       scale: null,
       source: {
@@ -62283,6 +63557,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.14, 245] },
         },
         {
@@ -62315,6 +63590,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.14, 245] },
         },
         {
@@ -62347,6 +63623,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.45, 0.14, 245] },
         },
         {
@@ -62379,6 +63656,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.78, 0.15, 245] },
         },
         {
@@ -62411,6 +63689,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.78, 0.15, 245] },
         },
         {
@@ -62443,6 +63722,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.78, 0.15, 245] },
         },
       ],
@@ -62455,7 +63735,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'margin-inline-start', profile: 'signed-length' }],
-      recipeInputs: [],
       observedProperties: ['margin-inline-start'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.3}' },
@@ -62504,6 +63783,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -62547,6 +63827,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -62590,6 +63871,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -62633,6 +63915,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -62676,6 +63959,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -62719,6 +64003,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
       ],
@@ -62734,7 +64019,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'inline-size', profile: 'nonnegative-length' },
         { property: 'margin-inline', profile: 'signed-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['inline-size', 'margin-inline'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.4}' },
@@ -62783,6 +64067,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -62826,6 +64111,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -62869,6 +64155,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -62912,6 +64199,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -62955,6 +64243,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -62998,6 +64287,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
       ],
@@ -63013,7 +64303,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'flex', profile: 'percentage-size' },
         { property: 'min-inline-size', profile: 'percentage-size' },
       ],
-      recipeInputs: [],
       observedProperties: ['flex', 'min-inline-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: 100 },
@@ -63053,6 +64342,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 100,
         },
         {
@@ -63079,6 +64369,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 100,
         },
         {
@@ -63105,6 +64396,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 100,
         },
         {
@@ -63131,6 +64423,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 100,
         },
         {
@@ -63157,6 +64450,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 100,
         },
         {
@@ -63183,6 +64477,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 100,
         },
       ],
@@ -63195,7 +64490,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'gap', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['gap'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.3}' },
@@ -63244,6 +64538,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -63287,6 +64582,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -63330,6 +64626,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -63373,6 +64670,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -63416,6 +64714,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -63459,6 +64758,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
       ],
@@ -63471,7 +64771,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'aspect-ratio', profile: 'ratio' }],
-      recipeInputs: [],
       observedProperties: ['aspect-ratio'],
       scale: null,
       source: { status: 'supported', reason: null, value: 1.7778 },
@@ -63513,6 +64812,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.7778,
         },
         {
@@ -63539,6 +64839,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.7778,
         },
         {
@@ -63565,6 +64866,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.7778,
         },
         {
@@ -63591,6 +64893,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.7778,
         },
         {
@@ -63617,6 +64920,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.7778,
         },
         {
@@ -63643,6 +64947,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.7778,
         },
       ],
@@ -63658,7 +64963,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'height', profile: 'nonnegative-length' },
         { property: 'width', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['height', 'width'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 2.75, unit: 'rem' } },
@@ -63690,6 +64994,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.75, unit: 'rem' },
         },
         {
@@ -63716,6 +65021,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.75, unit: 'rem' },
         },
         {
@@ -63742,6 +65048,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.75, unit: 'rem' },
         },
         {
@@ -63768,6 +65075,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.75, unit: 'rem' },
         },
         {
@@ -63794,6 +65102,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.75, unit: 'rem' },
         },
         {
@@ -63820,6 +65129,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2.75, unit: 'rem' },
         },
       ],
@@ -63832,7 +65142,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'background', profile: 'color' }],
-      recipeInputs: ['surface.inset', 'surface.raised'],
       observedProperties: ['background'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{surface.raised}' },
@@ -63927,6 +65236,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['surface.inset', 'surface.raised'],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 255] },
         },
         {
@@ -64004,6 +65314,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['surface.inset', 'surface.raised'],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 255] },
         },
         {
@@ -64081,6 +65392,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['surface.inset', 'surface.raised'],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 255] },
         },
         {
@@ -64130,6 +65442,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.11, 0.03, 245] },
         },
         {
@@ -64179,6 +65492,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.11, 0.03, 245] },
         },
         {
@@ -64228,6 +65542,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.11, 0.03, 245] },
         },
       ],
@@ -64240,7 +65555,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{font.size.sm}' },
@@ -64293,6 +65607,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -64336,6 +65651,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -64379,6 +65695,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -64422,6 +65739,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -64465,6 +65783,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -64508,6 +65827,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
       ],
@@ -64520,7 +65840,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'block-size', profile: 'auto-size' }],
-      recipeInputs: [],
       observedProperties: ['block-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 0, unit: 'rem' } },
@@ -64560,6 +65879,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'rem' },
         },
         {
@@ -64586,6 +65906,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'rem' },
         },
         {
@@ -64612,6 +65933,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'rem' },
         },
         {
@@ -64638,6 +65960,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'rem' },
         },
         {
@@ -64664,6 +65987,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'rem' },
         },
         {
@@ -64690,6 +66014,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0, unit: 'rem' },
         },
       ],
@@ -64702,7 +66027,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'line-height', profile: 'line-height' }],
-      recipeInputs: [],
       observedProperties: ['line-height'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{leading.relaxed}' },
@@ -64751,6 +66075,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 1.625,
         },
         {
@@ -64794,6 +66119,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 1.625,
         },
         {
@@ -64837,6 +66163,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 1.625,
         },
         {
@@ -64880,6 +66207,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 1.625,
         },
         {
@@ -64923,6 +66251,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 1.625,
         },
         {
@@ -64966,6 +66295,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 1.625,
         },
       ],
@@ -64978,7 +66308,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['padding'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.4}' },
@@ -65027,6 +66356,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -65070,6 +66400,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -65113,6 +66444,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -65156,6 +66488,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -65199,6 +66532,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -65242,6 +66576,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
       ],
@@ -65254,7 +66589,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'block-size', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['block-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 24, unit: 'rem' } },
@@ -65286,6 +66620,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 24, unit: 'rem' },
         },
         {
@@ -65312,6 +66647,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 24, unit: 'rem' },
         },
         {
@@ -65338,6 +66674,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 24, unit: 'rem' },
         },
         {
@@ -65364,6 +66701,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 24, unit: 'rem' },
         },
         {
@@ -65390,6 +66728,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 24, unit: 'rem' },
         },
         {
@@ -65416,6 +66755,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 24, unit: 'rem' },
         },
       ],
@@ -65433,7 +66773,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'inset-block-start', profile: 'signed-length' },
         { property: 'inset-inline-start', profile: 'signed-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['block-size', 'inline-size', 'inset-block-start', 'inset-inline-start'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.6}' },
@@ -65482,6 +66821,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -65525,6 +66865,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -65568,6 +66909,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -65611,6 +66953,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -65654,6 +66997,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -65697,6 +67041,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
       ],
@@ -65709,7 +67054,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'background', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['background'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{surface.base}' },
@@ -65766,6 +67110,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.994, 0.002, 255] },
         },
         {
@@ -65809,6 +67154,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.994, 0.002, 255] },
         },
         {
@@ -65852,6 +67198,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.994, 0.002, 255] },
         },
         {
@@ -65895,6 +67242,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.21, 0.04, 245] },
         },
         {
@@ -65938,6 +67286,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.21, 0.04, 245] },
         },
         {
@@ -65981,6 +67330,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.21, 0.04, 245] },
         },
       ],
@@ -65993,7 +67343,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'border', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['border'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{border.control}' },
@@ -66050,6 +67399,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.48 },
         },
         {
@@ -66093,6 +67443,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.48 },
         },
         {
@@ -66136,6 +67487,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.02, 255], alpha: 0.48 },
         },
         {
@@ -66179,6 +67531,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.48 },
         },
         {
@@ -66222,6 +67575,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.48 },
         },
         {
@@ -66265,6 +67619,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.86, 0.065, 250], alpha: 0.48 },
         },
       ],
@@ -66277,7 +67632,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'background', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['background'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{surface.inset}' },
@@ -66334,6 +67688,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.96, 0.005, 255] },
         },
         {
@@ -66377,6 +67732,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.96, 0.005, 255] },
         },
         {
@@ -66420,6 +67776,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.96, 0.005, 255] },
         },
         {
@@ -66463,6 +67820,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.11, 0.03, 245] },
         },
         {
@@ -66506,6 +67864,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.11, 0.03, 245] },
         },
         {
@@ -66549,6 +67908,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.11, 0.03, 245] },
         },
       ],
@@ -66561,7 +67921,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'background', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['background'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{accent.solid}' },
@@ -66618,6 +67977,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.22, 270] },
         },
         {
@@ -66661,6 +68021,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.22, 270] },
         },
         {
@@ -66704,6 +68065,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.22, 270] },
         },
         {
@@ -66747,6 +68109,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.14, 270] },
         },
         {
@@ -66790,6 +68153,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.14, 270] },
         },
         {
@@ -66833,6 +68197,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.14, 270] },
         },
       ],
@@ -66845,7 +68210,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'grid-auto-columns', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['grid-auto-columns'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 18, unit: 'rem' } },
@@ -66877,6 +68241,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 18, unit: 'rem' },
         },
         {
@@ -66903,6 +68268,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 18, unit: 'rem' },
         },
         {
@@ -66929,6 +68295,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 18, unit: 'rem' },
         },
         {
@@ -66955,6 +68322,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 18, unit: 'rem' },
         },
         {
@@ -66981,6 +68349,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 18, unit: 'rem' },
         },
         {
@@ -67007,6 +68376,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 18, unit: 'rem' },
         },
       ],
@@ -67019,7 +68389,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'gap', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['gap'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.4}' },
@@ -67068,6 +68437,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -67111,6 +68481,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -67154,6 +68525,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -67197,6 +68569,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -67240,6 +68613,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -67283,6 +68657,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
       ],
@@ -67295,7 +68670,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'background', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['background'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{surface.raised}' },
@@ -67352,6 +68726,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 255] },
         },
         {
@@ -67395,6 +68770,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 255] },
         },
         {
@@ -67438,6 +68814,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [1, 0, 255] },
         },
         {
@@ -67481,6 +68858,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.045, 245] },
         },
         {
@@ -67524,6 +68902,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.045, 245] },
         },
         {
@@ -67567,6 +68946,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.28, 0.045, 245] },
         },
       ],
@@ -67579,7 +68959,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'background', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['background'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{surface.base}' },
@@ -67636,6 +69015,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.994, 0.002, 255] },
         },
         {
@@ -67679,6 +69059,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.994, 0.002, 255] },
         },
         {
@@ -67722,6 +69103,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.994, 0.002, 255] },
         },
         {
@@ -67765,6 +69147,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.21, 0.04, 245] },
         },
         {
@@ -67808,6 +69191,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.21, 0.04, 245] },
         },
         {
@@ -67851,6 +69235,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.21, 0.04, 245] },
         },
       ],
@@ -67863,7 +69248,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'background', profile: 'color' }],
-      recipeInputs: ['text.default'],
       observedProperties: ['background'],
       scale: null,
       source: {
@@ -67929,6 +69313,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245], alpha: 0.12 },
         },
         {
@@ -67973,6 +69358,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245], alpha: 0.12 },
         },
         {
@@ -68017,6 +69403,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: ['text.default'],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245], alpha: 0.12 },
         },
         {
@@ -68049,6 +69436,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245], alpha: 0.12 },
         },
         {
@@ -68081,6 +69469,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245], alpha: 0.12 },
         },
         {
@@ -68113,6 +69502,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 4,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245], alpha: 0.12 },
         },
       ],
@@ -68125,7 +69515,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'duration',
       usageContracts: [{ property: 'animation', profile: 'duration' }],
-      recipeInputs: [],
       observedProperties: ['animation'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 24, unit: 's' } },
@@ -68157,6 +69546,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 24, unit: 's' },
         },
         {
@@ -68183,6 +69573,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 24, unit: 's' },
         },
         {
@@ -68209,6 +69600,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 24, unit: 's' },
         },
         {
@@ -68235,6 +69627,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 24, unit: 's' },
         },
         {
@@ -68261,6 +69654,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 24, unit: 's' },
         },
         {
@@ -68287,6 +69681,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 24, unit: 's' },
         },
       ],
@@ -68302,7 +69697,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'gap', profile: 'nonnegative-length' },
         { property: 'transform', profile: 'signed-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['gap', 'transform'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.6}' },
@@ -68351,6 +69745,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -68394,6 +69789,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -68437,6 +69833,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -68480,6 +69877,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -68523,6 +69921,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -68566,6 +69965,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
       ],
@@ -68578,7 +69978,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'background-color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['background-color'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{overlay.backdrop}' },
@@ -68635,6 +70034,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.03, 245], alpha: 0.5 },
         },
         {
@@ -68678,6 +70078,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.03, 245], alpha: 0.5 },
         },
         {
@@ -68721,6 +70122,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.03, 245], alpha: 0.5 },
         },
         {
@@ -68764,6 +70166,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.08, 0.02, 245], alpha: 0.65 },
         },
         {
@@ -68807,6 +70210,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.08, 0.02, 245], alpha: 0.65 },
         },
         {
@@ -68850,6 +70254,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.08, 0.02, 245], alpha: 0.65 },
         },
       ],
@@ -68862,7 +70267,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['padding'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.3}' },
@@ -68911,6 +70315,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -68954,6 +70359,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -68997,6 +70403,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -69040,6 +70447,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -69083,6 +70491,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -69126,6 +70535,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
       ],
@@ -69141,7 +70551,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'padding', profile: 'nonnegative-length' },
         { property: 'padding-inline-end', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['padding', 'padding-inline-end'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.4}' },
@@ -69190,6 +70599,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -69233,6 +70643,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -69276,6 +70687,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -69319,6 +70731,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -69362,6 +70775,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -69405,6 +70819,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
       ],
@@ -69417,7 +70832,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'gap', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['gap'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.2}' },
@@ -69466,6 +70880,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -69509,6 +70924,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -69552,6 +70968,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -69595,6 +71012,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -69638,6 +71056,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -69681,6 +71100,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
       ],
@@ -69693,7 +71113,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'gap', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['gap'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.one}' },
@@ -69742,6 +71161,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -69785,6 +71205,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -69828,6 +71249,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -69871,6 +71293,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -69914,6 +71337,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -69957,6 +71381,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
       ],
@@ -69969,7 +71394,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'gap', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['gap'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.3}' },
@@ -70018,6 +71442,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -70061,6 +71486,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -70104,6 +71530,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -70147,6 +71574,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -70190,6 +71618,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -70233,6 +71662,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
       ],
@@ -70245,7 +71675,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'gap', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['gap'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.2}' },
@@ -70294,6 +71723,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -70337,6 +71767,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -70380,6 +71811,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -70423,6 +71855,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -70466,6 +71899,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
         {
@@ -70509,6 +71943,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.5, unit: 'rem' },
         },
       ],
@@ -70521,7 +71956,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'gap', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['gap'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.one}' },
@@ -70570,6 +72004,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -70613,6 +72048,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -70656,6 +72092,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -70699,6 +72136,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -70742,6 +72180,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -70785,6 +72224,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
       ],
@@ -70800,7 +72240,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'border-top-color', profile: 'color' },
         { property: 'stroke', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['border-top-color', 'stroke'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{text.default}' },
@@ -70857,6 +72296,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245] },
         },
         {
@@ -70900,6 +72340,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245] },
         },
         {
@@ -70943,6 +72384,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245] },
         },
         {
@@ -70986,6 +72428,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245] },
         },
         {
@@ -71029,6 +72472,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245] },
         },
         {
@@ -71072,6 +72516,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245] },
         },
       ],
@@ -71087,7 +72532,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'height', profile: 'nonnegative-length' },
         { property: 'width', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['height', 'width'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 1.5, unit: 'rem' } },
@@ -71119,6 +72563,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -71145,6 +72590,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -71171,6 +72617,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -71197,6 +72644,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -71223,6 +72671,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
         {
@@ -71249,6 +72698,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 1.5, unit: 'rem' },
         },
       ],
@@ -71261,7 +72711,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'row-gap', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['row-gap'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.one}' },
@@ -71310,6 +72759,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -71353,6 +72803,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -71396,6 +72847,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -71439,6 +72891,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -71482,6 +72935,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -71525,6 +72979,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
       ],
@@ -71537,7 +72992,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'column-gap', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['column-gap'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.3}' },
@@ -71586,6 +73040,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -71629,6 +73084,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -71672,6 +73128,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -71715,6 +73172,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -71758,6 +73216,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -71801,6 +73260,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
       ],
@@ -71813,7 +73273,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{font.size.sm}' },
@@ -71866,6 +73325,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -71909,6 +73369,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -71952,6 +73413,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -71995,6 +73457,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -72038,6 +73501,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -72081,6 +73545,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
       ],
@@ -72093,7 +73558,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{font.size.4xl}' },
@@ -72142,6 +73606,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.875, unit: 'rem' },
         },
         {
@@ -72185,6 +73650,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.875, unit: 'rem' },
         },
         {
@@ -72228,6 +73694,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.875, unit: 'rem' },
         },
         {
@@ -72271,6 +73738,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.875, unit: 'rem' },
         },
         {
@@ -72314,6 +73782,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.875, unit: 'rem' },
         },
         {
@@ -72357,6 +73826,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1.875, unit: 'rem' },
         },
       ],
@@ -72369,7 +73839,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'fontWeight',
       usageContracts: [{ property: 'font-weight', profile: 'font-weight' }],
-      recipeInputs: [],
       observedProperties: ['font-weight'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{font.semibold}' },
@@ -72418,6 +73887,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 600,
         },
         {
@@ -72461,6 +73931,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 600,
         },
         {
@@ -72504,6 +73975,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 600,
         },
         {
@@ -72547,6 +74019,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 600,
         },
         {
@@ -72590,6 +74063,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 600,
         },
         {
@@ -72633,6 +74107,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: 600,
         },
       ],
@@ -72645,7 +74120,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'line-height', profile: 'line-height' }],
-      recipeInputs: [],
       observedProperties: ['line-height'],
       scale: null,
       source: { status: 'supported', reason: null, value: 1.1 },
@@ -72677,6 +74151,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.1,
         },
         {
@@ -72703,6 +74178,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.1,
         },
         {
@@ -72729,6 +74205,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.1,
         },
         {
@@ -72755,6 +74232,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.1,
         },
         {
@@ -72781,6 +74259,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.1,
         },
         {
@@ -72807,6 +74286,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 1.1,
         },
       ],
@@ -72819,7 +74299,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'gap', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['gap'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.one}' },
@@ -72868,6 +74347,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -72911,6 +74391,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -72954,6 +74435,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -72997,6 +74479,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -73040,6 +74523,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
         {
@@ -73083,6 +74567,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.25, unit: 'rem' },
         },
       ],
@@ -73095,7 +74580,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'font-size', profile: 'positive-font-size' }],
-      recipeInputs: [],
       observedProperties: ['font-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{font.size.sm}' },
@@ -73148,6 +74632,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -73191,6 +74676,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -73234,6 +74720,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -73277,6 +74764,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -73320,6 +74808,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
         {
@@ -73363,6 +74852,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.8125, unit: 'rem' },
         },
       ],
@@ -73375,7 +74865,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'gap', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['gap'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.4}' },
@@ -73424,6 +74913,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -73467,6 +74957,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -73510,6 +75001,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -73553,6 +75045,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -73596,6 +75089,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -73639,6 +75133,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
       ],
@@ -73651,7 +75146,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['padding'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.4}' },
@@ -73700,6 +75194,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -73743,6 +75238,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -73786,6 +75282,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -73829,6 +75326,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -73872,6 +75370,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -73915,6 +75414,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
       ],
@@ -73927,7 +75427,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'padding', profile: 'nonnegative-length' }],
-      recipeInputs: [],
       observedProperties: ['padding'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.4}' },
@@ -73976,6 +75475,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -74019,6 +75519,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -74062,6 +75563,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -74105,6 +75607,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -74148,6 +75651,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
         {
@@ -74191,6 +75695,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 1, unit: 'rem' },
         },
       ],
@@ -74203,7 +75708,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'background', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['background'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{text.muted}' },
@@ -74260,6 +75764,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.32, 0.014, 245] },
         },
         {
@@ -74303,6 +75808,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.32, 0.014, 245] },
         },
         {
@@ -74346,6 +75852,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.32, 0.014, 245] },
         },
         {
@@ -74389,6 +75896,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.02, 245] },
         },
         {
@@ -74432,6 +75940,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.02, 245] },
         },
         {
@@ -74475,6 +75984,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.02, 245] },
         },
       ],
@@ -74490,7 +76000,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'block-size', profile: 'nonnegative-length' },
         { property: 'inline-size', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['block-size', 'inline-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 0.625, unit: 'rem' } },
@@ -74522,6 +76031,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -74548,6 +76058,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -74574,6 +76085,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -74600,6 +76112,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -74626,6 +76139,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
         {
@@ -74652,6 +76166,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 0.625, unit: 'rem' },
         },
       ],
@@ -74664,7 +76179,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['color'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{text.muted}' },
@@ -74721,6 +76235,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.32, 0.014, 245] },
         },
         {
@@ -74764,6 +76279,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.32, 0.014, 245] },
         },
         {
@@ -74807,6 +76323,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.32, 0.014, 245] },
         },
         {
@@ -74850,6 +76367,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.02, 245] },
         },
         {
@@ -74893,6 +76411,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.02, 245] },
         },
         {
@@ -74936,6 +76455,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.82, 0.02, 245] },
         },
       ],
@@ -74948,7 +76468,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'color',
       usageContracts: [{ property: 'color', profile: 'color' }],
-      recipeInputs: [],
       observedProperties: ['color'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{text.default}' },
@@ -75005,6 +76524,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245] },
         },
         {
@@ -75048,6 +76568,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245] },
         },
         {
@@ -75091,6 +76612,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.2, 0.018, 245] },
         },
         {
@@ -75134,6 +76656,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245] },
         },
         {
@@ -75177,6 +76700,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245] },
         },
         {
@@ -75220,6 +76744,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.92, 0.02, 245] },
         },
       ],
@@ -75232,7 +76757,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'dimension',
       usageContracts: [{ property: 'margin-inline-start', profile: 'signed-length' }],
-      recipeInputs: [],
       observedProperties: ['margin-inline-start'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{space.3}' },
@@ -75281,6 +76805,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -75324,6 +76849,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -75367,6 +76893,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -75410,6 +76937,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -75453,6 +76981,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
         {
@@ -75496,6 +77025,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { value: 0.75, unit: 'rem' },
         },
       ],
@@ -75511,7 +77041,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'background', profile: 'color' },
         { property: 'box-shadow', profile: 'color' },
       ],
-      recipeInputs: [],
       observedProperties: ['background', 'box-shadow'],
       scale: null,
       source: { status: 'supported', reason: null, value: '{accent.solid}' },
@@ -75568,6 +77097,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.22, 270] },
         },
         {
@@ -75611,6 +77141,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.22, 270] },
         },
         {
@@ -75654,6 +77185,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.5, 0.22, 270] },
         },
         {
@@ -75697,6 +77229,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.14, 270] },
         },
         {
@@ -75740,6 +77273,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.14, 270] },
         },
         {
@@ -75783,6 +77317,7 @@ export const THEME_TOKEN_CATALOGUE = {
               },
             },
           ],
+          recipeInputs: [],
           resolvedValue: { colorSpace: 'oklch', components: [0.72, 0.14, 270] },
         },
       ],
@@ -75799,7 +77334,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'border-radius', profile: 'nonnegative-length' },
         { property: 'box-shadow', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['block-size', 'border-radius', 'box-shadow'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 2, unit: 'px' } },
@@ -75831,6 +77365,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'px' },
         },
         {
@@ -75857,6 +77392,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'px' },
         },
         {
@@ -75883,6 +77419,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'px' },
         },
         {
@@ -75909,6 +77446,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'px' },
         },
         {
@@ -75935,6 +77473,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'px' },
         },
         {
@@ -75961,6 +77500,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 2, unit: 'px' },
         },
       ],
@@ -75973,7 +77513,6 @@ export const THEME_TOKEN_CATALOGUE = {
       public: true,
       sourceType: 'number',
       usageContracts: [{ property: 'opacity', profile: 'opacity' }],
-      recipeInputs: [],
       observedProperties: ['opacity'],
       scale: null,
       source: { status: 'supported', reason: null, value: 0.55 },
@@ -76005,6 +77544,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.55,
         },
         {
@@ -76031,6 +77571,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.55,
         },
         {
@@ -76057,6 +77598,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.55,
         },
         {
@@ -76083,6 +77625,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.55,
         },
         {
@@ -76109,6 +77652,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.55,
         },
         {
@@ -76135,6 +77679,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: 0.55,
         },
       ],
@@ -76150,7 +77695,6 @@ export const THEME_TOKEN_CATALOGUE = {
         { property: 'block-size', profile: 'nonnegative-length' },
         { property: 'inline-size', profile: 'nonnegative-length' },
       ],
-      recipeInputs: [],
       observedProperties: ['block-size', 'inline-size'],
       scale: null,
       source: { status: 'supported', reason: null, value: { value: 20, unit: 'rem' } },
@@ -76182,6 +77726,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 20, unit: 'rem' },
         },
         {
@@ -76208,6 +77753,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 20, unit: 'rem' },
         },
         {
@@ -76234,6 +77780,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 20, unit: 'rem' },
         },
         {
@@ -76260,6 +77807,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 20, unit: 'rem' },
         },
         {
@@ -76286,6 +77834,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 20, unit: 'rem' },
         },
         {
@@ -76312,6 +77861,7 @@ export const THEME_TOKEN_CATALOGUE = {
             sourceIndex: 3,
           },
           directDependencies: [],
+          recipeInputs: [],
           resolvedValue: { value: 20, unit: 'rem' },
         },
       ],

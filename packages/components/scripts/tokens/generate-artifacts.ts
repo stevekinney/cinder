@@ -45,7 +45,7 @@ import typescriptPlugin from 'prettier/plugins/typescript';
 import { assertPrettierResolvesToRoot } from '../lib/prettier-resolution.ts';
 
 import { buildThemeTokenCatalogue, type ThemeTokenCatalogue } from './catalogue.ts';
-import { inventoryFromSources, loadRepositorySources } from './css-usage-inventory.ts';
+import { loadRepositorySources } from './css-usage-inventory.ts';
 import {
   buildGeneratedOutputs,
   colorTokenRegistryGeneratedPath,
@@ -62,16 +62,14 @@ import {
   serializeEntryValue,
   themeTokenCatalogueGeneratedPath,
   tokenIndexPath,
-  tokensBaseCssPath,
   tokensDocPath,
   type CorpusEntry,
 } from './generate.ts';
+import { buildInventoryForCorpus } from './prospective-token-inventory.ts';
 import {
   buildBaseDocuments,
   buildBaseIndex,
-  buildTokenRegistryFromIndexes,
   serializeTokenRegistry,
-  themeAwarePaths,
   type TokenRegistry,
 } from './registry.ts';
 import { createValueResolver, type ValueResolver } from './resolve.ts';
@@ -1406,15 +1404,15 @@ async function buildTokenIndex(
 // ---------------------------------------------------------------------------
 
 async function buildAllGeneratedOutputs(): Promise<Map<string, string>> {
-  const cssAndResolved = await buildGeneratedOutputs();
-
   const { resolver, documentsByPath } = await loadCorpus();
+  const cssAndResolved = await buildGeneratedOutputs({ resolver, documentsByPath });
   const baseIndex = buildBaseIndex(resolver, documentsByPath);
   const baseDocuments = buildBaseDocuments(resolver, documentsByPath);
   const baseResolveReferences = createValueResolver(baseDocuments);
-  const registry = buildTokenRegistryFromIndexes(
-    baseIndex,
-    themeAwarePaths(resolver, documentsByPath),
+  const { inventory, registry, publicProperties } = await buildInventoryForCorpus(
+    await loadRepositorySources(resolve(import.meta.dir, '../../../..')),
+    resolver,
+    documentsByPath,
   );
 
   validateDocSections(registry);
@@ -1422,20 +1420,6 @@ async function buildAllGeneratedOutputs(): Promise<Map<string, string>> {
   const existingDocMarkdown = await readFile(tokensDocPath, 'utf8');
   // Guards every formatter in the Promise.all below, at a statement boundary.
   assertPrettierResolvesToRoot();
-  const publicProperties = new Set(
-    registry.entries.filter((entry) => entry.public).map((entry) => entry.cssProperty),
-  );
-  const sources = await loadRepositorySources(resolve(import.meta.dir, '../../../..'));
-  const generatedCss = cssAndResolved.get(tokensBaseCssPath);
-  if (generatedCss === undefined) throw new Error('Missing freshly generated token CSS');
-  // The global dependency graph must use this generation's CSS, even when the
-  // committed CSS still belongs to an older token corpus.
-  const inventory = inventoryFromSources(
-    sources.map((source) =>
-      source.globalDefinitions ? { ...source, content: generatedCss } : source,
-    ),
-    publicProperties,
-  );
   const review: unknown = JSON.parse(
     await readFile(resolve(import.meta.dir, 'css-usage-review.json'), 'utf8'),
   );
