@@ -6533,7 +6533,6 @@
     "package:weight": "bun run scripts/report-package-weight.ts",
     "package:weight:check": "bun run scripts/report-package-weight.ts --check",
     "platform:audit": "bun run scripts/check-platform-features.ts",
-    "prepare": "cd ../.. && husky",
     "prepublishOnly": "bun run validate && bun run build",
     "publish:release": "bun run scripts/publish-release.ts",
     "styles:prelude": "bun run scripts/prepend-sidecar-layer-prelude.ts",
