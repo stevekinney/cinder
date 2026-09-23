@@ -22,9 +22,13 @@ name: release
 #
 # The publish path validates both package artifacts before publishing either
 # (`validate:consumer` + package weight), but it does not rerun the full
-# source-validation suite. Source validation is owned by PR CI and main-green;
-# the publish path waits for the same-SHA main-green run before publishing.
-# Duplicating those checks here makes the release job timeout-prone and turns
+# source-validation suite. This repository is a publication mirror of the
+# private corvidae monorepo (COR-1196): lint, tests, coverage and benchmarks
+# run in corvidae before a sync ever reaches here, and this workflow's own
+# `verify-mirror` job (below) runs the transform-emitted `mirror-verify.yaml`
+# — the same install/build/typecheck/pack/publint/attw/consumer-smoke chain
+# every sync's pull request gets — and gates `release` on it. Duplicating
+# those checks inline here would make the release job timeout-prone and turn
 # publish into another full test runner instead of an artifact gate.
 #
 # `workflow_dispatch` exists for manual dry-runs of the same artifact path.
@@ -51,8 +55,18 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # The same verification a pull request gets, called rather than restated:
+  # mirror-verify.yaml is emitted by the corvidae mirror transform from the
+  # steps its own sync runs (install, build, typecheck, pack, publint, attw,
+  # consumer smoke test) — see stevekinney/weft's release.yaml for the same
+  # pattern. Lint, tests and coverage run in corvidae, the source of truth,
+  # before a sync ever reaches this repository (COR-1196).
+  verify-mirror:
+    uses: ./.github/workflows/mirror-verify.yaml
+
   release:
     name: Version or publish
+    needs: verify-mirror
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -175,10 +189,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Pull request events created by GITHUB_TOKEN require manual approval.
-      # Explicit workflow dispatches are the supported exception, so bootstrap
-      # validation against the generated branch instead of requiring a human
-      # to push an empty commit to the Version Packages pull request.
-      - name: Dispatch Version Packages pull request validation
+      # Explicit workflow dispatches are the supported exception, so trigger
+      # a playground preview against the generated branch instead of
+      # requiring a human to push an empty commit to the Version Packages
+      # pull request. deploy-playground.yaml is unaffected by COR-1196's
+      # workflow retirements, so this dispatch survives unchanged; the
+      # unit-tests.yaml/browser-tests.yaml/changeset-guard.yaml dispatches
+      # this step used to make alongside it are gone with those workflows.
+      - name: Dispatch Version Packages pull request preview deploy
         if: steps.changesets.outputs.pullRequestNumber != ''
         env:
           GH_TOKEN: ${{ github.token }}
@@ -187,42 +205,7 @@ jobs:
           set -euo pipefail
           release_branch="$(gh pr view "$RELEASE_PULL_REQUEST_NUMBER" --json headRefName --jq '.headRefName')"
 
-          gh workflow run unit-tests.yaml --ref "$release_branch"
-          gh workflow run browser-tests.yaml --ref "$release_branch"
-          gh workflow run changeset-guard.yaml --ref "$release_branch"
           gh workflow run deploy-playground.yaml --ref "$release_branch" -f environment=preview
-
-      - name: Wait for main-green source validation
-        if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-
-          main_green_run_id=''
-          for attempt in 1 2 3 4 5; do
-            main_green_run_id="$(gh run list \
-              --workflow main-green.yaml \
-              --commit "$GITHUB_SHA" \
-              --event push \
-              --json databaseId \
-              --limit 1 \
-              --jq '.[0].databaseId // ""')"
-
-            if [ -n "$main_green_run_id" ]; then
-              break
-            fi
-
-            echo "main-green run for $GITHUB_SHA is not visible yet (attempt $attempt/5)."
-            sleep 30
-          done
-
-          if [ -z "$main_green_run_id" ]; then
-            echo "::error::No main-green push run found for $GITHUB_SHA; refusing to publish without source validation."
-            exit 1
-          fi
-
-          gh run watch "$main_green_run_id" --exit-status --interval 30
 
       - name: Check validated Markdown package artifact budget
         if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'
