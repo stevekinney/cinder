@@ -50,8 +50,6 @@ const workspaceRoot = join(packageRoot, '..', '..');
 const stagingRoot = join(packageRoot, 'node_modules', '.cache', 'publish-staging');
 
 type ExportConditional = {
-  /** See `generate-exports.ts`'s `ExportEntry.require` — only the root `.` entry carries one. */
-  require?: { types: string; default: string };
   types?: string;
   browser?: string;
   svelte?: string;
