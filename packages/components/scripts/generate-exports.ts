@@ -74,6 +74,17 @@ export type { ComponentDiscovery } from './lib/discover-components.ts';
 export const discoverDirectoryComponents = discoverComponents;
 
 export type ExportEntry = {
+  /**
+   * A nested `require` condition branch, carrying its own `types` — only set where a flat
+   * top-level `types` would otherwise be ambiguous under CJS/`require()` resolution (publint's
+   * "types is interpreted as ESM when resolving with the require condition"; COR-1196). Must stay
+   * the first key `orderedExportEntry` emits: Node's and TypeScript's own exports-condition
+   * matching walks the object's own key order and stops at the first key whose name is a member
+   * of the active condition set, so `require` has to be visible before the flat `types` key below
+   * or CJS resolution never reaches it — see `orderedExportEntry`. Ported from corvidae's
+   * `scripts/mirror/cinder/generate-exports.ts`, the map's real source of truth.
+   */
+  require?: { types: string; default: string };
   types?: string;
   browser?: string;
   svelte?: string;
@@ -296,6 +307,8 @@ export const FORBIDDEN_EXPORT_KEY_PATTERN =
  */
 export function orderedExportEntry(entry: ExportEntry): ExportEntry {
   const out: ExportEntry = {};
+  // Must be first — see `ExportEntry.require`'s doc comment.
+  if (entry.require !== undefined) out.require = entry.require;
   if (entry.types !== undefined) out.types = entry.types;
   if (entry.browser !== undefined) out.browser = entry.browser;
   if (entry.bun !== undefined) out.bun = entry.bun;
@@ -313,6 +326,13 @@ export function orderedExportEntry(entry: ExportEntry): ExportEntry {
  */
 export function computeRootExport(): ExportEntry {
   return orderedExportEntry({
+    // The package ships no separate CJS runtime — `require.default` is the same `dist/index.js`
+    // every other condition already uses — so this exists purely to give CJS/`require()`
+    // resolution its own `types` target (`dist/index.d.cts`, a verbatim copy of `dist/index.d.ts`
+    // `scripts/build.ts` emits) instead of ambiguously sharing the flat ESM one below. Pure
+    // addition: every currently-reachable condition (import/browser/svelte/node/default) is
+    // unchanged, and `require` was not reachable at all before this (see `ExportEntry.require`).
+    require: { types: './dist/index.d.cts', default: './dist/index.js' },
     types: './dist/index.d.ts',
     browser: './src/index.ts',
     svelte: './src/index.ts',

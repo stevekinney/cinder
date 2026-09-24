@@ -58,12 +58,34 @@ describe('orderedExportEntry', () => {
     });
     expect(Object.keys(entry)).toEqual(['types', 'browser', 'svelte', 'node', 'import']);
   });
+
+  it('places require before types — the CJS/require() condition must be visible before the shared ESM types key or it is never reached (COR-1196, publint "types is interpreted as ESM when resolving with the require condition")', () => {
+    const entry = orderedExportEntry({
+      default: './dist/index.js',
+      import: './src/index.ts',
+      node: './dist/server/index.js',
+      svelte: './src/index.ts',
+      browser: './src/index.ts',
+      types: './dist/index.d.ts',
+      require: { types: './dist/index.d.cts', default: './dist/index.js' },
+    });
+    expect(Object.keys(entry)).toEqual([
+      'require',
+      'types',
+      'browser',
+      'svelte',
+      'node',
+      'import',
+      'default',
+    ]);
+  });
 });
 
 describe('computeRootExport', () => {
-  it('points node at the shared server root and default at the root barrel', () => {
+  it('gives require its own types target ahead of the shared flat types key, and leaves every other condition unchanged', () => {
     const root = computeRootExport();
     expect(root).toEqual({
+      require: { types: './dist/index.d.cts', default: './dist/index.js' },
       types: './dist/index.d.ts',
       browser: './src/index.ts',
       svelte: './src/index.ts',
@@ -71,7 +93,15 @@ describe('computeRootExport', () => {
       import: './src/index.ts',
       default: './dist/index.js',
     });
-    expect(Object.keys(root)).toEqual(['types', 'browser', 'svelte', 'node', 'import', 'default']);
+    expect(Object.keys(root)).toEqual([
+      'require',
+      'types',
+      'browser',
+      'svelte',
+      'node',
+      'import',
+      'default',
+    ]);
   });
 });
 
