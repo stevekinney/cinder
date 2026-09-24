@@ -761,20 +761,6 @@ await emitDts({
 // -----------------------------------------------------------------------------
 await emitArbitraryExtensionDeclarations(distributionDirectory);
 
-// -----------------------------------------------------------------------------
-// 5e. `package.json#exports["."].require.types` (COR-1196's corvidae patch to
-//     `computeRootExport()`) needs a `dist/index.d.cts` on disk — publint's fix for
-//     "pkg.exports['.'].types is interpreted as ESM when resolving with the 'require' condition"
-//     is to give `require` its own `types` target instead of sharing the flat ESM one. The
-//     package ships no separate CJS runtime, so this is a verbatim copy of `dist/index.d.ts`: the
-//     `.d.cts` extension alone is what tells a CJS/`require()` consumer's type checker to read it
-//     as CommonJS-shaped, regardless of the `import`/`export` syntax inside.
-// -----------------------------------------------------------------------------
-await Bun.write(
-  `${distributionDirectory}/index.d.cts`,
-  await Bun.file(`${distributionDirectory}/index.d.ts`).text(),
-);
-
 // Dist relative-import guard: fail the build if any relative specifier in emitted `.js`/`.d.ts`
 // output — under a static `from '<path>'` or dynamic `import('<path>')` — points at a JSON, CSS
 // or JS-family target that does not exist under `dist/`. This is the prevention for the class of
