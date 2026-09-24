@@ -234,7 +234,7 @@
     "test": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --conditions svelte --max-concurrency=1 src/lib scripts",
     "test:coverage": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --conditions svelte --max-concurrency=1 src/lib scripts --coverage --coverage-reporter=lcov && bun ../components/scripts/check-coverage-ratchet.ts --package-root .",
     "tokens:audit": "bun ../components/scripts/check-component-css-token-usage.ts --source-root src/lib --baseline scripts/token-usage-baseline.json --strict",
-    "typecheck": "tsc --noEmit -p tsconfig.json && bunx svelte-check --workspace src/lib --tsconfig ../../tsconfig.json --threshold warning",
+    "typecheck": "bun run --filter='@lostgradient/markdown' build && bun run --filter='@lostgradient/cinder' build && svelte-check --workspace . --tsconfig ./tsconfig.browser.json --fail-on-warnings && svelte-check --workspace . --tsconfig ./tsconfig.json --fail-on-warnings",
     "validate": "bun run lint && bun run typecheck && bun run test:coverage && bun run platform:audit && bun run colors:audit && bun run tokens:audit && bun run components:check && bun run build",
     "validate:consumer": "bun run scripts/validate-consumer.ts"
   },

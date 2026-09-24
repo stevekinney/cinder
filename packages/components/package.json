@@ -6549,7 +6549,7 @@
     "tokens:literals": "bun run scripts/check-design-token-literals.ts",
     "tokens:privacy": "bun run scripts/check-token-registry-privacy.ts",
     "tokens:validate": "bun run scripts/tokens/validate-corpus.ts",
-    "typecheck": "bun run --filter='@lostgradient/markdown' build && tsc --noEmit -p tsconfig.check.json && bunx svelte-check --workspace src --tsconfig ../tsconfig.json --threshold error",
+    "typecheck": "bun run --filter='@lostgradient/markdown' build && svelte-check --workspace . --tsconfig ./tsconfig.browser.json --fail-on-warnings && svelte-check --workspace . --tsconfig ./tsconfig.json --fail-on-warnings",
     "validate": "bun run lint && bun run lint:invariants && bun run typecheck && bun run check:changeset-prerelease-bumps && bun run check:placeholder-docs && bun run test:coverage && bun run platform:audit -- --strict && bun run colors:audit -- --strict && bun run tokens:audit -- --strict && bun run aggregator:check && bun run components:check && bun run validate:workflow && bun run validate:svelte-peer",
     "validate:consumer": "bun run scripts/validate-consumers.ts",
     "validate:consumer:hydration-smoke": "bun run scripts/validate-consumers.ts --hydration-smoke",
