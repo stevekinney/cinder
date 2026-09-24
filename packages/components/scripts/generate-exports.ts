@@ -310,21 +310,6 @@ export function orderedExportEntry(entry: ExportEntry): ExportEntry {
  * Builds the root `.` export entry. The root barrel is the only entry whose
  * `node` target points at the shared server root (`dist/server/index.js`);
  * component subpaths point at sibling entries under `dist/server/components/<name>/`.
- *
- * `browser`/`svelte` keep pointing at the raw `./src/index.ts` barrel — deliberately: a
- * Svelte-aware bundler resolves component source directly instead of coupling every consumer to
- * one compiled Svelte runtime shape, and every subpath export (`./button`, `./accordion`, ...)
- * carries the identical `browser`/`svelte`-points-at-`./src/**` pattern for the same reason.
- * `import` alone points at the compiled `./dist/index.js` rather than `./src/index.ts`: with no
- * explicit `require` condition, publint's `--strict` resolves the flat `types` field against
- * `import` for a plain Node/TypeScript `require()`/nodenext caller (a caller that has no reason
- * to honor the bundler-only `browser`/`svelte` conditions), and a caller landing on a raw,
- * uncompiled `.ts` file there reads as "the types are ESM-only but the package also exports CJS"
- * — the tarball's real `pkg.exports["."]` triggered exactly that publint error before this
- * change (confirmed empirically: only `import` needed to move to `./dist/index.js` to clear it;
- * `browser`/`svelte` staying on `./src/index.ts` does not retrigger it, and no subpath export
- * carrying the same `browser`/`svelte`-raw-source shape is flagged — publint's `--strict` scopes
- * this particular check to the root `.` entry alone).
  */
 export function computeRootExport(): ExportEntry {
   return orderedExportEntry({
@@ -332,7 +317,7 @@ export function computeRootExport(): ExportEntry {
     browser: './src/index.ts',
     svelte: './src/index.ts',
     node: './dist/server/index.js',
-    import: './dist/index.js',
+    import: './src/index.ts',
     default: './dist/index.js',
   });
 }

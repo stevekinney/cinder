@@ -31,7 +31,7 @@
       "browser": "./src/index.ts",
       "svelte": "./src/index.ts",
       "node": "./dist/server/index.js",
-      "import": "./dist/index.js",
+      "import": "./src/index.ts",
       "default": "./dist/index.js"
     },
     "./package.json": "./package.json",
