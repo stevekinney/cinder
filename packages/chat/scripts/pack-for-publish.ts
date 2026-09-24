@@ -66,7 +66,7 @@ const REQUIRED_DEPENDENCIES: Record<string, string> = {
   conversationalist: 'catalog:',
   'decode-named-character-reference': '^1.3.0',
   'micromark-util-decode-numeric-character-reference': '^2.0.0',
-  zod: '4.4.3',
+  zod: '4.6.5',
 };
 
 /** Narrows `value` to an object carrying a string `version` field. */

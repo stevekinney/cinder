@@ -67,9 +67,21 @@ describe('Editor package ownership boundary', () => {
     // positioning, dev-only warnings) — not singletons, so Editor owns them
     // as regular dependencies, matching Cinder's own treatment of the same
     // two packages, rather than asking every host to install them.
+    // COR-1196 (fd6e19b): the synced source manifest also carries `workspace:*` for the two
+    // intra-target edges and `catalog:` for the milkdown/prosemirror stack —
+    // `assertSourceManifest`'s `REQUIRED_DEPENDENCIES` is the authoritative contract for this raw,
+    // pre-resolution shape; this literal mirrors it so a change to either is caught here too.
     expect(editorManifest.dependencies).toEqual({
       '@floating-ui/dom': '1.7.6',
+      '@lostgradient/cinder': 'workspace:*',
+      '@lostgradient/markdown': 'workspace:*',
+      '@milkdown/kit': 'catalog:',
+      '@milkdown/prose': 'catalog:',
       'esm-env': '^1.2.0',
+      'prosemirror-inputrules': 'catalog:',
+      'prosemirror-model': 'catalog:',
+      'prosemirror-state': 'catalog:',
+      'prosemirror-view': 'catalog:',
     });
     // `@lostgradient/cinder` and `@lostgradient/markdown` are both excluded
     // from this literal comparison, not just Cinder: both ranges move
@@ -103,6 +115,11 @@ describe('Editor package ownership boundary', () => {
     // just not its exact range -- that's what the dynamic guard below
     // checks.
     expect(Object.keys(editorManifest.peerDependencies ?? {})).toContain('@lostgradient/markdown');
+    // COR-1196 (fd6e19b): `runtimeExternalSpecifiers` reads `peerDependencies` then
+    // `dependencies`, and the synced source manifest now lists `@lostgradient/cinder`/
+    // `@lostgradient/markdown`/`@milkdown/kit`/`@milkdown/prose`/the four `prosemirror-*` packages
+    // in both (peer for the real published contract, `workspace:*`/`catalog:` dependency so the
+    // monorepo build can resolve them locally) — so each now appears twice.
     expect(runtimeExternalSpecifiers(editorManifest)).toEqual([
       '@lostgradient/cinder',
       '@lostgradient/cinder/*',
@@ -126,8 +143,24 @@ describe('Editor package ownership boundary', () => {
       'svelte/*',
       '@floating-ui/dom',
       '@floating-ui/dom/*',
+      '@lostgradient/cinder',
+      '@lostgradient/cinder/*',
+      '@lostgradient/markdown',
+      '@lostgradient/markdown/*',
+      '@milkdown/kit',
+      '@milkdown/kit/*',
+      '@milkdown/prose',
+      '@milkdown/prose/*',
       'esm-env',
       'esm-env/*',
+      'prosemirror-inputrules',
+      'prosemirror-inputrules/*',
+      'prosemirror-model',
+      'prosemirror-model/*',
+      'prosemirror-state',
+      'prosemirror-state/*',
+      'prosemirror-view',
+      'prosemirror-view/*',
     ]);
   });
 
@@ -191,7 +224,21 @@ describe('Editor package ownership boundary', () => {
     const published = buildPublishedManifest(editorManifest);
     const serialized = JSON.stringify(published);
 
-    expect(published.dependencies).toEqual(editorManifest.dependencies);
+    // COR-1196 (fd6e19b): `dependencies` keeps the same key set, but `resolveDependencySpecifiers`
+    // turns every `workspace:*`/`catalog:` specifier from the synced source manifest into a real,
+    // publishable range first — a host installing the packed tarball with plain npm/bun has no
+    // `workspace:*` protocol to resolve, so `published.dependencies` can no longer equal
+    // `editorManifest.dependencies` (checked structurally below instead of by exact version, which
+    // would otherwise go stale every time a workspace sibling or the root catalog bumps).
+    expect(Object.keys(published.dependencies ?? {})).toEqual(
+      Object.keys(editorManifest.dependencies ?? {}),
+    );
+    for (const [name, range] of Object.entries(published.dependencies ?? {})) {
+      expect(
+        range,
+        `${name}'s published range must not carry a workspace:*/catalog: specifier`,
+      ).not.toMatch(/^(workspace:|catalog:)/);
+    }
     expect(published.devDependencies).toBeUndefined();
     expect(published.scripts).toBeUndefined();
     expect(serialized).not.toContain('workspace:');
