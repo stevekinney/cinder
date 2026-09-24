@@ -18,10 +18,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "zod": "4.4.1"
+    "@lostgradient/environmentalist": "0.1.0",
+    "zod": "4.6.5"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.10.0",
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.61.1",
     "@types/node": "^22.0.0",
     "@types/pixelmatch": "^5.2.6",
