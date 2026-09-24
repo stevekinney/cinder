@@ -78,4 +78,33 @@ describe('createServerEntrySource', () => {
     expect(serverEntrySource).toContain('tokenResolverExport as tokenResolver');
     expect(serverEntrySource).toContain('tokenIndexExport as tokenIndex');
   });
+
+  it('carries plain wildcard re-exports through unchanged', () => {
+    const source = [
+      "export { default as Button } from './components/button.svelte';",
+      "export * from './exports/icons.ts';",
+      "export * from './exports/utilities.ts';",
+    ].join('\n');
+
+    const serverEntrySource = createServerEntrySource(source);
+
+    expect(serverEntrySource).toContain("export * from './exports/icons.ts';");
+    expect(serverEntrySource).toContain("export * from './exports/utilities.ts';");
+  });
+
+  it('carries a namespaced wildcard re-export through with its alias', () => {
+    const source = "export * as icons from './exports/icons.ts';";
+
+    const serverEntrySource = createServerEntrySource(source);
+
+    expect(serverEntrySource).toContain("export * as icons from './exports/icons.ts';");
+  });
+
+  it('drops a type-only wildcard re-export', () => {
+    const source = "export type * from './exports/types.ts';";
+
+    const serverEntrySource = createServerEntrySource(source);
+
+    expect(serverEntrySource).not.toContain('./exports/types.ts');
+  });
 });
