@@ -1,7 +1,7 @@
 import { $, Glob } from 'bun';
 import { existsSync } from 'node:fs';
 import { chmod, mkdir, rm } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { dirname, join, normalize } from 'node:path';
 import { emitDts } from 'svelte2tsx';
 
 import { checkComponentCss, formatViolation } from './check-component-css.ts';
@@ -19,6 +19,11 @@ import {
   discoverComponentEnhancements,
 } from './lib/component-enhancements.ts';
 import { discoverComponents, type ComponentDiscovery } from './lib/discover-components.ts';
+import {
+  findRelativeSpecifiers,
+  findUnresolvedRelativeImports,
+  type UnresolvedRelativeImport,
+} from './lib/dist-relative-imports.ts';
 import { hasSourceCssImport } from './prepend-source-index-css-import.ts';
 import { createServerEntrySource } from './server-entry.ts';
 import {
@@ -644,6 +649,67 @@ await emitDts({
   libRoot: sourceRoot,
   tsconfig: `${repositoryRoot}/tsconfig.build.json`,
 });
+
+// -----------------------------------------------------------------------------
+// 5b. Mirror JSON sidecars the compiled `.d.ts` output imports. `emitDts()` faithfully
+//     preserves every `with { type: 'json' }` import from the synced source (the per-component
+//     `.constraints.json`/`.examples.json` sidecars `src/exports/metadata-*.ts` imports, and the
+//     DTCG token JSON `src/index.ts` re-exports) as a real import specifier in the declaration
+//     file, but nothing before this point ever copies the referenced JSON into `dist/` — the JS
+//     build inlines the same JSON as literal data instead of preserving a file reference, so this
+//     gap is `.d.ts`-only and easy to miss by testing only the runtime bundle. Walk every emitted
+//     `.d.ts`, find each relative JSON specifier, and copy the file from the matching path under
+//     `sourceRoot` to the matching path under `dist/` if it is not already there.
+// -----------------------------------------------------------------------------
+{
+  const declarationGlob = new Glob('**/*.d.ts');
+  for await (const relative of declarationGlob.scan({ cwd: distributionDirectory })) {
+    const filePath = `${distributionDirectory}/${relative}`;
+    const content = await Bun.file(filePath).text();
+    for (const specifier of findRelativeSpecifiers(content)) {
+      if (!specifier.endsWith('.json')) continue;
+      const relativeTarget = normalize(join(dirname(relative), specifier));
+      const destination = `${distributionDirectory}/${relativeTarget}`;
+      if (existsSync(destination)) continue;
+      const source = `${sourceRoot}/${relativeTarget}`;
+      // A source-less target is caught by the resolution check just below instead of silently
+      // skipped here — this loop only ever copies a file that genuinely exists to copy.
+      if (!existsSync(source)) continue;
+      await mkdir(dirname(destination), { recursive: true });
+      await Bun.write(destination, await Bun.file(source).text());
+    }
+  }
+}
+
+// Dist relative-import guard: fail the build if any relative specifier in emitted `.js`/`.d.ts`
+// output — under a static `from '<path>'` or dynamic `import('<path>')` — points at a JSON, CSS
+// or JS-family target that does not exist under `dist/`. This is the prevention for the class of
+// bug the JSON-mirroring step above fixes: a future static asset the build forgets to copy now
+// fails the build immediately instead of shipping a tarball `attw`/`publint` discover broken.
+// `.ts`/`.svelte` specifiers are exempt by design — see `dist-relative-imports.ts`'s module doc.
+{
+  const distScanGlob = new Glob('**/*.{js,d.ts}');
+  const unresolvedImports: UnresolvedRelativeImport[] = [];
+  for await (const relative of distScanGlob.scan({ cwd: distributionDirectory })) {
+    const filePath = `${distributionDirectory}/${relative}`;
+    const content = await Bun.file(filePath).text();
+    unresolvedImports.push(
+      ...findUnresolvedRelativeImports(relative, content, (distRelativePath) =>
+        existsSync(`${distributionDirectory}/${distRelativePath}`),
+      ),
+    );
+  }
+  if (unresolvedImports.length > 0) {
+    process.stderr.write(
+      'Build aborted: relative import(s) in compiled output do not resolve to a file under dist/:\n' +
+        unresolvedImports
+          .map((offender) => `  ${offender.file} -> ${offender.specifier}`)
+          .join('\n') +
+        '\n',
+    );
+    process.exit(1);
+  }
+}
 
 // Residue guard: scan every emitted JS/`.d.ts` file for a leaked
 // workspace-private `@cinder/*` import specifier — those must never survive
