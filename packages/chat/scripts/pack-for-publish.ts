@@ -1,5 +1,5 @@
 import { Glob } from 'bun';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { cp, mkdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
@@ -34,6 +34,7 @@ export type PackageManifest = {
 };
 
 const PACKAGE_ROOT = join(import.meta.dir, '..');
+const WORKSPACE_ROOT = join(PACKAGE_ROOT, '..', '..');
 const STAGING_ROOT = join(PACKAGE_ROOT, 'node_modules', '.cache', 'publish-staging');
 // `@lostgradient/cinder`, `@lostgradient/markdown`, and `svelte` are
 // host-supplied runtime singletons: a consuming app must control which copy
@@ -44,12 +45,105 @@ const STAGING_ROOT = join(PACKAGE_ROOT, 'node_modules', '.cache', 'publish-stagi
 // model and Markdown projection — Chat owns them as regular dependencies so
 // host apps never install or version-pick them directly.
 const REQUIRED_PEERS = new Set(['@lostgradient/cinder', '@lostgradient/markdown', 'svelte']);
+// Values are the RAW specifiers the synced source manifest carries, not the
+// resolved ones the published tarball ships — `@lostgradient/cinder` and
+// `@lostgradient/markdown` are intra-target sync edges (`workspace:*`, one
+// of `target-owned.json`'s dependency rules: a package this mirror ships is
+// the transform's outright), `conversationalist` is a corvidae root-catalog
+// entry (`catalog:`, since the target already declares it and the sync
+// resolves third-party catalog entries the same way `svelte`/`prettier` are
+// elsewhere on this branch). `decode-named-character-reference`,
+// `micromark-util-decode-numeric-character-reference` and `zod` are plain
+// third-party ranges the target already declared, which the sync leaves
+// untouched (`composeDependencies`'s case 2). `resolveDependencySpecifiers`
+// (below) is what turns `workspace:*`/`catalog:` into a real installable
+// range before the tarball is built; `assertSourceManifest` checks the
+// pre-resolution shape so a change to what the sync writes here is caught
+// as a contract break, not silently packed.
 const REQUIRED_DEPENDENCIES: Record<string, string> = {
-  conversationalist: '^1.1.0',
+  '@lostgradient/cinder': 'workspace:*',
+  '@lostgradient/markdown': 'workspace:*',
+  conversationalist: 'catalog:',
   'decode-named-character-reference': '^1.3.0',
   'micromark-util-decode-numeric-character-reference': '^2.0.0',
   zod: '4.4.3',
 };
+
+/** Narrows `value` to an object carrying a string `version` field. */
+function hasStringVersion(value: unknown): value is { version: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'version' in value &&
+    typeof (value as { version: unknown }).version === 'string'
+  );
+}
+
+/**
+ * Resolve a workspace sibling's real, currently-declared version through the
+ * root `node_modules/<name>` symlink `bun install` creates for every
+ * workspace package — mirrors `packages/components/scripts/pack-for-publish.ts`'s
+ * `resolveWorkspaceSiblingVersion`, duplicated rather than imported because
+ * these per-package pack scripts are each self-contained target-owned
+ * tooling (only `release-provenance.ts` is shared today).
+ */
+function resolveWorkspaceSiblingVersion(name: string): string {
+  const manifestPath = join(WORKSPACE_ROOT, 'node_modules', name, 'package.json');
+  if (!existsSync(manifestPath)) {
+    throw new Error(
+      `Cannot resolve workspace sibling "${name}": ${manifestPath} does not exist. ` +
+        'Run `bun install` at the workspace root first.',
+    );
+  }
+  const parsed: unknown = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  if (!hasStringVersion(parsed)) {
+    throw new Error(`Workspace sibling "${name}"'s package.json is missing a string "version".`);
+  }
+  return parsed.version;
+}
+
+/** The root workspace manifest's `catalog` block (see the cinder script's `readRootCatalog`). */
+function readRootCatalog(): Readonly<Record<string, string>> {
+  const parsed: unknown = JSON.parse(
+    readFileSync(join(WORKSPACE_ROOT, 'package.json'), 'utf8'),
+  );
+  if (typeof parsed !== 'object' || parsed === null) return {};
+  const catalog = (parsed as { catalog?: unknown }).catalog;
+  return typeof catalog === 'object' && catalog !== null ? (catalog as Record<string, string>) : {};
+}
+
+/**
+ * Resolve every `workspace:*`/`catalog:` specifier in a dependency record to
+ * a real, publishable range. `workspace:*` becomes `^<sibling's version>`
+ * (same rule as cinder's script); `catalog:` becomes the root catalog's
+ * concrete range for that name. Anything else passes through unchanged.
+ */
+function resolveDependencySpecifiers(
+  record: Record<string, string> | undefined,
+  catalog: Readonly<Record<string, string>>,
+): Record<string, string> | undefined {
+  if (!record) return record;
+  const out: Record<string, string> = {};
+  for (const [name, specifier] of Object.entries(record)) {
+    if (specifier === 'workspace:*') {
+      out[name] = `^${resolveWorkspaceSiblingVersion(name)}`;
+      continue;
+    }
+    if (specifier === 'catalog:') {
+      const range = catalog[name];
+      if (range === undefined) {
+        throw new Error(
+          `"${name}" is "catalog:" in the source manifest, but the root package.json's ` +
+            'catalog carries no entry for it.',
+        );
+      }
+      out[name] = range;
+      continue;
+    }
+    out[name] = specifier;
+  }
+  return out;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -197,7 +291,15 @@ export function buildPublishedManifest(
     );
 
   // `dependencies` is retained so a host application does not need to
-  // declare Chat's implementation dependencies itself.
+  // declare Chat's implementation dependencies itself — resolved to real
+  // ranges first, since the synced source manifest carries `workspace:*`
+  // for the intra-target edges and `catalog:` for conversationalist.
+  const resolvedDependencies = resolveDependencySpecifiers(source.dependencies, readRootCatalog());
+  if (resolvedDependencies === undefined) {
+    delete published.dependencies;
+  } else {
+    published.dependencies = resolvedDependencies;
+  }
   delete published.devDependencies;
   delete published.optionalDependencies;
   delete published.scripts;
