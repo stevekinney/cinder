@@ -6,5 +6,5 @@
     "types": ["node", "bun"],
     "noEmit": true
   },
-  "include": ["src/**/*", "tests/**/*", "scripts/**/*", "playwright.config.ts"]
+  "include": ["src/**/*", "scripts/**/*"]
 }

@@ -51,9 +51,8 @@
     // declared files, env vars, and engines — there is no platform component (confirmed absent from
     // `--dry=json`'s `globalCacheInputs`). Once macOS laptops and Linux CI share one remote
     // namespace, a platform-conditioned test can have its success replayed on the OS that never
-    // executed that branch; `packages/testing/scripts/start-server.test.ts` and
-    // `packages/components/scripts/husky/utilities.test.ts` both derive assertions from
-    // `process.platform`.
+    // executed that branch; `packages/components/scripts/husky/utilities.test.ts` derives
+    // assertions from `process.platform`.
     //
     // Two variables because no single one covers both environments. GitHub defines `RUNNER_OS` in
     // every job automatically, so CI needs no workflow wiring (and `${{ runner.os }}` could not be

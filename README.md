@@ -177,7 +177,7 @@ This repository is a Bun workspace.
 | --------------------- | -------------------------------------------------------------------------------------------------------- |
 | `packages/components` | Published `@lostgradient/cinder` package.                                                                |
 | `packages/playground` | Private component playground and static export.                                                          |
-| `packages/testing`    | Private Playwright, axe, and visual-regression harness.                                                  |
+| `packages/testing`    | Private workspace of small, target-owned checks the playground and components package depend on.         |
 | `packages/markdown`   | Published `@lostgradient/markdown` package (headless Markdown pipeline, rendering, diffing, templating). |
 | `packages/commentary` | Private review/comment anchoring and editor (ProseMirror/Milkdown) runtime utilities.                    |
 
