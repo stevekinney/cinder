@@ -1,5 +1,6 @@
 const identifierPattern = '[A-Za-z_$][A-Za-z0-9_$]*';
-const exportBlockPattern = /export\s*\{([\s\S]*?)\}\s*from\s*'(\.[^']+)';/g;
+const exportBlockPattern =
+  /export\s*\{([\s\S]*?)\}\s*from\s*'(\.[^']+)'(?:\s+with\s*(\{[^}]*\}))?\s*;/g;
 const namedSpecifierPattern = new RegExp(`^(${identifierPattern})$`);
 const aliasedSpecifierPattern = new RegExp(
   `^(${identifierPattern})\\s+as\\s+(${identifierPattern})$`,
@@ -47,16 +48,17 @@ export function createServerEntrySource(source: string): string {
   const exportNames: string[] = [];
 
   for (const match of source.matchAll(exportBlockPattern)) {
-    const [, specifiers, importPath] = match;
+    const [, specifiers, importPath, importAttributes] = match;
     if (!specifiers || !importPath) continue;
 
     const valueSpecifiers = parseValueExportSpecifiers(specifiers);
     if (valueSpecifiers.length === 0) continue;
 
+    const importAttributesClause = importAttributes ? ` with ${importAttributes}` : '';
     imports.push(
       `import { ${valueSpecifiers
         .map((specifier) => specifier.importSpecifier)
-        .join(', ')} } from '${importPath}';`,
+        .join(', ')} } from '${importPath}'${importAttributesClause};`,
     );
     exportNames.push(...valueSpecifiers.map((specifier) => specifier.exportName));
   }

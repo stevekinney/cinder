@@ -52,4 +52,30 @@ describe('createServerEntrySource', () => {
     expect(serverEntrySource).toContain('ToastRegionExport as ToastRegion');
     expect(serverEntrySource).toContain('useToastExport as useToast');
   });
+
+  it('keeps the import-attributes clause on JSON exports and does not bleed into neighboring statements', () => {
+    const source = [
+      "export { default as Button } from './components/button.svelte';",
+      "export { default as tokenResolver } from './tokens/cinder.resolver.json' with { type: 'json' };",
+      "export { default as tokenIndex } from './tokens/index.json' with { type: 'json' };",
+      "export { default as Card } from './components/card.svelte';",
+    ].join('\n');
+
+    const serverEntrySource = createServerEntrySource(source);
+
+    expect(serverEntrySource).toContain(
+      "import { default as tokenResolver } from './tokens/cinder.resolver.json' with { type: 'json' };",
+    );
+    expect(serverEntrySource).toContain(
+      "import { default as tokenIndex } from './tokens/index.json' with { type: 'json' };",
+    );
+    expect(serverEntrySource).toContain(
+      "import { default as Button } from './components/button.svelte';",
+    );
+    expect(serverEntrySource).toContain(
+      "import { default as Card } from './components/card.svelte';",
+    );
+    expect(serverEntrySource).toContain('tokenResolverExport as tokenResolver');
+    expect(serverEntrySource).toContain('tokenIndexExport as tokenIndex');
+  });
 });
