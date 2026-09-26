@@ -38,11 +38,11 @@ import { existsSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 
-import { allowedExampleExclusionReasons } from './example-exclusion-reasons.ts';
 import {
   ALLOWED_EXAMPLE_PACKAGE_PREFIXES,
   ALLOWED_EXAMPLE_PACKAGES,
 } from './example-allowed-packages.ts';
+import { allowedExampleExclusionReasons } from './example-exclusion-reasons.ts';
 import { discoverDirectoryComponents } from './generate-exports.ts';
 import { stripExampleHarness } from './lib/strip-example-harness.ts';
 
