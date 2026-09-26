@@ -17,6 +17,17 @@ afterEach(() => {
 });
 
 describe('JsonEditor', () => {
+  test.each([false, true])('respects autofocus=%s through its focus attachment', (autofocus) => {
+    const { getByRole } = render(JsonEditor, {
+      id: 'autofocus-payload',
+      label: 'Payload',
+      value: '{}',
+      autofocus,
+    });
+    const textarea = getByRole('textbox', { name: 'Payload' });
+    expect(document.activeElement === textarea).toBe(autofocus);
+  });
+
   test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
     const { container } = render(JsonEditor, {
       id: 'no-error-yet-json',
