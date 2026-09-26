@@ -676,7 +676,9 @@ it('bundles when the mirrored manifest has no example exclusion policy', async (
               /export const allowedExampleExclusionReasons = \[[\s\S]*?\] as const satisfies readonly string\[\];/,
               '',
             );
-            expect(contents).not.toContain('export const allowedExampleExclusionReasons');
+            const policyExport = /\bexport\s+const\s+allowedExampleExclusionReasons\b/;
+            if (policyExport.test(source)) expect(contents).not.toBe(source);
+            expect(contents).not.toMatch(policyExport);
             return { contents, loader: 'ts' };
           });
         },
