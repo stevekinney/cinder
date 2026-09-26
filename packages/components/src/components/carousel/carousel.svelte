@@ -129,7 +129,7 @@
   // Snapshotted at the moment a 'user' gesture begins; compared at settle to
   // detect a parent-driven `activeIndex` change that landed mid-gesture, which
   // wins over wherever the finger physically settled (see `handleSettle`).
-  let observedActiveIndex = currentIndex;
+  let observedActiveIndex = untrack(() => currentIndex);
   const displayIndex = $derived(motion.kind === 'user' ? visualIndex : currentIndex);
   const slideIdentity = $derived(slides.map((slide) => slide.id).join('\u0000'));
   let previousSlideIdentity = untrack(() => slideIdentity);

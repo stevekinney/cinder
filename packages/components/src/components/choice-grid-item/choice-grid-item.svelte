@@ -70,10 +70,6 @@
   const isFocusable = $derived(context.isFocusable(registeredValue));
   const tabIndex = $derived(rovingTabIndex(isFocusable));
 
-  // In single-select mode, the item acts as a radio button (role="radio").
-  // In multi-select mode, the item acts as a checkbox (role="checkbox").
-  const role = $derived(context.multiple ? 'checkbox' : 'radio');
-
   let elementRef: HTMLElement | null = $state(null);
 
   // Effect A — mount/unmount registration. Uses untrack to avoid creating a
@@ -117,20 +113,40 @@
   }
 </script>
 
-<div
-  bind:this={elementRef}
-  {role}
-  aria-checked={isSelected}
-  aria-disabled={isDisabled || undefined}
-  tabindex={tabIndex}
-  class={classNames('cinder-choice-grid-item', className)}
-  data-cinder-selected={isSelected ? '' : undefined}
-  data-cinder-disabled={isDisabled || undefined}
-  data-cinder-state={feedbackState !== 'neutral' ? feedbackState : undefined}
-  onclick={handleClick}
-  onkeydown={handleKeydown}
->
-  <span class="cinder-choice-grid-item__content">
-    {@render children()}
-  </span>
-</div>
+{#if context.multiple}
+  <div
+    bind:this={elementRef}
+    role="checkbox"
+    aria-checked={isSelected}
+    aria-disabled={isDisabled || undefined}
+    tabindex={tabIndex}
+    class={classNames('cinder-choice-grid-item', className)}
+    data-cinder-selected={isSelected ? '' : undefined}
+    data-cinder-disabled={isDisabled || undefined}
+    data-cinder-state={feedbackState !== 'neutral' ? feedbackState : undefined}
+    onclick={handleClick}
+    onkeydown={handleKeydown}
+  >
+    <span class="cinder-choice-grid-item__content">
+      {@render children()}
+    </span>
+  </div>
+{:else}
+  <div
+    bind:this={elementRef}
+    role="radio"
+    aria-checked={isSelected}
+    aria-disabled={isDisabled || undefined}
+    tabindex={tabIndex}
+    class={classNames('cinder-choice-grid-item', className)}
+    data-cinder-selected={isSelected ? '' : undefined}
+    data-cinder-disabled={isDisabled || undefined}
+    data-cinder-state={feedbackState !== 'neutral' ? feedbackState : undefined}
+    onclick={handleClick}
+    onkeydown={handleKeydown}
+  >
+    <span class="cinder-choice-grid-item__content">
+      {@render children()}
+    </span>
+  </div>
+{/if}

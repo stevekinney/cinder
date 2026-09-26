@@ -253,7 +253,7 @@
   // Grid renders a configurable HTMLElement tag, while ChoiceGrid preserves
   // the div-specific attributes from its public API. The forwarded attributes
   // are otherwise identical at runtime.
-  const gridRest = rest as Record<string, unknown>;
+  const gridRest = $derived(rest as Record<string, unknown>);
   const gridLayout = $derived(
     columns === 'responsive' ? { minItemWidth: minColumnWidth } : { columns },
   );
