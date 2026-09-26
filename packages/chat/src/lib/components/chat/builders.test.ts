@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import * as conversationalist from 'conversationalist';
 
 import {
   appendAssistantMessage,
@@ -25,6 +26,13 @@ import {
 } from './builders.ts';
 
 describe('chat conversation builders', () => {
+  test('exports the rewind helpers from the supported Conversationalist root', () => {
+    expect(rewindBeforeMessage).toBe(conversationalist.rewindBeforeMessage);
+    expect(rewindBeforePosition).toBe(conversationalist.rewindBeforePosition);
+    expect(typeof rewindBeforeMessage).toBe('function');
+    expect(typeof rewindBeforePosition).toBe('function');
+  });
+
   test('uses Conversationalist 0.5 createConversationHistory snapshots', () => {
     const conversation = createConversationHistory({ id: 'conversation-builders' });
 
@@ -230,7 +238,13 @@ describe('chat conversation builders', () => {
       callId: 'call-1',
       outcome: 'action_required',
       content: null,
-      action: { type: 'approval' },
+      action: {
+        type: 'approval',
+        risk: 'high',
+        operation: { kind: 'command', command: 'echo approval', argsPreview: { ok: true } },
+        policyVersion: 'test-policy',
+        idempotencyKey: 'test-approval',
+      },
     });
     const resolved = replaceToolResult(withTool, 'call-1', {
       callId: 'call-1',

@@ -26,8 +26,8 @@ import type {
   ToolResult,
 } from '../components/chat/conversation-model.ts';
 import type { ChatAttachment } from '../components/chat/input/chat-attachment.ts';
-import type { ChatSerializedRunError, ChatStreamEvent } from './stream-event-codec.ts';
 import { decodeChatStreamEvents, guardChatStreamEvents } from './stream-event-codec.ts';
+import type { ChatSerializedRunError, ChatStreamEvent } from './stream-event-contract.ts';
 
 /**
  * A terminal failure the host reported through a `run.error` or

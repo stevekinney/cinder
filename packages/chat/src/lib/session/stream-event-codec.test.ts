@@ -6,13 +6,10 @@ import {
   createConversationHistory,
   isConversationHistory,
 } from 'conversationalist';
-import type { ChatStreamEvent } from './stream-event-codec.ts';
-import {
-  decodeChatStreamEvent,
-  decodeChatStreamEvents,
-  encodeChatStreamEvent,
-  guardChatStreamEvents,
-} from './stream-event-codec.ts';
+import { decodeChatStreamEvents, guardChatStreamEvents } from './stream-event-codec.ts';
+import type { ChatStreamEvent } from './stream-event-contract.ts';
+import { decodeChatStreamEvent } from './stream-event-decoder.ts';
+import { encodeChatStreamEvent } from './stream-event-encoder.ts';
 
 describe('chat stream event codec', () => {
   test('round-trips events without provider-specific types', () => {
@@ -48,12 +45,46 @@ describe('chat stream event codec', () => {
       callId: 'call-approval',
       outcome: 'action_required' as const,
       content: 'Save this note?',
-      action: { type: 'approval' as const, message: 'Save this note?' },
+      action: {
+        type: 'approval' as const,
+        message: 'Save this note?',
+        risk: 'low' as const,
+        operation: {
+          kind: 'command' as const,
+          command: 'remember_note',
+          argsPreview: { text: 'A note' },
+        },
+        policyVersion: 'test-policy',
+        idempotencyKey: 'pending-approval-1',
+      },
       pendingApproval: {
         callId: 'call-approval',
         toolName: 'remember_note',
         arguments: { text: 'A note' },
         approvalToken: 'a'.repeat(64),
+      },
+    };
+
+    expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+  });
+
+  test('preserves required Conversationalist 1.3 approval fields', () => {
+    const event: ChatStreamEvent = {
+      type: 'tool_result' as const,
+      callId: 'call-approval-contract',
+      outcome: 'action_required' as const,
+      content: 'Approve the command?',
+      action: {
+        type: 'approval' as const,
+        message: 'Approve the command?',
+        risk: 'high' as const,
+        operation: {
+          kind: 'command' as const,
+          command: 'bun test',
+          argsPreview: { filter: '@lostgradient/chat' },
+        },
+        policyVersion: 'approval-policy:2026-09-19',
+        idempotencyKey: 'approval-contract-1',
       },
     };
 
@@ -596,7 +627,18 @@ describe('chat stream event codec', () => {
           callId: 'call-1',
           outcome: 'action_required' as const,
           content: 'Save this note?',
-          action: { type: 'approval' as const, message: 'Save this note?' },
+          action: {
+            type: 'approval' as const,
+            message: 'Save this note?',
+            risk: 'low' as const,
+            operation: {
+              kind: 'command' as const,
+              command: 'remember_note',
+              argsPreview: { text: 'A note' },
+            },
+            policyVersion: 'test-policy',
+            idempotencyKey: 'settled-approval-1',
+          },
         },
         wireVersion: 1 as const,
         sequence: 2,
@@ -1475,7 +1517,7 @@ describe('chat stream event codec', () => {
         outcome: 'action_required',
         content: 'confirm?',
         action: {
-          type: 'approval',
+          type: 'input',
           message: 'confirm?',
           schema: { threshold: Number.POSITIVE_INFINITY },
         },
@@ -2238,7 +2280,14 @@ describe('a paused-approval history still encodes as run.completed', () => {
       callId: 'call_1',
       outcome: 'action_required',
       content: null,
-      action: { type: 'approval', message: 'Save this note?' },
+      action: {
+        type: 'approval',
+        message: 'Save this note?',
+        risk: 'low',
+        operation: { kind: 'command', command: 'remember_note', argsPreview: { text: 'x' } },
+        policyVersion: 'test-policy',
+        idempotencyKey: 'history-approval-1',
+      },
       pendingApproval: {
         toolName: 'remember_note',
         arguments: { text: 'x' },
@@ -2264,7 +2313,14 @@ describe('a paused-approval history still encodes as run.completed', () => {
       callId: 'call_1',
       outcome: 'action_required',
       content: null,
-      action: { type: 'approval', message: 'Save this note?' },
+      action: {
+        type: 'approval',
+        message: 'Save this note?',
+        risk: 'low',
+        operation: { kind: 'command', command: 'remember_note', argsPreview: { text: 'x' } },
+        policyVersion: 'test-policy',
+        idempotencyKey: 'history-approval-2',
+      },
       pendingApproval: {
         toolName: 'remember_note',
         arguments: { text: 'x' },

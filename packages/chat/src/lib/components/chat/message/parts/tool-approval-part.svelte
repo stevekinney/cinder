@@ -26,7 +26,9 @@
   );
 
   const actionSchema = $derived(
-    part.action.schema !== undefined ? stringify(part.action.schema) : undefined,
+    part.action.type === 'approval' && part.action.operation.argsPreview !== undefined
+      ? stringify(part.action.operation.argsPreview)
+      : undefined,
   );
 
   // Tool-call ids are external data (may contain whitespace, ':', etc. that make

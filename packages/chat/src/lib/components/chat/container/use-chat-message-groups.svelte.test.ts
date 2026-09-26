@@ -66,6 +66,10 @@ function toolResultMessage(
             action: {
               type: 'approval' as const,
               message: 'Approve this action?',
+              risk: 'low' as const,
+              operation: { kind: 'command' as const, command: 'test-command', argsPreview: {} },
+              policyVersion: 'test-policy',
+              idempotencyKey: 'groups-approval-1',
             },
           }
         : {}),

@@ -8,7 +8,7 @@
  * @module
  */
 
-import type { ToMarkdownOptions as ConversationalistToMarkdownOptions } from 'conversationalist/markdown';
+import type { ToMarkdownOptions as ConversationalistToMarkdownOptions } from 'conversationalist';
 
 export type {
   AssistantMessage,

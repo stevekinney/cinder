@@ -38,6 +38,17 @@ function history(messages: Message[], ids?: string[]): ConversationHistory {
   };
 }
 
+function approvalAction(message = 'Allow this?'): Extract<ToolAction, { type: 'approval' }> {
+  return {
+    type: 'approval',
+    message,
+    risk: 'low',
+    operation: { kind: 'command', command: 'test-command', argsPreview: {} },
+    policyVersion: 'test-policy',
+    idempotencyKey: `approval-${message}`,
+  };
+}
+
 describe('getMessages', () => {
   it('returns messages in the order given by ids, not record insertion order', () => {
     const a = message({ id: 'a' });
@@ -77,7 +88,7 @@ describe('getUnresolvedToolApprovals', () => {
       callId: 'call-1',
       outcome: 'action_required',
       content: null,
-      action: { type: 'approval', message: 'Allow this?' },
+      action: approvalAction(),
     };
     const result = message({ id: 'r1', role: 'tool-result', toolResult: pending });
     const conversation = history([result]);
@@ -106,7 +117,7 @@ describe('getUnresolvedToolApprovals', () => {
       callId: 'call-1',
       outcome: 'action_required',
       content: null,
-      action: { type: 'approval' },
+      action: approvalAction(),
     };
     const conversation = history([
       message({ id: 'r1', role: 'tool-result', toolResult: pending, hidden: true }),
@@ -125,7 +136,7 @@ describe('getUnresolvedToolApprovals', () => {
           callId: 'call-1',
           outcome: 'action_required',
           content: null,
-          action: { type: 'approval' },
+          action: approvalAction(),
         },
       }),
     ]);
@@ -138,7 +149,7 @@ describe('getUnresolvedToolApprovals', () => {
       callId: 'call-1',
       outcome: 'action_required',
       content: null,
-      action: { type: 'approval' },
+      action: approvalAction(),
     };
     const resolved: ToolResult = { callId: 'call-1', outcome: 'success', content: null };
     const conversation = history([
@@ -154,13 +165,13 @@ describe('getUnresolvedToolApprovals', () => {
       callId: 'call-1',
       outcome: 'action_required',
       content: null,
-      action: { type: 'approval', message: 'first' },
+      action: approvalAction('first'),
     };
     const second: ToolResult = {
       callId: 'call-1',
       outcome: 'action_required',
       content: null,
-      action: { type: 'approval', message: 'second' },
+      action: approvalAction('second'),
     };
     const conversation = history([
       message({ id: 'r1', role: 'tool-result', toolResult: first }),
@@ -178,7 +189,7 @@ describe('getUnresolvedToolApprovals', () => {
       callId: 'call-1',
       outcome: 'action_required',
       content: null,
-      action: { type: 'approval' },
+      action: approvalAction(),
     };
     const resolvedHidden: ToolResult = { callId: 'call-1', outcome: 'success', content: null };
     const conversation = history([
@@ -198,7 +209,7 @@ describe('getUnresolvedToolApprovals', () => {
       callId: 'call-1',
       outcome: 'action_required',
       content: null,
-      action: { type: 'approval' },
+      action: approvalAction(),
     };
     const conversation = history([
       message({ id: 'r1', role: 'tool-result', toolResult: pendingHidden, hidden: true }),
@@ -215,19 +226,19 @@ describe('getUnresolvedToolApprovals', () => {
       callId: 'call-a',
       outcome: 'action_required',
       content: null,
-      action: { type: 'approval' },
+      action: approvalAction(),
     };
     const pendingB: ToolResult = {
       callId: 'call-b',
       outcome: 'action_required',
       content: null,
-      action: { type: 'approval' },
+      action: approvalAction(),
     };
     const pendingAAgain: ToolResult = {
       callId: 'call-a',
       outcome: 'action_required',
       content: null,
-      action: { type: 'approval', message: 'second look' },
+      action: approvalAction('second look'),
     };
     // call-a's latest occurrence (r3) comes after call-b's only occurrence
     // (r2), so call-b must be reported first despite call-a appearing first.

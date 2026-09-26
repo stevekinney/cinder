@@ -23,6 +23,7 @@ import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { flushSync } from 'svelte';
 
 import { setupHappyDom } from '../../../../test/happy-dom.ts';
+import type { JSONValue } from '../../conversation-model.ts';
 import type { ToolApprovalMessagePart } from '../../utilities/types.ts';
 
 setupHappyDom();
@@ -41,12 +42,24 @@ function pendingPart(overrides?: Partial<ToolApprovalMessagePart>): ToolApproval
     key: 'm:tool-approval:call-1',
     toolCallId: 'call-1',
     toolName: 'deploy_to_production',
-    action: {
-      type: 'approval',
-      message: 'Deploy to production?',
-    },
+    action: approvalAction('Deploy to production?'),
     approved: undefined,
     ...overrides,
+  };
+}
+
+function approvalAction(message?: string, argsPreview?: JSONValue) {
+  return {
+    type: 'approval' as const,
+    ...(message === undefined ? {} : { message }),
+    risk: 'low' as const,
+    operation: {
+      kind: 'command' as const,
+      command: 'test-command',
+      ...(argsPreview === undefined ? {} : { argsPreview }),
+    },
+    policyVersion: 'test-policy',
+    idempotencyKey: 'tool-approval-test',
   };
 }
 
@@ -129,7 +142,7 @@ describe('ToolApprovalPart — pending state', () => {
   test('shows action message with fallback when none provided', () => {
     const part = pendingPart();
     // No message set in action — use default fallback
-    part.action = { type: 'approval' };
+    part.action = approvalAction();
     const { container } = render(ToolApprovalPart, { props: { part } });
     expect(container.textContent).toContain('requires your approval');
   });
@@ -292,9 +305,9 @@ describe('ToolApprovalPart — resolved states', () => {
 });
 
 describe('ToolApprovalPart — collapsible args', () => {
-  test('renders the shared collapsible frame when action.schema is present', async () => {
+  test('renders the shared collapsible frame when action.operation.argsPreview is present', async () => {
     const part = pendingPart({
-      action: { type: 'approval', message: 'Proceed?', schema: { env: 'production' } },
+      action: approvalAction('Proceed?', { env: 'production' }),
     });
     const { container } = render(ToolApprovalPart, { props: { part } });
     const trigger = Array.from(container.querySelectorAll('button')).find((button) =>

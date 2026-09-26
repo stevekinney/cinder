@@ -33,6 +33,17 @@ function message(overrides: Partial<Message> & Pick<Message, 'role'>): Message {
   };
 }
 
+function approvalAction(message: string) {
+  return {
+    type: 'approval' as const,
+    message,
+    risk: 'low' as const,
+    operation: { kind: 'command' as const, command: 'test-command', argsPreview: {} },
+    policyVersion: 'test-policy',
+    idempotencyKey: `approval-${message}`,
+  };
+}
+
 describe('C3 — tool-approval derivation (action_required with action)', () => {
   it('emits a tool-approval part (not tool-result) for action_required + action', () => {
     const msg = message({
@@ -42,7 +53,7 @@ describe('C3 — tool-approval derivation (action_required with action)', () => 
         callId: 'call-1',
         outcome: 'action_required',
         content: null,
-        action: { type: 'approval', message: 'Deploy to prod?' },
+        action: approvalAction('Deploy to prod?'),
       },
     });
     const parts = deriveMessageParts(msg);
@@ -58,7 +69,7 @@ describe('C3 — tool-approval derivation (action_required with action)', () => 
         callId: 'call-1',
         outcome: 'action_required',
         content: null,
-        action: { type: 'approval', message: 'Deploy?' },
+        action: approvalAction('Deploy?'),
       },
     });
     const parts = deriveMessageParts(msg);
@@ -73,7 +84,7 @@ describe('C3 — tool-approval derivation (action_required with action)', () => 
         callId: 'call-99',
         outcome: 'action_required',
         content: null,
-        action: { type: 'approval', message: 'Confirm?' },
+        action: approvalAction('Confirm?'),
       },
     });
     const parts = deriveMessageParts(msg);
@@ -82,7 +93,7 @@ describe('C3 — tool-approval derivation (action_required with action)', () => 
   });
 
   it('carries the action object from the tool result', () => {
-    const action = { type: 'approval' as const, message: 'Approve this?' };
+    const action = approvalAction('Approve this?');
     const msg = message({
       id: 'tr',
       role: 'tool-result',
@@ -106,7 +117,7 @@ describe('C3 — tool-approval derivation (action_required with action)', () => 
         callId: 'call-1',
         outcome: 'action_required',
         content: null,
-        action: { type: 'approval', message: 'Proceed?' },
+        action: approvalAction('Proceed?'),
       },
     });
     const parts = deriveMessageParts(msg, {
@@ -125,7 +136,7 @@ describe('C3 — tool-approval derivation (action_required with action)', () => 
         callId: 'call-1',
         outcome: 'action_required',
         content: null,
-        action: { type: 'approval', message: 'Proceed?' },
+        action: approvalAction('Proceed?'),
       },
     });
     const parts = deriveMessageParts(msg, {
@@ -143,7 +154,7 @@ describe('C3 — tool-approval derivation (action_required with action)', () => 
         callId: 'call-1',
         outcome: 'action_required',
         content: null,
-        action: { type: 'approval', message: 'Proceed?' },
+        action: approvalAction('Proceed?'),
       },
     });
     const parts = deriveMessageParts(msg, {
@@ -164,7 +175,7 @@ describe('C3 — tool-approval derivation (action_required with action)', () => 
         callId: 'call-1',
         outcome: 'action_required',
         content: null,
-        action: { type: 'approval', message: 'Proceed?' },
+        action: approvalAction('Proceed?'),
       },
     });
     const parts = deriveMessageParts(msg, {
@@ -185,7 +196,7 @@ describe('C3 — toolName resolution', () => {
         callId: 'call-deploy-prod',
         outcome: 'action_required',
         content: null,
-        action: { type: 'approval', message: 'Deploy to prod?' },
+        action: approvalAction('Deploy to prod?'),
       },
     });
     const parts = deriveMessageParts(msg);
@@ -201,7 +212,7 @@ describe('C3 — toolName resolution', () => {
         callId: 'call-deploy-prod',
         outcome: 'action_required',
         content: null,
-        action: { type: 'approval', message: 'Deploy to prod?' },
+        action: approvalAction('Deploy to prod?'),
       },
     });
     const parts = deriveMessageParts(msg, {
@@ -222,7 +233,7 @@ describe('C3 — toolName resolution', () => {
         callId: 'call-abc',
         outcome: 'action_required',
         content: null,
-        action: { type: 'approval', message: 'Continue?' },
+        action: approvalAction('Continue?'),
       },
     });
     // No toolCallPair in context at all
@@ -244,7 +255,7 @@ describe('C3 — paired tool-call whose result is action_required', () => {
       callId: 'call-7',
       outcome: 'action_required' as const,
       content: null,
-      action: { type: 'approval' as const, message: 'Deploy to production?' },
+      action: approvalAction('Deploy to production?'),
     };
     const msg = message({ id: 'tc', role: 'tool-call', toolCall: call });
     const parts = deriveMessageParts(msg, { toolCallPair: { call, result } });
@@ -262,7 +273,7 @@ describe('C3 — paired tool-call whose result is action_required', () => {
       callId: 'call-7',
       outcome: 'action_required' as const,
       content: null,
-      action: { type: 'approval' as const, message: 'Go?' },
+      action: approvalAction('Go?'),
     };
     const msg = message({ id: 'tc', role: 'tool-call', toolCall: call });
     const parts = deriveMessageParts(msg, {

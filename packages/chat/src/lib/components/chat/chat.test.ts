@@ -137,7 +137,14 @@ function appendActionRequiredMessage(
     callId: `call-${testMessageCounter}`,
     outcome: 'action_required',
     content: null,
-    action: { type: 'approval', message },
+    action: {
+      type: 'approval',
+      message,
+      risk: 'low',
+      operation: { kind: 'command', command: 'test-command', argsPreview: {} },
+      policyVersion: 'test-policy',
+      idempotencyKey: 'chat-approval-1',
+    },
   };
 
   return {
