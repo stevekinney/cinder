@@ -49,12 +49,6 @@ export function projectWireEnvelope(event: ChatStreamEvent): Partial<WireEnvelop
 }
 
 /**
- * Whitelists exactly `ChatToolResult`'s declared fields. Used for both the
- * top-level `tool_result` member and `tool.settled`'s nested `result`, so an
- * object built by spreading a provider payload — which could carry extra
- * properties — can't ride along onto the wire unnoticed.
- */
-/**
  * A record's own enumerable fields, copied once. Every projector starts here:
  * a producer can hand over `Object.create({ id: 'secret', … })`, whose fields
  * live on its prototype, and encoding those would put data the object does
@@ -134,6 +128,12 @@ function projectChatToolAction(
   return projected;
 }
 
+/**
+ * Whitelists exactly `ChatToolResult`'s declared fields. Used for both the
+ * top-level `tool_result` member and `tool.settled`'s nested `result`, so an
+ * object built by spreading a provider payload — which could carry extra
+ * properties — can't ride along onto the wire unnoticed.
+ */
 export function projectChatToolResult(rawResult: ChatToolResult): Record<string, unknown> {
   const result = ownFields(rawResult);
   const projected: Record<string, unknown> = {

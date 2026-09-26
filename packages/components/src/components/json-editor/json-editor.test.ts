@@ -3,6 +3,7 @@ import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
 
 import { injectStrippedStyles } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { checkBuildFlagHydrationSafety } from '../../test/hydration-safety.ts';
 
 setupHappyDom();
 
@@ -17,6 +18,15 @@ afterEach(() => {
 });
 
 describe('JsonEditor', () => {
+  test('preserves requested native autofocus in server-rendered markup', async () => {
+    const result = await checkBuildFlagHydrationSafety(
+      new URL('./json-editor.svelte', import.meta.url).pathname,
+      { id: 'server-autofocus', label: 'Payload', value: '{}', autofocus: true },
+    );
+    expect(result.serverHtml).toMatch(/<textarea\b[^>]*\sautofocus(?:[\s=>])/);
+    expect(result.buildFlagInvariant).toBe(true);
+  });
+
   test.each([false, true])('respects autofocus=%s through its focus attachment', (autofocus) => {
     const { getByRole } = render(JsonEditor, {
       id: 'autofocus-payload',

@@ -391,5 +391,3 @@ export function toChatSerializedRunError(value: unknown): ChatSerializedRunError
     ...(retryable === undefined ? {} : { retryable }),
   };
 }
-
-/** Decodes and validates one provider-neutral stream event. */

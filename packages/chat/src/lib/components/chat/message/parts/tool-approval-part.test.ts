@@ -305,6 +305,24 @@ describe('ToolApprovalPart — resolved states', () => {
 });
 
 describe('ToolApprovalPart — collapsible args', () => {
+  test('renders input action schema when the Parameters disclosure opens', async () => {
+    const part = pendingPart({
+      action: {
+        type: 'input',
+        message: 'Choose a deployment target.',
+        schema: {
+          type: 'object',
+          properties: { target: { type: 'string' } },
+          required: ['target'],
+        },
+      },
+    });
+    const { container, getByRole } = render(ToolApprovalPart, { props: { part } });
+    const trigger = getByRole('button', { name: 'Expand Parameters', exact: true });
+    await fireEvent.click(trigger);
+    expect(container.querySelector('pre')?.textContent).toContain('target');
+  });
+
   test('renders the shared collapsible frame when action.operation.argsPreview is present', async () => {
     const part = pendingPart({
       action: approvalAction('Proceed?', { env: 'production' }),
