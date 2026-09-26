@@ -318,7 +318,7 @@ describe('ToolApprovalPart — collapsible args', () => {
       },
     });
     const { container, getByRole } = render(ToolApprovalPart, { props: { part } });
-    const trigger = getByRole('button', { name: 'Expand Parameters', exact: true });
+    const trigger = getByRole('button', { name: 'Expand Parameters' });
     await fireEvent.click(trigger);
     expect(container.querySelector('pre')?.textContent).toContain('target');
   });
