@@ -688,3 +688,8 @@ it('bundles when the mirrored manifest has no example exclusion policy', async (
   expect(result.logs.map((entry) => entry.message)).toEqual([]);
   expect(result.success).toBe(true);
 });
+
+it('keeps the exclusion policy out of the mirrored manifest', async () => {
+  const metadata = await import('../src/manifest.meta.ts');
+  expect(metadata).not.toHaveProperty('allowedExampleExclusionReasons');
+});

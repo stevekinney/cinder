@@ -484,11 +484,8 @@ examples, and the discriminated-union props pattern).
 
 ### Where the data lives
 
-- **Closed vocabularies** — `packages/components/src/manifest.meta.ts`.
-  This is the authority for `categories`, `statusLevels`,
-  `overlapFamilies`, `requiredConstraints`, and
-  `allowedExampleExclusionReasons`. The manifest test fails fast if a
-  component references an id not in this file.
+- **Closed vocabularies**: `packages/components/src/manifest.meta.ts` is the authority for `categories`, `statusLevels`, `overlapFamilies`, and `requiredConstraints`. The manifest test fails fast if a component references an id not in this file.
+- **Example exclusion reasons**: `packages/components/scripts/example-exclusion-reasons.ts` owns `allowedExampleExclusionReasons`; the target-owned generator validates playground exclusion markers against this list.
 - **Per-component free text** — the JSDoc header on the component's module
   block. `@purpose`, `@tag`, `@useWhen`, `@avoidWhen`, `@related`,
   `@category`, `@status`, and the optional accessibility tags `@a11yPattern`,
@@ -760,8 +757,7 @@ iframe-isolated, etc.), add a top-of-file marker:
 // @cinder-example-exclude: requires-router
 ```
 
-The reason must come from `allowedExampleExclusionReasons` in
-`manifest.meta.ts`. The currently allowed reasons are:
+The reason must come from `allowedExampleExclusionReasons` in `packages/components/scripts/example-exclusion-reasons.ts`. The currently allowed reasons are:
 
 - `playground-only-interaction` — relies on playground-only wiring that has no
   standalone equivalent.

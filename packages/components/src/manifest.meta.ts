@@ -117,25 +117,3 @@ export const requiredConstraints = [
   'input',
   'modal',
 ] as const satisfies readonly string[];
-
-// ---------------------------------------------------------------------------
-// Example exclusion reasons
-// ---------------------------------------------------------------------------
-
-/**
- * Allowed values for `// @cinder-example-exclude: <reason>` markers on
- * playground `.example.svelte` files. Any reason not in this list is a
- * hard error in the examples generator.
- *
- * The total number of exclusions across the package may not exceed 10 % of all
- * playground examples; see Phase 3 acceptance criteria for details.
- */
-export const allowedExampleExclusionReasons = [
-  'playground-only-interaction',
-  'requires-router',
-  'requires-server-data',
-  'requires-iframe-isolation',
-] as const satisfies readonly string[];
-
-/** Union of allowed example exclusion reason strings. */
-export type ExampleExclusionReason = (typeof allowedExampleExclusionReasons)[number];
