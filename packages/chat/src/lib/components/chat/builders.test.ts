@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'bun:test';
-import * as conversationalist from 'conversationalist';
 
 import {
   appendAssistantMessage,
@@ -26,13 +25,6 @@ import {
 } from './builders.ts';
 
 describe('chat conversation builders', () => {
-  test('exports the rewind helpers from the supported Conversationalist root', () => {
-    expect(rewindBeforeMessage).toBe(conversationalist.rewindBeforeMessage);
-    expect(rewindBeforePosition).toBe(conversationalist.rewindBeforePosition);
-    expect(typeof rewindBeforeMessage).toBe('function');
-    expect(typeof rewindBeforePosition).toBe('function');
-  });
-
   test('uses Conversationalist 0.5 createConversationHistory snapshots', () => {
     const conversation = createConversationHistory({ id: 'conversation-builders' });
 

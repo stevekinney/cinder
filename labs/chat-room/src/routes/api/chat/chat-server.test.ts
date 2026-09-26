@@ -121,14 +121,26 @@ describe('chat approval continuation response', () => {
 			callId: 'call',
 			toolName: 'remember_note',
 			arguments: {},
-			action: { type: 'approval' as const },
+			action: {
+				type: 'approval' as const,
+				risk: 'low' as const,
+				operation: { kind: 'command' as const, command: 'remember_note', argsPreview: {} },
+				policyVersion: 'test-policy',
+				idempotencyKey: 'approval-first'
+			},
 			approvalToken: 'first'
 		} satisfies SignedPendingToolApproval;
 		const second = {
 			callId: 'call',
 			toolName: 'remember_note',
 			arguments: {},
-			action: { type: 'approval' as const },
+			action: {
+				type: 'approval' as const,
+				risk: 'low' as const,
+				operation: { kind: 'command' as const, command: 'remember_note', argsPreview: {} },
+				policyVersion: 'test-policy',
+				idempotencyKey: 'approval-second'
+			},
 			approvalToken: 'second'
 		} satisfies SignedPendingToolApproval;
 

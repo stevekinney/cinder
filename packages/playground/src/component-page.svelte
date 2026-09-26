@@ -1,6 +1,6 @@
 <!-- dev-only playground scaffold; immutable page data is injected server-side -->
 <script lang="ts">
-  import { type Snippet } from 'svelte';
+  import { untrack, type Snippet } from 'svelte';
   import { Accordion } from '@lostgradient/cinder/accordion';
   import { AccordionItem } from '@lostgradient/cinder/accordion-item';
   import { Alert } from '@lostgradient/cinder/alert';
@@ -161,7 +161,7 @@
     onThemeChange,
   }: Props = $props();
 
-  let bareComponentModule = $state(bareComponentModuleProp);
+  let bareComponentModule = $state(untrack(() => bareComponentModuleProp));
 
   /** True on `/`, which renders the README through this same chrome. */
   const isLanding = $derived(readmeHtml !== undefined);
@@ -178,7 +178,7 @@
     return Array.isArray(raw) ? raw : [];
   }
 
-  const examples: CinderExampleDescriptor[] = examplesProp ?? readExamples();
+  const examples: CinderExampleDescriptor[] = untrack(() => examplesProp) ?? readExamples();
   const explicitlyFeatured = examples.filter((example) => example.featured === true);
 
   // Snapshot mode (`?snapshot=1`) is how the visual-regression and a11y test
@@ -187,7 +187,7 @@
   // featured example twice. The Overview live preview is therefore suppressed in
   // snapshot mode — the Examples section still mounts each scenario exactly once.
   const snapshotMode =
-    snapshotModeProp ??
+    untrack(() => snapshotModeProp) ??
     (typeof window !== 'undefined' &&
       new URLSearchParams(window.location.search).get('snapshot') === '1');
 
@@ -206,7 +206,7 @@
     return window.location.pathname.replace(/^\/page\//, '').split('/')[0] ?? '';
   }
 
-  const componentName: string = componentNameProp ?? readComponentNameFromLocation();
+  const componentName: string = untrack(() => componentNameProp) ?? readComponentNameFromLocation();
 
   // Snapshot consumers need the scenario mounts, not merely the outer page
   // chrome. Expose the actual completion promise so the browser harness can
@@ -533,10 +533,12 @@
   // in the page HTML and the client reads it synchronously before first render.
   let documentation: ComponentDocumentationPayload | null = $state(null);
   let documentationError: string | null = $state(null);
-  if (documentationProp !== undefined || documentationErrorProp !== undefined) {
+  const initialDocumentation = untrack(() => documentationProp);
+  const initialDocumentationError = untrack(() => documentationErrorProp);
+  if (initialDocumentation !== undefined || initialDocumentationError !== undefined) {
     // Supplied by the render path (server SSR or the client bundle entry).
-    documentation = documentationProp ?? null;
-    documentationError = documentationErrorProp ?? null;
+    documentation = initialDocumentation ?? null;
+    documentationError = initialDocumentationError ?? null;
   } else if (typeof document !== 'undefined') {
     try {
       documentation = readComponentDocumentationDataIsland();
@@ -1277,6 +1279,7 @@
                       <span class="dx-stage__dot" aria-hidden="true"></span>
                       <span class="dx-stage__label">Live preview</span>
                     </div>
+                    <!-- svelte-ignore a11y_no_noninteractive_tabindex (Scrollable previews need keyboard access to overflow content.) -->
                     <div class="dx-stage__canvas" role="region" aria-label="Preview" tabindex="0">
                       {#if previewRecipe?.referenceHtml !== undefined}
                         <!-- A styling primitive is invisible without something to
@@ -1320,6 +1323,7 @@
                       <span class="dx-stage__dot" aria-hidden="true"></span>
                       <span class="dx-stage__label">Featured example</span>
                     </div>
+                    <!-- svelte-ignore a11y_no_noninteractive_tabindex (Scrollable previews need keyboard access to overflow content.) -->
                     <div class="dx-stage__canvas" role="region" aria-label="Preview" tabindex="0">
                       {#if mountErrors[`playground-mount-${overviewExample.scenario}`] !== undefined}
                         {@const error = mountErrors[`playground-mount-${overviewExample.scenario}`]}
@@ -1350,6 +1354,7 @@
                       <span class="dx-stage__dot" aria-hidden="true"></span>
                       <span class="dx-stage__label">Composed component</span>
                     </div>
+                    <!-- svelte-ignore a11y_no_noninteractive_tabindex (Scrollable previews need keyboard access to overflow content.) -->
                     <div class="dx-stage__canvas" role="region" aria-label="Preview" tabindex="0">
                       <p class="dx-stage__compose">
                         {documentation.component.name} is composed inside
@@ -1379,6 +1384,7 @@
                       <span class="dx-stage__dot" aria-hidden="true"></span>
                       <span class="dx-stage__label">Live preview</span>
                     </div>
+                    <!-- svelte-ignore a11y_no_noninteractive_tabindex (Scrollable previews need keyboard access to overflow content.) -->
                     <div
                       class="dx-stage__canvas"
                       role="region"
@@ -1576,6 +1582,7 @@
                         <span class="dx-stage__dot" aria-hidden="true"></span>
                         <span class="dx-stage__label">Live preview</span>
                       </div>
+                      <!-- svelte-ignore a11y_no_noninteractive_tabindex (Scrollable previews need keyboard access to overflow content.) -->
                       <div
                         class="dx-stage__canvas"
                         role="region"
@@ -1697,6 +1704,7 @@
                             </div>
                             <div class="dx-example__body">
                               <div class="dx-stage">
+                                <!-- svelte-ignore a11y_no_noninteractive_tabindex (Scrollable previews need keyboard access to overflow content.) -->
                                 <div
                                   class="dx-stage__canvas"
                                   role="region"

@@ -31,6 +31,7 @@
 </script>
 
 <div style="height: 16rem; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem;">
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex (The transcript viewport needs keyboard scrolling.) -->
   <div
     bind:this={viewport}
     tabindex="0"

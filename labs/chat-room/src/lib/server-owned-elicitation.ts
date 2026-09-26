@@ -1,3 +1,5 @@
+import type { ElicitationRequest, ElicitationResponse } from '@lostgradient/operative';
+
 /**
  * The server-owned family's approval path, expressed through Operative's
  * elicitation API instead of a signed park-and-resume token.
@@ -34,6 +36,19 @@
  * with the answering request reporting "nothing pending".
  */
 const PENDING_SLOT = Symbol.for('cinder.chat-room.server-owned.pending-elicitations');
+
+/** Builds the schema-validated response for one elicitation request. */
+export function createElicitationResponse<T>(
+	elicitation: Pick<ElicitationRequest<T>, 'requestId' | 'toolCallId' | 'schema'>,
+	approved: boolean
+): ElicitationResponse<T> {
+	if (!approved) return null;
+	return {
+		requestId: elicitation.requestId,
+		...(elicitation.toolCallId === undefined ? {} : { toolCallId: elicitation.toolCallId }),
+		data: elicitation.schema.parse({ approved: true })
+	};
+}
 
 /** What a client needs in order to ask a person the question. */
 export type PendingElicitation = {

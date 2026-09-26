@@ -601,7 +601,14 @@ describe('pumpChatRun: roll_dice tool path', () => {
 
 		const [toolError] = ofType(frames, 'tool.error');
 		expect(toolError).toMatchObject({ toolCallId: 'call-bad', toolName: 'roll_dice' });
-		expect(toolError?.error).toMatchObject({ name: 'ZodError', message: expect.any(String) });
+		expect(toolError?.error).toMatchObject({
+			code: 'VALIDATION_ERROR',
+			category: 'validation',
+			retryable: false,
+			message: expect.any(String),
+			details: { issues: expect.any(Array) }
+		});
+		expect(toolError?.error).not.toHaveProperty('cause');
 		expect(ofType(frames, 'tool.settled')[0]).toMatchObject({
 			toolCallId: 'call-bad',
 			result: { callId: 'call-bad', outcome: 'error' }
@@ -651,29 +658,35 @@ describe('pumpChatRun: roll_dice tool path', () => {
 	});
 
 	test('a filtered denied call settles typed and legacy consumers', async () => {
-		const generate: StreamingGenerateFunction = async () => ({
-			content: '',
-			toolCalls: [{ id: 'call-denied', name: 'roll_dice', arguments: { sides: 6, count: 1 } }]
-		});
-		const deny: BeforeToolExecutionHook = async ({ toolCalls }) =>
-			toolCalls.filter((toolCall) => toolCall.name !== 'roll_dice');
-
-		const { frames } = await runAndCollect(generate, createToolbox([rollDice]), [], [deny]);
-		const [settled] = ofType(frames, 'tool.settled');
-		expect(settled).toMatchObject({
-			toolCallId: 'call-denied',
-			toolName: 'roll_dice',
-			result: {
-				callId: 'call-denied',
-				outcome: 'error',
-				content: 'This call did not run, and reported no result.'
+		let executeCalls = 0;
+		const deniedTool = createTool({
+			name: 'denied_roll_dice',
+			version: '1.0.0',
+			description: 'A tool that must not execute after filtering.',
+			input: z.object({ sides: z.number().int(), count: z.number().int() }),
+			async execute() {
+				executeCalls += 1;
+				return { rolls: [4], total: 4 };
 			}
 		});
+		const generate: StreamingGenerateFunction = async () => ({
+			content: '',
+			toolCalls: [
+				{ id: 'call-denied', name: 'denied_roll_dice', arguments: { sides: 6, count: 1 } }
+			]
+		});
+		const deny: BeforeToolExecutionHook = async ({ toolCalls }) =>
+			toolCalls.filter((toolCall) => toolCall.name !== 'denied_roll_dice');
+
+		const { frames } = await runAndCollect(generate, createToolbox([deniedTool]), [], [deny]);
+		expect(ofType(frames, 'tool.settled')).toHaveLength(0);
 		expect(legacyFrames(frames).at(-1)).toMatchObject({
 			type: 'tool_result',
 			callId: 'call-denied',
-			outcome: 'error'
+			outcome: 'error',
+			content: 'Tool execution skipped by beforeToolExecution hook'
 		});
+		expect(executeCalls).toBe(0);
 	});
 });
 

@@ -16,7 +16,7 @@ import {
 	requestContext,
 	serverOwnedToolbox
 } from '$lib/toolbox';
-import { requestApproval } from '$lib/server-owned-elicitation';
+import { createElicitationResponse, requestApproval } from '$lib/server-owned-elicitation';
 import { createChatRunOptions } from '$lib/chat-agent';
 
 import type { RequestHandler } from './$types';
@@ -222,7 +222,7 @@ function createElicitationGate(
 		// carries the schema that defines it, so a literal would only
 		// type-check behind an assertion — and the assertion is exactly what
 		// would go stale if the hook ever asks a different question.
-		return approved ? { data: elicitation.schema.parse({ approved: true }) } : null;
+		return createElicitationResponse(elicitation, approved);
 	};
 
 	/**
@@ -257,7 +257,9 @@ function createElicitationGate(
 				// The SCHEMA is what Operative validates the answer against, and
 				// it is the host's own shape rather than the tool's input: the
 				// person is answering "may this run", not re-authoring the note.
-				const answer = await elicit(ELICITATION_MESSAGE, z.object({ approved: z.literal(true) }));
+				const answer = await elicit(ELICITATION_MESSAGE, z.object({ approved: z.literal(true) }), {
+					toolCallId: call.id
+				});
 				if (answer === null) denied.add(call.id);
 			} finally {
 				asking = undefined;

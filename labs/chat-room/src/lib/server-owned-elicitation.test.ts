@@ -1,8 +1,10 @@
 import { afterEach, describe, expect, test } from 'bun:test';
+import { z } from 'zod';
 
 import {
 	ElicitationAlreadyPendingError,
 	answerApproval,
+	createElicitationResponse,
 	peekApproval,
 	requestApproval,
 	settleRuntimeOwnedPendingApprovals
@@ -14,6 +16,8 @@ const QUESTION = {
 	message: 'Save this note?',
 	arguments: { text: 'Ship the release notes' }
 };
+
+const RESPONSE_SCHEMA = z.object({ approved: z.literal(true) });
 
 afterEach(() => {
 	settleRuntimeOwnedPendingApprovals();
@@ -150,5 +154,35 @@ describe('answerApproval', () => {
 		expect(answerApproval('conversation-nobody-asked-about', 'toolu_1', true)).toBe(
 			'nothing-pending'
 		);
+	});
+});
+
+describe('createElicitationResponse', () => {
+	test('retains request and tool identity and parses approved data', () => {
+		expect(
+			createElicitationResponse(
+				{ requestId: 'request-1', toolCallId: 'toolu_1', schema: RESPONSE_SCHEMA },
+				true
+			)
+		).toEqual({
+			requestId: 'request-1',
+			toolCallId: 'toolu_1',
+			data: { approved: true }
+		});
+	});
+
+	test('omits absent tool identity', () => {
+		expect(
+			createElicitationResponse({ requestId: 'request-2', schema: RESPONSE_SCHEMA }, true)
+		).toEqual({ requestId: 'request-2', data: { approved: true } });
+	});
+
+	test('returns null for a denial', () => {
+		expect(
+			createElicitationResponse(
+				{ requestId: 'request-3', toolCallId: 'toolu_3', schema: RESPONSE_SCHEMA },
+				false
+			)
+		).toBeNull();
 	});
 });

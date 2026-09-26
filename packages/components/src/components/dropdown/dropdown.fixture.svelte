@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { Button } from '../button/index.ts';
   import { Dropdown } from './index.ts';
 
@@ -7,7 +8,7 @@
   };
 
   let { open = false }: FixtureProps = $props();
-  let menuOpen = $state(open);
+  let menuOpen = $state(untrack(() => open));
 </script>
 
 <div class="dropdown-fixture">

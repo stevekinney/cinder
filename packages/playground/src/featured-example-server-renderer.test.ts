@@ -41,4 +41,17 @@ describe('featured example server renderer', () => {
     expect(rendered.body).toContain('Scheduled maintenance is planned');
     expect(rendered.body).not.toContain('<!--');
   });
+  test('renders approval parameter disclosure and pending decisions from the published action contract', async () => {
+    const rendered = await renderFeaturedExample(
+      'chat',
+      'with-tool-approval',
+      'overview-mount-with-tool-approval',
+    );
+
+    expect(rendered.body).toContain('Deploying version 2.4.1 to production');
+    expect(rendered.body).toContain('Parameters');
+    expect(rendered.body).toContain('data-cinder-status="pending"');
+    expect(rendered.body).toContain('Approve');
+    expect(rendered.body).toContain('Reject');
+  });
 });
