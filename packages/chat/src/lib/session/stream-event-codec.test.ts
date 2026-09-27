@@ -91,6 +91,62 @@ describe('chat stream event codec', () => {
     expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
   });
 
+  test('round-trips optional approval context and patch operations', () => {
+    const event: ChatStreamEvent = {
+      type: 'tool_result',
+      callId: 'patch-approval',
+      outcome: 'action_required',
+      content: null,
+      action: {
+        type: 'approval',
+        risk: 'medium',
+        operation: { kind: 'patch', diff: '+approved', filesTouched: ['notes.md'] },
+        sandbox: { provider: 'local', name: 'preview', workingDir: '/workspace' },
+        env: ['LANG'],
+        snapshotId: 'snapshot-1',
+        expiresAt: '2026-10-01T00:00:00Z',
+        editableArgs: false,
+        policyVersion: 'policy-1',
+        idempotencyKey: 'patch-1',
+      },
+    };
+    expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+  });
+
+  test('round-trips input action schemas independently of approval parameters', () => {
+    const event: ChatStreamEvent = {
+      type: 'tool_result',
+      callId: 'input-1',
+      outcome: 'action_required',
+      content: null,
+      action: { type: 'input', schema: { type: 'object', required: ['target'] } },
+    };
+    expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+  });
+
+  test.each([
+    ['not an array', 'LANG', 'is not an array'],
+    ['missing own element', Array<string>(1), '[0] is missing'],
+    ['undefined element', [undefined], '[0] is missing'],
+    ['non-string element', [42], '[0] must be a string'],
+  ])('rejects approval environment lists with %s', (_name, env, message) => {
+    const event = {
+      type: 'tool_result',
+      callId: 'invalid-environment',
+      outcome: 'action_required',
+      content: null,
+      action: {
+        type: 'approval',
+        risk: 'low',
+        operation: { kind: 'other' },
+        policyVersion: 'policy-1',
+        idempotencyKey: 'invalid-env',
+        env,
+      },
+    } as unknown as ChatStreamEvent;
+    expect(() => encodeChatStreamEvent(event)).toThrow(String(message));
+  });
+
   test('rejects a tool_result whose shape is wrong even though it is plain JSON', () => {
     // Reaches the branch's own rejection rather than the plain-data rebuild's:
     // every value here is JSON, the shape is simply not a `ChatToolResult`.
