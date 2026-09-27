@@ -24,6 +24,17 @@
 		return new Promise((resolve) => setTimeout(resolve, ms));
 	}
 
+	function approvalAction(message: string, idempotencyKey: string) {
+		return {
+			type: 'approval' as const,
+			message,
+			risk: 'medium' as const,
+			operation: { kind: 'other' as const, argsPreview: {} },
+			policyVersion: 'tool-approval-exercise',
+			idempotencyKey
+		};
+	}
+
 	// Builds a tool-call + action_required tool-result pair. Chat pairs these
 	// by matching `toolResult.callId` to `toolCall.id` (`pairToolCallsWithResults`)
 	// and renders the approval prompt on the visible tool-CALL row with the
@@ -45,7 +56,7 @@
 			callId: toolCallId,
 			outcome: 'action_required',
 			content: null,
-			action: { type: 'approval', message }
+			action: approvalAction(message, `${id}-${toolCallId}`)
 		});
 		return conversation;
 	}
@@ -65,7 +76,7 @@
 			callId: 'call-approve',
 			outcome: 'action_required',
 			content: null,
-			action: { type: 'approval', message: 'Send the weekly digest email?' }
+			action: approvalAction('Send the weekly digest email?', 'tool-approval-both-call-approve')
 		});
 		conversation = appendToolCall(conversation, {
 			id: 'call-deny',
@@ -76,7 +87,7 @@
 			callId: 'call-deny',
 			outcome: 'action_required',
 			content: null,
-			action: { type: 'approval', message: 'Issue a refund for order #4821?' }
+			action: approvalAction('Issue a refund for order #4821?', 'tool-approval-both-call-deny')
 		});
 		return conversation;
 	}

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createAgent } from '@lostgradient/operative';
+	import { createAgent, HookRegistry, type OperativeHookMap } from '@lostgradient/operative';
 	import { appendUserMessage, createConversationHistory } from 'conversationalist';
 	import { createToolbox } from 'armorer';
 	import { z } from 'zod';
@@ -39,6 +39,13 @@
 		options: { validateResponse?: boolean } = {}
 	): Promise<Observation> {
 		let calls = 0;
+		const hooks = new HookRegistry<OperativeHookMap>();
+		if (options.validateResponse) {
+			hooks.on('validateResponse', async (response) => {
+				const parsed = answerSchema.safeParse(JSON.parse(response.content));
+				if (!parsed.success) throw new Error('response failed the output schema');
+			});
+		}
 		const agent = createAgent({
 			generate: async () => {
 				calls += 1;
@@ -49,19 +56,7 @@
 			// `delay: 0` because this is a determinism exercise, not a timing
 			// one — the backoff is real and orthogonal to what is being shown.
 			retry: { attempts: 2, delay: 0 },
-			...(options.validateResponse
-				? {
-						// Returns nothing on the success path. The hook's contract is
-						// `Promise<GenerateResponse | void>`, and `void` means "leave
-						// the response alone" — which is what this wants. Returning
-						// the argument back through a cast said the same thing while
-						// implying the types disagreed.
-						validateResponse: async (response: { content?: string }) => {
-							const parsed = answerSchema.safeParse(JSON.parse(response.content ?? '{}'));
-							if (!parsed.success) throw new Error('response failed the output schema');
-						}
-					}
-				: {})
+			hooks
 		});
 		const result = await agent.run({ conversation }).result();
 		return {

@@ -1,7 +1,8 @@
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, spyOn, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 import { updatePendingApproval } from '$lib/pending-approval';
+import { requestContext, toolbox } from '$lib/toolbox';
 import type { SignedPendingToolApproval } from 'armorer';
 
 const resumeSource = readFileSync(new URL('./resume/+server.ts', import.meta.url), 'utf8');
@@ -108,6 +109,294 @@ describe('chat stream cancellation guard', () => {
 });
 
 describe('chat approval continuation response', () => {
+	test('rejects an approval action with missing published fields before resume execution', async () => {
+		let resumeCalls = 0;
+		const resumeApproval = spyOn(toolbox, 'resumeApproval').mockImplementation(async () => {
+			resumeCalls += 1;
+			throw new Error('resumeApproval must not run for malformed input');
+		});
+
+		try {
+			const { POST } = await import('./resume/+server.ts');
+			const response = await POST({
+				request: new Request('http://localhost/api/chat/resume', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({
+						approval: {
+							callId: 'call-malformed',
+							toolName: 'remember_note',
+							arguments: { text: 'A note' },
+							action: { type: 'approval', message: 'Save this note?' },
+							approvalToken: 'a'.repeat(64)
+						},
+						decision: 'approve'
+					})
+				}),
+				url: new URL('http://localhost/api/chat/resume')
+			} as Parameters<typeof POST>[0]);
+
+			expect(response.status).toBe(400);
+			expect(await response.json()).toEqual({ error: 'Invalid request body' });
+			expect(resumeCalls).toBe(0);
+		} finally {
+			resumeApproval.mockRestore();
+		}
+	});
+
+	test('rejects unknown fields inside a complete approval action before resume execution', async () => {
+		let resumeCalls = 0;
+		const resumeApproval = spyOn(toolbox, 'resumeApproval').mockImplementation(async () => {
+			resumeCalls += 1;
+			throw new Error('resumeApproval must not run for malformed input');
+		});
+
+		try {
+			const { POST } = await import('./resume/+server.ts');
+			const approval = {
+				callId: 'call-unknown-action-field',
+				toolName: 'remember_note',
+				arguments: { text: 'A note' },
+				action: {
+					type: 'approval',
+					message: 'Save this note?',
+					risk: 'medium',
+					operation: {
+						kind: 'command',
+						command: 'remember_note',
+						filesTouched: ['notes.txt'],
+						argsPreview: { text: 'A note' },
+						unexpected: true
+					},
+					sandbox: { provider: 'local', name: 'sandbox', workingDir: '/tmp' },
+					env: ['MODE=test'],
+					snapshotId: 'snapshot-1',
+					expiresAt: '2026-09-27T00:00:00.000Z',
+					editableArgs: true,
+					policyVersion: 'policy-1',
+					idempotencyKey: 'approval-1'
+				},
+				reason: 'Save this note?',
+				metadata: { source: 'test' },
+				policyPauseTier: 'tool',
+				satisfiedPolicyPauses: [
+					{
+						action: {
+							type: 'approval',
+							risk: 'low',
+							operation: { kind: 'other', argsPreview: {} },
+							policyVersion: 'policy-1',
+							idempotencyKey: 'pause-1'
+						},
+						reason: 'A prior policy pause',
+						tier: 'tool'
+					}
+				],
+				approvalToken: 'a'.repeat(64)
+			};
+			const response = await POST({
+				request: new Request('http://localhost/api/chat/resume', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ approval, decision: 'approve' })
+				}),
+				url: new URL('http://localhost/api/chat/resume')
+			} as Parameters<typeof POST>[0]);
+
+			expect(response.status).toBe(400);
+			expect(await response.json()).toEqual({ error: 'Invalid request body' });
+			expect(resumeCalls).toBe(0);
+		} finally {
+			resumeApproval.mockRestore();
+		}
+	});
+
+	test('rejects each semantic approval violation independently', async () => {
+		const baseAction = {
+			type: 'approval',
+			risk: 'low',
+			operation: { kind: 'command', command: 'remember_note' },
+			sandbox: { provider: 'local', name: 'sandbox', workingDir: '/tmp' },
+			expiresAt: '2026-09-27T00:00:00.000Z',
+			policyVersion: 'policy-1',
+			idempotencyKey: 'approval-1'
+		};
+		const cases = [
+			{ name: 'invalid expiry', action: { ...baseAction, expiresAt: 'invalid' } },
+			{
+				name: 'empty command',
+				action: { ...baseAction, operation: { kind: 'command', command: '' } }
+			},
+			{
+				name: 'empty file list',
+				action: { ...baseAction, operation: { kind: 'file-write', filesTouched: [] } }
+			},
+			{
+				name: 'empty sandbox provider',
+				action: { ...baseAction, sandbox: { provider: '', name: 'sandbox', workingDir: '/tmp' } }
+			},
+			{ name: 'empty policy version', action: { ...baseAction, policyVersion: '' } },
+			{ name: 'empty idempotency key', action: { ...baseAction, idempotencyKey: '' } },
+			{
+				name: 'invalid nested policy pause',
+				action: {
+					...baseAction
+				},
+				satisfiedPolicyPauses: [
+					{
+						action: {
+							type: 'approval',
+							risk: 'low',
+							operation: { kind: 'command', command: '' },
+							policyVersion: 'policy-1',
+							idempotencyKey: 'pause-1'
+						}
+					}
+				]
+			}
+		];
+		let resumeCalls = 0;
+		const resumeApproval = spyOn(toolbox, 'resumeApproval').mockImplementation(async () => {
+			resumeCalls += 1;
+			throw new Error('resumeApproval must not run for malformed input');
+		});
+		try {
+			const { POST } = await import('./resume/+server.ts');
+			for (const { name, action, satisfiedPolicyPauses } of cases) {
+				const response = await POST({
+					request: new Request('http://localhost/api/chat/resume', {
+						method: 'POST',
+						headers: { 'content-type': 'application/json' },
+						body: JSON.stringify({
+							approval: {
+								callId: `call-${name}`,
+								toolName: 'remember_note',
+								arguments: { text: 'A note' },
+								action,
+								...(satisfiedPolicyPauses === undefined ? {} : { satisfiedPolicyPauses }),
+								approvalToken: 'a'.repeat(64)
+							},
+							decision: 'approve'
+						})
+					}),
+					url: new URL('http://localhost/api/chat/resume')
+				} as Parameters<typeof POST>[0]);
+				expect(response.status, name).toBe(400);
+				expect(await response.json(), name).toEqual({ error: 'Invalid request body' });
+			}
+			expect(resumeCalls).toBe(0);
+		} finally {
+			resumeApproval.mockRestore();
+		}
+	});
+
+	test('passes a complete signed approval descriptor unchanged to resumeApproval', async () => {
+		const pending = await toolbox.execute(
+			{ id: 'call-complete-descriptor', name: 'remember_note', arguments: { text: 'A note' } },
+			{ requestContext }
+		);
+		expect(pending.outcome).toBe('action_required');
+		if (!('pendingApproval' in pending) || pending.pendingApproval === undefined) {
+			throw new Error('expected a signed pending approval');
+		}
+
+		const originalApproval = pending.pendingApproval;
+		if (
+			typeof originalApproval.approvalToken !== 'string' ||
+			originalApproval.action.type !== 'approval'
+		) {
+			throw new Error('expected a signed approval action');
+		}
+		const resumeApproval = spyOn(toolbox, 'resumeApproval');
+		try {
+			const { POST } = await import('./resume/+server.ts');
+			const response = await POST({
+				request: new Request('http://localhost/api/chat/resume', {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ approval: originalApproval, decision: 'approve' })
+				}),
+				url: new URL('http://localhost/api/chat/resume')
+			} as Parameters<typeof POST>[0]);
+
+			expect(response.status).toBe(200);
+			expect(resumeApproval).toHaveBeenCalledTimes(1);
+			const forwarded: unknown = resumeApproval.mock.calls[0]?.[0];
+			expect(forwarded).toEqual(originalApproval);
+			expect(originalApproval.approvalBinding).toBeDefined();
+		} finally {
+			resumeApproval.mockRestore();
+		}
+	});
+
+	test('preserves a fully populated approval descriptor during parsing', async () => {
+		const pending = await toolbox.execute(
+			{ id: 'call-parser-contract', name: 'remember_note', arguments: { text: 'A note' } },
+			{ requestContext }
+		);
+		if (!('pendingApproval' in pending) || pending.pendingApproval === undefined) {
+			throw new Error('expected a signed pending approval');
+		}
+		const approval = {
+			...pending.pendingApproval,
+			action: {
+				type: 'approval' as const,
+				message: 'Save this note?',
+				risk: 'medium' as const,
+				operation: {
+					kind: 'command' as const,
+					command: 'remember_note',
+					filesTouched: ['notes.txt'],
+					argsPreview: { text: 'A note' }
+				},
+				sandbox: { provider: 'local', name: 'sandbox', workingDir: '/tmp' },
+				env: ['MODE=test'],
+				snapshotId: 'snapshot-1',
+				expiresAt: '2026-09-27T00:00:00.000Z',
+				editableArgs: true,
+				policyVersion: 'policy-1',
+				idempotencyKey: 'approval-1'
+			},
+			reason: 'Save this note?',
+			metadata: { source: 'test' },
+			policyPauseTier: 'tool',
+			satisfiedPolicyPauses: [
+				{
+					action: {
+						type: 'approval' as const,
+						risk: 'low' as const,
+						operation: { kind: 'other' as const, argsPreview: {} },
+						policyVersion: 'policy-1',
+						idempotencyKey: 'pause-1'
+					},
+					reason: 'A prior policy pause',
+					tier: 'tool' as const
+				}
+			]
+		};
+		let forwarded: unknown;
+		const resumeApproval = spyOn(toolbox, 'resumeApproval').mockImplementation(async (value) => {
+			forwarded = value;
+			throw new Error('parser probe');
+		});
+		try {
+			const { POST } = await import('./resume/+server.ts');
+			await expect(
+				POST({
+					request: new Request('http://localhost/api/chat/resume', {
+						method: 'POST',
+						headers: { 'content-type': 'application/json' },
+						body: JSON.stringify({ approval, decision: 'approve' })
+					}),
+					url: new URL('http://localhost/api/chat/resume')
+				} as Parameters<typeof POST>[0])
+			).rejects.toThrow('parser probe');
+			expect(forwarded).toEqual(approval);
+		} finally {
+			resumeApproval.mockRestore();
+		}
+	});
+
 	test('forwards another pending approval stage to the client', () => {
 		expect(resumeSource).toContain('...(result.action ? { action: result.action } : {})');
 		expect(resumeSource).toContain(

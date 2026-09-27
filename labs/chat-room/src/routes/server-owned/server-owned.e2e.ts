@@ -473,7 +473,7 @@ test('a person denying the note drops the call without failing the run', async (
 	expect(body).toContain('"type":"tool_call"');
 	expect(body).toContain('"type":"tool_result"');
 	expect(body).toContain('"outcome":"error"');
-	expect(body).toContain('did not run');
+	expect(body).toContain('Tool execution skipped by beforeToolExecution hook');
 
 	// And the run COMPLETED. `ctx.elicit` returns `null` rather than throwing, so
 	// a denial is the hook's decision and not a terminal — which is the

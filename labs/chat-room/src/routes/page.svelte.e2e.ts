@@ -173,100 +173,55 @@ test('retry after a failed send re-runs the assistant turn', async ({ page }) =>
 	expect(calls).toBe(2);
 });
 
-// ROADMAP HS-2, first half: the signature check on `/api/chat/resume`.
-//
-// This one needs no fixture and no API key, because armorer's verification is
-// stateless — an HMAC over the descriptor the client submits, with no
-// server-side pending-approval store to prime. So `/api/chat` can be mocked in
-// the usual way while `/api/chat/resume` runs for real, which is the narrowest
-// arrangement that still puts the real route, the real zod schema, and the real
-// `toolbox.resumeApproval` on the path.
-//
-// What it pins that `/exercises/tool-approval` cannot: that exercise performs no
-// network I/O at all and seeds approvals with no `pendingApproval` and no token,
-// so it proves Chat's affordances and nothing about the round trip.
-//
-// The `pendingApproval` below is a forgery, but a faithful one — field for field
-// the shape armorer really mints for `remember_note` (`reason` and `metadata`
-// included, and a well-formed 64-character hex token), so a rejection here is
-// the signature failing rather than the schema or the token's format.
+// A real descriptor keeps this test coupled to the published approval contract.
+// Alter only its signature, preserving the server-minted action and binding.
 test('a forged approvalToken is rejected by the real resume route', async ({ page }) => {
-	const callId = 'call-forged-token';
-	const approvalMessage = 'Save this note?';
+	const marker = newFixtureMarker();
+	let originalApproval: Record<string, unknown> | undefined;
+	let forgedToken: string | undefined;
 
-	await page.route('**/api/chat', async (route) => {
-		// Both lines matter: Chat renders the approval prompt on the tool-CALL
-		// row with the result folded in, so a result on its own would never
-		// surface an Approve button.
-		const events = [
-			{ type: 'tool_call', id: callId, name: 'remember_note', arguments: { text: 'A note' } },
-			{
-				type: 'tool_result',
-				callId,
-				outcome: 'action_required',
-				content: approvalMessage,
-				action: { type: 'approval', message: approvalMessage },
-				pendingApproval: {
-					callId,
-					toolName: 'remember_note',
-					arguments: { text: 'A note' },
-					action: { type: 'approval', message: approvalMessage },
-					reason: approvalMessage,
-					metadata: {},
-					approvalToken: 'a'.repeat(64)
-				}
-			}
-		];
-
-		await route.fulfill({
-			status: 200,
-			contentType: 'application/x-ndjson; charset=utf-8',
-			body: events.map((event) => JSON.stringify(event)).join('\n') + '\n'
+	await page.route('**/api/chat/resume', async (route) => {
+		const posted = route.request().postDataJSON();
+		originalApproval = posted.approval;
+		const token = posted.approval.approvalToken as string;
+		expect(token).toMatch(/^[0-9a-f]{64}$/);
+		expect(posted.approval.approvalBinding).toBeDefined();
+		forgedToken = (token[0] === 'a' ? 'b' : 'a') + token.slice(1);
+		await route.continue({
+			postData: JSON.stringify({
+				...posted,
+				approval: { ...posted.approval, approvalToken: forgedToken }
+			})
 		});
 	});
 
 	await gotoHydrated(page, '/');
 	const chat = page.locator('#chatroom-demo-chat');
-	await page.getByRole('textbox', { name: 'Message' }).fill('Remember something for me');
+	await page
+		.getByRole('textbox', { name: 'Message' })
+		.fill(`Remember something ${fixtureMarker('approval', marker)}`);
 	await page.getByRole('button', { name: 'Send message' }).click();
 
 	const approve = chat.getByRole('button', { name: 'Approve' });
 	await expect(approve).toBeVisible();
+	expect(await fixtureRequestCount(marker)).toBeGreaterThan(0);
 
 	const resumed = page.waitForResponse('**/api/chat/resume');
 	await approve.click();
 	const response = await resumed;
-
-	// The request shape is the client's, not the fixture's: `+page.svelte` builds
-	// the `{ approval, decision }` envelope and decides what goes in it.
-	const posted = JSON.parse(response.request().postData() ?? '{}');
+	const posted = response.request().postDataJSON();
 	expect(posted.decision).toBe('approve');
-	expect(posted.approval.callId).toBe(callId);
+	expect(originalApproval).toBeDefined();
+	expect(posted.approval).toEqual({ ...originalApproval, approvalToken: forgedToken });
 	expect(posted.approval.toolName).toBe('remember_note');
-	expect(posted.approval.arguments).toEqual({ text: 'A note' });
-	expect(posted.approval.action).toEqual({ type: 'approval', message: approvalMessage });
-	expect(posted.approval.approvalToken).toBe('a'.repeat(64));
+	expect(posted.approval.arguments).toEqual({ text: APPROVAL_NOTE_TEXT });
+	expect(forgedToken).not.toBe(originalApproval?.approvalToken);
 
-	// 500, not 400, is the load-bearing distinction. A 400 would mean the route's
-	// zod schema rejected the envelope before verification ever ran, which is
-	// what a client sending the wrong shape (a missing `approvalToken`, a bare
-	// descriptor with no `decision`) produces. Reaching a 500 means the shape was
-	// accepted and `toolbox.resumeApproval` threw on the signature.
-	//
-	// That the failure is a raw 500 rather than a 4xx is a gap in
-	// `src/routes/api/chat/resume/+server.ts`, which does not catch armorer's
-	// throw. Asserted as-is rather than papered over: tightening it is a change
-	// to that route, and this assertion is what would catch the change.
+	// A schema rejection returns 400 before signature verification. The real
+	// route currently lets Armorer's signature error become 500; preserve that
+	// assertion so malformed input cannot masquerade as signature rejection.
 	expect(response.status()).toBe(500);
 	expect(await response.text()).not.toContain('Invalid request body');
-
-	// The client surfaces the failure and leaves the transcript alone —
-	// `replaceToolResult` never runs, so the result is still `action_required`.
-	//
-	// Chat's own prompt, by contrast, flips to "Approved": `approveToolCall`
-	// resolves normally after setting `error`, so Chat's optimistic commit is
-	// never rolled back. Consumer-side behavior, not a Chat defect — Chat rolls
-	// back on a REJECTED adapter call, and this adapter does not reject.
 	await expect(page.getByTestId('demo-error')).not.toBeEmpty();
 	await expect(chat.locator('.tool-call-group')).toHaveAttribute('data-status', 'action-required');
 });
