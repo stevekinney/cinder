@@ -113,6 +113,7 @@
   }
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex (Both dynamic roles are interactive; keeping one element preserves focus when the selection mode changes.) -->
 <div
   bind:this={elementRef}
   role={context.multiple ? 'checkbox' : 'radio'}

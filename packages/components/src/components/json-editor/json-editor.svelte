@@ -160,6 +160,7 @@
         class="cinder-json-editor__highlight"
         aria-hidden="true">{@html highlightedHtml}</pre>
     {/if}
+    <!-- svelte-ignore a11y_autofocus (Autofocus is an explicit caller option; the native attribute preserves its behavior before hydration.) -->
     <textarea
       bind:this={textareaNode}
       {...rest}
