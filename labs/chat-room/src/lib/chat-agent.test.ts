@@ -4,9 +4,13 @@ import {
 	AbortAgentRunError,
 	OutputValidationError,
 	createAgent,
+	StepAbortedEvent,
+	StepStartedEvent,
+	ToolsExecutedEvent,
 	stopWhen,
 	type AgentRun,
 	type EnhancedStreamingOptions,
+	type RunEvent,
 	type BeforeToolExecutionHook,
 	type StreamingGenerateFunction
 } from '@lostgradient/operative';
@@ -489,6 +493,60 @@ describe('pumpChatRun: roll_dice tool path', () => {
 		}
 	});
 
+	test('resets typed settlement deduplication at the next engine step', async () => {
+		// The installed engine rejects reusing a call id in conversation history,
+		// so preserve its actual event classes while isolating this pump boundary.
+		const toolCall = { id: 'reused-call', name: 'roll_dice', arguments: {} };
+		const result = {
+			callId: 'reused-call',
+			toolCallId: 'reused-call',
+			toolName: 'roll_dice',
+			outcome: 'success' as const,
+			content: { rolls: [4] },
+			result: { rolls: [4] }
+		};
+		const baseAgent = createAgent({
+			generate: async () => ({ content: '', toolCalls: [] }),
+			toolbox: createToolbox([])
+		});
+		const baseRun = baseAgent.run({ conversation: conversationWith('hello') });
+		const baseEvents: RunEvent[] = [];
+		for await (const event of baseRun) baseEvents.push(event);
+		const stepStarted = baseEvents.find((event) => event instanceof StepStartedEvent);
+		expect(stepStarted).toBeInstanceOf(StepStartedEvent);
+		if (!(stepStarted instanceof StepStartedEvent)) throw new Error('missing step start event');
+		const run: AgentRun = {
+			async *[Symbol.asyncIterator]() {
+				yield stepStarted;
+				yield new ToolsExecutedEvent(0, [toolCall], [result]);
+				yield new StepAbortedEvent(0, 'retry this step');
+				yield new StepStartedEvent(stepStarted.conversation, 1);
+				yield new ToolsExecutedEvent(1, [toolCall], [result]);
+				for (const event of baseEvents) yield event;
+			},
+			result: () => baseRun.result(),
+			unwrap: () => baseRun.unwrap(),
+			abort: (reason) => baseRun.abort(reason),
+			children: () => baseRun.children(),
+			abortChild: (childId, reason) => baseRun.abortChild(childId, reason),
+			closed: (options) => baseRun.closed(options),
+			snapshot: () => baseRun.snapshot(),
+			subscribeSnapshot: (observer, options) => baseRun.subscribeSnapshot(observer, options),
+			[Symbol.dispose]: () => baseRun[Symbol.dispose]()
+		};
+		const lines: string[] = [];
+		const writer = createChatStreamWriter((line) => lines.push(line));
+		await pumpChatRun(run, writer).finally(() => disposeRun(baseRun));
+		const frames = decodeLines(lines);
+
+		expectWellFormedWire(frames);
+		expect(ofType(frames, 'tool.settled')).toHaveLength(2);
+		expect(ofType(frames, 'tool.settled').map(({ toolCallId }) => toolCallId)).toEqual([
+			'reused-call',
+			'reused-call'
+		]);
+	});
+
 	// The run stops right after the tool step — see `stopAfterAnyToolCall` in
 	// `chat-agent.ts` — so this request never reaches a second `generate` call
 	// for a follow-up reply. `generate` below asserts that by throwing if it is
@@ -672,14 +730,41 @@ describe('pumpChatRun: roll_dice tool path', () => {
 		const generate: StreamingGenerateFunction = async () => ({
 			content: '',
 			toolCalls: [
+				{ id: 'call-allowed', name: 'roll_dice', arguments: { sides: 6, count: 1 } },
 				{ id: 'call-denied', name: 'denied_roll_dice', arguments: { sides: 6, count: 1 } }
 			]
 		});
 		const deny: BeforeToolExecutionHook = async ({ toolCalls }) =>
 			toolCalls.filter((toolCall) => toolCall.name !== 'denied_roll_dice');
 
-		const { frames } = await runAndCollect(generate, createToolbox([deniedTool]), [], [deny]);
-		expect(ofType(frames, 'tool.settled')).toHaveLength(0);
+		const { frames } = await runAndCollect(
+			generate,
+			createToolbox([rollDice, deniedTool]),
+			[],
+			[deny]
+		);
+		const settled = ofType(frames, 'tool.settled');
+		expect(settled).toHaveLength(2);
+		expect(settled.find(({ toolCallId }) => toolCallId === 'call-allowed')).toMatchObject({
+			toolCallId: 'call-allowed',
+			toolName: 'roll_dice',
+			result: { callId: 'call-allowed', outcome: 'success' }
+		});
+		expect(settled.find(({ toolCallId }) => toolCallId === 'call-denied')).toMatchObject({
+			toolCallId: 'call-denied',
+			toolName: 'denied_roll_dice',
+			result: {
+				callId: 'call-denied',
+				outcome: 'error',
+				content: 'Tool execution skipped by beforeToolExecution hook'
+			}
+		});
+		expect(settled.filter(({ toolCallId }) => toolCallId === 'call-allowed')).toHaveLength(1);
+		expect(settled.filter(({ toolCallId }) => toolCallId === 'call-denied')).toHaveLength(1);
+		const legacyResults = legacyFrames(frames).filter((frame) => frame.type === 'tool_result');
+		expect(legacyResults).toHaveLength(2);
+		expect(legacyResults.filter((frame) => frame.callId === 'call-allowed')).toHaveLength(1);
+		expect(legacyResults.filter((frame) => frame.callId === 'call-denied')).toHaveLength(1);
 		expect(legacyFrames(frames).at(-1)).toMatchObject({
 			type: 'tool_result',
 			callId: 'call-denied',

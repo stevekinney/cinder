@@ -180,12 +180,12 @@ export const POST: RequestHandler = async ({ params, request }) => {
  * One request's elicitation gate: the hook that asks, and the callback that
  * waits for an answer.
  *
- * BUILT TOGETHER, because Operative's `ctx.elicit(message, schema)` carries no
- * call identity. The hook knows which call it is asking about; the callback is
- * what registers the question a person will see. Threading the one to the
- * other through a shared closure is the only way to put the call's own id and
- * arguments in front of the person deciding — and without that, review found,
- * approving one note also ran a second, unseen one.
+ * BUILT TOGETHER, because the hook supplies the call identity to
+ * `ctx.elicit(message, schema, { toolCallId })`, while the callback registers
+ * the question a person will see. Threading the call through a shared closure
+ * is what also puts the call's own name and arguments in front of the person
+ * deciding — and without that, review found, approving one note also ran a
+ * second, unseen one.
  *
  * PER REQUEST, never module-scoped: the closure holds this turn's abort signal
  * and the call it is currently asking about.
