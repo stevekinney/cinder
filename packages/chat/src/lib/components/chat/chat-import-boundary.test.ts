@@ -7,7 +7,9 @@
  */
 
 import { describe, expect, it } from 'bun:test';
+import * as conversationalist from 'conversationalist';
 import ts from 'typescript';
+import { rewindBeforeMessage, rewindBeforePosition } from './builders.ts';
 
 const CHAT_ROOT = import.meta.dir;
 const CONVERSATIONALIST_PACKAGE = 'conversationalist';
@@ -98,6 +100,13 @@ function extractSvelteScripts(source: string): string {
 }
 
 describe('chat import boundary', () => {
+  it('exports the rewind helpers from the supported Conversationalist root', () => {
+    expect(rewindBeforeMessage).toBe(conversationalist.rewindBeforeMessage);
+    expect(rewindBeforePosition).toBe(conversationalist.rewindBeforePosition);
+    expect(typeof rewindBeforeMessage).toBe('function');
+    expect(typeof rewindBeforePosition).toBe('function');
+  });
+
   it('conversation-model re-exports Conversationalist types without local declarations', async () => {
     const filePath = `${CHAT_ROOT}/conversation-model.ts`;
     const source = await Bun.file(filePath).text();
@@ -112,7 +121,10 @@ describe('chat import boundary', () => {
 
     expect(exportedPackages).toContain(CONVERSATIONALIST_PACKAGE);
     expect(exportedPackages).toContain(`${CONVERSATIONALIST_PACKAGE}/utilities`);
-    expect(exportedPackages).toContain(`${CONVERSATIONALIST_PACKAGE}/markdown`);
+    expect([...new Set(exportedPackages)]).toEqual([
+      CONVERSATIONALIST_PACKAGE,
+      `${CONVERSATIONALIST_PACKAGE}/utilities`,
+    ]);
     expect(specifiers.every(({ typeOnly }) => typeOnly)).toBe(true);
     expect(localTypeDeclarations).toEqual(['ExportOptions', 'ToMarkdownOptions']);
   });

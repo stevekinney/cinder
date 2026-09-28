@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
+  import { untrack, type Snippet } from 'svelte';
   import Collapsible from '../collapsible/collapsible.svelte';
   import type { CollapsibleTriggerState } from '../collapsible/collapsible.types.ts';
 
@@ -29,7 +29,7 @@
   // reader's own toggle. Owning the state locally via `bind:open` keeps
   // `collapsed`/`collapseThreshold` as documented *initial* behavior while leaving
   // the group freely user-togglable for the rest of its life.
-  let open = $state(initialOpen);
+  let open = $state(untrack(() => initialOpen));
 </script>
 
 <Collapsible bind:open {trigger} {triggerAriaLabel} class={className}>

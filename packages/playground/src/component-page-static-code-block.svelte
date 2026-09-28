@@ -34,6 +34,7 @@
   <!-- The README renderer already initialized Shiki and sanitized this HTML at
        build time. Rendering that exact result here preserves the CodeBlock
        frame while making highlighted tokens part of the exported document. -->
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex (The horizontal code viewport needs keyboard scrolling.) -->
   <div class="cinder-code-block__viewport" tabindex="0">
     {#if highlightedHtml !== ''}
       <div class="cinder-code-block__highlighted">

@@ -74,10 +74,25 @@ async function scriptFiles(): Promise<string[]> {
 }
 
 describe('scripts/ imports', () => {
+	it('links the installed Operative Anthropic provider against its published dependencies', async () => {
+		const child = Bun.spawn(
+			[
+				process.execPath,
+				'--eval',
+				"import { createAnthropicProviderStream } from '@lostgradient/operative/anthropic'; if (typeof createAnthropicProviderStream !== 'function') throw new Error('Missing provider factory');"
+			],
+			{ cwd: resolvePath(SCRIPTS_DIRECTORY, '..'), stdout: 'pipe', stderr: 'pipe' }
+		);
+		const [exitCode, stderr] = await Promise.all([child.exited, new Response(child.stderr).text()]);
+		expect(stderr).toBe('');
+		expect(exitCode).toBe(0);
+	});
+
 	it('has scripts to check', async () => {
 		// Without this the suite passes vacuously if the folder is ever moved:
 		// zero files means zero assertions means green.
-		expect((await scriptFiles()).length).toBeGreaterThan(0);
+		const files = await scriptFiles();
+		expect(files.length).toBeGreaterThan(0);
 	});
 
 	it('resolves every relative import to a file that exists', async () => {

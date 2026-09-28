@@ -23,14 +23,14 @@ export {
   type ChatSessionTransportResult,
 } from './session/session-controller.ts';
 export {
-  decodeChatStreamEvent,
   decodeChatStreamEvents,
-  decodeStreamEvent,
   decodeStreamEvents,
-  encodeChatStreamEvent,
-  encodeStreamEvent,
   guardChatStreamEvents,
-  type ChatSerializedRunError,
   type ChatStreamDecodeOptions,
-  type ChatStreamEvent,
 } from './session/stream-event-codec.ts';
+export {
+  type ChatSerializedRunError,
+  type ChatStreamEvent,
+} from './session/stream-event-contract.ts';
+export { decodeChatStreamEvent, decodeStreamEvent } from './session/stream-event-decoder.ts';
+export { encodeChatStreamEvent, encodeStreamEvent } from './session/stream-event-encoder.ts';

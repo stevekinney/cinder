@@ -19,7 +19,7 @@
 </script>
 
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { composeDescribedBy } from '../../_internal/field-control.ts';
   import FormFieldFrame from '../../_internal/form-field-frame.svelte';
   import { classNames } from '../../utilities/class-names.ts';
@@ -44,8 +44,8 @@
     ...rest
   }: JsonEditorProps = $props();
 
-  let draftValue = $state(value);
-  let previousValue = value;
+  let draftValue = $state(untrack(() => value));
+  let previousValue = untrack(() => value);
   let textareaNode: HTMLTextAreaElement | undefined = $state();
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
   let highlightedHtml = $state<string | null>(null);
@@ -160,13 +160,14 @@
         class="cinder-json-editor__highlight"
         aria-hidden="true">{@html highlightedHtml}</pre>
     {/if}
+    <!-- svelte-ignore a11y_autofocus (Autofocus is an explicit caller option; the native attribute preserves its behavior before hydration.) -->
     <textarea
       bind:this={textareaNode}
       {...rest}
       {id}
       {rows}
-      {wrap}
       {autofocus}
+      {wrap}
       value={draftValue}
       spellcheck="false"
       class="cinder-json-editor__textarea"

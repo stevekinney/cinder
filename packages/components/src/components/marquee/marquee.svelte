@@ -258,6 +258,7 @@
   onfocusout={clearManualResumeRequestAfterFocusLeaves}
   onpointerleave={clearManualResumeRequestAfterPointerLeaves}
 >
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard users need to focus the viewport to scroll reduced-motion content.) -->
   <div
     class="cinder-marquee__viewport"
     role="group"

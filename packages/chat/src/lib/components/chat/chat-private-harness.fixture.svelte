@@ -327,6 +327,14 @@
               action: {
                 type: 'approval' as const,
                 message: 'Approve running this tool before it executes?',
+                risk: 'low' as const,
+                operation: {
+                  kind: 'command' as const,
+                  command: toolName,
+                  argsPreview: parsedToolArguments.value,
+                },
+                policyVersion: 'test-policy',
+                idempotencyKey: `harness-${callId}`,
               },
             }
           : { callId, outcome: 'success' as const, content: { status: 'ok' } };

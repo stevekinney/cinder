@@ -18,6 +18,7 @@ import {
 	AgentRunError,
 	classifyError,
 	createAgent,
+	HookRegistry,
 	stopWhen,
 	type AgentRun,
 	type AgentRunErrorKind,
@@ -29,6 +30,7 @@ import {
 	type StepResult,
 	type BeforeToolExecutionHook,
 	type OnElicitation,
+	type OperativeHookMap,
 	type StopCondition,
 	type StreamEvent,
 	type StreamingGenerateFunction
@@ -304,7 +306,7 @@ export function createChatRunOptions(options: {
 	executeOptions: { requestContext: OperativeExecuteOptions['requestContext'] };
 	stopWhen: StopCondition[];
 	onElicitation?: OnElicitation;
-	beforeToolExecution?: BeforeToolExecutionHook[];
+	hooks: HookRegistry<OperativeHookMap>;
 } {
 	// Operative's `TypedEventTarget` class is not a public export, only its
 	// type (through `EnhancedStreamingOptions`); the wrapper dispatches via
@@ -323,6 +325,10 @@ export function createChatRunOptions(options: {
 			options.writer.write(toStreamFrame(event.detail));
 		});
 	}
+	const hooks = new HookRegistry<OperativeHookMap>();
+	for (const hook of options.beforeToolExecution ?? []) {
+		hooks.on('beforeToolExecution', hook);
+	}
 
 	return {
 		generate: withEnhancedStreaming(options.generate, { eventTarget, liveToolCalls: true }),
@@ -333,15 +339,13 @@ export function createChatRunOptions(options: {
 			stopWhen.pendingApproval(),
 			stopAfterAnyToolCall
 		],
+		hooks,
 		// SPREAD rather than assigned, because `exactOptionalPropertyTypes` makes
 		// `onElicitation: undefined` a different thing from an absent key — and
 		// the loop distinguishes them: an absent `onElicitation` means the hook
 		// contexts carry no `elicit` at all, while a present-but-undefined one
 		// would not type-check against `RunOptions`.
-		...(options.onElicitation === undefined ? {} : { onElicitation: options.onElicitation }),
-		...(options.beforeToolExecution === undefined
-			? {}
-			: { beforeToolExecution: options.beforeToolExecution })
+		...(options.onElicitation === undefined ? {} : { onElicitation: options.onElicitation })
 	};
 }
 

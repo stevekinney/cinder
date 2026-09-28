@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { Accordion } from './index.ts';
 
   type FixtureProps = {
@@ -7,7 +8,7 @@
   };
 
   let { expandedIds = [], multiple = false }: FixtureProps = $props();
-  let selectedIds = $state([...expandedIds]);
+  let selectedIds = $state(untrack(() => [...expandedIds]));
 </script>
 
 <div class="accordion-fixture">

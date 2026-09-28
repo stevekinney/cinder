@@ -230,7 +230,13 @@ describe('chat conversation builders', () => {
       callId: 'call-1',
       outcome: 'action_required',
       content: null,
-      action: { type: 'approval' },
+      action: {
+        type: 'approval',
+        risk: 'high',
+        operation: { kind: 'command', command: 'echo approval', argsPreview: { ok: true } },
+        policyVersion: 'test-policy',
+        idempotencyKey: 'test-approval',
+      },
     });
     const resolved = replaceToolResult(withTool, 'call-1', {
       callId: 'call-1',

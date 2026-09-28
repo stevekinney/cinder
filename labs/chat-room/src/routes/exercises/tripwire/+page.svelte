@@ -3,6 +3,8 @@
 		GuardrailTripwireError,
 		createActiveRun,
 		createAgentRun,
+		HookRegistry,
+		type OperativeHookMap,
 		type StepResult
 	} from '@lostgradient/operative';
 	import {
@@ -162,13 +164,15 @@
 		// by both sides of a post-run comparison, making the check vacuous
 		// exactly when it matters.
 		const seededFirstShape = shapeOf(getMessages(conversation)[0]);
+		const hooks = new HookRegistry<OperativeHookMap>();
+		hooks.on('prepareStep', guardrails.prepareStep);
+		hooks.on('validateResponse', guardrails.validateResponse);
 
-		// `createActiveRun` rather than `createAgent`, unlike this route's
-		// siblings, because guardrail hooks are not part of
-		// `CreateAgentOptions` — `prepareStep` and `validateResponse` live on
-		// `RunOptions`. Operative documents this exact case: `createActiveRun`
-		// is the "full-control factory behind `createAgent`", to be used
-		// "directly when you need something `createAgent` doesn't expose".
+		// `createActiveRun` is used here because this exercise owns a live
+		// `Conversation` instance and needs the full-control factory. The
+		// guardrail hooks are registered through the same `HookRegistry` surface
+		// available to agents; this choice is about conversation ownership, not
+		// a missing hook capability on `createAgent`.
 		// What the model was actually handed. A fixed generator that ignores
 		// its context cannot tell you that the prompt arrived unchanged — a
 		// guardrail that rewrote the user message on the way through would
@@ -202,8 +206,7 @@
 			toolbox: createToolbox([]),
 			conversation,
 			stopWhen: [(step: StepResult) => step.toolCalls.length === 0],
-			prepareStep: guardrails.prepareStep,
-			validateResponse: guardrails.validateResponse
+			hooks
 		});
 
 		// Subscribed before the first await: `createActiveRun` starts the loop

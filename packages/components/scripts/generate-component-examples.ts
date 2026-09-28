@@ -12,7 +12,9 @@
  *
  * Non-conforming examples may carry a top-of-file exclusion marker:
  *   `// @cinder-example-exclude: <reason>`
- * where `<reason>` must be in `allowedExampleExclusionReasons` (manifest.meta.ts).
+ * where `<reason>` must be in `allowedExampleExclusionReasons`
+ * (example-exclusion-reasons.ts, target-owned — see that file's doc comment
+ * for why this moved out of the synced `src/manifest.meta.ts`).
  *
  * Outputs:
  *   - `src/components/{id}/{id}.examples.json` (one per component with published examples)
@@ -36,11 +38,11 @@ import { existsSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 
-import { allowedExampleExclusionReasons } from '../src/manifest.meta.ts';
 import {
   ALLOWED_EXAMPLE_PACKAGE_PREFIXES,
   ALLOWED_EXAMPLE_PACKAGES,
 } from './example-allowed-packages.ts';
+import { allowedExampleExclusionReasons } from './example-exclusion-reasons.ts';
 import { discoverDirectoryComponents } from './generate-exports.ts';
 import { stripExampleHarness } from './lib/strip-example-harness.ts';
 

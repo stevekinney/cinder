@@ -146,7 +146,14 @@ test.describe('chat action buttons', () => {
       });
       expect(hitTarget.isCopyButton, JSON.stringify(hitTarget)).toBe(true);
 
-      const emptyToolRow = page.locator('.chat-message-wrapper[data-role="tool-call"]').first();
+      const artifactToolRow = page.locator(
+        '#playground-tool-call-chat .chat-message-wrapper[data-role="tool-call"]',
+      );
+      await expect(artifactToolRow.getByRole('button', { name: 'Open artifact' })).toBeVisible();
+
+      const emptyToolRow = page.locator(
+        '#playground-tool-approval-chat .chat-message-wrapper[data-role="tool-call"]',
+      );
       await expect(emptyToolRow).toBeVisible();
       await expect(emptyToolRow.locator('.chat-message-actions > *')).toHaveCount(0);
       await expect(emptyToolRow).toHaveCSS('margin-block-end', '0px');

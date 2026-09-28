@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { useAnnouncer } from '../use-announcer.svelte.ts';
 
   let {
@@ -9,7 +10,7 @@
     debounceMs?: number;
   } = $props();
 
-  const announcer = useAnnouncer({ clearDelay, debounceMs });
+  const announcer = useAnnouncer(untrack(() => ({ clearDelay, debounceMs })));
 </script>
 
 <button type="button" onclick={() => announcer.announce('Saved')}>announce saved</button>

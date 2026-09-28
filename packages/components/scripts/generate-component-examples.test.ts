@@ -660,3 +660,36 @@ describe('extractExampleFile — component with only excluded examples', () => {
     expect(notAllExcluded).toBe(false);
   });
 });
+
+it('bundles when the mirrored manifest has no example exclusion policy', async () => {
+  const result = await Bun.build({
+    entrypoints: [new URL('./generate-component-examples.ts', import.meta.url).pathname],
+    target: 'bun',
+    packages: 'external',
+    plugins: [
+      {
+        name: 'mirrored-manifest-without-example-policy',
+        setup(builder) {
+          builder.onLoad({ filter: /[/\\]src[/\\]manifest\.meta\.ts$/ }, async ({ path }) => {
+            const source = await Bun.file(path).text();
+            const contents = source.replace(
+              /export const allowedExampleExclusionReasons = \[[\s\S]*?\] as const satisfies readonly string\[\];/,
+              '',
+            );
+            const policyExport = /\bexport\s+const\s+allowedExampleExclusionReasons\b/;
+            if (policyExport.test(source)) expect(contents).not.toBe(source);
+            expect(contents).not.toMatch(policyExport);
+            return { contents, loader: 'ts' };
+          });
+        },
+      },
+    ],
+  });
+  expect(result.logs.map((entry) => entry.message)).toEqual([]);
+  expect(result.success).toBe(true);
+});
+
+it('keeps the exclusion policy out of the mirrored manifest', async () => {
+  const metadata = await import('../src/manifest.meta.ts');
+  expect(metadata).not.toHaveProperty('allowedExampleExclusionReasons');
+});

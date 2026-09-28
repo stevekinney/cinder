@@ -3,14 +3,89 @@ import { z } from 'zod';
 
 import { requestContext, toolbox } from '$lib/toolbox';
 
+import { materializeToolResult } from 'armorer';
 import type { SignedPendingToolApproval } from 'armorer';
 import type { RequestHandler } from './$types';
 
-const actionSchema = z.object({
-	type: z.enum(['approval', 'input']),
-	message: z.string().optional(),
-	schema: z.unknown().optional()
-});
+const jsonValueSchema = z.json();
+
+const operationSchema = z.discriminatedUnion('kind', [
+	z
+		.object({
+			kind: z.literal('command'),
+			command: z.string(),
+			filesTouched: z.array(z.string()).optional(),
+			argsPreview: jsonValueSchema.optional()
+		})
+		.strict(),
+	z
+		.object({
+			kind: z.literal('file-write'),
+			filesTouched: z.array(z.string()),
+			argsPreview: jsonValueSchema.optional()
+		})
+		.strict(),
+	z
+		.object({
+			kind: z.literal('patch'),
+			filesTouched: z.array(z.string()).optional(),
+			argsPreview: jsonValueSchema.optional(),
+			diff: z.string()
+		})
+		.strict(),
+	z
+		.object({
+			kind: z.literal('other'),
+			filesTouched: z.array(z.string()).optional(),
+			argsPreview: jsonValueSchema.optional()
+		})
+		.strict()
+]);
+
+const sandboxSchema = z
+	.object({ provider: z.string(), name: z.string(), workingDir: z.string() })
+	.strict();
+
+const actionSchema = z
+	.discriminatedUnion('type', [
+		z
+			.object({
+				type: z.literal('input'),
+				message: z.string().optional(),
+				schema: jsonValueSchema.optional()
+			})
+			.strict(),
+		z
+			.object({
+				type: z.literal('approval'),
+				message: z.string().optional(),
+				risk: z.enum(['low', 'medium', 'high']),
+				operation: operationSchema,
+				sandbox: sandboxSchema.optional(),
+				env: z.array(z.string()).optional(),
+				snapshotId: z.string().optional(),
+				expiresAt: z.string().optional(),
+				editableArgs: z.boolean().optional(),
+				policyVersion: z.string(),
+				idempotencyKey: z.string()
+			})
+			.strict()
+	])
+	.superRefine((action, context) => {
+		try {
+			materializeToolResult({
+				callId: 'resume-validation',
+				outcome: 'action_required',
+				content: null,
+				action
+			});
+		} catch (error) {
+			context.addIssue({
+				code: 'custom',
+				message: error instanceof Error ? error.message : 'Invalid tool action'
+			});
+		}
+	});
 
 const policyPauseTierSchema = z.enum(['capability', 'registry', 'tool']);
 

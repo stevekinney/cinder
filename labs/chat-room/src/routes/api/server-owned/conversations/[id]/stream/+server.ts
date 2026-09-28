@@ -16,7 +16,7 @@ import {
 	requestContext,
 	serverOwnedToolbox
 } from '$lib/toolbox';
-import { requestApproval } from '$lib/server-owned-elicitation';
+import { createElicitationResponse, requestApproval } from '$lib/server-owned-elicitation';
 import { createChatRunOptions } from '$lib/chat-agent';
 
 import type { RequestHandler } from './$types';
@@ -180,12 +180,12 @@ export const POST: RequestHandler = async ({ params, request }) => {
  * One request's elicitation gate: the hook that asks, and the callback that
  * waits for an answer.
  *
- * BUILT TOGETHER, because Operative's `ctx.elicit(message, schema)` carries no
- * call identity. The hook knows which call it is asking about; the callback is
- * what registers the question a person will see. Threading the one to the
- * other through a shared closure is the only way to put the call's own id and
- * arguments in front of the person deciding — and without that, review found,
- * approving one note also ran a second, unseen one.
+ * BUILT TOGETHER, because the hook supplies the call identity to
+ * `ctx.elicit(message, schema, { toolCallId })`, while the callback registers
+ * the question a person will see. Threading the call through a shared closure
+ * is what also puts the call's own name and arguments in front of the person
+ * deciding — and without that, review found, approving one note also ran a
+ * second, unseen one.
  *
  * PER REQUEST, never module-scoped: the closure holds this turn's abort signal
  * and the call it is currently asking about.
@@ -222,7 +222,7 @@ function createElicitationGate(
 		// carries the schema that defines it, so a literal would only
 		// type-check behind an assertion — and the assertion is exactly what
 		// would go stale if the hook ever asks a different question.
-		return approved ? { data: elicitation.schema.parse({ approved: true }) } : null;
+		return createElicitationResponse(elicitation, approved);
 	};
 
 	/**
@@ -257,7 +257,9 @@ function createElicitationGate(
 				// The SCHEMA is what Operative validates the answer against, and
 				// it is the host's own shape rather than the tool's input: the
 				// person is answering "may this run", not re-authoring the note.
-				const answer = await elicit(ELICITATION_MESSAGE, z.object({ approved: z.literal(true) }));
+				const answer = await elicit(ELICITATION_MESSAGE, z.object({ approved: z.literal(true) }), {
+					toolCallId: call.id
+				});
 				if (answer === null) denied.add(call.id);
 			} finally {
 				asking = undefined;

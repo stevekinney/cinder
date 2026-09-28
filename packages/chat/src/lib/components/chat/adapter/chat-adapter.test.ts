@@ -1878,7 +1878,14 @@ function actionRequiredConversation(id = 'approval-conversation'): ConversationH
       callId: 'call-1',
       outcome: 'action_required',
       content: null,
-      action: { type: 'approval', message: 'Deploy to production?' },
+      action: {
+        type: 'approval',
+        message: 'Deploy to production?',
+        risk: 'low',
+        operation: { kind: 'command', command: 'test-command', argsPreview: {} },
+        policyVersion: 'test-policy',
+        idempotencyKey: 'adapter-approval-1',
+      },
     },
   };
   return {

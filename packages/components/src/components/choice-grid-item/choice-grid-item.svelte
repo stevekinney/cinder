@@ -70,10 +70,6 @@
   const isFocusable = $derived(context.isFocusable(registeredValue));
   const tabIndex = $derived(rovingTabIndex(isFocusable));
 
-  // In single-select mode, the item acts as a radio button (role="radio").
-  // In multi-select mode, the item acts as a checkbox (role="checkbox").
-  const role = $derived(context.multiple ? 'checkbox' : 'radio');
-
   let elementRef: HTMLElement | null = $state(null);
 
   // Effect A — mount/unmount registration. Uses untrack to avoid creating a
@@ -117,9 +113,10 @@
   }
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex (Both dynamic roles are interactive; keeping one element preserves focus when the selection mode changes.) -->
 <div
   bind:this={elementRef}
-  {role}
+  role={context.multiple ? 'checkbox' : 'radio'}
   aria-checked={isSelected}
   aria-disabled={isDisabled || undefined}
   tabindex={tabIndex}

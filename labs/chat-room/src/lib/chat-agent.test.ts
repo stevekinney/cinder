@@ -4,9 +4,13 @@ import {
 	AbortAgentRunError,
 	OutputValidationError,
 	createAgent,
+	StepAbortedEvent,
+	StepStartedEvent,
+	ToolsExecutedEvent,
 	stopWhen,
 	type AgentRun,
 	type EnhancedStreamingOptions,
+	type RunEvent,
 	type BeforeToolExecutionHook,
 	type StreamingGenerateFunction
 } from '@lostgradient/operative';
@@ -489,6 +493,60 @@ describe('pumpChatRun: roll_dice tool path', () => {
 		}
 	});
 
+	test('resets typed settlement deduplication at the next engine step', async () => {
+		// The installed engine rejects reusing a call id in conversation history,
+		// so preserve its actual event classes while isolating this pump boundary.
+		const toolCall = { id: 'reused-call', name: 'roll_dice', arguments: {} };
+		const result = {
+			callId: 'reused-call',
+			toolCallId: 'reused-call',
+			toolName: 'roll_dice',
+			outcome: 'success' as const,
+			content: { rolls: [4] },
+			result: { rolls: [4] }
+		};
+		const baseAgent = createAgent({
+			generate: async () => ({ content: '', toolCalls: [] }),
+			toolbox: createToolbox([])
+		});
+		const baseRun = baseAgent.run({ conversation: conversationWith('hello') });
+		const baseEvents: RunEvent[] = [];
+		for await (const event of baseRun) baseEvents.push(event);
+		const stepStarted = baseEvents.find((event) => event instanceof StepStartedEvent);
+		expect(stepStarted).toBeInstanceOf(StepStartedEvent);
+		if (!(stepStarted instanceof StepStartedEvent)) throw new Error('missing step start event');
+		const run: AgentRun = {
+			async *[Symbol.asyncIterator]() {
+				yield stepStarted;
+				yield new ToolsExecutedEvent(0, [toolCall], [result]);
+				yield new StepAbortedEvent(0, 'retry this step');
+				yield new StepStartedEvent(stepStarted.conversation, 1);
+				yield new ToolsExecutedEvent(1, [toolCall], [result]);
+				for (const event of baseEvents) yield event;
+			},
+			result: () => baseRun.result(),
+			unwrap: () => baseRun.unwrap(),
+			abort: (reason) => baseRun.abort(reason),
+			children: () => baseRun.children(),
+			abortChild: (childId, reason) => baseRun.abortChild(childId, reason),
+			closed: (options) => baseRun.closed(options),
+			snapshot: () => baseRun.snapshot(),
+			subscribeSnapshot: (observer, options) => baseRun.subscribeSnapshot(observer, options),
+			[Symbol.dispose]: () => baseRun[Symbol.dispose]()
+		};
+		const lines: string[] = [];
+		const writer = createChatStreamWriter((line) => lines.push(line));
+		await pumpChatRun(run, writer).finally(() => disposeRun(baseRun));
+		const frames = decodeLines(lines);
+
+		expectWellFormedWire(frames);
+		expect(ofType(frames, 'tool.settled')).toHaveLength(2);
+		expect(ofType(frames, 'tool.settled').map(({ toolCallId }) => toolCallId)).toEqual([
+			'reused-call',
+			'reused-call'
+		]);
+	});
+
 	// The run stops right after the tool step — see `stopAfterAnyToolCall` in
 	// `chat-agent.ts` — so this request never reaches a second `generate` call
 	// for a follow-up reply. `generate` below asserts that by throwing if it is
@@ -601,7 +659,14 @@ describe('pumpChatRun: roll_dice tool path', () => {
 
 		const [toolError] = ofType(frames, 'tool.error');
 		expect(toolError).toMatchObject({ toolCallId: 'call-bad', toolName: 'roll_dice' });
-		expect(toolError?.error).toMatchObject({ name: 'ZodError', message: expect.any(String) });
+		expect(toolError?.error).toMatchObject({
+			code: 'VALIDATION_ERROR',
+			category: 'validation',
+			retryable: false,
+			message: expect.any(String),
+			details: { issues: expect.any(Array) }
+		});
+		expect(toolError?.error).not.toHaveProperty('cause');
 		expect(ofType(frames, 'tool.settled')[0]).toMatchObject({
 			toolCallId: 'call-bad',
 			result: { callId: 'call-bad', outcome: 'error' }
@@ -651,29 +716,62 @@ describe('pumpChatRun: roll_dice tool path', () => {
 	});
 
 	test('a filtered denied call settles typed and legacy consumers', async () => {
+		let executeCalls = 0;
+		const deniedTool = createTool({
+			name: 'denied_roll_dice',
+			version: '1.0.0',
+			description: 'A tool that must not execute after filtering.',
+			input: z.object({ sides: z.number().int(), count: z.number().int() }),
+			async execute() {
+				executeCalls += 1;
+				return { rolls: [4], total: 4 };
+			}
+		});
 		const generate: StreamingGenerateFunction = async () => ({
 			content: '',
-			toolCalls: [{ id: 'call-denied', name: 'roll_dice', arguments: { sides: 6, count: 1 } }]
+			toolCalls: [
+				{ id: 'call-allowed', name: 'roll_dice', arguments: { sides: 6, count: 1 } },
+				{ id: 'call-denied', name: 'denied_roll_dice', arguments: { sides: 6, count: 1 } }
+			]
 		});
 		const deny: BeforeToolExecutionHook = async ({ toolCalls }) =>
-			toolCalls.filter((toolCall) => toolCall.name !== 'roll_dice');
+			toolCalls.filter((toolCall) => toolCall.name !== 'denied_roll_dice');
 
-		const { frames } = await runAndCollect(generate, createToolbox([rollDice]), [], [deny]);
-		const [settled] = ofType(frames, 'tool.settled');
-		expect(settled).toMatchObject({
-			toolCallId: 'call-denied',
+		const { frames } = await runAndCollect(
+			generate,
+			createToolbox([rollDice, deniedTool]),
+			[],
+			[deny]
+		);
+		const settled = ofType(frames, 'tool.settled');
+		expect(settled).toHaveLength(2);
+		expect(settled.find(({ toolCallId }) => toolCallId === 'call-allowed')).toMatchObject({
+			toolCallId: 'call-allowed',
 			toolName: 'roll_dice',
+			result: { callId: 'call-allowed', outcome: 'success' }
+		});
+		expect(settled.find(({ toolCallId }) => toolCallId === 'call-denied')).toMatchObject({
+			toolCallId: 'call-denied',
+			toolName: 'denied_roll_dice',
 			result: {
 				callId: 'call-denied',
 				outcome: 'error',
-				content: 'This call did not run, and reported no result.'
+				content: 'Tool execution skipped by beforeToolExecution hook'
 			}
 		});
+		expect(settled.filter(({ toolCallId }) => toolCallId === 'call-allowed')).toHaveLength(1);
+		expect(settled.filter(({ toolCallId }) => toolCallId === 'call-denied')).toHaveLength(1);
+		const legacyResults = legacyFrames(frames).filter((frame) => frame.type === 'tool_result');
+		expect(legacyResults).toHaveLength(2);
+		expect(legacyResults.filter((frame) => frame.callId === 'call-allowed')).toHaveLength(1);
+		expect(legacyResults.filter((frame) => frame.callId === 'call-denied')).toHaveLength(1);
 		expect(legacyFrames(frames).at(-1)).toMatchObject({
 			type: 'tool_result',
 			callId: 'call-denied',
-			outcome: 'error'
+			outcome: 'error',
+			content: 'Tool execution skipped by beforeToolExecution hook'
 		});
+		expect(executeCalls).toBe(0);
 	});
 });
 

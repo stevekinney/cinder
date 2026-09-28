@@ -6,13 +6,28 @@ import {
   appendUserMessage,
   createConversationHistory,
 } from '../components/chat/builders.ts';
-import type { ConversationHistory, ToolResult } from '../components/chat/conversation-model.ts';
+import type {
+  ConversationHistory,
+  ToolAction,
+  ToolResult,
+} from '../components/chat/conversation-model.ts';
 import type { ChatAttachment } from '../components/chat/input/chat-attachment.ts';
 import { ChatRunFailureError, createChatSessionController } from './session-controller.ts';
-import type { ChatStreamEvent } from './stream-event-codec.ts';
+import type { ChatStreamEvent } from './stream-event-contract.ts';
 
 async function* events(values: ChatStreamEvent[]): AsyncGenerator<ChatStreamEvent> {
   yield* values;
+}
+
+function approvalAction(message?: string): Extract<ToolAction, { type: 'approval' }> {
+  return {
+    type: 'approval',
+    ...(message === undefined ? {} : { message }),
+    risk: 'low',
+    operation: { kind: 'command', command: 'test-command', argsPreview: {} },
+    policyVersion: 'test-policy',
+    idempotencyKey: 'session-approval-test',
+  };
 }
 
 describe('chat session controller', () => {
@@ -359,7 +374,7 @@ describe('chat session controller', () => {
             callId: 'call',
             outcome: 'action_required',
             content: null,
-            action: { type: 'approval', message: 'Approve this tool call' },
+            action: approvalAction('Approve this tool call'),
           },
         ]),
       hooks: { approveToolCall: async () => undefined },
@@ -866,7 +881,7 @@ describe('chat session controller', () => {
                 callId: 'call',
                 outcome: 'action_required',
                 content: null,
-                action: { type: 'approval', message: 'Approve this tool call' },
+                action: approvalAction('Approve this tool call'),
               },
             ])
           : events([{ type: 'text', text: 'approved' }]);
@@ -905,7 +920,7 @@ describe('chat session controller', () => {
             callId: 'call',
             outcome: 'action_required',
             content: null,
-            action: { type: 'approval' },
+            action: approvalAction(),
           },
         ]);
       },
@@ -933,7 +948,7 @@ describe('chat session controller', () => {
         callId: 'call',
         outcome: 'action_required',
         content: null,
-        action: { type: 'approval', message: 'Approve staging?' },
+        action: approvalAction('Approve staging?'),
       },
     );
     const controller = createChatSessionController({
@@ -947,7 +962,7 @@ describe('chat session controller', () => {
           callId,
           outcome: 'action_required',
           content: null,
-          action: { type: 'approval', message: 'Approve production?' },
+          action: approvalAction('Approve production?'),
         }),
       },
     });
@@ -957,7 +972,7 @@ describe('chat session controller', () => {
       Object.values(conversation.messages).find(
         (message) => message.role === 'tool-result' && message.toolResult?.callId === 'call',
       )?.toolResult?.action,
-    ).toEqual({ type: 'approval', message: 'Approve production?' });
+    ).toEqual(approvalAction('Approve production?'));
   });
 
   test('keeps a repeated denial request pending and reports that state to Chat', async () => {
@@ -970,7 +985,7 @@ describe('chat session controller', () => {
         callId: 'call',
         outcome: 'action_required',
         content: null,
-        action: { type: 'approval', message: 'Approve staging?' },
+        action: approvalAction('Approve staging?'),
       },
     );
     const controller = createChatSessionController({
@@ -984,7 +999,7 @@ describe('chat session controller', () => {
           callId,
           outcome: 'action_required',
           content: null,
-          action: { type: 'approval', message: 'Request an exception?' },
+          action: approvalAction('Request an exception?'),
         }),
       },
     });
@@ -994,7 +1009,7 @@ describe('chat session controller', () => {
       Object.values(conversation.messages).find(
         (message) => message.role === 'tool-result' && message.toolResult?.callId === 'call',
       )?.toolResult?.action,
-    ).toEqual({ type: 'approval', message: 'Request an exception?' });
+    ).toEqual(approvalAction('Request an exception?'));
   });
 
   test('continues when an approval hook returns an action-less approval result', async () => {
@@ -1007,7 +1022,7 @@ describe('chat session controller', () => {
         callId: 'call',
         outcome: 'action_required',
         content: null,
-        action: { type: 'approval' },
+        action: approvalAction(),
       },
     );
     let continuations = 0;
@@ -1043,7 +1058,7 @@ describe('chat session controller', () => {
         callId: 'call',
         outcome: 'action_required',
         content: null,
-        action: { type: 'approval' },
+        action: approvalAction(),
       },
     );
     let continuations = 0;
@@ -1082,7 +1097,7 @@ describe('chat session controller', () => {
         callId: 'older-call',
         outcome: 'action_required',
         content: null,
-        action: { type: 'approval' },
+        action: approvalAction(),
       },
     );
     conversation = appendUserMessage(conversation, 'newer');
@@ -1098,7 +1113,7 @@ describe('chat session controller', () => {
         callId: 'newer-call',
         outcome: 'action_required',
         content: null,
-        action: { type: 'approval' },
+        action: approvalAction(),
       },
     );
     const markFailed = (id: string): void => {
@@ -1148,7 +1163,7 @@ describe('chat session controller', () => {
         ),
         { id: 'call', name: 'write', arguments: {} },
       ),
-      { callId: 'call', outcome: 'action_required', content: null, action: { type: 'approval' } },
+      { callId: 'call', outcome: 'action_required', content: null, action: approvalAction() },
     );
     let resolveApproval!: (result: ToolResult) => void;
     const controller = createChatSessionController({
@@ -1183,7 +1198,7 @@ describe('chat session controller', () => {
         ),
         { id: 'call', name: 'write', arguments: {} },
       ),
-      { callId: 'call', outcome: 'action_required', content: null, action: { type: 'approval' } },
+      { callId: 'call', outcome: 'action_required', content: null, action: approvalAction() },
     );
     let calls = 0;
     const controller = createChatSessionController({
@@ -1220,7 +1235,7 @@ describe('chat session controller', () => {
         appendAssistantMessage(createConversationHistory({ id: 'orphan-approval' }), 'Working.'),
         { id: 'call', name: 'write', arguments: {} },
       ),
-      { callId: 'call', outcome: 'action_required', content: null, action: { type: 'approval' } },
+      { callId: 'call', outcome: 'action_required', content: null, action: approvalAction() },
     );
     let calls = 0;
     const controller = createChatSessionController({
@@ -1263,7 +1278,7 @@ describe('chat session controller', () => {
             callId: 'a',
             outcome: 'action_required',
             content: null,
-            action: { type: 'approval' },
+            action: approvalAction(),
           },
           { type: 'tool_call', id: 'b', name: 'read', arguments: {} },
           { type: 'tool_result', callId: 'b', outcome: 'success', content: 'late' },
@@ -1421,7 +1436,7 @@ describe('chat session controller', () => {
             callId: 'call',
             outcome: 'action_required',
             content: null,
-            action: { type: 'approval' },
+            action: approvalAction(),
           },
         ]),
       hooks: {
@@ -1452,7 +1467,7 @@ describe('chat session controller', () => {
             callId: 'call',
             outcome: 'action_required',
             content: null,
-            action: { type: 'approval' },
+            action: approvalAction(),
           },
         ]),
       hooks: {
@@ -1502,7 +1517,7 @@ describe('chat session controller', () => {
       transport: async () =>
         new Response(
           calls++ === 0
-            ? '{"type":"tool_call","id":"call","name":"delete","arguments":{}}\n{"type":"tool_result","callId":"call","outcome":"action_required","content":null,"action":{"type":"approval"}}\n'
+            ? '{"type":"tool_call","id":"call","name":"delete","arguments":{}}\n{"type":"tool_result","callId":"call","outcome":"action_required","content":null,"action":{"type":"approval","risk":"low","operation":{"kind":"command","command":"delete","argsPreview":{}},"policyVersion":"test-policy","idempotencyKey":"response-approval-1"}}\n'
             : '{"type":"text","text":"denied"}\n',
           { headers: { 'Content-Type': 'application/x-ndjson' } },
         ),
@@ -1566,7 +1581,7 @@ describe('chat session controller', () => {
                 callId: 'call',
                 outcome: 'action_required',
                 content: null,
-                action: { type: 'approval' },
+                action: approvalAction(),
               },
             ])
           : events([{ type: 'text', text: 'recovered' }]),

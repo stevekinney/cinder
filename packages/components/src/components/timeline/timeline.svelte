@@ -69,6 +69,7 @@
   );
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex (The horizontal overflow list must be focusable for native keyboard scrolling.) -->
 <ol
   {...rest}
   class={classNames('cinder-timeline', className)}

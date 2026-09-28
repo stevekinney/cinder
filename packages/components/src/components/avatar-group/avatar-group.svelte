@@ -175,6 +175,7 @@
                keyboard users the same name-disclosure pointer users get on hover.
                The inner <Avatar> uses alt="" so its image doesn't double-name the
                composite. -->
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard focus exposes the name tooltip on this named image.) -->
         <span
           class="cinder-avatar-group__trigger"
           role="img"

@@ -33,7 +33,14 @@
             type: 'approval',
             message:
               'Deploying version 2.4.1 to production will replace the live environment. This action cannot be undone automatically. Do you want to proceed?',
-            schema: { environment: 'production', version: '2.4.1', replicas: 3 },
+            risk: 'high',
+            operation: {
+              kind: 'command',
+              command: 'deploy_to_production',
+              argsPreview: { environment: 'production', version: '2.4.1', replicas: 3 },
+            },
+            policyVersion: 'deployment-policy-1',
+            idempotencyKey: 'call-deploy-prod',
           },
         },
       },

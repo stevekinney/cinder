@@ -1,5 +1,6 @@
 import {
 	StepCompletedEvent,
+	StepStartedEvent,
 	ToolErrorBubbleEvent,
 	ToolPolicyDeniedBubbleEvent,
 	ToolProgressBubbleEvent,
@@ -80,7 +81,8 @@ function toTerminalFailureFrame(
  * the one authoritative outcome, and the writer refuses a second terminal
  * regardless.
  *
- * `tool.settled` is sourced from `ToolsExecutedEvent.results` rather than
+ * `tool.settled` is sourced from `ToolsExecutedEvent.results` and the
+ * authoritative filtered results on `StepCompletedEvent`, rather than
  * from Operative's `ToolSettledBubbleEvent` for two reasons originally verified against
  * 0.8.0 and retained by the current installed-package regression suite: the bubble's `result` is the tool's RAW return value, not the
  * `ToolResult` the wire wants, and an approval-paused call never gets a
@@ -107,9 +109,12 @@ export async function pumpChatRun(
 		}) => Promise<void>;
 	} = {}
 ): Promise<ChatRunEnvelope> {
+	const settledToolCallIds = new Set<string>();
 	try {
 		for await (const event of run) {
-			if (event instanceof ToolStartedBubbleEvent) {
+			if (event instanceof StepStartedEvent) {
+				settledToolCallIds.clear();
+			} else if (event instanceof ToolStartedBubbleEvent) {
 				writer.write({
 					type: 'tool.started',
 					toolCallId: event.toolCallId,
@@ -139,12 +144,15 @@ export async function pumpChatRun(
 				});
 			} else if (event instanceof ToolsExecutedEvent) {
 				for (const result of event.results) {
-					writer.write({
-						type: 'tool.settled',
-						toolCallId: result.toolCallId,
-						toolName: result.toolName,
-						result: toChatToolResult(result)
-					});
+					if (!settledToolCallIds.has(result.toolCallId)) {
+						writer.write({
+							type: 'tool.settled',
+							toolCallId: result.toolCallId,
+							toolName: result.toolName,
+							result: toChatToolResult(result)
+						});
+						settledToolCallIds.add(result.toolCallId);
+					}
 				}
 			} else if (event instanceof StepCompletedEvent) {
 				// All calls before any result, matching the pre-Operative handler's
@@ -174,6 +182,15 @@ export async function pumpChatRun(
 				for (const toolCall of event.toolCalls) {
 					const result = resultsByCallId.get(toolCall.id);
 					if (result) {
+						if (!settledToolCallIds.has(result.toolCallId)) {
+							writer.write({
+								type: 'tool.settled',
+								toolCallId: result.toolCallId,
+								toolName: result.toolName,
+								result: toChatToolResult(result)
+							});
+							settledToolCallIds.add(result.toolCallId);
+						}
 						writer.write({ type: 'tool_result', ...toChatToolResult(result) });
 						continue;
 					}
@@ -188,12 +205,9 @@ export async function pumpChatRun(
 					// reload cleared it. There was no frame saying what happened,
 					// because from the wire's point of view nothing had.
 					//
-					// A step reaches this state whenever a `beforeToolExecution`
-					// hook filters a call out: Operative seals it in the
-					// CONVERSATION, so a later replay is intact, but dispatches no
-					// event. The server-owned family's approval gate is the first
-					// caller here to do that deliberately, and a gate whose "no" is
-					// invisible is worse than no gate.
+					// Published filtered results are handled above when present;
+					// this fallback is only for a call whose result is genuinely
+					// absent from the completed step.
 					//
 					// Reported as an ERROR outcome rather than a success carrying a
 					// refusal, because the tool did not run. The wording stays
@@ -213,6 +227,7 @@ export async function pumpChatRun(
 					});
 					writer.write({ type: 'tool_result', ...syntheticResult });
 				}
+				settledToolCallIds.clear();
 			}
 		}
 	} catch (cause) {
