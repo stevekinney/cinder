@@ -182,14 +182,14 @@ export async function pumpChatRun(
 				for (const toolCall of event.toolCalls) {
 					const result = resultsByCallId.get(toolCall.id);
 					if (result) {
-						if (!settledToolCallIds.has(result.callId)) {
+						if (!settledToolCallIds.has(result.toolCallId)) {
 							writer.write({
 								type: 'tool.settled',
 								toolCallId: result.toolCallId,
 								toolName: result.toolName,
 								result: toChatToolResult(result)
 							});
-							settledToolCallIds.add(result.callId);
+							settledToolCallIds.add(result.toolCallId);
 						}
 						writer.write({ type: 'tool_result', ...toChatToolResult(result) });
 						continue;
