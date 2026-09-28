@@ -44,11 +44,17 @@ describe('Chat package ownership boundary', () => {
 
   test('keeps host-supplied runtime singletons peer-only and owns its conversation-model dependencies', () => {
     expect(() => assertSourceManifest(chatManifest)).not.toThrow();
+    // COR-1196 (fd6e19b): the synced source manifest carries `workspace:*` for the two
+    // intra-target edges and `catalog:` for conversationalist — `assertSourceManifest`'s
+    // `REQUIRED_DEPENDENCIES` is the authoritative contract for this raw, pre-resolution shape;
+    // this literal mirrors it so a change to either is caught here as well as there.
     expect(chatManifest.dependencies).toEqual({
-      conversationalist: '^1.3.0',
+      '@lostgradient/cinder': 'workspace:*',
+      '@lostgradient/markdown': 'workspace:*',
+      conversationalist: 'catalog:',
       'decode-named-character-reference': '^1.3.0',
       'micromark-util-decode-numeric-character-reference': '^2.0.0',
-      zod: '4.4.3',
+      zod: '4.6.5',
     });
     // The Cinder floor tracks the Cinder minor released alongside Chat —
     // caret on 0.x pins the minor, so each Cinder minor bump MUST widen this
@@ -84,6 +90,10 @@ describe('Chat package ownership boundary', () => {
     // just not its exact range -- that's what the dynamic guard below
     // checks.
     expect(Object.keys(chatManifest.peerDependencies ?? {})).toContain('@lostgradient/markdown');
+    // COR-1196 (fd6e19b): `runtimeExternalSpecifiers` reads `peerDependencies` then
+    // `dependencies`, and the synced source manifest now lists `@lostgradient/cinder`/
+    // `@lostgradient/markdown` in both (peer for the real published contract, `workspace:*`
+    // dependency so the monorepo build can resolve them locally) — so each now appears twice.
     expect(runtimeExternalSpecifiers(chatManifest)).toEqual([
       '@lostgradient/cinder',
       '@lostgradient/cinder/*',
@@ -91,6 +101,10 @@ describe('Chat package ownership boundary', () => {
       '@lostgradient/markdown/*',
       'svelte',
       'svelte/*',
+      '@lostgradient/cinder',
+      '@lostgradient/cinder/*',
+      '@lostgradient/markdown',
+      '@lostgradient/markdown/*',
       'conversationalist',
       'conversationalist/*',
       'decode-named-character-reference',
@@ -177,7 +191,21 @@ describe('Chat package ownership boundary', () => {
     const published = buildPublishedManifest(chatManifest);
     const serialized = JSON.stringify(published);
 
-    expect(published.dependencies).toEqual(chatManifest.dependencies);
+    // COR-1196 (fd6e19b): `dependencies` keeps the same key set, but `resolveDependencySpecifiers`
+    // turns every `workspace:*`/`catalog:` specifier from the synced source manifest into a real,
+    // publishable range first — a host installing the packed tarball with plain npm/bun has no
+    // `workspace:*` protocol to resolve, so `published.dependencies` can no longer equal
+    // `chatManifest.dependencies` (checked structurally below instead of by exact version, which
+    // would otherwise go stale every time a workspace sibling or the root catalog bumps).
+    expect(Object.keys(published.dependencies ?? {})).toEqual(
+      Object.keys(chatManifest.dependencies ?? {}),
+    );
+    for (const [name, range] of Object.entries(published.dependencies ?? {})) {
+      expect(
+        range,
+        `${name}'s published range must not carry a workspace:*/catalog: specifier`,
+      ).not.toMatch(/^(workspace:|catalog:)/);
+    }
     expect(published.devDependencies).toBeUndefined();
     expect(published.scripts).toBeUndefined();
     expect(serialized).not.toContain('workspace:');

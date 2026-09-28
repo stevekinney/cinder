@@ -46,6 +46,21 @@ type PackageManifest = {
   statusLevels: Record<string, string>;
 };
 
+/**
+ * The on-disk shape of `components.json`, before this module fills in a
+ * missing `package.version`.
+ *
+ * Corvidae's generated components.json carries no version at all — corvidae
+ * workspaces are not independently versioned npm packages, so there is
+ * nothing for its generator to write. `RawPackageManifest` is the shape the
+ * file actually has; `PackageManifest` (above) is what every OTHER reader in
+ * this module gets, with `loadPackageManifestForDocumentation` responsible
+ * for closing the gap between the two.
+ */
+type RawPackageManifest = Omit<PackageManifest, 'package'> & {
+  package: { version?: string };
+};
+
 type DocumentationArtifactName = 'schema' | 'variables' | 'constraints' | 'examples';
 
 export class ComponentDocumentationError extends Error {
@@ -131,15 +146,17 @@ function isStatusMap(value: unknown): value is PackageManifest['statusLevels'] {
   return isObject(value) && Object.values(value).every((entry) => typeof entry === 'string');
 }
 
-function isPackageMetadata(value: unknown): value is PackageManifest['package'] {
-  return isObject(value) && typeof value['version'] === 'string';
+function isRawPackageMetadata(value: unknown): value is RawPackageManifest['package'] {
+  return (
+    isObject(value) && (value['version'] === undefined || typeof value['version'] === 'string')
+  );
 }
 
-function isPackageManifest(value: unknown): value is PackageManifest {
+function isRawPackageManifest(value: unknown): value is RawPackageManifest {
   if (!isObject(value)) return false;
   const components = value['components'];
   return (
-    isPackageMetadata(value['package']) &&
+    isRawPackageMetadata(value['package']) &&
     Array.isArray(components) &&
     components.every(isPackageComponentEntry) &&
     isCategoryMap(value['categories']) &&
@@ -147,17 +164,39 @@ function isPackageManifest(value: unknown): value is PackageManifest {
   );
 }
 
+/**
+ * The version corvidae's own generated components.json cannot carry: the
+ * package's `package.json`, which the mirror sync (or a real npm publish)
+ * does version. Thrown as the same `malformed-components-manifest` error the
+ * manifest shape check uses, since a package.json with no version string is
+ * just as unusable here.
+ */
+async function readPackageVersionForDocumentation(componentSource: ComponentSource): Promise<string> {
+  const packageJsonPath = join(componentSource.packageRoot, 'package.json');
+  const raw: unknown = await Bun.file(packageJsonPath).json();
+  const version = isObject(raw) ? raw['version'] : undefined;
+  if (typeof version !== 'string') {
+    throw new ComponentDocumentationError(
+      'malformed-components-manifest',
+      `${componentSource.manifestPath} carries no package.version, and ${packageJsonPath} has no usable "version" string to fall back to`,
+    );
+  }
+  return version;
+}
+
 export async function loadPackageManifestForDocumentation(
   componentSource: ComponentSource = CINDER_COMPONENT_SOURCE,
 ): Promise<PackageManifest> {
   const raw: unknown = await Bun.file(componentSource.manifestPath).json();
-  if (!isPackageManifest(raw)) {
+  if (!isRawPackageManifest(raw)) {
     throw new ComponentDocumentationError(
       'malformed-components-manifest',
       `${componentSource.manifestPath} does not match the documentation manifest shape`,
     );
   }
-  return raw;
+  if (raw.package.version !== undefined) return { ...raw, package: { version: raw.package.version } };
+  const version = await readPackageVersionForDocumentation(componentSource);
+  return { ...raw, package: { version } };
 }
 
 async function readRequiredText(path: string, label: string): Promise<string> {

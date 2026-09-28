@@ -1,82 +1,17 @@
 # @cinder/testing
 
-Browser tests for the Cinder component playground using Playwright + axe-core. For every component in `/api/manifest`, the suite runs an accessibility scan and captures a viewport screenshot in two themes (`light`, `dark`) and three viewports (`mobile`, `tablet`, `desktop`).
+A private workspace of small, target-owned checks the rest of the mirror depends on.
 
-## Setup
+COR-1196 retired this package's Playwright/axe-core visual-regression harness (`tests/`, `snapshots/`, `playwright.config.ts`, `Dockerfile`, and every script that harness alone needed) from this repository. What is left:
 
-One-time Chromium install:
+- `scripts/source-fingerprint.ts` — the content-hash helper `packages/playground/src/playground-server.ts` imports to detect a stale build.
+- `scripts/local-bun-version-guard.ts` — the warn-only local/CI Bun version check `packages/components`'s `check:local-bun-version-guard` script runs.
 
-```bash
-# From the repo root
-bun run test:browser:install
-```
-
-CI uses `install-browsers:ci` instead, which also installs system dependencies.
-
-## Running
-
-From the repo root:
+Run this package's own checks with:
 
 ```bash
-bun run test:browser         # Run the full suite
-bun run test:browser:headed  # Same, with a visible browser
-bun run test:browser:ui      # Open Playwright's UI mode
+bun run --filter='@lostgradient/testing' typecheck
+bun run --filter='@lostgradient/testing' test
 ```
 
-Or from inside `packages/testing`:
-
-```bash
-bun run test:playwright
-bun run test:playwright:headed
-bun run test:playwright:ui
-```
-
-`start-server.ts` manages the playground server automatically. By default it will reuse an already-running playground on the target URL (`PLAYGROUND_URL`, default `http://localhost:5555`). If it starts the local playground itself and 5555 is taken, it follows the playground server to the next available port. Set `PLAYWRIGHT_REUSE_SERVER=0` to force a hard failure if the target URL is already responding.
-
-### Reproducing a single failing test
-
-Playwright's `--grep` filter accepts a regex matched against the full test path (`<Component> > <theme>-<viewport>`). Forward extra args through the package script:
-
-```bash
-# From the repo root, headed, just the Accordion dark-desktop case:
-PLAYWRIGHT_REUSE_SERVER=1 bun run --filter='@cinder/testing' test:playwright:headed -- --grep "Accordion > dark-desktop"
-
-# From inside packages/testing:
-bun run test:playwright -- --grep "Modal"
-```
-
-Open the HTML report after a run:
-
-```bash
-bun run --filter='@cinder/testing' report
-# or, from inside packages/testing:
-bun run report
-```
-
-## Artifacts
-
-All gitignored. Paths are relative to `packages/testing/`:
-
-- `playwright-report/` — HTML report (also uploaded on CI failure).
-- `test-results/playwright/` — per-test trace, video, attachment output.
-- `test-results/axe/<slug>/<theme>-<viewport>.json` — full axe violation payloads.
-- `test-results/axe-summary.json` — rolled-up totals, top rules, top components.
-- `screenshots/<slug>/<theme>-<viewport>.png` — viewport screenshots.
-- `.playwright/manifest.json` — cached `/api/manifest` snapshot + digest.
-
-## Visual regression
-
-Screenshot diffing is wired through the `CINDER_VISUAL_DIFF` environment variable (`off` | `report` | `block`). `off` (the default) captures PNGs for human review only; `report` records non-blocking diffs against committed baselines; `block` fails the suite on any pixel difference beyond tolerance. Committed baselines live under `packages/testing/snapshots/` and are authored only inside the canonical `cinder-playwright` Docker image — host pixels diverge from CI.
-
-The initial committed baseline scope is `button`. To run only that scoped gate:
-
-```bash
-CINDER_TEST_COMPONENTS=button CINDER_VISUAL_DIFF=block bun run --filter='@cinder/testing' test:browser:docker
-```
-
-See [`docs/visual-regression/baselines.md`](../../docs/visual-regression/baselines.md) for the full authoring/update workflow, the pinned environment, and how block mode behaves on a clean checkout.
-
-## v1 non-goals
-
-- No interaction-state testing — components are scanned in their default render. A modal that ships closed is scanned closed.
-- No axe gating — violations are recorded but do not fail the suite. The baseline informs a follow-up plan that converts severity buckets into hard assertions.
+`@lostgradient/testing` is the name the mirror sync rewrites this workspace's `package.json` `name` to on every sync (the committed `package.json` on this branch may still read the retired `@cinder/testing` name between syncs).

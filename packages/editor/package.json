@@ -234,7 +234,7 @@
     "test": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --conditions svelte --max-concurrency=1 src/lib scripts",
     "test:coverage": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --conditions svelte --max-concurrency=1 src/lib scripts --coverage --coverage-reporter=lcov && bun ../components/scripts/check-coverage-ratchet.ts --package-root .",
     "tokens:audit": "bun ../components/scripts/check-component-css-token-usage.ts --source-root src/lib --baseline scripts/token-usage-baseline.json --strict",
-    "typecheck": "tsc --noEmit -p tsconfig.json && bunx svelte-check --workspace src/lib --tsconfig ../../tsconfig.json --threshold warning",
+    "typecheck": "bun run --filter='@lostgradient/markdown' build && bun run --filter='@lostgradient/cinder' build && svelte-check --workspace . --tsconfig ./tsconfig.browser.json --fail-on-warnings && svelte-check --workspace . --tsconfig ./tsconfig.json --fail-on-warnings",
     "validate": "bun run lint && bun run typecheck && bun run test:coverage && bun run platform:audit && bun run colors:audit && bun run tokens:audit && bun run components:check && bun run build",
     "validate:consumer": "bun run scripts/validate-consumer.ts"
   },
@@ -254,10 +254,10 @@
     "oxlint": "^1.56.0",
     "oxlint-tsgolint": "^0.17.0",
     "postcss": "^8.5.15",
-    "prettier": "^3.8.1",
-    "svelte": "~5.56.0",
+    "prettier": "^3.9.6",
+    "svelte": "^5.56.7",
     "svelte-check": "^4.0.0",
-    "typescript": "^5.9.0"
+    "typescript": "6.0.3"
   },
   "peerDependencies": {
     "@lostgradient/cinder": "^0.26.0",

@@ -300,7 +300,7 @@ When you fix debt (replace a raw color with a token, rename a stale reference), 
 
 ### Proving it at paint time
 
-The static guards catch leaks in source. A leak that only manifests when styles cascade is caught by the [`alternate-theme.playwright.ts`](../packages/testing/tests/alternate-theme.playwright.ts) browser fixture: it loads a real component, overrides documented `:root` tokens to deliberately distinct values, and asserts the component's _computed_ style changes. If a component hard-codes a value instead of consuming the token, the override is inert, the computed style doesn't move, and the test fails. Add a case here whenever you migrate a component family to tokens, so its themeability is locked in.
+The static guards catch leaks in source. A leak that only manifests when styles cascade used to be caught by an `alternate-theme.playwright.ts` browser fixture in `packages/testing`, which loaded a real component, overrode documented `:root` tokens to deliberately distinct values, and asserted the component's _computed_ style changed. COR-1196 retired that visual-regression harness from this repository; there is currently no paint-time equivalent here.
 
 [mdn-light-dark]: https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/light-dark
 [mdn-color-scheme]: https://developer.mozilla.org/en-US/docs/Web/CSS/color-scheme

@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
-import { setupHappyDom } from '../../components/src/test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import type { ComponentDocumentationPayload } from './component-documentation-types.ts';
 
 setupHappyDom();

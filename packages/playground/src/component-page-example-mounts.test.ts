@@ -11,7 +11,7 @@
 import { afterEach, describe, expect, it, mock } from 'bun:test';
 import { flushSync, tick } from 'svelte';
 
-import { setupHappyDom } from '../../components/src/test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import {
   copyErrorToClipboard,
   createExampleMountHelpers,

@@ -1,5 +1,0 @@
-#!/usr/bin/env sh
-
-# Wrapper to call Bun-based post-merge hook
-WORKTREE_ROOT="$(git rev-parse --show-toplevel)"
-bun "$WORKTREE_ROOT/packages/components/scripts/husky/post-merge.ts"
