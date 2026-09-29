@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -33,7 +33,7 @@ class FakeResizeObserver {
   }
 
   trigger(): void {
-    this.callback([], this as unknown as ResizeObserver);
+    this.callback([], this);
   }
 }
 
@@ -48,7 +48,7 @@ function installFakeEnvironment(): () => void {
   FakeResizeObserver.instances = [];
   frameCallbacks = new Map();
   nextFrameId = 1;
-  globalThis.ResizeObserver = FakeResizeObserver as unknown as typeof ResizeObserver;
+  globalThis.ResizeObserver = FakeResizeObserver;
   globalThis.requestAnimationFrame = (callback) => {
     const id = nextFrameId;
     nextFrameId += 1;

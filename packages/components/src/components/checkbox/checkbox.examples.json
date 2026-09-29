@@ -1,37 +1,37 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "checkbox",
-  "import": "@lostgradient/cinder/checkbox",
+  "import": "@lostgradient/cinder",
   "examples": [
     {
       "id": "basic",
       "title": "Basic checkbox",
       "description": "Unchecked and checked variants with associated labels.",
-      "code": "<script lang=\"ts\">\n  import { Checkbox } from '@lostgradient/cinder/checkbox';\n\n  let acceptTerms = $state(false);\n  let subscribed = $state(true);\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.75rem;\">\n  <Checkbox id=\"terms\" label=\"I accept the terms of service\" bind:checked={acceptTerms} />\n  <Checkbox id=\"newsletter\" label=\"Subscribe to the newsletter\" bind:checked={subscribed} />\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Checkbox } from '@lostgradient/cinder';\n\n  let acceptTerms = $state(false);\n  let subscribed = $state(true);\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.75rem;\">\n  <Checkbox id=\"terms\" label=\"I accept the terms of service\" bind:checked={acceptTerms} />\n  <Checkbox id=\"newsletter\" label=\"Subscribe to the newsletter\" bind:checked={subscribed} />\n</div>\n"
     },
     {
       "id": "disabled",
       "title": "Disabled checkbox",
       "description": "Disabled state for both unchecked and checked checkboxes.",
-      "code": "<script lang=\"ts\">\n  import { Checkbox } from '@lostgradient/cinder/checkbox';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.75rem;\">\n  <Checkbox id=\"checkbox-disabled-off\" label=\"Disabled, unchecked\" disabled />\n  <Checkbox id=\"checkbox-disabled-on\" label=\"Disabled, checked\" disabled checked />\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Checkbox } from '@lostgradient/cinder';\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.75rem;\">\n  <Checkbox id=\"checkbox-disabled-off\" label=\"Disabled, unchecked\" disabled />\n  <Checkbox id=\"checkbox-disabled-on\" label=\"Disabled, checked\" disabled checked />\n</div>\n"
     },
     {
       "id": "external-row-label",
       "title": "External row label",
       "description": "A control-only checkbox associated with a rich row label.",
-      "code": "<script lang=\"ts\">\n  import { Checkbox } from '@lostgradient/cinder/checkbox';\n\n  let selected = $state(false);\n</script>\n\n<div\n  style=\"display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 0.75rem; max-width: 26rem;\"\n>\n  <Checkbox id=\"repository-main\" class=\"repository-checkbox\" bind:checked={selected} />\n  <label\n    for=\"repository-main\"\n    style=\"display: flex; justify-content: space-between; gap: 1rem; cursor: pointer;\"\n  >\n    <span style=\"display: flex; flex-direction: column; gap: 0.125rem;\">\n      <strong>lostgradient/cinder</strong>\n      <span style=\"color: var(--cinder-text-muted);\">Component library</span>\n    </span>\n    <span\n      style=\"align-self: start; border: 1px solid var(--cinder-border); border-radius: var(--cinder-radius-sm); padding: 0.125rem 0.375rem; font-size: var(--cinder-text-xs);\"\n    >\n      Public\n    </span>\n  </label>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Checkbox } from '@lostgradient/cinder';\n\n  let selected = $state(false);\n</script>\n\n<div\n  style=\"display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 0.75rem; max-width: 26rem;\"\n>\n  <Checkbox id=\"repository-main\" class=\"repository-checkbox\" bind:checked={selected} />\n  <label\n    for=\"repository-main\"\n    style=\"display: flex; justify-content: space-between; gap: 1rem; cursor: pointer;\"\n  >\n    <span style=\"display: flex; flex-direction: column; gap: 0.125rem;\">\n      <strong>lostgradient/cinder</strong>\n      <span style=\"color: var(--cinder-text-muted);\">Component library</span>\n    </span>\n    <span\n      style=\"align-self: start; border: 1px solid var(--cinder-border); border-radius: var(--cinder-radius-sm); padding: 0.125rem 0.375rem; font-size: var(--cinder-text-xs);\"\n    >\n      Public\n    </span>\n  </label>\n</div>\n"
     },
     {
       "id": "indeterminate",
       "title": "Indeterminate checkbox",
       "description": "A parent checkbox driven by its children. Indeterminate clears once the user toggles checked.",
-      "code": "<script lang=\"ts\">\n  import { Checkbox } from '@lostgradient/cinder/checkbox';\n  let red = $state(true);\n  let green = $state(false);\n  let blue = $state(true);\n\n  let allChecked = $derived(red && green && blue);\n  let someChecked = $derived(red || green || blue);\n  let parentIndeterminate = $derived(someChecked && !allChecked);\n\n  function toggleAll(checked: boolean) {\n    red = checked;\n    green = checked;\n    blue = checked;\n  }\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.5rem;\">\n  <Checkbox\n    id=\"checkbox-parent\"\n    label=\"All colors\"\n    checked={allChecked}\n    indeterminate={parentIndeterminate}\n    onchange={(event) => toggleAll((event.currentTarget as HTMLInputElement).checked)}\n  />\n  <div style=\"padding-inline-start: 1.5rem; display: flex; flex-direction: column; gap: 0.4rem;\">\n    <Checkbox id=\"checkbox-red\" label=\"Red\" bind:checked={red} />\n    <Checkbox id=\"checkbox-green\" label=\"Green\" bind:checked={green} />\n    <Checkbox id=\"checkbox-blue\" label=\"Blue\" bind:checked={blue} />\n  </div>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Checkbox } from '@lostgradient/cinder';\n  let red = $state(true);\n  let green = $state(false);\n  let blue = $state(true);\n\n  let allChecked = $derived(red && green && blue);\n  let someChecked = $derived(red || green || blue);\n  let parentIndeterminate = $derived(someChecked && !allChecked);\n\n  function toggleAll(checked: boolean) {\n    red = checked;\n    green = checked;\n    blue = checked;\n  }\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.5rem;\">\n  <Checkbox\n    id=\"checkbox-parent\"\n    label=\"All colors\"\n    checked={allChecked}\n    indeterminate={parentIndeterminate}\n    onchange={(event) => toggleAll((event.currentTarget as HTMLInputElement).checked)}\n  />\n  <div style=\"padding-inline-start: 1.5rem; display: flex; flex-direction: column; gap: 0.4rem;\">\n    <Checkbox id=\"checkbox-red\" label=\"Red\" bind:checked={red} />\n    <Checkbox id=\"checkbox-green\" label=\"Green\" bind:checked={green} />\n    <Checkbox id=\"checkbox-blue\" label=\"Blue\" bind:checked={blue} />\n  </div>\n</div>\n"
     },
     {
       "id": "with-error",
       "title": "Checkbox with error",
       "description": "Validation error message surfaces via aria-invalid and aria-describedby.",
-      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { Checkbox } from '@lostgradient/cinder/checkbox';\n  let accepted = $state(false);\n  let submitted = $state(false);\n  const showError = $derived(submitted && !accepted);\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start;\">\n  {#if showError}\n    <Checkbox\n      id=\"checkbox-error-terms\"\n      label=\"I accept the terms\"\n      description=\"Required to create your account.\"\n      bind:checked={accepted}\n      error=\"You must accept the terms to continue.\"\n    />\n  {:else}\n    <Checkbox\n      id=\"checkbox-error-terms\"\n      label=\"I accept the terms\"\n      description=\"Required to create your account.\"\n      bind:checked={accepted}\n    />\n  {/if}\n  <Button variant=\"secondary\" onclick={() => (submitted = true)}>Try to submit</Button>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder';\n  import { Checkbox } from '@lostgradient/cinder';\n  let accepted = $state(false);\n  let submitted = $state(false);\n  const showError = $derived(submitted && !accepted);\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start;\">\n  {#if showError}\n    <Checkbox\n      id=\"checkbox-error-terms\"\n      label=\"I accept the terms\"\n      description=\"Required to create your account.\"\n      bind:checked={accepted}\n      error=\"You must accept the terms to continue.\"\n    />\n  {:else}\n    <Checkbox\n      id=\"checkbox-error-terms\"\n      label=\"I accept the terms\"\n      description=\"Required to create your account.\"\n      bind:checked={accepted}\n    />\n  {/if}\n  <Button variant=\"secondary\" onclick={() => (submitted = true)}>Try to submit</Button>\n</div>\n"
     }
   ]
 }

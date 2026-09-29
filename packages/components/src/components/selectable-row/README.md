@@ -2,20 +2,16 @@
 
 Full-width row with a native button or link primary action and independent trailing controls.
 
-Use `SelectableRow` when activating the main row body opens or selects an item while Rename,
-menu, or external-link controls need their own Tab stops. The primary action contains the leading,
-title, description, and metadata regions; `trailingActions` renders beside it rather than inside it,
-so the resulting HTML never nests interactive elements.
+Use `SelectableRow` when activating the main row body opens or selects an item while Rename, menu, or external-link controls need their own Tab stops. The primary action contains the leading, title, description, and metadata regions; `trailingActions` renders beside it rather than inside it, so the resulting HTML never nests interactive elements.
 
-Choose `ActionRow` when the entire row is one button and its trailing content is non-interactive.
-Choose `StackedListItem` when the row is static and only its title needs to link.
+Choose `ActionRow` when the entire row is one button and its trailing content is non-interactive. Choose `StackedListItem` when the row is static and only its title needs to link.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import Button from '@lostgradient/cinder/button';
-  import SelectableRow from '@lostgradient/cinder/selectable-row';
+  import { Button } from '@lostgradient/cinder';
+  import { SelectableRow } from '@lostgradient/cinder';
 
   let opened = $state(0);
   let renamed = $state(0);
@@ -83,8 +79,7 @@ Choose `StackedListItem` when the row is static and only its title needs to link
 
 ## CSS Variables
 
-Override these variables on the `SelectableRow` root with the `style` prop or a stylesheet rule
-targeting a custom class.
+Override these variables on the `SelectableRow` root with the `style` prop or a stylesheet rule targeting a custom class.
 
 <!-- generated:variables:start -->
 
@@ -94,6 +89,7 @@ targeting a custom class.
 - `--cinder-selectable-row-padding-block`
 - `--cinder-selectable-row-padding-inline`
 - `--cinder-selectable-row-trailing-actions-gap`
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

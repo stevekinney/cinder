@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterAll, afterEach, describe, expect, spyOn, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -483,8 +483,8 @@ describe('MatrixChart', () => {
     }
 
     const cellLabels = [...container.querySelectorAll('.cinder-matrix-chart__cell-label')];
-    expect(cellLabels.map((label) => label.textContent).sort()).toEqual(
-      ['3', '42', '5', '50'].sort(),
+    expect(cellLabels.map((label) => label.textContent).toSorted()).toEqual(
+      ['3', '42', '5', '50'].toSorted(),
     );
 
     const tableCellText = [...container.querySelectorAll('table td')].map(

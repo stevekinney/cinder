@@ -6,12 +6,11 @@ See the [SideNavigation versus Sidebar decision](https://github.com/stevekinney/
 
 ## Usage
 
-`SideNavigation` is a compound component. Import the parent and compose
-`SideNavigation.Group` and `SideNavigation.Item` via the namespace API.
+`SideNavigation` is a compound component. Import the parent and compose `SideNavigation.Group` and `SideNavigation.Item` via the namespace API.
 
 ```svelte
 <script lang="ts">
-  import { SideNavigation } from '@lostgradient/cinder/side-navigation';
+  import { SideNavigation } from '@lostgradient/cinder';
 </script>
 
 <SideNavigation ariaLabel="Workspace">
@@ -23,8 +22,7 @@ See the [SideNavigation versus Sidebar decision](https://github.com/stevekinney/
 </SideNavigation>
 ```
 
-The leaves remain importable individually for à-la-carte builds — see
-`@lostgradient/cinder/side-navigation-group` and `@lostgradient/cinder/side-navigation-item`.
+The leaves remain importable individually for à-la-carte builds — see `@lostgradient/cinder` and `@lostgradient/cinder`.
 
 ## Props
 
@@ -44,15 +42,14 @@ The leaves remain importable individually for à-la-carte builds — see
 <!-- generated:variables:start -->
 
 - `--cinder-side-navigation-list-gap`
+
 <!-- generated:variables:end -->
 
 ## Subcomponents
 
 <!-- generated:subcomponents:start -->
 
-- `SideNavigation.Group` — a collapsible labelled section; see
-  [`side-navigation-group`](../side-navigation-group/README.md).
-- `SideNavigation.Item` — a navigation link or button rendered inside the
-  sidebar list; see [`side-navigation-item`](../side-navigation-item/README.md).
+- `SideNavigation.Group` — a collapsible labelled section; see [`side-navigation-group`](../side-navigation-group/README.md).
+- `SideNavigation.Item` — a navigation link or button rendered inside the sidebar list; see [`side-navigation-item`](../side-navigation-item/README.md).
 
 <!-- generated:subcomponents:end -->

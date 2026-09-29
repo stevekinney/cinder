@@ -7,12 +7,11 @@ import type { Snippet } from 'svelte';
 
 import type { ButtonGroupProps } from './button-group.svelte';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const noopChildren = null as any as Snippet;
+declare const noopChildren: Snippet;
 
 // label and ariaLabelledby are mutually exclusive — TypeScript must reject this.
 // @ts-expect-error - ariaLabelledby must be never when label is provided
-const _bothPresent: ButtonGroupProps = {
+const bothPresent: ButtonGroupProps = {
   label: 'a',
   ariaLabelledby: 'b',
   children: noopChildren,
@@ -20,9 +19,9 @@ const _bothPresent: ButtonGroupProps = {
 
 // At least one of label or ariaLabelledby is required — TypeScript must reject this.
 // @ts-expect-error - ariaLabelledby or label is required
-const _neitherPresent: ButtonGroupProps = {
+const neitherPresent: ButtonGroupProps = {
   children: noopChildren,
 };
 
-void _bothPresent;
-void _neitherPresent;
+void bothPresent;
+void neitherPresent;

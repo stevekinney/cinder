@@ -1,9 +1,9 @@
 /// <reference lib="dom" />
+import { setupHappyDom } from '@lostgradient/testing';
 import { describe, expect, test } from 'bun:test';
 import { tick } from 'svelte';
 import type { FakeClock } from '../../test/fake-clock.ts';
 import { installFakeClock } from '../../test/fake-clock.ts';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
@@ -65,7 +65,7 @@ function pollUntil(condition: () => boolean, clock: FakeClock): Promise<void> {
  * `EditorState.create()`'s one-time snapshot of `prosePluginsCtx` and
  * usually lost, so the plugin was silently absent from the live editor.
  *
- * This mounts a REAL MarkdownEditor (`showToolbar: false` avoids an
+ * This mounts a REAL MarkdownEditor (`toolbarEnabled: false` avoids an
  * unrelated @lostgradient/cinder Dropdown/DropdownTrigger crash that this
  * package's happy-dom harness hits for the formatting toolbar — reproduces
  * with zero placeholder involvement, not something this fix touches) and
@@ -93,7 +93,7 @@ describe('MarkdownEditor placeholder (cinder#1306)', () => {
       props: {
         id: 'placeholder-test',
         label: 'Placeholder test editor',
-        showToolbar: false,
+        toolbarEnabled: false,
         value: '',
         placeholder: 'Start reviewing',
       },
@@ -134,7 +134,7 @@ describe('MarkdownEditor placeholder (cinder#1306)', () => {
       props: {
         id: 'placeholder-test-populated',
         label: 'Placeholder populated editor',
-        showToolbar: false,
+        toolbarEnabled: false,
         value: 'Real content already here.',
         placeholder: 'Start reviewing',
       },
@@ -201,7 +201,7 @@ describe('MarkdownEditor placeholder (cinder#1306)', () => {
       props: {
         id: 'placeholder-test-imperative-clear',
         label: 'Placeholder imperative-clear editor',
-        showToolbar: false,
+        toolbarEnabled: false,
         value: 'Real content already here.',
         placeholder: 'Start reviewing',
       },
@@ -219,12 +219,12 @@ describe('MarkdownEditor placeholder (cinder#1306)', () => {
       }, clock);
 
       // The textbox role appears in the DOM slightly before this
-      // component's own `editorState` (set inside its `onready` callback)
+      // component's own `editorState` (set inside its `onReady` callback)
       // does — waiting only for the role, as the other tests in this file
       // do, calls `setMarkdown()` while `editorState` is still null, which
       // silently takes the ALREADY-correct `else` branch and never
       // exercises the bug this test exists to catch. `data-ready` on the
-      // wrapper flips in that same `onready` callback, so it is the actual
+      // wrapper flips in that same `onReady` callback, so it is the actual
       // signal this test needs.
       await pollUntil(
         () =>
@@ -243,7 +243,7 @@ describe('MarkdownEditor placeholder (cinder#1306)', () => {
       // Small, fixed iteration budget (not a wall-clock wait): flushes
       // Svelte's own microtask-based reactivity and ProseMirror's
       // synchronous decoration recompute, well short of the ~200ms+
-      // listener debounce that would let the `onchange` fallback mask this
+      // listener debounce that would let the `onValueChange` fallback mask this
       // specific bug.
       for (let i = 0; i < 5; i++) {
         await tick();
@@ -275,7 +275,7 @@ describe('MarkdownEditor placeholder (cinder#1306)', () => {
       props: {
         id: 'placeholder-test-live',
         label: 'Placeholder live editor',
-        showToolbar: false,
+        toolbarEnabled: false,
         value: '',
         placeholder: 'Start reviewing',
       },
@@ -302,7 +302,7 @@ describe('MarkdownEditor placeholder (cinder#1306)', () => {
       result.rerender({
         id: 'placeholder-test-live',
         label: 'Placeholder live editor',
-        showToolbar: false,
+        toolbarEnabled: false,
         value: 'Now there is content.',
         placeholder: 'Start reviewing',
       });

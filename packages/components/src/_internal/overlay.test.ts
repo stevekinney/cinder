@@ -1,23 +1,22 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
 const {
   Z_LAYERS,
-  useHydrated,
   pushEscapeHandler,
-  _resetEscapeStack,
+  resetEscapeStack,
   lockBodyScroll,
-  _resetScrollLock,
+  resetScrollLock,
   captureFocus,
 } = await import('./overlay.ts');
 
 afterEach(() => {
-  _resetEscapeStack();
-  _resetScrollLock();
+  resetEscapeStack();
+  resetScrollLock();
 });
 
 describe('Z_LAYERS', () => {
@@ -28,15 +27,6 @@ describe('Z_LAYERS', () => {
     expect(Z_LAYERS.backdrop).toBeLessThan(Z_LAYERS.modal);
     expect(Z_LAYERS.modal).toBeLessThan(Z_LAYERS.toast);
     expect(Z_LAYERS.toast).toBeLessThan(Z_LAYERS.dragPreview);
-  });
-});
-
-describe('useHydrated', () => {
-  test('returns a frozen false value object for SSR-friendly introspection', () => {
-    const hydrated = useHydrated();
-
-    expect(hydrated).toEqual({ value: false });
-    expect(Object.isFrozen(hydrated)).toBe(true);
   });
 });
 
@@ -80,7 +70,7 @@ describe('escape stack', () => {
     const calls: string[] = [];
     pushEscapeHandler(() => calls.push('hit'));
 
-    _resetEscapeStack();
+    resetEscapeStack();
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
 
     expect(calls).toEqual([]);

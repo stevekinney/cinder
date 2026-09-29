@@ -95,6 +95,7 @@
     display: inline-flex;
     align-items: center;
     border-radius: var(--cinder-radius-sm);
+    font: inherit;
   }
 
   .cinder-approval-card__risk-icon[data-cinder-risk='low'] {

@@ -67,12 +67,33 @@ describe('moveTreeNode', () => {
     expect(result).toBe(nodes);
   });
 
-  test('drag controller avoids ES2023 array reversal helpers', async () => {
-    const source = await Bun.file(
-      new URL('../../_internal/tree-drag-controller.svelte.ts', import.meta.url),
-    ).text();
+  test('browser-facing source avoids ES2023 array-copy helpers', async () => {
+    const sourcePaths = [
+      '../../_internal/chart/chart-cartesian-model.ts',
+      '../../_internal/chart/chart-cartesian-series.ts',
+      '../../_internal/chart/chart-decimation-gaps.ts',
+      '../../_internal/chart/chart-decimation.ts',
+      '../../_internal/chart/chart-scale.ts',
+      '../../_internal/tree-drag-controller.svelte.ts',
+      '../choice-grid/choice-grid.svelte',
+      '../data-grid/data-grid.svelte',
+      '../json-schema-editor/enum-editor.svelte',
+      '../pagination/pagination.svelte',
+      '../slider/slider.svelte',
+      '../spectrogram/spectrogram.svelte',
+      '../speed-dial/speed-dial.svelte',
+      '../table-of-contents/table-of-contents-active-heading.svelte.ts',
+      '../table/table.fixture.svelte',
+      '../virtual-list/_internal/sticky-items.ts',
+      '../../convention-structural-test-helpers.ts',
+      '../../utilities/focus.ts',
+      '../../utilities/use-history.svelte.ts',
+    ];
 
-    expect(source).not.toContain('.toReversed(');
+    for (const sourcePath of sourcePaths) {
+      const source = await Bun.file(new URL(sourcePath, import.meta.url)).text();
+      expect(source, sourcePath).not.toMatch(/\.(?:toSorted|toReversed)\s*\(/);
+    }
   });
 });
 
@@ -82,7 +103,16 @@ describe('TreeDragController', () => {
     const announcements: string[] = [];
     const controller = new TreeDragController({
       getVisibleIds: () => visibleIds,
-      getNode: (id) => ({ label: () => id.toUpperCase() }) as TreeNodeRegistration,
+      getNode: (id): TreeNodeRegistration => ({
+        id,
+        parentId: null,
+        level: 1,
+        node: document.createElement('div'),
+        disabled: false,
+        isBranch: () => false,
+        label: () => id.toUpperCase(),
+        focus: () => {},
+      }),
       getParentId: () => null,
       isBranch: () => false,
       focus: mock(),

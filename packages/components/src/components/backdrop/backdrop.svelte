@@ -20,7 +20,7 @@
    * isolate the content behind it from the keyboard. A keyboard user can still
    * Tab to page content under an open backdrop. When you need that isolation
    * (a full-page loading dimmer, a lightbox), apply `inert` to your page-content
-   * container while the backdrop is open and pair it with `@lostgradient/cinder/focus-trap`.
+   * container while the backdrop is open and pair it with `@lostgradient/cinder`.
    * Escape dispatches through the shared overlay stack and invokes the scrim's
    * click path when an `onclick` callback is provided.
    */

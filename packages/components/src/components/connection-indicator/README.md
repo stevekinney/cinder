@@ -10,7 +10,7 @@ Use `ConnectionIndicator` for a compact, self-contained pill that reports transp
 
 ```svelte
 <script lang="ts">
-  import { ConnectionIndicator } from '@lostgradient/cinder/connection-indicator';
+  import { ConnectionIndicator } from '@lostgradient/cinder';
 </script>
 
 <ConnectionIndicator status="live" />
@@ -22,7 +22,7 @@ Use `ConnectionIndicator` for a compact, self-contained pill that reports transp
 
 ```svelte
 <script lang="ts">
-  import { ConnectionIndicator } from '@lostgradient/cinder/connection-indicator';
+  import { ConnectionIndicator } from '@lostgradient/cinder';
 </script>
 
 <ConnectionIndicator status="reconnecting">
@@ -56,7 +56,6 @@ Use `ConnectionIndicator` for a compact, self-contained pill that reports transp
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -246,16 +246,13 @@ describe('AvatarGroup', () => {
     });
   });
 
-  test('named avatar triggers carry role="img" so aria-label is valid', () => {
+  test('named avatar triggers are focusable images with accessible names', () => {
     const { container } = render(AvatarGroup, { avatars: collaborators.slice(0, 2) });
 
     const triggers = container.querySelectorAll<HTMLElement>('.cinder-avatar-group__trigger');
     for (const trigger of triggers) {
-      // role="img" is the honest semantic for a focusable NAMED image. The
-      // trigger has no activation (only a focus/hover name tooltip), so
-      // role="button" would be a false affordance (WCAG 4.1.2). img takes its
-      // name from the author, so aria-label is valid (no aria-prohibited-attr).
       expect(trigger.getAttribute('role')).toBe('img');
+      expect(trigger.getAttribute('tabindex')).toBe('0');
       expect(trigger.getAttribute('aria-label')).toBeTruthy();
     }
   });
@@ -318,9 +315,9 @@ describe('AvatarGroup', () => {
   });
 
   test('malformed runtime items without a name render without a tooltip', () => {
-    const { container } = render(AvatarGroup, {
-      avatars: [{ id: 'missing-name' } as unknown as (typeof collaborators)[number]],
-    });
+    const malformedAvatar = { id: 'missing-name', name: '' };
+    Reflect.deleteProperty(malformedAvatar, 'name');
+    const { container } = render(AvatarGroup, { avatars: [malformedAvatar] });
 
     const trigger = container.querySelector<HTMLElement>('.cinder-avatar-group__trigger');
     expect(trigger).not.toBeNull();

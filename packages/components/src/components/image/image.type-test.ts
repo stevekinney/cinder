@@ -10,18 +10,18 @@
 import type { ImageProps } from './image.types.ts';
 
 // @ts-expect-error - native onload is excluded so it cannot overwrite Image's internal handler
-const _nativeLoadRejected: ImageProps = { src: '/photo.jpg', alt: 'Photo', onload: () => {} };
+const nativeLoadRejected: ImageProps = { src: '/photo.jpg', alt: 'Photo', onload: () => {} };
 
 // @ts-expect-error - native onerror is excluded so it cannot overwrite Image's internal handler
-const _nativeErrorRejected: ImageProps = { src: '/photo.jpg', alt: 'Photo', onerror: () => {} };
+const nativeErrorRejected: ImageProps = { src: '/photo.jpg', alt: 'Photo', onerror: () => {} };
 
-const _customHandlersAccepted: ImageProps = {
+const customHandlersAccepted: ImageProps = {
   src: '/photo.jpg',
   alt: 'Photo',
   onLoad: () => {},
   onError: () => {},
 };
 
-void _nativeLoadRejected;
-void _nativeErrorRejected;
-void _customHandlersAccepted;
+void nativeLoadRejected;
+void nativeErrorRejected;
+void customHandlersAccepted;

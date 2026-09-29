@@ -7,31 +7,24 @@
  * - Re-anchoring for setState flow
  * - Fingerprinting to prevent sync thrashing
  *
- * **Note:** This module is experimental and provides an alternative implementation
- * to the inline anchor management in `review-editor.svelte`. It is exported for
- * testing and potential future refactoring, but the component does not currently
- * delegate to this factory.
- *
- * **Known divergence — front matter.** Unlike the inline implementation, this
- * manager does not parse YAML front matter: it compares `getMarkdown()` against
- * the raw `pendingState.content` and writes body-relative positions, where the
- * inline version threads `parseReviewEditorFrontMatter`'s `bodyOffset` through
- * both the comparison and the computed `from`/`to`/`lastKnownOffset`. Anchors
- * restored through this manager are therefore off by the front matter's length
- * on any document that has some. Pre-existing, and the reason to finish or
- * delete this factory rather than adopt it as-is.
- *
  * @module
- * @experimental
  */
 
-import { contentEquals } from '@lostgradient/markdown/pipeline';
+import { contentEquals } from '@lostgradient/markdown';
 import type { MilkdownPlugin } from '@milkdown/kit/ctx';
+import type { Node as ProseMirrorNode } from '@milkdown/kit/prose/model';
 import type { EditorView } from '@milkdown/kit/prose/view';
-import { anchorPluginKey, createAnchorPlugin } from '../../anchor-decorations.ts';
+import { anchorPluginKey } from '../../anchor-plugin-state.ts';
+import { createAnchorPlugin } from '../../anchor-plugin.ts';
 import type { AnchorUpdate, PersistedThread, ReviewState, Thread } from '../../comments/index.ts';
 import { ANCHOR_CONTEXT_LENGTH, isDocumentAnchor, reanchorQuote } from '../../comments/index.ts';
 import { textOffsetToProseMirrorPosition } from '../../editor/index.ts';
+import {
+  bodyAnchorUpdateToDocumentAnchorUpdate,
+  documentAnchorToBodyAnchor,
+  documentPersistedAnchorToBodyAnchor,
+  parseReviewEditorFrontMatter,
+} from './review-editor-front-matter.ts';
 
 /**
  * Options for creating the anchor manager.
@@ -42,19 +35,23 @@ export interface AnchorManagerOptions {
   /** Set the threads (for updating after re-anchoring) */
   setThreads: (threads: Thread[]) => void;
   /** Get the editor view */
-  getEditorView: () => EditorView | undefined;
+  getEditorView: () => AnchorEditorView | undefined;
   /** Get current markdown from editor */
   getMarkdown: () => string;
   /** Get the current value (for content comparison) */
   getValue: () => string;
   /** Event callback for anchor click */
   onAnchorClick: (threadId: string, event: MouseEvent) => void;
-  // NOTE: there is deliberately no `onthreaddelete` here. It existed to report
+  /** Announce threads whose quoted text is no longer present. */
+  onOrphanedThreads?: (updates: AnchorUpdate[]) => void;
+  // NOTE: there is deliberately no `onThreadDelete` here. It existed to report
   // the thread this manager deleted when re-anchoring failed; re-anchoring now
   // orphans instead of deleting (cinder#1284), so the callback would never fire.
   // Keeping it would be worse than removing it — a consumer wiring cleanup to an
   // event that never arrives has no way to notice.
 }
+
+export type AnchorEditorView = Pick<EditorView, 'state' | 'dispatch'>;
 
 /**
  * Anchor manager interface.
@@ -99,6 +96,57 @@ function createSyncFingerprint(threads: Thread[]): string {
     .join('|');
 }
 
+/** Restore one persisted thread while retaining it when its position is invalid. */
+export function reanchorPersistedThread(
+  persistedThread: PersistedThread,
+  documentText: string,
+  bodyOffset: number,
+  doc: ProseMirrorNode,
+  positionMapper: typeof textOffsetToProseMirrorPosition = textOffsetToProseMirrorPosition,
+): Thread {
+  if (isDocumentAnchor(persistedThread.anchor)) {
+    return { ...persistedThread, anchor: { ...persistedThread.anchor, from: 0, to: 0 } };
+  }
+
+  const bodyAnchor = documentPersistedAnchorToBodyAnchor(persistedThread.anchor, bodyOffset);
+  const result = reanchorQuote(documentText, bodyAnchor);
+  if (!result.found) {
+    return {
+      ...persistedThread,
+      anchor: { ...persistedThread.anchor, from: 0, to: 0, status: 'orphaned' },
+    };
+  }
+
+  const from = positionMapper(doc, result.from);
+  const to = positionMapper(doc, result.to);
+  if (from === null || to === null) {
+    return {
+      ...persistedThread,
+      anchor: { ...persistedThread.anchor, from: 0, to: 0, status: 'orphaned' },
+    };
+  }
+
+  const matchedQuote = documentText.slice(result.from, result.to);
+  const prefix = documentText.slice(Math.max(0, result.from - ANCHOR_CONTEXT_LENGTH), result.from);
+  const suffix = documentText.slice(
+    result.to,
+    Math.min(documentText.length, result.to + ANCHOR_CONTEXT_LENGTH),
+  );
+  return {
+    ...persistedThread,
+    anchor: {
+      ...persistedThread.anchor,
+      from: from + bodyOffset,
+      to: to + bodyOffset,
+      quote: matchedQuote,
+      prefix,
+      suffix,
+      status: 'anchored',
+      lastKnownOffset: result.from + bodyOffset,
+    },
+  };
+}
+
 /**
  * Create an anchor manager.
  *
@@ -129,10 +177,19 @@ function createSyncFingerprint(threads: Thread[]): string {
  * ```
  */
 export function createAnchorManager(options: AnchorManagerOptions): AnchorManager {
-  const { getThreads, setThreads, getEditorView, getMarkdown, getValue, onAnchorClick } = options;
+  const {
+    getThreads,
+    setThreads,
+    getEditorView,
+    getMarkdown,
+    getValue,
+    onAnchorClick,
+    onOrphanedThreads,
+  } = options;
 
   // Non-reactive bookkeeping (not state - doesn't need reactivity)
   let lastSyncedFingerprint: string | null = null;
+  let lastSyncedView: AnchorEditorView | undefined;
 
   // Pending state for deferred re-anchoring
   let pendingState = $state<ReviewState | null>(null);
@@ -142,25 +199,27 @@ export function createAnchorManager(options: AnchorManagerOptions): AnchorManage
    */
   function handleAnchorsUpdate(updates: AnchorUpdate[]): void {
     const threads = getThreads();
+    const bodyOffset = parseReviewEditorFrontMatter(getValue()).bodyOffset;
     const updatedThreads = threads.map((thread) => {
       const update = updates.find((u) => u.threadId === thread.id);
       if (update) {
+        const documentUpdate = bodyAnchorUpdateToDocumentAnchorUpdate(update, bodyOffset);
         return {
           ...thread,
           anchor: {
             ...thread.anchor,
-            from: update.from,
-            to: update.to,
+            from: documentUpdate.from,
+            to: documentUpdate.to,
             // Without this the manager drops the one field that says the anchor
             // stopped being placed: the plugin orphans it and stops decorating,
             // but consumers keep seeing `anchored` and cannot show or persist
             // the orphan. Adding `status` to the sync fingerprint does nothing
             // on its own — the value never gets applied to compare against.
             status: update.status,
-            quote: update.quote,
-            prefix: update.prefix,
-            suffix: update.suffix,
-            lastKnownOffset: update.lastKnownOffset,
+            quote: documentUpdate.quote,
+            prefix: documentUpdate.prefix,
+            suffix: documentUpdate.suffix,
+            lastKnownOffset: documentUpdate.lastKnownOffset,
           },
         };
       }
@@ -168,9 +227,11 @@ export function createAnchorManager(options: AnchorManagerOptions): AnchorManage
     });
 
     setThreads(updatedThreads);
+    onOrphanedThreads?.(updates);
 
     // Update fingerprint to skip re-sync
-    lastSyncedFingerprint = createSyncFingerprint(updatedThreads);
+    lastSyncedFingerprint = `${bodyOffset}|${createSyncFingerprint(updatedThreads)}`;
+    lastSyncedView = getEditorView();
   }
 
   // Create anchor plugin in instance scope
@@ -186,16 +247,21 @@ export function createAnchorManager(options: AnchorManagerOptions): AnchorManage
     const view = getEditorView();
     if (!view) return;
 
-    const fingerprint = createSyncFingerprint(threads);
+    const bodyOffset = parseReviewEditorFrontMatter(getValue()).bodyOffset;
+    const fingerprint = `${bodyOffset}|${createSyncFingerprint(threads)}`;
 
-    // Skip if already synced
-    if (fingerprint === lastSyncedFingerprint) return;
+    // A remounted editor has a new plugin state, even when thread data is unchanged.
+    if (view === lastSyncedView && fingerprint === lastSyncedFingerprint) return;
     lastSyncedFingerprint = fingerprint;
+    lastSyncedView = view;
 
     view.dispatch(
       view.state.tr.setMeta(anchorPluginKey, {
         type: 'sync',
-        threads,
+        threads: threads.map((thread) => ({
+          ...thread,
+          anchor: documentAnchorToBodyAnchor(thread.anchor, bodyOffset),
+        })),
         source: 'external',
       }),
     );
@@ -217,8 +283,10 @@ export function createAnchorManager(options: AnchorManagerOptions): AnchorManage
     if (!view) return;
 
     // Compare markdown using contentEquals (handles normalization)
-    const currentMarkdown = getMarkdown();
-    const expectedMarkdown = pendingState.content;
+    const currentDocument = parseReviewEditorFrontMatter(getMarkdown());
+    const pendingDocument = parseReviewEditorFrontMatter(pendingState.content);
+    const currentMarkdown = currentDocument.body;
+    const expectedMarkdown = pendingDocument.body;
 
     if (!contentEquals(currentMarkdown, expectedMarkdown)) {
       // Content not synced yet - will retry when editor updates
@@ -233,81 +301,9 @@ export function createAnchorManager(options: AnchorManagerOptions): AnchorManage
 
     // Re-anchor threads. Every thread survives the pass: one that cannot be
     // placed comes out `orphaned` rather than dropped.
-    const reanchoredThreads: Thread[] = [];
-
-    /** Keep a thread that has nowhere to point, so its text can bring it back. */
-    function orphan(thread: PersistedThread): void {
-      reanchoredThreads.push({
-        ...thread,
-        // Collapsed: an orphaned anchor has nowhere to point until its quote
-        // returns, and `from >= to` is what the decoration pass skips on, so it
-        // renders nothing even before the status is consulted.
-        anchor: { ...thread.anchor, from: 0, to: 0, status: 'orphaned' },
-      });
-    }
-
-    for (const persistedThread of state.threads) {
-      // Document-level anchors have no quote to search for, so `reanchorQuote`
-      // would always report "not found" and orphan a thread that is not
-      // actually lost. They have no position to restore either — they stay at
-      // 0/0, anchored. Matches `review-editor-impl.svelte`.
-      if (isDocumentAnchor(persistedThread.anchor)) {
-        reanchoredThreads.push({
-          ...persistedThread,
-          anchor: { ...persistedThread.anchor, from: 0, to: 0 },
-        });
-        continue;
-      }
-
-      const result = reanchorQuote(documentText, persistedThread.anchor);
-
-      // Quote not in this document. KEEP the thread, orphaned (cinder#1284):
-      // restoring a saved review against a document whose text has since
-      // changed must not silently destroy comments. It renders no decoration,
-      // shows in the sidebar as missing its text, and re-anchors if the text
-      // returns. Removal is the consumer's decision, so `onthreaddelete` does
-      // not fire here.
-      if (!result.found) {
-        orphan(persistedThread);
-        continue;
-      }
-
-      const from = textOffsetToProseMirrorPosition(doc, result.from);
-      const to = textOffsetToProseMirrorPosition(doc, result.to);
-
-      if (from === null || to === null) {
-        // The quote was located in the text but its offsets do not map back to
-        // positions. Previously the thread fell out of the loop unpushed and
-        // vanished with no event at all — quieter than the delete branch, and
-        // just as lossy.
-        orphan(persistedThread);
-      } else {
-        // Extract the matched quote and context from the current document
-        const matchedQuote = documentText.slice(result.from, result.to);
-        const newPrefix = documentText.slice(
-          Math.max(0, result.from - ANCHOR_CONTEXT_LENGTH),
-          result.from,
-        );
-        const newSuffix = documentText.slice(
-          result.to,
-          Math.min(documentText.length, result.to + ANCHOR_CONTEXT_LENGTH),
-        );
-
-        reanchoredThreads.push({
-          ...persistedThread,
-          anchor: {
-            ...persistedThread.anchor,
-            from,
-            to,
-            quote: matchedQuote,
-            prefix: newPrefix,
-            suffix: newSuffix,
-            status: 'anchored',
-            lastKnownOffset: result.from,
-          },
-        });
-      }
-    }
+    const reanchoredThreads = state.threads.map((persistedThread) =>
+      reanchorPersistedThread(persistedThread, documentText, pendingDocument.bodyOffset, doc),
+    );
 
     setThreads(reanchoredThreads);
 
@@ -342,9 +338,3 @@ export function createAnchorManager(options: AnchorManagerOptions): AnchorManage
     handleAnchorsUpdate,
   };
 }
-
-// The persistence converters live in `comments/types.ts` alongside the anchor
-// constructors so both directions of the round trip sit in one pure module.
-// Re-exported here to keep the published `@lostgradient/editor/review-editor`
-// surface unchanged.
-export { toPersistedThreads, toRuntimeThreads } from '../../comments/index.ts';

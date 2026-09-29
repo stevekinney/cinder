@@ -22,21 +22,21 @@ const baseProps = {
   callToActionLabel: 'Choose Pro',
 };
 
-const _nativeSelectRejected: PricingCardProps = {
+const nativeSelectRejected: PricingCardProps = {
   ...baseProps,
   onPlanSelect: () => {},
   // @ts-expect-error - native onselect is excluded from PricingCardProps
   onselect: () => {},
 };
 
-const _customSelectAccepted: PricingCardProps = { ...baseProps, onPlanSelect: () => {} };
+const customSelectAccepted: PricingCardProps = { ...baseProps, onPlanSelect: () => {} };
 
 // @ts-expect-error - neither href nor onPlanSelect is provided, so the CTA has no way to activate
-const _neitherHrefNorSelectRejected: PricingCardProps = { ...baseProps };
+const neitherHrefNorSelectRejected: PricingCardProps = { ...baseProps };
 
-const _hrefWithoutOnPlanSelectAccepted: PricingCardProps = { ...baseProps, href: '/checkout' };
+const hrefWithoutOnPlanSelectAccepted: PricingCardProps = { ...baseProps, href: '/checkout' };
 
-const _hrefWithOnPlanSelectAccepted: PricingCardProps = {
+const hrefWithOnPlanSelectAccepted: PricingCardProps = {
   ...baseProps,
   href: '/checkout',
   onPlanSelect: () => {},
@@ -45,15 +45,15 @@ const _hrefWithOnPlanSelectAccepted: PricingCardProps = {
 };
 
 // @ts-expect-error - target/rel only make sense on the href (anchor) branch
-const _targetWithoutHrefRejected: PricingCardProps = {
+const targetWithoutHrefRejected: PricingCardProps = {
   ...baseProps,
   onPlanSelect: () => {},
   target: '_blank',
 };
 
-void _nativeSelectRejected;
-void _customSelectAccepted;
-void _neitherHrefNorSelectRejected;
-void _hrefWithoutOnPlanSelectAccepted;
-void _hrefWithOnPlanSelectAccepted;
-void _targetWithoutHrefRejected;
+void nativeSelectRejected;
+void customSelectAccepted;
+void neitherHrefNorSelectRejected;
+void hrefWithoutOnPlanSelectAccepted;
+void hrefWithOnPlanSelectAccepted;
+void targetWithoutHrefRejected;

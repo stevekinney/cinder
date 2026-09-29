@@ -6,7 +6,7 @@ Render a reduced, bounded child-session transcript inline without adding another
 
 ```svelte
 <script lang="ts">
-  import ChatSubSession from '@lostgradient/chat/sub-session';
+  import { ChatSubSession } from '@lostgradient/chat';
 </script>
 
 <ChatSubSession conversation={childConversation} live={childSessionRunning} />
@@ -30,6 +30,7 @@ Render a reduced, bounded child-session transcript inline without adding another
 <!-- generated:variables:start -->
 
 - `--cinder-chat-font-size`
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

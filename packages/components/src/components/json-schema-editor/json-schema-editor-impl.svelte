@@ -250,6 +250,7 @@
           if (pendingControlledChangeVersion !== changeVersion) return;
           if (isSchemaInput(input)) settleControlledChange(input);
           else rejectControlledChange(changeVersion);
+          return undefined;
         })
         .catch(() => {
           rejectControlledChange(changeVersion);

@@ -15,10 +15,10 @@ import SideNavigationGroup from '../side-navigation-group/side-navigation-group.
 import SideNavigationItem from '../side-navigation-item/side-navigation-item.svelte';
 import { SideNavigation } from './index.ts';
 
-const _group: typeof SideNavigationGroup = SideNavigation.Group;
-const _item: typeof SideNavigationItem = SideNavigation.Item;
+const group: typeof SideNavigationGroup = SideNavigation.Group;
+const item: typeof SideNavigationItem = SideNavigation.Item;
 
 SideNavigation satisfies Component<never>;
 
-void _group;
-void _item;
+void group;
+void item;

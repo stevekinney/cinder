@@ -35,7 +35,7 @@ export function chartPaletteColor(
   return resolvedPalette[index % resolvedPalette.length] ?? chartPalette[0];
 }
 
-export function resolveChartTheme(theme: ChartTheme | undefined = undefined): ResolvedChartTheme {
+export function resolveChartTheme(theme?: ChartTheme): ResolvedChartTheme {
   return {
     foreground: theme?.foreground ?? 'currentColor',
     muted: theme?.muted ?? 'currentColor',

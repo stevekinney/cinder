@@ -11,8 +11,7 @@ export type ColorValue = {
 export type DimensionValue = { value: number; unit: 'px' | 'rem' };
 export type DurationValue = { value: number; unit: 'ms' | 's' };
 export type StrokeStyleValue =
-  | string
-  | { dashArray: DimensionValue[]; lineCap: 'round' | 'butt' | 'square' };
+  string | { dashArray: DimensionValue[]; lineCap: 'round' | 'butt' | 'square' };
 export type BorderValue = {
   color: ColorValue | string;
   width: DimensionValue | string;
@@ -116,17 +115,7 @@ export type TokenDocument = TokenGroup & {
  * documents in these positions, which Cinder does not use.
  */
 export type ResolverReference = { $ref: string };
-/**
- * `$extensions` is optional per the official DTCG 2025.10 resolver schema's
- * bundled `resolver/set.json` definition (`properties: description, sources,
- * $extensions`, `additionalProperties: false`) -- ajv already accepts it.
- * Declared here so a set-level vendor extension (e.g. the foundation set's
- * `com.lostgradient.cinder.playgroundGroups`, read by
- * `generate-artifacts.ts`) type-checks after `assertValidResolverDocument`
- * narrows to this type, the same way `TokenExtensions` is already declared
- * on `DesignToken`/`TokenGroup`.
- */
-export type ResolverSet = { sources: ResolverReference[]; $extensions?: TokenExtensions };
+export type ResolverSet = { sources: ResolverReference[] };
 export type ResolverModifier = {
   contexts: Record<string, ResolverReference[]>;
   default?: string;

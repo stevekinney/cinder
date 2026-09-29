@@ -2,17 +2,18 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
 const { fireEvent, render, cleanup } = await import('@testing-library/svelte');
-const { renderToServerHtml } = await import('../../test/server-render.ts');
+const { prepareSvelteServerSource, renderSvelteOnServer } = await import('@lostgradient/testing');
 const { tick } = await import('svelte');
 const { default: Slider } = await import('./slider.svelte');
 const { default: SliderDirectionFixture } =
   await import('../../test/fixtures/slider-direction-fixture.svelte');
 const SLIDER_DIRECTION_FIXTURE_SOURCE = `${import.meta.dir}/../../test/fixtures/slider-direction-fixture.svelte`;
+await prepareSvelteServerSource(SLIDER_DIRECTION_FIXTURE_SOURCE);
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
 afterEach(() => {
@@ -21,6 +22,10 @@ afterEach(() => {
 });
 const { default: SliderFormFieldFixture } =
   await import('../../test/fixtures/slider-form-field-fixture.svelte');
+const { default: SliderHeaderValueFixture } =
+  await import('../../test/fixtures/slider-header-value-fixture.svelte');
+const { default: SliderHeaderValueRangeFixture } =
+  await import('../../test/fixtures/slider-header-value-range-fixture.svelte');
 
 function getThumbs(container: Element): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>('[role="slider"]'));
@@ -156,7 +161,7 @@ describe('Slider (single)', () => {
   });
 
   test('server rendering uses provider direction before local DOM can be checked', async () => {
-    const html = await renderToServerHtml(SLIDER_DIRECTION_FIXTURE_SOURCE, {
+    const html = await renderSvelteOnServer(SLIDER_DIRECTION_FIXTURE_SOURCE, {
       localDirection: undefined,
       providerDirection: 'rtl',
     });
@@ -166,7 +171,7 @@ describe('Slider (single)', () => {
   });
 
   test('server rendering still includes local direction wrappers', async () => {
-    const html = await renderToServerHtml(SLIDER_DIRECTION_FIXTURE_SOURCE, {
+    const html = await renderSvelteOnServer(SLIDER_DIRECTION_FIXTURE_SOURCE, {
       localDirection: 'ltr',
     });
     const sliderTag = html.match(/<div[^>]*class="[^"]*cinder-slider[^"]*"[^>]*>/)?.[0] ?? '';
@@ -661,18 +666,37 @@ describe('Slider (ticks)', () => {
 });
 
 function mockTrackRect(track: HTMLElement, width: number) {
-  track.getBoundingClientRect = () =>
-    ({
-      left: 0,
-      top: 0,
-      right: width,
-      bottom: 20,
-      width,
-      height: 20,
-      x: 0,
-      y: 0,
-      toJSON: () => ({}),
-    }) as DOMRect;
+  track.getBoundingClientRect = () => ({
+    left: 0,
+    top: 0,
+    right: width,
+    bottom: 20,
+    width,
+    height: 20,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  });
+}
+
+// COR-291: happy-dom performs no real layout, so an unmocked thumb reports a
+// 0×0 rect and pointer mapping degrades to the pre-fix track-relative
+// formula (exercised above). These tests mock a nonzero thumb rect to prove
+// the inset travel interval — clicks inside the reserved half-thumb margin
+// at each end must still clamp to min/max, not to a value derived from the
+// track's raw width.
+function mockThumbRect(thumb: HTMLElement, width: number) {
+  thumb.getBoundingClientRect = () => ({
+    left: 0,
+    top: 0,
+    right: width,
+    bottom: width,
+    width,
+    height: width,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  });
 }
 
 describe('Slider (pointer)', () => {
@@ -816,6 +840,70 @@ describe('Slider (pointer)', () => {
     await fireEvent(document, new PointerEvent('pointerup', { bubbles: true }));
   });
 
+  test('COR-291: a click inside the reserved endpoint margin still clamps to min, not a fraction of track width', async () => {
+    const { container } = render(Slider, {
+      props: { label: 'Volume', value: 50, min: 0, max: 100 },
+    });
+    const track = container.querySelector<HTMLDivElement>('.cinder-slider__track')!;
+    const thumb = getThumbs(container)[0]!;
+    mockTrackRect(track, 200);
+    mockThumbRect(thumb, 20);
+
+    // Travel interval: [thumbSize/2, trackWidth - thumbSize/2] = [10, 190].
+    // clientX=10 sits at the very start of that interval — the pre-fix
+    // formula (clientX / trackWidth) would report 10/200 = 5%, i.e. value 5.
+    await fireEvent.pointerDown(track, { clientX: 10 });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('0');
+  });
+
+  test('COR-291: a click inside the reserved endpoint margin still clamps to max, not a fraction of track width', async () => {
+    const { container } = render(Slider, {
+      props: { label: 'Volume', value: 50, min: 0, max: 100 },
+    });
+    const track = container.querySelector<HTMLDivElement>('.cinder-slider__track')!;
+    const thumb = getThumbs(container)[0]!;
+    mockTrackRect(track, 200);
+    mockThumbRect(thumb, 20);
+
+    // clientX=190 sits at the end of the travel interval — the pre-fix
+    // formula would report 190/200 = 95%, i.e. value 95.
+    await fireEvent.pointerDown(track, { clientX: 190 });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('100');
+  });
+
+  test('COR-291: the physical track edges still reach min and max beyond the reserved margin', async () => {
+    const { container } = render(Slider, {
+      props: { label: 'Volume', value: 50, min: 0, max: 100 },
+    });
+    const track = container.querySelector<HTMLDivElement>('.cinder-slider__track')!;
+    const thumb = getThumbs(container)[0]!;
+    mockTrackRect(track, 200);
+    mockThumbRect(thumb, 20);
+
+    await fireEvent.pointerDown(track, { clientX: 0 });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('0');
+
+    await fireEvent(document, new PointerEvent('pointerup', { bubbles: true }));
+    await fireEvent.pointerDown(track, { clientX: 200 });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('100');
+  });
+
+  test('COR-291: a mid-travel click maps against the inset interval, not the raw track width', async () => {
+    const { container } = render(Slider, {
+      props: { label: 'Volume', value: 0, min: 0, max: 100 },
+    });
+    const track = container.querySelector<HTMLDivElement>('.cinder-slider__track')!;
+    const thumb = getThumbs(container)[0]!;
+    mockTrackRect(track, 200);
+    mockThumbRect(thumb, 20);
+
+    // Travel interval [10, 190]; clientX=100 is the interval's midpoint →
+    // value 50. The pre-fix formula (100/200) would agree here, so this
+    // pins the general (non-edge) mapping stays correct under the fix too.
+    await fireEvent.pointerDown(track, { clientX: 100 });
+    expect(thumb.getAttribute('aria-valuenow')).toBe('50');
+  });
+
   test('document listeners are cleaned up on unmount during drag', async () => {
     const { container, unmount } = render(Slider, {
       props: { label: 'Volume', value: 50 },
@@ -826,5 +914,159 @@ describe('Slider (pointer)', () => {
     // No throw firing pointermove on document after unmount means Svelte
     // tore down the <svelte:document> listeners correctly.
     await fireEvent(document, new PointerEvent('pointermove', { clientX: 60, bubbles: true }));
+  });
+});
+
+describe('Slider (headerVisible)', () => {
+  test('default true renders the label alongside the value', () => {
+    const { container } = render(Slider, {
+      props: { label: 'Volume', value: 30 },
+    });
+    expect(container.querySelector('.cinder-slider__label')?.textContent).toBe('Volume');
+    expect(container.querySelector('.cinder-slider__value')).not.toBeNull();
+  });
+
+  test('false hides only the label span; the value stays with no layout gap', () => {
+    const { container } = render(Slider, {
+      props: { label: 'Volume', value: 30, headerVisible: false },
+    });
+    expect(container.querySelector('.cinder-slider__label')).toBeNull();
+    expect(container.querySelector('.cinder-slider__value')?.textContent).toBe('30');
+    // "No layout gap": the header renders exactly the value span, not an
+    // empty placeholder left in the label's place.
+    expect(container.querySelector('.cinder-slider__header')?.children).toHaveLength(1);
+  });
+
+  test('false does not change the thumb accessible name — it stays nonempty and equal to label', () => {
+    const { container } = render(Slider, {
+      props: { label: 'Volume', value: 30, headerVisible: false },
+    });
+    const thumb = getThumbs(container)[0]!;
+    expect(thumb.getAttribute('aria-label')).toBe('Volume');
+  });
+
+  test('false still identifies range thumbs separately as min/max', () => {
+    const { container } = render(Slider, {
+      props: { label: 'Price', mode: 'range', value: [20, 80], headerVisible: false },
+    });
+    const [low, high] = getThumbs(container);
+    expect(container.querySelector('.cinder-slider__label')).toBeNull();
+    expect(low!.getAttribute('aria-label')).toBe('Price — minimum value');
+    expect(high!.getAttribute('aria-label')).toBe('Price — maximum value');
+  });
+
+  test('composes with the FormField auto-suppressed label: the label stays hidden and the value keeps rendering either way', () => {
+    const shown = render(SliderHeaderValueFixture, {
+      props: { wrapInFormField: true, headerVisible: true },
+    });
+    expect(shown.container.querySelector('.cinder-slider__label')).toBeNull();
+    expect(shown.container.querySelector('.cinder-slider__value')?.textContent).toBe('7');
+    shown.unmount();
+
+    const hidden = render(SliderHeaderValueFixture, {
+      props: { wrapInFormField: true, headerVisible: false },
+    });
+    expect(hidden.container.querySelector('.cinder-slider__label')).toBeNull();
+    expect(hidden.container.querySelector('.cinder-slider__value')?.textContent).toBe('7');
+  });
+});
+
+describe('Slider (displayValue)', () => {
+  test('replaces the visible value text in single mode without touching aria-valuetext', () => {
+    const { container } = render(Slider, {
+      props: {
+        label: 'Scale',
+        value: 7,
+        min: 0,
+        max: 12,
+        valueText: (v: number) => `${v} of 12 notes`,
+        displayValue: (v: number) => `${v} notes · C4–B4`,
+      },
+    });
+    expect(container.querySelector('.cinder-slider__value')?.textContent).toBe('7 notes · C4–B4');
+    expect(getThumbs(container)[0]!.getAttribute('aria-valuetext')).toBe('7 of 12 notes');
+  });
+
+  test('replaces the visible value text in range mode from the full [low, high] tuple', () => {
+    const { container } = render(Slider, {
+      props: {
+        label: 'Octave range',
+        mode: 'range',
+        value: [0, 22],
+        min: 0,
+        max: 22,
+        displayValue: (v: [number, number]) => `${v[0]}–${v[1]}`,
+      },
+    });
+    expect(container.querySelector('.cinder-slider__value')?.textContent).toBe('0–22');
+  });
+
+  test('absent formatter keeps the current unit-based formatting', () => {
+    const { container } = render(Slider, {
+      props: { label: 'Volume', value: 42, unit: 'ms' },
+    });
+    expect(container.querySelector('.cinder-slider__value')?.textContent).toBe('42 ms');
+  });
+
+  test('standalone single Slider renders its own displayValue fixture text', () => {
+    const { container } = render(SliderHeaderValueFixture, {
+      props: { withDisplayValue: true, value: 7 },
+    });
+    expect(container.querySelector('.cinder-slider__value')?.textContent).toBe('7 notes · C4–B4');
+  });
+
+  test('standalone range Slider renders its own displayValue fixture text', () => {
+    const { container } = render(SliderHeaderValueRangeFixture, {
+      props: { withDisplayValue: true, value: [0, 22] },
+    });
+    expect(container.querySelector('.cinder-slider__value')?.textContent).toBe('0–22');
+  });
+
+  test('FormField-wrapped single Slider still owns the value display, not just the label', () => {
+    const { container } = render(SliderHeaderValueFixture, {
+      props: { wrapInFormField: true, withDisplayValue: true, value: 7 },
+    });
+    expect(container.querySelector('.cinder-slider__label')).toBeNull();
+    expect(container.querySelector('.cinder-slider__value')?.textContent).toBe('7 notes · C4–B4');
+    const thumb = getThumbs(container)[0]!;
+    expect(thumb.getAttribute('aria-labelledby')).not.toBeNull();
+  });
+
+  test('FormField-wrapped range Slider still owns the value display, not just the label', () => {
+    const { container } = render(SliderHeaderValueRangeFixture, {
+      props: { wrapInFormField: true, withDisplayValue: true, value: [0, 22] },
+    });
+    expect(container.querySelector('.cinder-slider__label')).toBeNull();
+    expect(container.querySelector('.cinder-slider__value')?.textContent).toBe('0–22');
+    const [low, high] = getThumbs(container);
+    expect(low!.getAttribute('aria-labelledby')).not.toBeNull();
+    expect(high!.getAttribute('aria-labelledby')).not.toBeNull();
+  });
+
+  test('reactively updates the formatted single value as value changes', async () => {
+    const { container, rerender } = render(SliderHeaderValueFixture, {
+      props: { withDisplayValue: true, value: 7 },
+    });
+    expect(container.querySelector('.cinder-slider__value')?.textContent).toBe('7 notes · C4–B4');
+    await rerender({ withDisplayValue: true, value: 9 });
+    expect(container.querySelector('.cinder-slider__value')?.textContent).toBe('9 notes · C4–B4');
+  });
+
+  test('reactively updates the formatted range value as value changes', async () => {
+    const { container, rerender } = render(SliderHeaderValueRangeFixture, {
+      props: { withDisplayValue: true, value: [0, 22] },
+    });
+    expect(container.querySelector('.cinder-slider__value')?.textContent).toBe('0–22');
+    await rerender({ withDisplayValue: true, value: [3, 19] });
+    expect(container.querySelector('.cinder-slider__value')?.textContent).toBe('3–19');
+  });
+
+  test('reactively updates via keyboard interaction without a formatter', async () => {
+    const { container } = render(Slider, {
+      props: { label: 'Volume', value: 20, step: 5 },
+    });
+    const thumb = getThumbs(container)[0]!;
+    await fireEvent.keyDown(thumb, { key: 'ArrowRight' });
+    expect(container.querySelector('.cinder-slider__value')?.textContent).toBe('25');
   });
 });

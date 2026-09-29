@@ -6,7 +6,7 @@ On/off switch input for binary settings, presented as a sliding pill control.
 
 ```svelte
 <script lang="ts">
-  import Toggle from '@lostgradient/cinder/toggle';
+  import { Toggle } from '@lostgradient/cinder';
 </script>
 
 <Toggle id="email-notifications" label="Email notifications" />
@@ -38,6 +38,7 @@ On/off switch input for binary settings, presented as a sliding pill control.
 
 - `--cinder-toggle-track-off-hover-resting`
 - `--cinder-toggle-track-off-resting`
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

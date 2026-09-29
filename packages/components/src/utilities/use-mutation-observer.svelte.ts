@@ -29,16 +29,7 @@ export function useMutationObserver(
   if (attributeOldValue !== undefined) init.attributeOldValue = attributeOldValue;
   if (characterDataOldValue !== undefined) init.characterDataOldValue = characterDataOldValue;
 
-  // MutationObserver.observe() throws a TypeError unless at least one of childList /
-  // attributes / characterData is set. If a caller passed only modifiers (or nothing),
-  // default to observing childList so the attachment never throws at runtime.
-  if (
-    init.childList === undefined &&
-    init.attributes === undefined &&
-    init.characterData === undefined
-  ) {
-    init.childList = true;
-  }
+  applyDefaultMutationType(init);
 
   return (node: HTMLElement) => {
     if (typeof MutationObserver === 'undefined') {
@@ -55,7 +46,7 @@ export function useMutationObserver(
     $effect(() => {
       if (!enabled()) {
         disconnectObserver();
-        return;
+        return undefined;
       }
 
       observer = new MutationObserver((mutations) => {
@@ -77,4 +68,17 @@ export function useMutationObserver(
       disconnectObserver();
     };
   };
+}
+
+function applyDefaultMutationType(init: MutationObserverInit): void {
+  // MutationObserver.observe() throws a TypeError unless at least one of childList /
+  // attributes / characterData is set. If a caller passed only modifiers (or nothing),
+  // default to observing childList so the attachment never throws at runtime.
+  if (
+    init.childList === undefined &&
+    init.attributes === undefined &&
+    init.characterData === undefined
+  ) {
+    init.childList = true;
+  }
 }

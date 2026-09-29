@@ -21,7 +21,7 @@
 
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import.
 // testing-library reads `globalThis.document` / `window` at module-init.
@@ -38,7 +38,7 @@ const skeletonSource = await Bun.file(new URL('./editor-skeleton.svelte', import
 // rather than redeclaring it, so this reaches across the package boundary into
 // cinder's own utilities stylesheet.
 const utilitiesCss = await Bun.file(
-  new URL('../../../../../components/src/styles/utilities.css', import.meta.url),
+  new URL('../../../../../cinder/src/styles/utilities.css', import.meta.url),
 ).text();
 
 const scopedStyles = skeletonSource.match(/<style[^>]*>([\s\S]*?)<\/style>/)?.[1] ?? '';
@@ -53,7 +53,7 @@ function findStatusText(container: HTMLElement): Element {
       candidate.childElementCount === 0 && candidate.textContent?.trim() === 'Loading editor...',
   );
   expect(element, 'EditorSkeleton no longer renders a loading status text').toBeDefined();
-  return element as Element;
+  return requiredInstance(element, Element);
 }
 
 function declaresClass(css: string, className: string): boolean {

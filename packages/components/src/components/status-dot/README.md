@@ -6,7 +6,7 @@ A semantic status indicator that pairs a colored dot with an accessible label.
 
 ```svelte
 <script lang="ts">
-  import StatusDot from '@lostgradient/cinder/status-dot';
+  import { StatusDot } from '@lostgradient/cinder';
 </script>
 
 <StatusDot status="online" label="Online" />
@@ -47,6 +47,7 @@ The dot color is unchanged (still info-blue) — only the status token name chan
 
 - `--cinder-status-dot-color`
 - `--cinder-status-dot-size`
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

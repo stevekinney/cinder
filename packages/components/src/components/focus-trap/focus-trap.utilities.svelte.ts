@@ -4,11 +4,7 @@ import { restoreFocusTo } from '../../utilities/focus.ts';
 import { readOption } from '../../utilities/read-option.ts';
 
 export type FocusTargetInput =
-  | HTMLElement
-  | string
-  | null
-  | undefined
-  | (() => HTMLElement | string | null | undefined);
+  HTMLElement | string | null | undefined | (() => HTMLElement | string | null | undefined);
 
 export type FocusTrapOptions = {
   active?: boolean | (() => boolean);
@@ -356,7 +352,7 @@ export function createFocusTrap(options: FocusTrapOptions = {}): Attachment<HTML
     // lingers on `trapStack`, blocking lower traps' Tab handling via `isTopTrap`, and focus is
     // never restored to the previously-focused element on reactive deactivation.
     $effect(() => {
-      if (!isActive()) return;
+      if (!isActive()) return undefined;
       activate();
       return () => {
         deactivate();

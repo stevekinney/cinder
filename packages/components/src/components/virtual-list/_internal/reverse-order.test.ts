@@ -203,4 +203,18 @@ describe('shouldPinToEnd', () => {
       expect(shouldPinToEnd({ mode, growth: replaced, isAtEnd: true })).toBe(false);
     });
   });
+
+  test('throws for a mode outside the known union', () => {
+    // `mode` is exhaustively typed ('reverse' | 'stick-to-bottom' | 'none', all
+    // tested above), so the `default` arm's typed-`never` binding is only
+    // reachable by a caller that bypasses the type system (e.g. untyped JS
+    // interop) — matching the convention in src/_internal/collection.test.ts's
+    // `navigationIntent` exhaustiveness test.
+    expect(() =>
+      shouldPinToEnd({ mode: 'sideways' as never, growth: appended, isAtEnd: true }),
+    ).toThrow(TypeError);
+    expect(() =>
+      shouldPinToEnd({ mode: 'sideways' as never, growth: appended, isAtEnd: true }),
+    ).toThrow('Unsupported reverse pin mode: sideways');
+  });
 });

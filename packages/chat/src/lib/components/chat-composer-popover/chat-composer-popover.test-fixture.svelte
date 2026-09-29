@@ -12,8 +12,10 @@
   import ChatInput from '../chat/input/chat-input.svelte';
   import type { MessageInput } from '../chat/conversation-model.ts';
   import ChatComposerPopover from './chat-composer-popover.svelte';
-  import type { ChatComposerPopoverSelection } from './chat-composer-popover.types.ts';
-  import type { ChatComposerPopoverSource } from './chat-composer-popover.types.ts';
+  import type {
+    ChatComposerPopoverSelection,
+    ChatComposerPopoverSource,
+  } from './chat-composer-popover.types.ts';
 
   type Props = {
     commands?: TestComposerCommand[];
@@ -94,7 +96,7 @@
       composerAriaControls={composerProps.composerAriaControls}
       composerAriaActiveDescendant={composerProps.composerAriaActiveDescendant}
       composerAriaAutocomplete={composerProps.composerAriaAutocomplete}
-      oncomposerinput={composerProps.oncomposerinput}
+      onComposerInput={composerProps.onComposerInput}
       oncomposerkeydown={composerProps.oncomposerkeydown}
       oncomposerselectionchange={composerProps.oncomposerselectionchange}
       oncomposerblur={composerProps.oncomposerblur}

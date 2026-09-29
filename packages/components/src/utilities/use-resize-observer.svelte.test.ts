@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -10,18 +10,20 @@ const { default: UseResizeObserverAttachFixture } =
   await import('../test/fixtures/use-resize-observer-attach-fixture.svelte');
 
 type ObserverRecord = {
+  observer: ResizeObserver;
   callback: ResizeObserverCallback;
   observeCalls: { target: Element; options: ResizeObserverOptions | undefined }[];
   disconnectCalls: number;
 };
 
-class FakeResizeObserver {
+class FakeResizeObserver implements ResizeObserver {
   static records: ObserverRecord[] = [];
 
   private readonly record: ObserverRecord;
 
   constructor(callback: ResizeObserverCallback) {
     this.record = {
+      observer: this,
       callback,
       observeCalls: [],
       disconnectCalls: 0,
@@ -54,7 +56,7 @@ function createEntry(target: Element): ResizeObserverEntry {
 
 beforeEach(() => {
   FakeResizeObserver.records = [];
-  globalThis.ResizeObserver = FakeResizeObserver as unknown as typeof ResizeObserver;
+  globalThis.ResizeObserver = FakeResizeObserver;
 });
 
 afterEach(() => {
@@ -96,7 +98,7 @@ describe('useResizeObserver', () => {
     const sentinel = getByTestId('sentinel');
     const [record] = FakeResizeObserver.records;
 
-    record?.callback([createEntry(sentinel)], {} as ResizeObserver);
+    record?.callback([createEntry(sentinel)], record.observer);
 
     expect(seen).toEqual([sentinel]);
   });
@@ -133,7 +135,7 @@ describe('useResizeObserver', () => {
       },
     });
 
-    record?.callback([createEntry(sentinel)], {} as ResizeObserver);
+    record?.callback([createEntry(sentinel)], record.observer);
 
     expect(seen).toEqual([]);
   });
@@ -209,7 +211,7 @@ describe('useResizeObserver', () => {
   });
 
   test('is a safe no-op when ResizeObserver is unavailable', () => {
-    globalThis.ResizeObserver = undefined as unknown as typeof ResizeObserver;
+    Object.defineProperty(globalThis, 'ResizeObserver', { value: undefined });
 
     const rendered = render(UseResizeObserverAttachFixture, {
       props: {

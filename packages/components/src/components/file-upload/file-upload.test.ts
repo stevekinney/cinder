@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -133,10 +133,10 @@ describe('FileUpload rendering', () => {
 
   test('exposes a named dropzone group and keeps the native picker keyboard reachable', async () => {
     const { container } = render(FileUpload, { props: { id: 'resume-upload' } });
-    const input = container.querySelector('#resume-upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#resume-upload'), HTMLInputElement);
     const button = screen.getByRole('button', { name: 'Browse files' });
     const inputClick = mock(() => {});
-    input.click = inputClick as unknown as typeof input.click;
+    input.click = inputClick;
 
     expect(screen.getByRole('group', { name: 'File upload' })).toBe(
       container.querySelector('.cinder-file-upload__dropzone')!,
@@ -210,7 +210,7 @@ describe('FileUpload rendering', () => {
         webkitdirectory: true,
       },
     });
-    const input = container.querySelector('#attachments') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#attachments'), HTMLInputElement);
     expect(input.getAttribute('accept')).toBe('.png');
     expect(input.hasAttribute('multiple')).toBe(true);
     expect(input.getAttribute('name')).toBe('attachments');
@@ -228,8 +228,11 @@ describe('FileUpload rendering', () => {
         describedBy: 'resume-help',
       },
     });
-    const input = container.querySelector('#resume') as HTMLInputElement;
-    const button = container.querySelector('.cinder-file-upload__button') as HTMLButtonElement;
+    const input = requiredInstance(container.querySelector('#resume'), HTMLInputElement);
+    const button = requiredInstance(
+      container.querySelector('.cinder-file-upload__button'),
+      HTMLButtonElement,
+    );
     expect(input.getAttribute('aria-describedby')).toBe(
       'resume-file-upload-description resume-description resume-help',
     );
@@ -258,7 +261,7 @@ describe('FileUpload rendering', () => {
         disabled: true,
       },
     });
-    const input = container.querySelector('#resume') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#resume'), HTMLInputElement);
     expect(input.required).toBe(true);
     expect(input.disabled).toBe(true);
   });
@@ -272,7 +275,7 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'resume-upload', onFilesAccepted, onFilesChange },
     });
-    const input = container.querySelector('#resume-upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#resume-upload'), HTMLInputElement);
     attachInputFiles(input, [file]);
     await fireEvent.change(input);
     expect(onFilesAccepted).toHaveBeenCalledTimes(1);
@@ -289,7 +292,7 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'resume-upload', onFilesAccepted },
     });
-    const input = container.querySelector('#resume-upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#resume-upload'), HTMLInputElement);
 
     attachInputFiles(input, [file]);
     await fireEvent.change(input);
@@ -304,7 +307,10 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', maxSize: 1024 * 1024, onReject },
     });
-    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    const dropzone = requiredInstance(
+      container.querySelector('.cinder-file-upload__dropzone'),
+      HTMLDivElement,
+    );
     await fireEvent(dropzone, createDropEvent('drop', [file]));
     expect(onReject).toHaveBeenCalledTimes(1);
     expect(onReject.mock.calls[0]?.[0]?.[0]?.reason).toBe('too-large');
@@ -317,7 +323,10 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', accept: 'image/png', onReject },
     });
-    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    const dropzone = requiredInstance(
+      container.querySelector('.cinder-file-upload__dropzone'),
+      HTMLDivElement,
+    );
     await fireEvent(dropzone, createDropEvent('drop', [file]));
     expect(onReject).toHaveBeenCalledTimes(1);
     expect(onReject.mock.calls[0]?.[0]?.[0]?.reason).toBe('wrong-type');
@@ -329,7 +338,10 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', accept: 'image/*', onFilesAccepted },
     });
-    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    const dropzone = requiredInstance(
+      container.querySelector('.cinder-file-upload__dropzone'),
+      HTMLDivElement,
+    );
     await fireEvent(dropzone, createDropEvent('drop', [file]));
     expect(onFilesAccepted).toHaveBeenCalledTimes(1);
     expect(onFilesAccepted.mock.calls[0]?.[0]).toEqual([file]);
@@ -341,7 +353,10 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', accept: '.pdf,.docx', onFilesAccepted },
     });
-    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    const dropzone = requiredInstance(
+      container.querySelector('.cinder-file-upload__dropzone'),
+      HTMLDivElement,
+    );
     await fireEvent(dropzone, createDropEvent('drop', [file]));
     expect(onFilesAccepted).toHaveBeenCalledTimes(1);
   });
@@ -357,7 +372,10 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', onFilesAccepted, onReject },
     });
-    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    const dropzone = requiredInstance(
+      container.querySelector('.cinder-file-upload__dropzone'),
+      HTMLDivElement,
+    );
     await fireEvent(dropzone, createDropEvent('drop', files));
     expect(onFilesAccepted.mock.calls[0]?.[0]).toEqual([files[0]!]);
     expect(onReject.mock.calls[0]?.[0]).toHaveLength(2);
@@ -383,7 +401,10 @@ describe('FileUpload validation and events', () => {
         onReject,
       },
     });
-    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    const dropzone = requiredInstance(
+      container.querySelector('.cinder-file-upload__dropzone'),
+      HTMLDivElement,
+    );
 
     await fireEvent(dropzone, createDropEvent('drop', files));
 
@@ -407,7 +428,7 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', multiple: true, maxFiles: Number.NaN, onFilesAccepted },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
 
     attachInputFiles(input, files);
     await fireEvent.change(input);
@@ -428,7 +449,7 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', multiple: true, maxFiles: 2, onFilesAccepted, onFilesChange },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
 
     attachInputFiles(input, firstFiles);
     await fireEvent.change(input);
@@ -456,7 +477,7 @@ describe('FileUpload validation and events', () => {
         onReject,
       },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
 
     attachInputFiles(input, [nextFile]);
     await fireEvent.change(input);
@@ -479,7 +500,7 @@ describe('FileUpload validation and events', () => {
         onReject,
       },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
 
     attachInputFiles(input, [nextFile]);
     await fireEvent.change(input);
@@ -496,7 +517,7 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', multiple: true, onFilesChange },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
 
     attachInputFiles(input, [firstFile]);
     await fireEvent.change(input);
@@ -521,7 +542,7 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', multiple: true, onFilesChange },
     });
-    input = container.querySelector('#upload') as HTMLInputElement;
+    input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
 
     attachInputFiles(input, [firstFile]);
     await fireEvent.change(input);
@@ -547,7 +568,7 @@ describe('FileUpload validation and events', () => {
         onFilesChange,
       },
     });
-    input = container.querySelector('#upload') as HTMLInputElement;
+    input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     attachInputFiles(input, [selectedFile]);
@@ -564,7 +585,7 @@ describe('FileUpload validation and events', () => {
     const result = render(FileUploadFormFixture, {
       props: { controlledFiles: [entry], onFilesChange: () => {} },
     });
-    const input = result.container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(result.container.querySelector('#upload'), HTMLInputElement);
 
     attachInputFiles(input, [selectedFile]);
     await fireEvent.change(input);
@@ -580,7 +601,7 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', multiple: true, oncancel },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
 
     attachInputFiles(input, [firstFile]);
     await fireEvent.change(input);
@@ -597,7 +618,7 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', multiple: true },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
 
     attachInputFiles(input, [firstFile]);
     await fireEvent.change(input);
@@ -617,7 +638,7 @@ describe('FileUpload validation and events', () => {
     const result = render(FileUpload, {
       props: { id: 'upload', multiple: true, files: [firstEntry] },
     });
-    const input = result.container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(result.container.querySelector('#upload'), HTMLInputElement);
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     await fireEvent.click(input);
@@ -640,7 +661,7 @@ describe('FileUpload validation and events', () => {
         ],
       },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
 
     await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -659,7 +680,7 @@ describe('FileUpload validation and events', () => {
     const { container, rerender } = render(FileUpload, {
       props: { id: 'upload', multiple: true, maxFiles: 3, files },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(Array.from(input.files ?? [])).toEqual([firstFile, secondFile, thirdFile]);
 
@@ -680,7 +701,7 @@ describe('FileUpload validation and events', () => {
         onReject,
       },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
 
     attachInputFiles(input, [rejectedFile]);
     await fireEvent.change(input);
@@ -697,7 +718,7 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', accept: 'image/*', files: [], onReject },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
     const rejectedFiles = createFileList([rejectedFile]);
     Object.defineProperty(input, 'files', {
       configurable: true,
@@ -724,7 +745,7 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', accept: 'image/*', files: [], onReject },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
     attachInputFiles(input, [rejectedFile]);
     Object.defineProperty(input, 'value', {
       configurable: true,
@@ -751,7 +772,7 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', accept: 'image/*', onFilesAccepted },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
     attachInputFiles(input, [acceptedFile]);
     Object.defineProperty(globalThis, 'DataTransfer', {
       configurable: true,
@@ -774,7 +795,7 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', accept: 'image/*', multiple: true, onFilesChange },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
 
     attachInputFiles(input, [firstFile]);
     await fireEvent.change(input);
@@ -828,7 +849,7 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', accept: 'image/*', files: [], onReject },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
     attachInputFiles(input, [rejectedFile]);
     Object.defineProperty(input, 'value', {
       configurable: true,
@@ -855,7 +876,7 @@ describe('FileUpload validation and events', () => {
     const { container, rerender } = render(FileUpload, {
       props: { id: 'upload', multiple: true, maxFiles: 3, onFilesChange },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
     attachInputFiles(input, [firstFile, secondFile, thirdFile]);
     await fireEvent.change(input);
 
@@ -884,13 +905,14 @@ describe('FileUpload validation and events', () => {
         onFilesChange,
       },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
 
     attachInputFiles(input, [firstFile]);
     await fireEvent.change(input);
-    const removeButton = container.querySelector(
-      '.cinder-file-upload__remove',
-    ) as HTMLButtonElement;
+    const removeButton = requiredInstance(
+      container.querySelector('.cinder-file-upload__remove'),
+      HTMLButtonElement,
+    );
     await fireEvent.click(removeButton);
     attachInputFiles(input, [replacementFile]);
     await fireEvent.change(input);
@@ -908,7 +930,7 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUploadFormFixture, {
       props: { customFileList: true, onFilesChange },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
 
     attachInputFiles(input, [firstFile]);
     await fireEvent.change(input);
@@ -934,22 +956,25 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', multiple: true },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
-    const browseButton = container.querySelector(
-      '.cinder-file-upload__button',
-    ) as HTMLButtonElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
+    const browseButton = requiredInstance(
+      container.querySelector('.cinder-file-upload__button'),
+      HTMLButtonElement,
+    );
 
     attachInputFiles(input, [firstFile, secondFile]);
     await fireEvent.change(input);
-    const firstRemoveButton = container.querySelector(
-      '.cinder-file-upload__remove',
-    ) as HTMLButtonElement;
+    const firstRemoveButton = requiredInstance(
+      container.querySelector('.cinder-file-upload__remove'),
+      HTMLButtonElement,
+    );
     firstRemoveButton.focus();
     await fireEvent.click(firstRemoveButton);
 
-    const remainingRemoveButton = container.querySelector(
-      '.cinder-file-upload__remove',
-    ) as HTMLButtonElement;
+    const remainingRemoveButton = requiredInstance(
+      container.querySelector('.cinder-file-upload__remove'),
+      HTMLButtonElement,
+    );
     expect(document.activeElement).toBe(remainingRemoveButton);
 
     await fireEvent.click(remainingRemoveButton);
@@ -967,13 +992,14 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', multiple: true, onFilesChange },
     });
-    input = container.querySelector('#upload') as HTMLInputElement;
+    input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
 
     attachInputFiles(input, [firstFile, secondFile]);
     await fireEvent.change(input);
-    const firstRemoveButton = container.querySelector(
-      '.cinder-file-upload__remove',
-    ) as HTMLButtonElement;
+    const firstRemoveButton = requiredInstance(
+      container.querySelector('.cinder-file-upload__remove'),
+      HTMLButtonElement,
+    );
     await fireEvent.click(firstRemoveButton);
 
     expect(nativeFilesDuringChange.at(-1)).toEqual([secondFile]);
@@ -998,12 +1024,13 @@ describe('FileUpload validation and events', () => {
         onFilesChange,
       },
     });
-    input = container.querySelector('#upload') as HTMLInputElement;
+    input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    const firstRemoveButton = container.querySelector(
-      '.cinder-file-upload__remove',
-    ) as HTMLButtonElement;
+    const firstRemoveButton = requiredInstance(
+      container.querySelector('.cinder-file-upload__remove'),
+      HTMLButtonElement,
+    );
     await fireEvent.click(firstRemoveButton);
 
     expect(nativeFilesDuringChange).toEqual([[secondFile]]);
@@ -1025,9 +1052,10 @@ describe('FileUpload validation and events', () => {
         onFilesChange,
       },
     });
-    const firstRemoveButton = container.querySelector(
-      '.cinder-file-upload__remove',
-    ) as HTMLButtonElement;
+    const firstRemoveButton = requiredInstance(
+      container.querySelector('.cinder-file-upload__remove'),
+      HTMLButtonElement,
+    );
     firstRemoveButton.focus();
 
     await fireEvent.click(firstRemoveButton);
@@ -1056,9 +1084,10 @@ describe('FileUpload validation and events', () => {
       props: { id: 'upload', files: [firstEntry, secondEntry], onFilesChange },
     });
     rerender = result.rerender;
-    const firstRemoveButton = result.container.querySelector(
-      '.cinder-file-upload__remove',
-    ) as HTMLButtonElement;
+    const firstRemoveButton = requiredInstance(
+      result.container.querySelector('.cinder-file-upload__remove'),
+      HTMLButtonElement,
+    );
     firstRemoveButton.focus();
 
     await fireEvent.click(firstRemoveButton);
@@ -1087,9 +1116,10 @@ describe('FileUpload validation and events', () => {
       props: { id: 'upload', files: [entry], onFilesChange },
     });
     rerender = result.rerender;
-    const removeButton = result.container.querySelector(
-      '.cinder-file-upload__remove',
-    ) as HTMLButtonElement;
+    const removeButton = requiredInstance(
+      result.container.querySelector('.cinder-file-upload__remove'),
+      HTMLButtonElement,
+    );
     removeButton.focus();
 
     await fireEvent.click(removeButton);
@@ -1126,8 +1156,8 @@ describe('FileUpload validation and events', () => {
     const replacementFile = createFile('replacement.txt', 'text/plain', 10);
     const onFilesChange = mock((_entries) => {});
     const { container } = render(FileUploadFormFixture, { props: { onFilesChange } });
-    const form = container.querySelector('form') as HTMLFormElement;
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const form = requiredInstance(container.querySelector('form'), HTMLFormElement);
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
 
     attachInputFiles(input, [file]);
     await fireEvent.change(input);
@@ -1150,8 +1180,8 @@ describe('FileUpload validation and events', () => {
     const file = createFile('report.txt', 'text/plain', 10);
     const onFilesChange = mock((_entries) => {});
     const { container } = render(FileUploadFormFixture, { props: { onFilesChange } });
-    const form = container.querySelector('form') as HTMLFormElement;
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const form = requiredInstance(container.querySelector('form'), HTMLFormElement);
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
     form.addEventListener('reset', (event) => event.preventDefault());
 
     attachInputFiles(input, [file]);
@@ -1173,7 +1203,7 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', form: 'controlled-upload-form', files: [entry] },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(Array.from(input.files ?? [])).toEqual([file]);
 
@@ -1192,7 +1222,7 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUploadFormFixture, {
       props: { controlledFiles: [firstEntry], nextControlledFiles: [secondEntry] },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(Array.from(input.files ?? [])).toEqual([firstFile]);
     attachInputFiles(input, []);
@@ -1209,7 +1239,7 @@ describe('FileUpload validation and events', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', form: 'external-upload-form', onFilesChange },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
     const form = document.createElement('form');
     form.id = 'external-upload-form';
     document.body.append(form);
@@ -1236,7 +1266,7 @@ describe('FileUpload validation and events', () => {
     const { container, rerender } = render(FileUpload, {
       props: { id: 'upload', form: 'first-upload-form', onFilesChange },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
 
     await rerender({ id: 'upload', form: 'second-upload-form', onFilesChange });
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -1260,7 +1290,10 @@ describe('FileUpload drag state and accessibility', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', draggingLabel: 'Release the documents' },
     });
-    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    const dropzone = requiredInstance(
+      container.querySelector('.cinder-file-upload__dropzone'),
+      HTMLDivElement,
+    );
     await fireEvent(dropzone, createDropEvent('dragenter', []));
     expect(dropzone.hasAttribute('data-drag-active')).toBe(true);
     expect(container.querySelector('.cinder-file-upload__title')?.textContent).toBe(
@@ -1274,7 +1307,10 @@ describe('FileUpload drag state and accessibility', () => {
 
   test('dragleave without dataTransfer clears an active file drag state', async () => {
     const { container } = render(FileUpload, { props: { id: 'upload' } });
-    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    const dropzone = requiredInstance(
+      container.querySelector('.cinder-file-upload__dropzone'),
+      HTMLDivElement,
+    );
     await fireEvent(dropzone, createDropEvent('dragenter', []));
     expect(dropzone.hasAttribute('data-drag-active')).toBe(true);
     await fireEvent(dropzone, createDragLeaveWithoutDataTransfer());
@@ -1283,7 +1319,10 @@ describe('FileUpload drag state and accessibility', () => {
 
   test('disabled dragleave clears active drag state after disabling mid-drag', async () => {
     const { container, rerender } = render(FileUpload, { props: { id: 'upload' } });
-    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    const dropzone = requiredInstance(
+      container.querySelector('.cinder-file-upload__dropzone'),
+      HTMLDivElement,
+    );
     await fireEvent(dropzone, createDropEvent('dragenter', []));
     expect(dropzone.hasAttribute('data-drag-active')).toBe(true);
     await rerender({ id: 'upload', disabled: true });
@@ -1293,7 +1332,10 @@ describe('FileUpload drag state and accessibility', () => {
 
   test('dragover prevents default', async () => {
     const { container } = render(FileUpload, { props: { id: 'upload' } });
-    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    const dropzone = requiredInstance(
+      container.querySelector('.cinder-file-upload__dropzone'),
+      HTMLDivElement,
+    );
     const event = createDropEvent('dragover', []);
     await fireEvent(dropzone, event);
     expect(event.defaultPrevented).toBe(true);
@@ -1306,7 +1348,10 @@ describe('FileUpload drag state and accessibility', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', disabled: true, onFilesChange, onReject },
     });
-    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    const dropzone = requiredInstance(
+      container.querySelector('.cinder-file-upload__dropzone'),
+      HTMLDivElement,
+    );
     const event = createDropEvent('drop', [file]);
     await fireEvent(dropzone, event);
     expect(onFilesChange).not.toHaveBeenCalled();
@@ -1319,7 +1364,10 @@ describe('FileUpload drag state and accessibility', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload' },
     });
-    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    const dropzone = requiredInstance(
+      container.querySelector('.cinder-file-upload__dropzone'),
+      HTMLDivElement,
+    );
     await fireEvent(dropzone, createDropEvent('drop', [file]));
     expect(container.querySelectorAll('.cinder-file-upload__row')).toHaveLength(1);
     await fireEvent(dropzone, createNonFileDropEvent('drop'));
@@ -1334,7 +1382,10 @@ describe('FileUpload drag state and accessibility', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', maxSize: 1024, multiple: true, browseLabel: 'Import files' },
     });
-    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    const dropzone = requiredInstance(
+      container.querySelector('.cinder-file-upload__dropzone'),
+      HTMLDivElement,
+    );
     await fireEvent(dropzone, createDropEvent('drop', files));
     await new Promise((resolve) => setTimeout(resolve, 0));
     const liveRegion = container.querySelector('.cinder-sr-only[aria-live="polite"]');
@@ -1343,14 +1394,14 @@ describe('FileUpload drag state and accessibility', () => {
 
   test('the input remains keyboard-focusable', () => {
     const { container } = render(FileUpload, { props: { id: 'upload' } });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
     input.focus();
     expect(document.activeElement).toBe(input);
   });
 
   test('native input activation clears the previous selected file value', async () => {
     const { container } = render(FileUpload, { props: { id: 'upload' } });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
     Object.defineProperty(input, 'value', {
       configurable: true,
       writable: true,
@@ -1367,7 +1418,10 @@ describe('FileUpload drag state and accessibility', () => {
         fieldLabel: 'Resume',
       },
     });
-    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    const dropzone = requiredInstance(
+      container.querySelector('.cinder-file-upload__dropzone'),
+      HTMLDivElement,
+    );
     expect(dropzone.getAttribute('aria-labelledby')).toBe('resume-label');
   });
 
@@ -1375,15 +1429,18 @@ describe('FileUpload drag state and accessibility', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', browseLabel: 'Choose directory' },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
-    const button = container.querySelector('.cinder-file-upload__button') as HTMLButtonElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
+    const button = requiredInstance(
+      container.querySelector('.cinder-file-upload__button'),
+      HTMLButtonElement,
+    );
     const click = mock(() => {});
     Object.defineProperty(input, 'value', {
       configurable: true,
       writable: true,
       value: 'C:\\fakepath\\resume.pdf',
     });
-    input.click = click as unknown as typeof input.click;
+    input.click = click;
     await fireEvent.click(button);
     expect(button.textContent).toBe('Choose directory');
     expect(input.value).toBe('');
@@ -1392,11 +1449,17 @@ describe('FileUpload drag state and accessibility', () => {
 
   test('clicking the advertised dropzone surface opens the picker without double-activating the button', async () => {
     const { container } = render(FileUpload, { props: { id: 'upload' } });
-    const input = container.querySelector('#upload') as HTMLInputElement;
-    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
-    const button = container.querySelector('.cinder-file-upload__button') as HTMLButtonElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
+    const dropzone = requiredInstance(
+      container.querySelector('.cinder-file-upload__dropzone'),
+      HTMLDivElement,
+    );
+    const button = requiredInstance(
+      container.querySelector('.cinder-file-upload__button'),
+      HTMLButtonElement,
+    );
     const click = mock(() => {});
-    input.click = click as unknown as typeof input.click;
+    input.click = click;
 
     container.setAttribute('tabindex', '-1');
 
@@ -1443,8 +1506,11 @@ describe('FileUpload drag state and accessibility', () => {
       target: iframe.contentDocument!.body,
       props: { id: 'upload' },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
-    const button = container.querySelector('.cinder-file-upload__button') as HTMLButtonElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
+    const button = requiredInstance(
+      container.querySelector('.cinder-file-upload__button'),
+      HTMLButtonElement,
+    );
     const click = mock(() => {});
     input.addEventListener('click', click);
 
@@ -1515,7 +1581,10 @@ describe('FileUpload file list rendering', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', files: [entry], onFileRetry },
     });
-    const retryButton = container.querySelector('.cinder-file-upload__retry') as HTMLButtonElement;
+    const retryButton = requiredInstance(
+      container.querySelector('.cinder-file-upload__retry'),
+      HTMLButtonElement,
+    );
 
     expect(retryButton.textContent).toContain('Retry');
     expect(retryButton.getAttribute('aria-label')).toBe('Retry broken.zip');
@@ -1546,12 +1615,14 @@ describe('FileUpload file list rendering', () => {
       props: { id: 'upload', files: [entry], onFileRetry },
     });
     rerender = result.rerender;
-    const retryButton = result.container.querySelector(
-      '.cinder-file-upload__retry',
-    ) as HTMLButtonElement;
-    const browseButton = result.container.querySelector(
-      '.cinder-file-upload__button',
-    ) as HTMLButtonElement;
+    const retryButton = requiredInstance(
+      result.container.querySelector('.cinder-file-upload__retry'),
+      HTMLButtonElement,
+    );
+    const browseButton = requiredInstance(
+      result.container.querySelector('.cinder-file-upload__button'),
+      HTMLButtonElement,
+    );
     retryButton.focus();
 
     await fireEvent.click(retryButton);
@@ -1581,9 +1652,10 @@ describe('FileUpload file list rendering', () => {
       props: { id: 'upload', files: [entry], onFileRetry },
     });
     rerender = result.rerender;
-    const retryButton = result.container.querySelector(
-      '.cinder-file-upload__retry',
-    ) as HTMLButtonElement;
+    const retryButton = requiredInstance(
+      result.container.querySelector('.cinder-file-upload__retry'),
+      HTMLButtonElement,
+    );
     retryButton.focus();
 
     await fireEvent.click(retryButton);
@@ -1617,9 +1689,10 @@ describe('FileUpload file list rendering', () => {
       props: { id: 'upload', files: [entry], onFileRetry },
     });
     rerender = result.rerender;
-    const retryButton = result.container.querySelector(
-      '.cinder-file-upload__retry',
-    ) as HTMLButtonElement;
+    const retryButton = requiredInstance(
+      result.container.querySelector('.cinder-file-upload__retry'),
+      HTMLButtonElement,
+    );
     retryButton.focus();
 
     await fireEvent.click(retryButton);
@@ -1639,7 +1712,8 @@ describe('FileUpload file list rendering', () => {
     });
 
     expect(
-      (container.querySelector('.cinder-file-upload__retry') as HTMLButtonElement).disabled,
+      requiredInstance(container.querySelector('.cinder-file-upload__retry'), HTMLButtonElement)
+        .disabled,
     ).toBe(true);
   });
 
@@ -1662,7 +1736,7 @@ describe('FileUpload file list rendering', () => {
     const { container } = render(FileUpload, {
       props: { id: 'upload', maxSize: 10, onFilesChange, onFileRetry },
     });
-    const input = container.querySelector('#upload') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#upload'), HTMLInputElement);
 
     attachInputFiles(input, [rejectedFile]);
     await fireEvent.change(input);
@@ -1679,7 +1753,10 @@ describe('FileUpload file list rendering', () => {
 
   test('border beam emphasis is enabled by default and can be disabled', async () => {
     const { container, rerender } = render(FileUpload, { props: { id: 'upload' } });
-    const dropzone = container.querySelector('.cinder-file-upload__dropzone') as HTMLDivElement;
+    const dropzone = requiredInstance(
+      container.querySelector('.cinder-file-upload__dropzone'),
+      HTMLDivElement,
+    );
     expect(dropzone.classList.contains('cinder-file-upload__dropzone--border-beam')).toBe(true);
 
     await rerender({ id: 'upload', borderBeamVisible: false });

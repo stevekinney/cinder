@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Button from '@lostgradient/cinder/button';
+  import { default as Button } from '../button/index.ts';
   import type { Snippet } from 'svelte';
   let {
     expanded = false,

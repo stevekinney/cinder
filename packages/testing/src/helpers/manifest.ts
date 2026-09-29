@@ -1,12 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-import type {
-  FixtureCategory,
-  InteractionStep,
-  MaskRule,
-} from '../../../components/scripts/lib/visual-fixtures/schema.ts';
+import { environmentConfiguration } from '../environment-configuration.ts';
+import type { FixtureCategory, InteractionStep, MaskRule } from '../visual-fixtures.ts';
 
 export type Theme = 'light' | 'dark';
 export type ViewportName = 'mobile' | 'tablet' | 'desktop';
@@ -46,34 +40,53 @@ export const VIEWPORTS: readonly Viewport[] = [
 
 type ManifestFile = { digest: string; entries: ComponentEntry[] };
 
-let cached: ManifestFile | null = null;
+const cached = new Map<string, ManifestFile>();
 
-function manifestPath(): string {
-  const here = dirname(fileURLToPath(import.meta.url));
-  // src/helpers/manifest.ts → ../../.playwright/manifest.json
-  return resolve(here, '..', '..', '.playwright', 'manifest.json');
+function isManifestFile(value: unknown): value is ManifestFile {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    typeof (value as { digest?: unknown }).digest === 'string' &&
+    Array.isArray((value as { entries?: unknown }).entries)
+  );
 }
 
-function read(): ManifestFile {
-  if (cached) return cached;
-  const path = manifestPath();
+function manifestPath(path: string | undefined): string {
+  if (path === undefined || path.length === 0) {
+    throw new Error(
+      'A browser fixture manifest path is required. Set BROWSER_FIXTURE_MANIFEST before loading the manifest.',
+    );
+  }
+  return path;
+}
+
+function read(
+  path = manifestPath(environmentConfiguration().browserFixtureManifest),
+): ManifestFile {
+  const ownedPath = manifestPath(path);
+  const existing = cached.get(ownedPath);
+  if (existing !== undefined) return existing;
   let raw: string;
   try {
-    raw = readFileSync(path, 'utf-8');
+    raw = readFileSync(ownedPath, 'utf-8');
   } catch (error) {
     throw new Error(
-      `Manifest cache missing at ${path}. Run \`bun run test:browser\` (which invokes scripts/start-server.ts → scripts/prepare-manifest.ts) before loading this module.`,
+      `Browser fixture manifest missing at ${ownedPath}. Run the owning application's manifest preparation command before loading this module.`,
       { cause: error },
     );
   }
-  cached = JSON.parse(raw) as ManifestFile;
-  return cached;
+  const parsed: unknown = JSON.parse(raw);
+  if (!isManifestFile(parsed)) {
+    throw new Error(`Manifest cache at ${path} does not match the expected shape.`);
+  }
+  cached.set(ownedPath, parsed);
+  return parsed;
 }
 
-export function loadManifest(): ComponentEntry[] {
-  return read().entries;
+export function loadManifest(path?: string): ComponentEntry[] {
+  return read(path).entries;
 }
 
-export function manifestDigest(): string {
-  return read().digest;
+export function manifestDigest(path?: string): string {
+  return read(path).digest;
 }

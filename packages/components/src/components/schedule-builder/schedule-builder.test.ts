@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import type { ScheduleFire, ScheduleValue } from './schedule-builder.types.ts';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
@@ -119,8 +119,8 @@ describe('ScheduleBuilder', () => {
       expect(container.querySelector('.cinder-schedule-builder__summary-text')?.textContent).toBe(
         'Every 5 hours',
       );
-      expect((getByLabelText('Every') as HTMLInputElement).value).toBe('5');
-      expect((getByLabelText('Unit') as HTMLSelectElement).value).toBe('hours');
+      expect(requiredInstance(getByLabelText('Every'), HTMLInputElement).value).toBe('5');
+      expect(requiredInstance(getByLabelText('Unit'), HTMLSelectElement).value).toBe('hours');
     });
 
     test('starts in interval mode for a days interval value (presets cannot represent it)', () => {
@@ -131,8 +131,8 @@ describe('ScheduleBuilder', () => {
       expect(container.querySelector('.cinder-schedule-builder__summary-text')?.textContent).toBe(
         'Every 3 days',
       );
-      expect((getByLabelText('Every') as HTMLInputElement).value).toBe('3');
-      expect((getByLabelText('Unit') as HTMLSelectElement).value).toBe('days');
+      expect(requiredInstance(getByLabelText('Every'), HTMLInputElement).value).toBe('3');
+      expect(requiredInstance(getByLabelText('Unit'), HTMLSelectElement).value).toBe('days');
     });
 
     test('starts in interval mode for a weeks interval value (presets cannot represent it)', () => {
@@ -150,8 +150,8 @@ describe('ScheduleBuilder', () => {
       expect(container.querySelector('.cinder-schedule-builder__summary-text')?.textContent).toBe(
         'Daily at 14:30',
       );
-      expect((getByLabelText('Minute') as HTMLInputElement).value).toBe('30');
-      expect((getByLabelText('Hour') as HTMLInputElement).value).toBe('14');
+      expect(requiredInstance(getByLabelText('Minute'), HTMLInputElement).value).toBe('30');
+      expect(requiredInstance(getByLabelText('Hour'), HTMLInputElement).value).toBe('14');
     });
   });
 
@@ -167,7 +167,7 @@ describe('ScheduleBuilder', () => {
       expect(getByRole('tab', { name: 'Cron', selected: true })).not.toBeNull();
       expect(queryByRole('tab', { name: 'Presets' })).toBeNull();
       expect(queryByRole('tab', { name: 'Interval' })).toBeNull();
-      expect((getByLabelText('Minute') as HTMLInputElement).value).toBe('*/15');
+      expect(requiredInstance(getByLabelText('Minute'), HTMLInputElement).value).toBe('*/15');
     });
 
     test('cron-only authoring emits only cron values', async () => {
@@ -177,7 +177,7 @@ describe('ScheduleBuilder', () => {
         onValueChange,
       });
 
-      const minuteField = getByLabelText('Minute') as HTMLInputElement;
+      const minuteField = requiredInstance(getByLabelText('Minute'), HTMLInputElement);
       await fireEvent.input(minuteField, { target: { value: '0' } });
 
       expect(onValueChange).toHaveBeenCalledTimes(1);
@@ -199,8 +199,8 @@ describe('ScheduleBuilder', () => {
       expect(container.querySelector('.cinder-schedule-builder__summary-text')?.textContent).toBe(
         'Every 5 hours',
       );
-      expect((getByLabelText('Every') as HTMLInputElement).value).toBe('5');
-      expect((getByLabelText('Unit') as HTMLSelectElement).value).toBe('hours');
+      expect(requiredInstance(getByLabelText('Every'), HTMLInputElement).value).toBe('5');
+      expect(requiredInstance(getByLabelText('Unit'), HTMLSelectElement).value).toBe('hours');
     });
   });
 
@@ -235,7 +235,7 @@ describe('ScheduleBuilder', () => {
 
       // Already in cron mode (a cron `value` opens directly there). Start an
       // in-progress, momentarily-invalid edit to the minute field.
-      const minuteField = getByLabelText('Minute') as HTMLInputElement;
+      const minuteField = requiredInstance(getByLabelText('Minute'), HTMLInputElement);
       await fireEvent.input(minuteField, { target: { value: '9' } });
       expect(minuteField.value).toBe('9');
       // A single-digit "9" is a valid cron token on its own, so this commits —
@@ -257,14 +257,14 @@ describe('ScheduleBuilder', () => {
       const { getByLabelText, getByRole, rerender } = render(ScheduleBuilder, {});
 
       await fireEvent.click(getByRole('tab', { name: 'Cron' }));
-      const minuteField = getByLabelText('Minute') as HTMLInputElement;
+      const minuteField = requiredInstance(getByLabelText('Minute'), HTMLInputElement);
       await fireEvent.input(minuteField, { target: { value: '0' } });
 
       // A re-render with no `value` prop at all (still uncontrolled) must not
       // clobber the in-progress cron edit.
       await rerender({});
 
-      expect((getByLabelText('Minute') as HTMLInputElement).value).toBe('0');
+      expect(requiredInstance(getByLabelText('Minute'), HTMLInputElement).value).toBe('0');
     });
 
     test('a controlled parent that rejects an edit by re-passing the prior value reverts the field', async () => {
@@ -275,7 +275,7 @@ describe('ScheduleBuilder', () => {
         onValueChange,
       });
 
-      const minuteField = getByLabelText('Minute') as HTMLInputElement;
+      const minuteField = requiredInstance(getByLabelText('Minute'), HTMLInputElement);
       await fireEvent.input(minuteField, { target: { value: '30' } });
       expect(minuteField.value).toBe('30');
       expect(onValueChange).toHaveBeenCalledTimes(1);
@@ -287,7 +287,7 @@ describe('ScheduleBuilder', () => {
       // guard treats it as a genuine external change and reseeds.
       await rerender({ value: { ...initialValue }, onValueChange });
 
-      expect((getByLabelText('Minute') as HTMLInputElement).value).toBe('0');
+      expect(requiredInstance(getByLabelText('Minute'), HTMLInputElement).value).toBe('0');
     });
 
     test('a controlled value change to undefined resets the visible mode and summary to the default', async () => {
@@ -333,7 +333,7 @@ describe('ScheduleBuilder', () => {
       const { getByLabelText, getByRole, rerender } = render(ScheduleBuilder, {});
 
       await fireEvent.click(getByRole('tab', { name: 'Cron' }));
-      const minuteField = getByLabelText('Minute') as HTMLInputElement;
+      const minuteField = requiredInstance(getByLabelText('Minute'), HTMLInputElement);
       await fireEvent.input(minuteField, { target: { value: '7' } });
 
       // Re-render with the same (absent) props, as an uncontrolled consumer
@@ -342,7 +342,7 @@ describe('ScheduleBuilder', () => {
       await rerender({});
       await rerender({});
 
-      expect((getByLabelText('Minute') as HTMLInputElement).value).toBe('7');
+      expect(requiredInstance(getByLabelText('Minute'), HTMLInputElement).value).toBe('7');
     });
   });
 
@@ -386,11 +386,11 @@ describe('ScheduleBuilder', () => {
       await fireEvent.click(getByRole('tab', { name: 'Cron' }));
 
       // Default value is "every 15 minutes" -> */15 * * * *
-      expect((getByLabelText('Minute') as HTMLInputElement).value).toBe('*/15');
-      expect((getByLabelText('Hour') as HTMLInputElement).value).toBe('*');
-      expect((getByLabelText('Day of month') as HTMLInputElement).value).toBe('*');
-      expect((getByLabelText('Month') as HTMLInputElement).value).toBe('*');
-      expect((getByLabelText('Day of week') as HTMLInputElement).value).toBe('*');
+      expect(requiredInstance(getByLabelText('Minute'), HTMLInputElement).value).toBe('*/15');
+      expect(requiredInstance(getByLabelText('Hour'), HTMLInputElement).value).toBe('*');
+      expect(requiredInstance(getByLabelText('Day of month'), HTMLInputElement).value).toBe('*');
+      expect(requiredInstance(getByLabelText('Month'), HTMLInputElement).value).toBe('*');
+      expect(requiredInstance(getByLabelText('Day of week'), HTMLInputElement).value).toBe('*');
     });
 
     test('entering interval mode from a representable cron value seeds every/unit losslessly', async () => {
@@ -399,8 +399,8 @@ describe('ScheduleBuilder', () => {
 
       await fireEvent.click(getByRole('tab', { name: 'Interval' }));
 
-      expect((getByLabelText('Every') as HTMLInputElement).value).toBe('2');
-      const unitSelect = getByLabelText('Unit') as HTMLSelectElement;
+      expect(requiredInstance(getByLabelText('Every'), HTMLInputElement).value).toBe('2');
+      const unitSelect = requiredInstance(getByLabelText('Unit'), HTMLSelectElement);
       expect(unitSelect.value).toBe('hours');
     });
 
@@ -410,8 +410,8 @@ describe('ScheduleBuilder', () => {
 
       await fireEvent.click(getByRole('tab', { name: 'Interval' }));
 
-      expect((getByLabelText('Every') as HTMLInputElement).value).toBe('15');
-      const unitSelect = getByLabelText('Unit') as HTMLSelectElement;
+      expect(requiredInstance(getByLabelText('Every'), HTMLInputElement).value).toBe('15');
+      const unitSelect = requiredInstance(getByLabelText('Unit'), HTMLSelectElement);
       expect(unitSelect.value).toBe('minutes');
     });
 
@@ -422,14 +422,14 @@ describe('ScheduleBuilder', () => {
       const { getByLabelText, getByRole } = render(ScheduleBuilder, {});
 
       await fireEvent.click(getByRole('tab', { name: 'Cron' }));
-      const minuteField = getByLabelText('Minute') as HTMLInputElement;
+      const minuteField = requiredInstance(getByLabelText('Minute'), HTMLInputElement);
       await fireEvent.input(minuteField, { target: { value: '0' } });
       expect(minuteField.value).toBe('0');
 
       await fireEvent.click(getByRole('tab', { name: 'Presets' }));
       await fireEvent.click(getByRole('tab', { name: 'Cron' }));
 
-      expect((getByLabelText('Minute') as HTMLInputElement).value).toBe('0');
+      expect(requiredInstance(getByLabelText('Minute'), HTMLInputElement).value).toBe('0');
     });
 
     test('switching to presets after committing a representable hours interval seeds the "every N" preset instead of the default', async () => {
@@ -443,8 +443,8 @@ describe('ScheduleBuilder', () => {
       await fireEvent.click(getByRole('tab', { name: 'Presets' }));
 
       expect(getByRole('radio', { name: 'Every N' }).getAttribute('aria-checked')).toBe('true');
-      expect((getByLabelText('Every') as HTMLInputElement).value).toBe('2');
-      const unitSelect = getByLabelText('Unit') as HTMLSelectElement;
+      expect(requiredInstance(getByLabelText('Every'), HTMLInputElement).value).toBe('2');
+      const unitSelect = requiredInstance(getByLabelText('Unit'), HTMLSelectElement);
       expect(unitSelect.value).toBe('hours');
       expect(container.querySelector('.cinder-schedule-builder__summary-text')?.textContent).toBe(
         'Every 2 hours',
@@ -457,8 +457,8 @@ describe('ScheduleBuilder', () => {
 
       await fireEvent.click(getByRole('tab', { name: 'Presets' }));
 
-      expect((getByLabelText('Every') as HTMLInputElement).value).toBe('15');
-      const unitSelect = getByLabelText('Unit') as HTMLSelectElement;
+      expect(requiredInstance(getByLabelText('Every'), HTMLInputElement).value).toBe('15');
+      const unitSelect = requiredInstance(getByLabelText('Unit'), HTMLSelectElement);
       expect(unitSelect.value).toBe('minutes');
     });
   });
@@ -468,7 +468,7 @@ describe('ScheduleBuilder', () => {
       const onValueChange = mock();
       const { getByLabelText } = render(ScheduleBuilder, { onValueChange });
 
-      const everyInput = getByLabelText('Every') as HTMLInputElement;
+      const everyInput = requiredInstance(getByLabelText('Every'), HTMLInputElement);
       await fireEvent.input(everyInput, { target: { value: '30' } });
       await fireEvent.blur(everyInput);
 
@@ -481,7 +481,7 @@ describe('ScheduleBuilder', () => {
       const onValueChange = mock();
       const { getByLabelText } = render(ScheduleBuilder, { onValueChange });
 
-      const everyInput = getByLabelText('Every') as HTMLInputElement;
+      const everyInput = requiredInstance(getByLabelText('Every'), HTMLInputElement);
       await fireEvent.input(everyInput, { target: { value: '2.5' } });
       await fireEvent.blur(everyInput);
 
@@ -496,7 +496,7 @@ describe('ScheduleBuilder', () => {
       const onValueChange = mock();
       const { getByLabelText } = render(ScheduleBuilder, { onValueChange });
 
-      const unitSelect = getByLabelText('Unit') as HTMLSelectElement;
+      const unitSelect = requiredInstance(getByLabelText('Unit'), HTMLSelectElement);
       await fireEvent.change(unitSelect, { target: { value: 'hours' } });
 
       expect(onValueChange).toHaveBeenCalledTimes(1);
@@ -566,7 +566,7 @@ describe('ScheduleBuilder', () => {
       expect(onValueChange).toHaveBeenCalledTimes(2);
       expect(onValueChange.mock.calls[1]![0]).toEqual({ mode: 'cron', expression: '0 9 * * 1' });
 
-      const timeInput = getByLabelText('At') as HTMLInputElement;
+      const timeInput = requiredInstance(getByLabelText('At'), HTMLInputElement);
       await fireEvent.change(timeInput, { target: { value: '10:00' } });
 
       expect(onValueChange).toHaveBeenCalledTimes(3);
@@ -596,7 +596,7 @@ describe('ScheduleBuilder', () => {
       // presetMonthlyDay defaults to 1, presetMonthlyTime defaults to '09:00'.
       expect(onValueChange.mock.calls[0]![0]).toEqual({ mode: 'cron', expression: '0 9 1 * *' });
 
-      const dayInput = getByLabelText('Day of month') as HTMLInputElement;
+      const dayInput = requiredInstance(getByLabelText('Day of month'), HTMLInputElement);
       await fireEvent.input(dayInput, { target: { value: '15' } });
       await fireEvent.blur(dayInput);
 
@@ -631,12 +631,12 @@ describe('ScheduleBuilder', () => {
       const { getByLabelText, getByRole } = render(ScheduleBuilder, { onValueChange });
 
       // every
-      await fireEvent.change(getByLabelText('Unit') as HTMLSelectElement, {
+      await fireEvent.change(getByLabelText('Unit'), {
         target: { value: 'hours' },
       });
       // daily
       await fireEvent.click(getByRole('radio', { name: 'Daily' }));
-      await fireEvent.change(getByLabelText('At') as HTMLInputElement, {
+      await fireEvent.change(getByLabelText('At'), {
         target: { value: '08:00' },
       });
       // weekly
@@ -644,7 +644,7 @@ describe('ScheduleBuilder', () => {
       await fireEvent.click(getByRole('button', { name: 'Friday' }));
       // monthly
       await fireEvent.click(getByRole('radio', { name: 'Monthly' }));
-      const dayInput = getByLabelText('Day of month') as HTMLInputElement;
+      const dayInput = requiredInstance(getByLabelText('Day of month'), HTMLInputElement);
       await fireEvent.input(dayInput, { target: { value: '1' } });
       await fireEvent.blur(dayInput);
 
@@ -662,7 +662,7 @@ describe('ScheduleBuilder', () => {
       const { getByLabelText, getByRole } = render(ScheduleBuilder, { onValueChange });
 
       await fireEvent.click(getByRole('tab', { name: 'Interval' }));
-      const everyInput = getByLabelText('Every') as HTMLInputElement;
+      const everyInput = requiredInstance(getByLabelText('Every'), HTMLInputElement);
       await fireEvent.input(everyInput, { target: { value: '5' } });
       await fireEvent.blur(everyInput);
 
@@ -679,7 +679,7 @@ describe('ScheduleBuilder', () => {
       const { getByLabelText, getByRole } = render(ScheduleBuilder, { onValueChange });
 
       await fireEvent.click(getByRole('tab', { name: 'Interval' }));
-      const unitSelect = getByLabelText('Unit') as HTMLSelectElement;
+      const unitSelect = requiredInstance(getByLabelText('Unit'), HTMLSelectElement);
       await fireEvent.change(unitSelect, { target: { value: 'weeks' } });
 
       expect(onValueChange).toHaveBeenCalledTimes(1);
@@ -697,7 +697,7 @@ describe('ScheduleBuilder', () => {
         new URL('./schedule-builder-cron-editor.svelte', import.meta.url),
       ).text();
 
-      expect(source).toContain("import Grid from '@lostgradient/cinder/grid'");
+      expect(source).toContain("import { default as Grid } from '../grid/index.ts'");
       expect(source).not.toContain("from '../grid/grid.svelte'");
     });
 
@@ -715,14 +715,18 @@ describe('ScheduleBuilder', () => {
       expect(getAllByRole('option', { name: 'Step (every N)' })).not.toHaveLength(0);
       expect(getAllByRole('option', { name: 'Advanced raw expression' })).not.toHaveLength(0);
 
-      const minuteRawExpression = getByLabelText('Minute') as HTMLInputElement;
-      expect((minuteRawExpression.closest('details') as HTMLDetailsElement).open).toBe(false);
+      const minuteRawExpression = requiredInstance(getByLabelText('Minute'), HTMLInputElement);
+      expect(
+        requiredInstance(minuteRawExpression.closest('details'), HTMLDetailsElement).open,
+      ).toBe(false);
       expect(minuteRawExpression.getAttribute('data-cinder-variant')).toBe('code');
 
       await fireEvent.change(getByLabelText('Minute pattern'), {
         target: { value: 'advanced' },
       });
-      expect((minuteRawExpression.closest('details') as HTMLDetailsElement).open).toBe(true);
+      expect(
+        requiredInstance(minuteRawExpression.closest('details'), HTMLDetailsElement).open,
+      ).toBe(true);
 
       await fireEvent.change(getByLabelText('Minute pattern'), { target: { value: 'step' } });
       await fireEvent.input(getByLabelText('Minute step'), { target: { value: '15' } });
@@ -744,7 +748,9 @@ describe('ScheduleBuilder', () => {
       });
       await fireEvent.input(getByLabelText('Minute'), { target: { value: '*/10' } });
 
-      expect((getByLabelText('Minute pattern') as HTMLSelectElement).value).toBe('advanced');
+      expect(requiredInstance(getByLabelText('Minute pattern'), HTMLSelectElement).value).toBe(
+        'advanced',
+      );
       expect(queryByLabelText('Minute value', { exact: true })).toBeNull();
       expect(onValueChange.mock.calls.at(-1)?.[0]).toEqual({
         mode: 'cron',
@@ -766,7 +772,7 @@ describe('ScheduleBuilder', () => {
       const { getByLabelText, getByRole } = render(ScheduleBuilder, { onValueChange });
 
       await fireEvent.click(getByRole('tab', { name: 'Cron' }));
-      const minuteField = getByLabelText('Minute') as HTMLInputElement;
+      const minuteField = requiredInstance(getByLabelText('Minute'), HTMLInputElement);
       await fireEvent.input(minuteField, { target: { value: '0' } });
 
       expect(onValueChange).toHaveBeenCalledTimes(1);
@@ -781,7 +787,7 @@ describe('ScheduleBuilder', () => {
       const { getByLabelText, getByRole } = render(ScheduleBuilder, { onValueChange });
 
       await fireEvent.click(getByRole('tab', { name: 'Cron' }));
-      const hourField = getByLabelText('Hour') as HTMLInputElement;
+      const hourField = requiredInstance(getByLabelText('Hour'), HTMLInputElement);
       await fireEvent.input(hourField, { target: { value: '99' } });
 
       expect(hourField.getAttribute('aria-invalid')).toBe('true');
@@ -799,7 +805,7 @@ describe('ScheduleBuilder', () => {
       const { getByLabelText, getByRole } = render(ScheduleBuilder, { onValueChange });
 
       await fireEvent.click(getByRole('tab', { name: 'Cron' }));
-      const hourField = getByLabelText('Hour') as HTMLInputElement;
+      const hourField = requiredInstance(getByLabelText('Hour'), HTMLInputElement);
       await fireEvent.input(hourField, { target: { value: '99' } });
       expect(onValueChange).not.toHaveBeenCalled();
 
@@ -813,7 +819,7 @@ describe('ScheduleBuilder', () => {
 
       await fireEvent.click(getByRole('tab', { name: 'Cron' }));
 
-      const minuteField = getByLabelText('Minute') as HTMLInputElement;
+      const minuteField = requiredInstance(getByLabelText('Minute'), HTMLInputElement);
       const describedBy = minuteField.getAttribute('aria-describedby') ?? '';
       const hintId = describedBy.split(' ')[0] ?? '';
       expect(document.getElementById(hintId)?.textContent).toBe('0–59');
@@ -831,7 +837,7 @@ describe('ScheduleBuilder', () => {
       const { container, getByLabelText, getByRole } = render(ScheduleBuilder, {});
 
       await fireEvent.click(getByRole('tab', { name: 'Interval' }));
-      const unitSelect = getByLabelText('Unit') as HTMLSelectElement;
+      const unitSelect = requiredInstance(getByLabelText('Unit'), HTMLSelectElement);
       await fireEvent.change(unitSelect, { target: { value: 'hours' } });
 
       const summary = container.querySelector('.cinder-schedule-builder__summary-text');
@@ -921,7 +927,7 @@ describe('ScheduleBuilder', () => {
       await fireEvent.click(getByRole('tab', { name: 'Cron' }));
       computeNextFires.mockClear();
 
-      const hourField = getByLabelText('Hour') as HTMLInputElement;
+      const hourField = requiredInstance(getByLabelText('Hour'), HTMLInputElement);
       await fireEvent.input(hourField, { target: { value: '99' } });
 
       expect(computeNextFires).not.toHaveBeenCalled();
@@ -936,7 +942,7 @@ describe('ScheduleBuilder', () => {
       const { getByLabelText, getByRole } = render(ScheduleBuilder, { computeNextFires });
 
       await fireEvent.click(getByRole('tab', { name: 'Cron' }));
-      const hourField = getByLabelText('Hour') as HTMLInputElement;
+      const hourField = requiredInstance(getByLabelText('Hour'), HTMLInputElement);
       await fireEvent.input(hourField, { target: { value: '99' } });
       computeNextFires.mockClear();
 

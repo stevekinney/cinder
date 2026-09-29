@@ -16,14 +16,7 @@ import type { HTMLAttributes } from 'svelte/elements';
  * their own `status` prop against this union rather than restating it.
  */
 export type StatusDotStatus =
-  | 'online'
-  | 'offline'
-  | 'warning'
-  | 'danger'
-  | 'pending'
-  | 'neutral'
-  | 'success'
-  | 'accent';
+  'online' | 'offline' | 'warning' | 'danger' | 'pending' | 'neutral' | 'success' | 'accent';
 
 export type StatusDotSize = 'sm' | 'md';
 

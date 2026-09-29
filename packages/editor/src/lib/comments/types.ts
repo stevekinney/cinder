@@ -463,7 +463,7 @@ export function toPersistedThreads(threads: Thread[]): PersistedThread[] {
  * - Bind `value` from the same saved state. Because every restored thread goes
  *   through re-anchoring, a thread whose quote is absent from that document
  *   comes back `orphaned` rather than placed: kept, undecorated, and retried on
- *   every later pass. `onthreaddelete` does NOT fire - removing it is the
+ *   every later pass. `onThreadDelete` does NOT fire - removing it is the
  *   consumer's decision. Binding a DIFFERENT document is therefore survivable;
  *   it orphans the comments rather than destroying them.
  * - Document-level anchors (`type: 'document'`) carry no quote, are never

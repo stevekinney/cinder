@@ -1,16 +1,10 @@
 # PayloadInspector
 
-Compact inspector for structured payloads. Presents a payload as an
-interactive JSON tree with a visible label, byte size, truncation state, and a
-single copy action.
+Compact inspector for structured payloads. Presents a payload as an interactive JSON tree with a visible label, byte size, truncation state, and a single copy action.
 
 ## Overview
 
-`PayloadInspector` wraps `JsonViewer`, `Badge`, and `CopyButton` into a single
-component optimized for operational dashboards — workflow engines, API
-consoles, webhook debuggers, and background job UIs. Pass any
-JSON-serializable value; the inspector handles parsing, copy affordances, and
-edge cases.
+`PayloadInspector` wraps `JsonViewer`, `Badge`, and `CopyButton` into a single component optimized for operational dashboards — workflow engines, API consoles, webhook debuggers, and background job UIs. Pass any JSON-serializable value; the inspector handles parsing, copy affordances, and edge cases.
 
 Edge cases handled out of the box:
 
@@ -20,14 +14,13 @@ Edge cases handled out of the box:
 - Empty / no payload — shows a "No payload" placeholder
 - Oversized payloads — JsonViewer's built-in cap prevents browser freezes
 - Truncated payloads — a header badge indicates producer-side truncation
-- Circular references and non-serializable values (e.g. BigInt) — an
-  explanatory message renders instead of the tree; size reads "Unknown size"
+- Circular references and non-serializable values (e.g. BigInt) — an explanatory message renders instead of the tree; size reads "Unknown size"
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import { PayloadInspector } from '@lostgradient/cinder/payload-inspector';
+  import { PayloadInspector } from '@lostgradient/cinder';
 </script>
 
 <PayloadInspector
@@ -38,8 +31,7 @@ Edge cases handled out of the box:
 
 ### With a JSON string
 
-When your data arrives as a serialized string (e.g. from a message queue or
-API response body), pass it directly. The component parses it automatically:
+When your data arrives as a serialized string (e.g. from a message queue or API response body), pass it directly. The component parses it automatically:
 
 ```svelte
 <PayloadInspector value={rawJsonString} />
@@ -47,8 +39,7 @@ API response body), pass it directly. The component parses it automatically:
 
 ### With truncation flag
 
-When the producer truncates a payload before sending (e.g. due to wire
-limits), set `truncated` to signal this to the reader:
+When the producer truncates a payload before sending (e.g. due to wire limits), set `truncated` to signal this to the reader:
 
 ```svelte
 <PayloadInspector value={truncatedPayload} truncated />
@@ -56,20 +47,15 @@ limits), set `truncated` to signal this to the reader:
 
 ### Copy behavior
 
-The header copy button copies pretty-printed JSON of the parsed value. When
-the payload itself is a string — including a JSON-encoded string primitive
-like `'"hello"'` — it copies that original string verbatim instead, so the
-copied text always matches what was actually passed as `value`. It is hidden
-for empty and unserializable payloads.
+The header copy button copies pretty-printed JSON of the parsed value. When the payload itself is a string — including a JSON-encoded string primitive like `'"hello"'` — it copies that original string verbatim instead, so the copied text always matches what was actually passed as `value`. It is hidden for empty and unserializable payloads.
 
 ### Redacting sensitive fields
 
-Redact the payload **before** passing it as `value` — the inspector renders
-exactly what it receives:
+Redact the payload **before** passing it as `value` — the inspector renders exactly what it receives:
 
 ```svelte
 <script lang="ts">
-  import { PayloadInspector } from '@lostgradient/cinder/payload-inspector';
+  import { PayloadInspector } from '@lostgradient/cinder';
 
   function redact(raw: Record<string, unknown>): Record<string, unknown> {
     const { password: _, token: __, ...safe } = raw;
@@ -110,19 +96,10 @@ Pass a `parse` function to support alternative serialization formats:
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Accessibility
 
-The root element is a plain `<div>` — not a landmark — so a dashboard
-rendering many inspectors adds nothing to the screen reader's landmark list.
-The visible `label` names the panel, and the JSON tree is cinder's
-`JsonViewer`, a WAI-ARIA tree composite; see
-[json-viewer accessibility documentation](../json-viewer/json-viewer.a11y.md)
-for its keyboard contract.
+The root element is a plain `<div>` — not a landmark — so a dashboard rendering many inspectors adds nothing to the screen reader's landmark list. The visible `label` names the panel, and the JSON tree is cinder's `JsonViewer`, a WAI-ARIA tree composite; see [json-viewer accessibility documentation](../json-viewer/json-viewer.a11y.md) for its keyboard contract.
 
-Parse errors render with `role="alert"` for immediate announcement. Empty
-states use `role="status"`. The byte size span carries an `aria-label` like
-"13 B payload size" for screen readers that skip the visual context. See
-[payload-inspector.a11y.md](./payload-inspector.a11y.md) for the full pattern.
+Parse errors render with `role="alert"` for immediate announcement. Empty states use `role="status"`. The byte size span carries an `aria-label` like "13 B payload size" for screen readers that skip the visual context. See [payload-inspector.a11y.md](./payload-inspector.a11y.md) for the full pattern.

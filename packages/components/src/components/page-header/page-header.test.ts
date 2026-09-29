@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 
 import Ajv2020 from 'ajv/dist/2020';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import.
 setupHappyDom();

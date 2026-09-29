@@ -1,5 +1,11 @@
-import type { ErrorObject, ValidateFunction } from 'ajv';
-
+import {
+  compileInterpreted,
+  dedupeInterpreterErrors,
+  stripPointerHash,
+  type InterpreterCompiled,
+  type InterpreterError,
+  type InterpreterKnownDraft,
+} from '../../utilities/json-schema-interpreter.ts';
 import { isRecord, pathKey, type JsonSchemaObject } from './schema-form-model.ts';
 
 export type SchemaFormValidationIssue = {
@@ -11,7 +17,7 @@ export type SchemaFormValidationResult =
   | { valid: true; value: unknown; issues: [] }
   | { valid: false; value: unknown; issues: SchemaFormValidationIssue[] };
 
-const validatorCache = new WeakMap<JsonSchemaObject, Promise<ValidateFunction>>();
+const validatorCache = new WeakMap<JsonSchemaObject, Promise<InterpreterCompiled>>();
 
 export async function validateSchemaValue(
   schema: JsonSchemaObject,
@@ -32,34 +38,24 @@ async function validateJsonSchemaValue(
   schema: JsonSchemaObject,
   value: unknown,
 ): Promise<SchemaFormValidationResult> {
-  let validate: ValidateFunction;
+  let compiled: InterpreterCompiled;
   try {
-    validate = await validatorForSchema(schema);
+    compiled = await validatorForSchema(schema);
   } catch (error) {
     return validationFailure(value, readableSchemaError(error));
   }
 
-  let valid: unknown;
-  try {
-    const result = validate(value) as unknown;
-    valid = isPromiseLike(result) ? (await result, true) : result;
-  } catch (error) {
-    if (isAjvValidationError(error))
-      return {
-        valid: false,
-        value,
-        issues: ajvIssues(error.errors),
-      };
-
-    return validationFailure(value, readableSchemaError(error));
+  // A schema that doesn't compile (bad keyword shape, unresolved $ref, …)
+  // is a schema-authoring problem, not a data-validation failure — surface
+  // it as a root issue, matching Ajv's compile() throwing.
+  const compileErrors = dedupeInterpreterErrors([...compiled.schemaErrors, ...compiled.refErrors]);
+  if (compileErrors.length > 0) {
+    return validationFailure(value, readableSchemaError(new Error(compileErrors[0]?.message)));
   }
 
-  if (valid) return { valid: true, value, issues: [] };
-  return {
-    valid: false,
-    value,
-    issues: ajvIssues(validate.errors ?? []),
-  };
+  const result = compiled.validate(value);
+  if (result.valid) return { valid: true, value, issues: [] };
+  return { valid: false, value, issues: interpreterIssues(result.errors) };
 }
 
 function validationFailure(value: unknown, message: string): SchemaFormValidationResult {
@@ -81,41 +77,40 @@ function readableSchemaError(error: unknown): string {
   return message === '' ? 'Invalid JSON Schema.' : `Invalid JSON Schema: ${message}`;
 }
 
-function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
-  return isRecord(value) && typeof value['then'] === 'function';
-}
-
-function isAjvValidationError(error: unknown): error is { errors: ErrorObject[] } {
-  return isRecord(error) && Array.isArray(error['errors']);
-}
-
-function validatorForSchema(schema: JsonSchemaObject): Promise<ValidateFunction> {
+function validatorForSchema(schema: JsonSchemaObject): Promise<InterpreterCompiled> {
   const cached = validatorCache.get(schema);
   if (cached) return cached;
 
-  const promise = createValidator(schema).catch((error: unknown) => {
-    validatorCache.delete(schema);
-    throw error;
-  });
+  const promise = createValidator(schema)
+    .then((compiled) => {
+      // A schema that fails to compile (bad keyword shape, unresolved
+      // $ref, …) is retried on every call rather than cached — the schema
+      // object may be actively mutated in place by its owner (see "does
+      // not cache failed JSON Schema compilation attempts" below), and a
+      // cached failure would otherwise survive that mutation.
+      if (compiled.schemaErrors.length > 0 || compiled.refErrors.length > 0) {
+        validatorCache.delete(schema);
+      }
+      return compiled;
+    })
+    .catch((error: unknown) => {
+      validatorCache.delete(schema);
+      throw error;
+    });
   validatorCache.set(schema, promise);
   return promise;
 }
 
-async function createValidator(schema: JsonSchemaObject): Promise<ValidateFunction> {
-  const draft = jsonSchemaDraft(schema);
-  if (draft === 'draft-07') {
-    const { default: Ajv } = await import('ajv');
-    return new Ajv({ strict: false, allErrors: true, addUsedSchema: false }).compile(schema);
-  }
-  if (draft === '2019-09') {
-    const { default: Ajv2019 } = await import('ajv/dist/2019.js');
-    return new Ajv2019({ strict: false, allErrors: true, addUsedSchema: false }).compile(schema);
-  }
-  const { default: Ajv2020 } = await import('ajv/dist/2020.js');
-  return new Ajv2020({ strict: false, allErrors: true, addUsedSchema: false }).compile(schema);
+function createValidator(schema: JsonSchemaObject): Promise<InterpreterCompiled> {
+  // SchemaForm has never registered ajv-formats — `format` has always been
+  // a recognised-but-unenforced keyword here (unlike JsonSchemaEditor,
+  // which does register it). `formats: false` keeps that exact behaviour
+  // rather than newly asserting formats as a side effect of moving both
+  // components onto one shared interpreter.
+  return compileInterpreted(schema, jsonSchemaDraft(schema), { formats: false });
 }
 
-function jsonSchemaDraft(schema: JsonSchemaObject): '2020-12' | '2019-09' | 'draft-07' {
+function jsonSchemaDraft(schema: JsonSchemaObject): InterpreterKnownDraft {
   const id = schema['$schema'];
   if (typeof id !== 'string') return '2020-12';
   if (id.includes('draft-07')) return 'draft-07';
@@ -123,25 +118,29 @@ function jsonSchemaDraft(schema: JsonSchemaObject): '2020-12' | '2019-09' | 'dra
   return '2020-12';
 }
 
-function ajvIssues(errors: readonly ErrorObject[]): SchemaFormValidationIssue[] {
+function interpreterIssues(errors: readonly InterpreterError[]): SchemaFormValidationIssue[] {
   return errors.map((error) => ({
-    path: ajvErrorPath(error),
-    message: readableAjvMessage(error),
+    path: interpreterErrorPath(error),
+    message: readableInterpreterMessage(error),
   }));
 }
 
-function readableAjvMessage(error: ErrorObject): string {
-  const fieldName = ajvErrorPath(error).at(-1) ?? 'Value';
+function readableInterpreterMessage(error: InterpreterError): string {
+  const fieldName = interpreterErrorPath(error).at(-1) ?? 'Value';
   const label = humanizeFieldName(fieldName);
 
-  if (error.keyword === 'required') return `${label} is required.`;
-  if (error.keyword === 'minLength') return `${label} is too short.`;
-  if (error.keyword === 'maxLength') return `${label} is too long.`;
-  if (error.keyword === 'minimum') return `${label} must be at least ${error.params?.['limit']}.`;
-  if (error.keyword === 'maximum') return `${label} must be at most ${error.params?.['limit']}.`;
-  if (error.keyword === 'type') return `${label} must be ${error.params?.['type']}.`;
+  if (error.code === 'required-property-error') return `${label} is required.`;
+  if (error.code === 'min-length-error') return `${label} is too short.`;
+  if (error.code === 'max-length-error') return `${label} is too long.`;
+  if (error.code === 'minimum-error') {
+    return `${label} must be at least ${String(error.data['minimum'])}.`;
+  }
+  if (error.code === 'maximum-error') {
+    return `${label} must be at most ${String(error.data['maximum'])}.`;
+  }
+  if (error.code === 'type-error') return `${label} must be ${String(error.data['expected'])}.`;
 
-  return error.message ?? 'Invalid value';
+  return error.message || 'Invalid value';
 }
 
 function humanizeFieldName(name: string): string {
@@ -151,11 +150,11 @@ function humanizeFieldName(name: string): string {
     .replace(/^./, (character) => character.toUpperCase());
 }
 
-function ajvErrorPath(error: ErrorObject): string[] {
-  const parentPath = jsonPointerToPath(error.instancePath);
-  if (error.keyword !== 'required' || !isRecord(error.params)) return parentPath;
+function interpreterErrorPath(error: InterpreterError): string[] {
+  const parentPath = jsonPointerToPath(stripPointerHash(error.pointer));
+  if (error.code !== 'required-property-error') return parentPath;
 
-  const missingProperty = error.params['missingProperty'];
+  const missingProperty = error.data['key'];
   return typeof missingProperty === 'string' ? [...parentPath, missingProperty] : parentPath;
 }
 

@@ -107,7 +107,7 @@ export class TreeItemRenameController {
     this.#announce(`Editing ${label}. Press Enter to confirm, Escape to cancel.`);
   }
 
-  #finishEdit(afterFocus: (() => void) | undefined = undefined): void {
+  #finishEdit(afterFocus?: () => void): void {
     this.editing = false;
     this.renameError = '';
     this.renamePending = false;
@@ -123,7 +123,7 @@ export class TreeItemRenameController {
     this.#finishEdit();
   }
 
-  async commitEdit(afterFocus: (() => void) | undefined = undefined): Promise<boolean> {
+  async commitEdit(afterFocus?: () => void): Promise<boolean> {
     if (!this.editing || this.renamePending) return false;
 
     if (this.editValue.trim().length === 0) {

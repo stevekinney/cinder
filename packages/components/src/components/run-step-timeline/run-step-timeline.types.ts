@@ -29,18 +29,48 @@ export type RunStepStatus =
   | 'retrying'
   | 'waiting_approval';
 
-/**
- * A single expandable detail section attached to a step.
- * Rendered inside a Collapsible panel.
- */
-export type RunStepDetail = {
+type RunStepDetailBase = {
   /** Stable identity for this detail panel. */
   id: string;
   /** Trigger label rendered on the Collapsible header. */
   label: string;
+  /** Controlled initial/current disclosure state. */
+  open?: boolean | undefined;
+  /** Fired when this detail panel is toggled. */
+  onToggle?: ((open: boolean) => void) | undefined;
+};
+
+/**
+ * A single expandable text detail section attached to a step.
+ * Rendered inside a Collapsible panel.
+ */
+export type RunStepTextDetail = RunStepDetailBase & {
+  /** Text details preserve the existing preformatted rendering behavior. */
+  type: 'text';
   /** Pre-formatted content shown inside the panel. */
   content: string;
 };
+
+/**
+ * A single expandable code detail section attached to a step.
+ * Rendered through Cinder CodeBlock.
+ */
+export type RunStepCodeDetail = RunStepDetailBase & {
+  /** Code details render with Cinder CodeBlock. */
+  type: 'code';
+  /** Code content shown inside the panel. */
+  code: string;
+  /** Optional CodeBlock language. */
+  language?: string | undefined;
+  /** Whether the CodeBlock language label is visible. */
+  languageLabelVisible?: boolean | undefined;
+};
+
+/**
+ * A single expandable detail section attached to a step.
+ * Rendered inside a Collapsible panel.
+ */
+export type RunStepDetail = RunStepTextDetail | RunStepCodeDetail;
 
 /**
  * Navigable reference attached to a step.
@@ -61,6 +91,8 @@ export type RunStep = {
   id: string;
   /** Display label for this step. */
   label: string;
+  /** Optional decorative icon rendered beside the label. */
+  icon?: Snippet | undefined;
   /** Generic execution state. */
   status: RunStepStatus;
   /**
@@ -205,6 +237,8 @@ export type RunStepTimelineSchemaStep = {
   id: string;
   /** Display label for this step. */
   label: string;
+  /** Optional decorative icon rendered beside the label. */
+  icon?: Snippet | undefined;
   /** Generic execution state. */
   status: RunStepStatus;
   /**
@@ -268,6 +302,8 @@ export type RunStepTimelineSchemaChildStep = {
   id: string;
   /** Display label for this step. */
   label: string;
+  /** Optional decorative icon rendered beside the label. */
+  icon?: Snippet | undefined;
   /** Generic execution state. */
   status: RunStepStatus;
   /** ISO datetime string for when this step started. */
@@ -307,6 +343,8 @@ export type RunStepTimelineSchemaGrandchildStep = {
   id: string;
   /** Display label for this step. */
   label: string;
+  /** Optional decorative icon rendered beside the label. */
+  icon?: Snippet | undefined;
   /** Generic execution state. */
   status: RunStepStatus;
   /** ISO datetime string for when this step started. */
@@ -346,6 +384,8 @@ export type RunStepTimelineSchemaGreatGrandchildStep = {
   id: string;
   /** Display label for this step. */
   label: string;
+  /** Optional decorative icon rendered beside the label. */
+  icon?: Snippet | undefined;
   /** Generic execution state. */
   status: RunStepStatus;
   /** ISO datetime string for when this step started. */
@@ -387,6 +427,8 @@ export type RunStepTimelineSchemaLaneStep = {
   id: string;
   /** Display label for this step. */
   label: string;
+  /** Optional decorative icon rendered beside the label. */
+  icon?: Snippet | undefined;
   /** Generic execution state. */
   status: RunStepStatus;
   /** ISO datetime string for when this step started. */
@@ -455,8 +497,7 @@ export type RunStepTimelineSchemaBranchGroup = {
  * A single schema-bounded top-level entry: either a step or a branch group.
  */
 export type RunStepTimelineSchemaEntry =
-  | RunStepTimelineSchemaStep
-  | RunStepTimelineSchemaBranchGroup;
+  RunStepTimelineSchemaStep | RunStepTimelineSchemaBranchGroup;
 
 /**
  * Props for the RunStepTimeline component.

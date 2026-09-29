@@ -8,18 +8,28 @@
   },
   "dependencies": {
     "@lostgradient/environmentalist": "0.1.0",
+    "@testing-library/svelte": "catalog:",
+    "happy-dom": "catalog:",
+    "svelte": "catalog:",
     "zod": "4.6.5"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
+    "@lostgradient/typescript": "workspace:*",
     "@playwright/test": "^1.61.1",
+    "@types/bun": "catalog:",
     "@types/node": "^22.0.0",
     "@types/pixelmatch": "^5.2.6",
     "@types/pngjs": "^6.0.5",
     "axe-core": "^4.10.0",
+    "oxlint": "catalog:",
     "pixelmatch": "7.1.0",
     "pngjs": "7.0.0",
     "postcss-value-parser": "^4.2.0",
     "typescript": "6.0.3"
-  }
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "version": "0.0.0"
 }

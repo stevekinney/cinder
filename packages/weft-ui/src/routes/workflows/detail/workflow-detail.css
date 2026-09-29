@@ -1,0 +1,499 @@
+/*
+ * Workflow detail (Track A2, plan T2.4–T2.7). Imported directly from
+ * `workflow-detail.svelte`'s <script> block rather than a shared
+ * `src/styles/*.css` file — see this track's final report for why (keeps
+ * this track's CSS additions out of `src/styles/workflows.css`, which
+ * Track A1's list/wizard surfaces also touch, so the two tracks never
+ * conflict on the same file).
+ */
+/* ---------------------------------------------------------------------- */
+/* Header                                                                  */
+/* ---------------------------------------------------------------------- */
+
+.weft-workflow-detail {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.weft-workflow-detail__header {
+  flex: none;
+  padding: 16px 22px 0;
+  border-bottom: 1px solid var(--cinder-border);
+}
+
+.weft-workflow-detail__title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.weft-workflow-detail__identity {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.weft-workflow-detail__badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 5px;
+}
+
+.weft-workflow-detail__title {
+  margin: 0;
+  font-size: var(--cinder-text-lg);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.weft-workflow-detail__meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-subtle);
+}
+
+.weft-workflow-detail__meta-sep {
+  color: var(--cinder-text-disabled);
+}
+
+.weft-workflow-detail__id {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--cinder-font-mono);
+}
+
+.weft-workflow-detail__deadline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--cinder-font-mono);
+  color: var(--cinder-color-warning-fg);
+}
+
+.weft-workflow-detail__deadline[data-overdue='true'] {
+  color: var(--cinder-color-danger-fg);
+}
+
+.weft-workflow-detail__actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.weft-workflow-detail__actions-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--cinder-border);
+  margin: 0 3px;
+}
+
+.weft-workflow-detail__query-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 420px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  background: var(--cinder-surface-raised);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-lg);
+}
+
+/* Tab bar scrolls horizontally on narrow viewports rather than wrapping or
+ * forcing page-level overflow (PROJECT-BRIEF responsive rules). */
+.weft-workflow-detail__tab-scroll {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.weft-workflow-detail__tab-scroll .weft-workflow-detail__tab-list {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Tab content                                                            */
+/* ---------------------------------------------------------------------- */
+
+.weft-workflow-detail__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 22px 60px;
+}
+
+.weft-workflow-detail__loading {
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.weft-workflow-detail__not-found {
+  padding: 20px 22px;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Inline fault (query errors — see faults.ts module doc: query errors     */
+/* render inline here, not via <FaultBoundary>).                          */
+/* ---------------------------------------------------------------------- */
+
+.weft-workflow-detail__fault {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-2, 0.5rem);
+  padding: 11px 14px;
+  margin: 20px 22px;
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md);
+  background: var(--cinder-surface-raised);
+}
+
+.weft-workflow-detail__fault[data-tone='warning'] {
+  border-color: var(--cinder-color-warning-border);
+  background: var(--cinder-color-warning-bg);
+}
+
+.weft-workflow-detail__fault[data-tone='danger'] {
+  border-color: var(--cinder-color-danger-border);
+  background: var(--cinder-color-danger-bg);
+}
+
+.weft-workflow-detail__fault-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.weft-workflow-detail__fault-message {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Overview tab                                                           */
+/* ---------------------------------------------------------------------- */
+
+.weft-overview-tab {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 18px;
+  align-items: start;
+  max-width: 1100px;
+}
+
+@media (max-width: 900px) {
+  .weft-overview-tab {
+    grid-template-columns: 1fr;
+  }
+}
+
+.weft-overview-tab__panel {
+  background: var(--cinder-surface-raised);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-lg);
+  overflow: hidden;
+}
+
+.weft-overview-tab__panel-header {
+  padding: 11px 15px;
+  border-bottom: 1px solid var(--cinder-border-muted);
+  font-size: var(--cinder-text-sm);
+  font-weight: 600;
+}
+
+.weft-overview-tab__right {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.weft-overview-tab__tags {
+  padding: 11px 15px;
+  border-top: 1px solid var(--cinder-border-muted);
+}
+
+.weft-overview-tab__tags-label {
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-subtle);
+  margin-bottom: 7px;
+}
+
+.weft-overview-tab__tags-row {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.weft-overview-tab__failure {
+  background: var(--cinder-color-danger-bg);
+  border: 1px solid var(--cinder-color-danger-border);
+  border-radius: var(--cinder-radius-lg);
+  padding: 13px 15px;
+}
+
+.weft-overview-tab__failure-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 8px;
+  color: var(--cinder-color-danger-fg);
+  font-weight: 600;
+}
+
+.weft-overview-tab__failure-explanation {
+  margin: 0 0 10px;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text);
+}
+
+.weft-overview-tab__pending-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  background: var(--cinder-surface-raised);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-lg);
+  color: var(--cinder-text-subtle);
+  font-size: var(--cinder-text-sm);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Lineage panel                                                          */
+/* ---------------------------------------------------------------------- */
+
+.weft-lineage-panel {
+  background: var(--cinder-surface-raised);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-lg);
+  overflow: hidden;
+  margin-top: 14px;
+}
+
+.weft-lineage-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--cinder-border-muted);
+  font-size: var(--cinder-text-sm);
+  font-weight: 600;
+}
+
+.weft-lineage-panel__body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.weft-lineage-panel__row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 11px;
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md);
+  font-size: var(--cinder-text-xs);
+  flex-wrap: wrap;
+}
+
+.weft-lineage-panel__row-label {
+  color: var(--cinder-text-subtle);
+}
+
+.weft-lineage-panel__section-label {
+  font-size: var(--cinder-text-2xs);
+  color: var(--cinder-text-disabled);
+}
+
+.weft-lineage-panel__children {
+  display: flex;
+  flex-direction: column;
+}
+
+.weft-lineage-panel__child-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 8px;
+  border-radius: var(--cinder-radius-sm);
+  font-size: var(--cinder-text-xs);
+}
+
+.weft-lineage-panel__note {
+  font-size: var(--cinder-text-2xs);
+  color: var(--cinder-text-disabled);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Events / Logs tabs                                                     */
+/* ---------------------------------------------------------------------- */
+
+.weft-events-tab {
+  max-width: 1000px;
+}
+
+.weft-events-tab__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.weft-events-tab__count {
+  margin-inline-start: auto;
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-subtle);
+  font-family: var(--cinder-font-mono);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Signals / Updates / Children tabs                                      */
+/* ---------------------------------------------------------------------- */
+
+.weft-send-tab {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 18px;
+  max-width: 1060px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .weft-send-tab {
+    grid-template-columns: 1fr;
+  }
+}
+
+.weft-send-tab__history {
+  background: var(--cinder-surface-raised);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-lg);
+  overflow: hidden;
+  min-width: 0;
+}
+
+.weft-send-tab__history-header {
+  padding: 11px 15px;
+  border-bottom: 1px solid var(--cinder-border-muted);
+  font-size: var(--cinder-text-sm);
+  font-weight: 600;
+}
+
+.weft-send-tab__history-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 15px;
+  border-bottom: 1px solid var(--cinder-border-muted);
+}
+
+.weft-send-tab__history-row:last-child {
+  border-bottom: none;
+}
+
+.weft-send-tab__history-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--cinder-text-sm);
+  font-weight: 500;
+}
+
+.weft-send-tab__history-time {
+  color: var(--cinder-text-disabled);
+  font-family: var(--cinder-font-mono);
+  font-size: var(--cinder-text-2xs);
+  flex: none;
+}
+
+.weft-send-tab__form {
+  background: var(--cinder-surface-raised);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-lg);
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.weft-send-tab__form-title {
+  font-size: var(--cinder-text-sm);
+  font-weight: 600;
+}
+
+.weft-send-tab__error {
+  margin: 0;
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-color-danger-fg);
+}
+
+.weft-send-tab__result {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--cinder-radius-md);
+  background: var(--cinder-surface-inset);
+  font-family: var(--cinder-font-mono);
+  font-size: var(--cinder-text-xs);
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Children tab                                                           */
+/* ---------------------------------------------------------------------- */
+
+.weft-children-tab {
+  max-width: 920px;
+  background: var(--cinder-surface-raised);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-lg);
+  overflow: hidden;
+}
+
+.weft-children-tab__scroll {
+  overflow-x: auto;
+}
+
+.weft-children-tab__row {
+  display: grid;
+  grid-template-columns: 120px 1fr 110px 90px;
+  gap: 10px;
+  align-items: center;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--cinder-border-muted);
+  min-width: 480px;
+}
+
+.weft-children-tab__row:last-child {
+  border-bottom: none;
+}
+
+.weft-children-tab__header {
+  font-size: var(--cinder-text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cinder-text-subtle);
+  background: var(--cinder-surface-inset);
+  border-bottom: 1px solid var(--cinder-border);
+}

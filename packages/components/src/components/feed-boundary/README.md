@@ -4,14 +4,9 @@ Separator entry inside a feed marking a stream discontinuity such as a reconnect
 
 ## Usage
 
-`FeedBoundary` is a compose-only leaf of [`Feed`](../feed/README.md).
-The idiomatic API is `Feed.Boundary`, reached through the parent
-namespace — see the [feed README](../feed/README.md#usage) for the composed
-snippet. The flat `@lostgradient/cinder/feed-boundary` subpath remains exported
-for à-la-carte builds that import the leaf directly.
+`FeedBoundary` is a compose-only leaf of [`Feed`](../feed/README.md). The idiomatic API is `Feed.Boundary`, reached through the parent namespace — see the [feed README](../feed/README.md#usage) for the composed snippet. The flat `@lostgradient/cinder` subpath remains exported for à-la-carte builds that import the leaf directly.
 
-The consumer owns the wording (`label`); the boundary owns the
-`role="separator"` semantics and the horizontal-rule treatment.
+The consumer owns the wording (`label`); the boundary owns the `role="separator"` semantics and the horizontal-rule treatment.
 
 ## Props
 
@@ -31,7 +26,6 @@ The consumer owns the wording (`label`); the boundary owns the
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

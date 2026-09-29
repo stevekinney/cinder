@@ -73,7 +73,7 @@ function documentThread(id: string): Thread {
       originalQuote: '',
     },
     comments: [],
-  } as unknown as Thread;
+  };
 }
 
 describe('orderedTextThreads', () => {

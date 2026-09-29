@@ -20,7 +20,6 @@ export function parseStyleQuery(
   }
   return undefined;
 }
-
 function splitTopLevel(conditionText: string, operator: 'and' | 'or'): string[] {
   const parts: string[] = [];
   let depth = 0;
@@ -54,7 +53,6 @@ function splitTopLevel(conditionText: string, operator: 'and' | 'or'): string[] 
   parts.push(conditionText.slice(start));
   return parts;
 }
-
 export function evaluateLogicalContainerCondition(
   conditionText: string,
   width: number,
@@ -64,7 +62,6 @@ export function evaluateLogicalContainerCondition(
   if (!isFullyParsedContainerCondition(conditionText)) return false;
   return evaluateParsedLogicalContainerCondition(conditionText, width, remSize, inlineSize);
 }
-
 function evaluateParsedLogicalContainerCondition(
   conditionText: string,
   width: number,
@@ -95,47 +92,28 @@ function evaluateParsedLogicalContainerCondition(
     );
   return evaluateContainerSizeConstraints(trimmed, width, remSize, inlineSize);
 }
-
 const containerSizeTermPattern =
   /^(?:(?:min|max)-(?:width|inline-size)|(?:width|inline-size))\s*:\s*(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem)$/i;
 const featureFirstRangePattern =
   /^(?:width|inline-size)\s*(?:>=|>|<=|<)\s*(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem)$/i;
 const valueFirstRangePattern =
   /^(?:(?:(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem)\s*(?:<=|<)\s*(?:width|inline-size))(?:\s*(?:<=|<)\s*(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem))?|(?:(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem)\s*(?:>=|>)\s*(?:width|inline-size))(?:\s*(?:>=|>)\s*(?:\d+(?:\.\d+)?|\.\d+)(?:px|rem))?)$/i;
-
-/**
- * Returns true only when every token in a size condition belongs to the
- * deliberately small grammar evaluated below. Unknown CSS syntax must not
- * silently inherit the evaluator's historical "active" default.
- */
 export function isFullyParsedContainerCondition(conditionText: string): boolean {
   const trimmed = conditionText.trim();
   if (!trimmed || !hasBalancedParentheses(trimmed)) return false;
   return parseContainerCondition(trimmed);
 }
-
 function parseContainerCondition(conditionText: string, isTopLevelCondition = true): boolean {
   const original = conditionText.trim();
   const trimmed = unwrapRedundantParentheses(original);
   const wasGrouped = trimmed !== original;
   const orParts = splitTopLevel(trimmed, 'or');
   const andParts = splitTopLevel(trimmed, 'and');
-  if (orParts.length > 1 && andParts.length > 1) return false;
-  if (orParts.length > 1) return orParts.every((part) => parseContainerCondition(part, false));
-  if (andParts.length > 1) return andParts.every((part) => parseContainerCondition(part, false));
+  if (orParts.length > 1 || andParts.length > 1)
+    return parseLogicalContainerParts(orParts, andParts);
   const notPrefix = /^not\s+/i.exec(trimmed);
-  if (notPrefix) {
-    // `not <term>` only qualifies as an `and`/`or` operand when the whole
-    // negation is itself grouped in its own parentheses — e.g.
-    // `(not (...)) and (...)`. CSS's `<media-and>`/`<media-or>` require every
-    // operand to be `<media-in-parens>`, and a bare `<media-not>` doesn't
-    // satisfy that; only a standalone top-level `not` may skip the extra
-    // grouping.
-    if (!isTopLevelCondition && !wasGrouped) return false;
-    const operand = trimmed.slice(notPrefix[0].length).trim();
-    const unwrappedOperand = unwrapRedundantParentheses(operand);
-    return unwrappedOperand !== operand && parseContainerCondition(operand);
-  }
+  if (notPrefix)
+    return parseNotContainerCondition(trimmed, notPrefix[0], isTopLevelCondition, wasGrouped);
   return (
     wasGrouped &&
     (containerSizeTermPattern.test(trimmed) ||
@@ -143,7 +121,21 @@ function parseContainerCondition(conditionText: string, isTopLevelCondition = tr
       valueFirstRangePattern.test(trimmed))
   );
 }
-
+function parseNotContainerCondition(
+  value: string,
+  prefix: string,
+  isTopLevel: boolean,
+  wasGrouped: boolean,
+): boolean {
+  if (!isTopLevel && !wasGrouped) return false;
+  const operand = value.slice(prefix.length).trim();
+  return unwrapRedundantParentheses(operand) !== operand && parseContainerCondition(operand);
+}
+function parseLogicalContainerParts(orParts: string[], andParts: string[]): boolean {
+  if (orParts.length > 1 && andParts.length > 1) return false;
+  const parts = orParts.length > 1 ? orParts : andParts;
+  return parts.every((part) => parseContainerCondition(part, false));
+}
 function hasBalancedParentheses(conditionText: string): boolean {
   let depth = 0;
   for (const character of conditionText) {
@@ -155,41 +147,41 @@ function hasBalancedParentheses(conditionText: string): boolean {
   }
   return depth === 0;
 }
-
 function unwrapRedundantParentheses(conditionText: string): string {
   const trimmed = conditionText.trim();
   if (!trimmed.startsWith('(') || !trimmed.endsWith(')')) return trimmed;
-  const matchingClose = new Map<number, number>();
-  const openPositions: number[] = [];
-  let depth = 0;
-  for (let index = 0; index < trimmed.length; index += 1) {
-    if (trimmed[index] === '(') {
-      openPositions.push(index);
-      depth += 1;
-    } else if (trimmed[index] === ')') {
-      const open = openPositions.pop();
-      if (open === undefined) return trimmed;
-      matchingClose.set(open, index);
-      depth -= 1;
-    }
-  }
-  if (depth !== 0) return trimmed;
+  const matchingClose = matchParentheses(trimmed);
+  if (!matchingClose) return trimmed;
+  const { start, end } = trimEnclosingGroups(trimmed, matchingClose);
+  return start === 0 ? trimmed : trimmed.slice(start, end + 1).trim();
+}
+function trimEnclosingGroups(
+  value: string,
+  matchingClose: Map<number, number>,
+): { start: number; end: number } {
   let start = 0;
-  let end = trimmed.length - 1;
+  let end = value.length - 1;
   while (start < end && matchingClose.get(start) === end) {
     start += 1;
     end -= 1;
-    while (/\s/.test(trimmed[start] ?? '')) start += 1;
-    while (/\s/.test(trimmed[end] ?? '')) end -= 1;
+    while (/\s/.test(value[start] ?? '')) start += 1;
+    while (/\s/.test(value[end] ?? '')) end -= 1;
   }
-  return start === 0 ? trimmed : trimmed.slice(start, end + 1).trim();
+  return { start, end };
 }
-
-// True when the condition references a width/inline-size comparison whose
-// unit is not `px` or `rem` — the only units this evaluator can resolve to
-// pixels — or references a size feature this evaluator doesn't implement at
-// all (`height`, `block-size`, `aspect-ratio`, `orientation`, ...). Callers
-// should fail closed rather than guess.
+function matchParentheses(value: string): Map<number, number> | undefined {
+  const matchingClose = new Map<number, number>();
+  const openPositions: number[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] === '(') openPositions.push(index);
+    if (value[index] === ')') {
+      const open = openPositions.pop();
+      if (open === undefined) return undefined;
+      matchingClose.set(open, index);
+    }
+  }
+  return openPositions.length === 0 ? matchingClose : undefined;
+}
 export function hasUnsupportedContainerSizeQuery(conditionText: string): boolean {
   if (/(?:min-|max-)?(?:height|block-size)\b/i.test(conditionText)) return true;
   if (/\baspect-ratio\b/i.test(conditionText)) return true;
@@ -204,11 +196,6 @@ export function hasUnsupportedContainerSizeQuery(conditionText: string): boolean
     (match) => !/^(?:px|rem)$/i.test(match[1]!),
   );
 }
-
-// A conjunctive range condition — e.g. `(width >= 20rem) and (width <= 40rem)`
-// — has more than one range comparison to satisfy. Evaluate every one
-// (`matchAll`, not a single `exec()`) and require all of them to hold.
-// Returns undefined when the condition contains no range comparison at all.
 function evaluateRangeComparisons(
   conditionText: string,
   width: number,
@@ -226,34 +213,30 @@ function evaluateRangeComparisons(
   for (const comparison of conditionText.matchAll(valueFirstPattern)) {
     const threshold = comparison[1];
     const unit = comparison[2];
-    const operator =
-      comparison[3] === '<='
-        ? '>='
-        : comparison[3] === '<'
-          ? '>'
-          : comparison[3] === '>='
-            ? '<='
-            : '<';
+    const operator = reverseComparisonOperator(comparison[3]);
     if (threshold && unit) comparisons.push({ operator, threshold, unit });
   }
   if (comparisons.length === 0) return undefined;
-  const satisfiesAll = comparisons.every((comparison) => {
-    const { operator } = comparison;
-    const threshold =
-      Number(comparison.threshold) * (comparison.unit.toLowerCase() === 'rem' ? remSize : 1);
-    if (operator === '>=') return width >= threshold;
-    if (operator === '>') return width > threshold;
-    if (operator === '<=') return width <= threshold;
-    return width < threshold;
-  });
-  return satisfiesAll;
+  return comparisons.every((comparison) =>
+    compareRange(
+      width,
+      comparison.operator,
+      Number(comparison.threshold) * (comparison.unit.toLowerCase() === 'rem' ? remSize : 1),
+    ),
+  );
 }
-
-// The equality form — e.g. `(width: 20rem)` — has no `min-`/`max-` prefix
-// and no comparison operator, so neither `minimum`/`maximum` nor
-// evaluateRangeComparisons() recognizes it; without this, `matches`
-// silently defaults to true regardless of the container's actual size.
-// Returns undefined when the condition contains no bare equality term.
+function reverseComparisonOperator(operator: string | undefined): string {
+  if (operator === '<=') return '>=';
+  if (operator === '<') return '>';
+  if (operator === '>=') return '<=';
+  return '<';
+}
+function compareRange(width: number, operator: string, threshold: number): boolean {
+  if (operator === '>=') return width >= threshold;
+  if (operator === '>') return width > threshold;
+  if (operator === '<=') return width <= threshold;
+  return width < threshold;
+}
 function evaluateEqualityComparison(
   conditionText: string,
   width: number,
@@ -269,7 +252,6 @@ function evaluateEqualityComparison(
   });
   return satisfiesAll;
 }
-
 function evaluateContainerSizeConstraints(
   conditionText: string,
   width: number,
@@ -280,48 +262,61 @@ function evaluateContainerSizeConstraints(
     /\binline-size\b/i.test(conditionText) && !/\bwidth\b/i.test(conditionText)
       ? inlineSize
       : width;
-  // This branch can never actually run: `conditionText` only ever reaches
-  // here already split into a single feature term. The only entry point,
-  // `evaluateLogicalContainerCondition`, gates on `isFullyParsedContainerCondition`
-  // first, and that validator's `parseContainerCondition` recurses through
-  // `splitTopLevel(text, 'and')` — the exact same splitter
-  // `evaluateParsedLogicalContainerCondition` uses to peel off top-level
-  // "and" clauses before ever calling `evaluateContainerSizeConstraints`.
-  // Whatever text passes validation has therefore already been split (and
-  // each split part independently re-validated as a single leaf term) by
-  // the time evaluation reaches this function, so a `conditionText`
-  // containing both `width` and `inline-size` joined by a top-level `and`
-  // can never arrive here. Kept as a defensive fallback rather than
-  // removed, since deleting it would change this function's contract in a
-  // way nothing here asked for.
-  const andSplitPattern = /\s+and\s+/i;
-  if (
-    /\bwidth\b/i.test(conditionText) &&
-    /\binline-size\b/i.test(conditionText) &&
-    /\band\b/i.test(conditionText)
-  ) /* cinder-coverage-unreachable: */ {
-    for (const clause of conditionText.split(andSplitPattern)) /* cinder-coverage-unreachable: */ {
-      const clauseSize = /\binline-size\b/i.test(clause) ? inlineSize : width; // cinder-coverage-unreachable:
-      if (!evaluateContainerSizeConstraints(clause, clauseSize, remSize, inlineSize)) return false; // cinder-coverage-unreachable:
-    } // cinder-coverage-unreachable:
-    return true; // cinder-coverage-unreachable:
-  }
   const minimum = /min-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
   const maximum = /max-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
   const toPixels = (value: RegExpExecArray) =>
     Number(value[1]) * (value[2]!.toLowerCase() === 'rem' ? remSize : 1);
-  const legacyMatches =
-    (!minimum || measuredSize >= toPixels(minimum)) &&
-    (!maximum || measuredSize <= toPixels(maximum));
+  const combinedMatches = evaluateContainerTerms(
+    conditionText,
+    measuredSize,
+    remSize,
+    minimum,
+    maximum,
+    toPixels,
+  );
+  return /^\s*not\b/i.test(conditionText) ? !combinedMatches : combinedMatches;
+}
+function evaluateContainerTerms(
+  conditionText: string,
+  measuredSize: number,
+  remSize: number,
+  minimum: RegExpExecArray | null,
+  maximum: RegExpExecArray | null,
+  toPixels: (value: RegExpExecArray) => number,
+): boolean {
+  const legacyMatches = evaluateLegacyTerms(measuredSize, minimum, maximum, toPixels);
   const rangeMatches = evaluateRangeComparisons(conditionText, measuredSize, remSize) ?? true;
   const equalityMatches = evaluateEqualityComparison(conditionText, measuredSize, remSize) ?? true;
-  const hasSizeFeature = /\b(?:width|inline-size)\b/i.test(conditionText);
-  const hasRecognizedRange =
+  if (!hasRecognizedContainerTerm(conditionText, minimum, maximum)) return false;
+  return legacyMatches && rangeMatches && equalityMatches;
+}
+function evaluateLegacyTerms(
+  measuredSize: number,
+  minimum: RegExpExecArray | null,
+  maximum: RegExpExecArray | null,
+  toPixels: (value: RegExpExecArray) => number,
+): boolean {
+  return (
+    (!minimum || measuredSize >= toPixels(minimum)) &&
+    (!maximum || measuredSize <= toPixels(maximum))
+  );
+}
+function hasRecognizedContainerTerm(
+  conditionText: string,
+  minimum: RegExpExecArray | null,
+  maximum: RegExpExecArray | null,
+): boolean {
+  const hasFeature = /\b(?:width|inline-size)\b/i.test(conditionText);
+  const hasRange =
     /(?:width|inline-size)\s*(?:>=|>|<=|<)\s*[\d.]+(?:px|rem)/i.test(conditionText) ||
     /[\d.]+(?:px|rem)\s*(?:<=|<|>=|>)\s*(?:width|inline-size)/i.test(conditionText);
-  const hasRecognizedEquality = /(?:width|inline-size)\s*:\s*[\d.]+(?:px|rem)/i.test(conditionText);
-  if (hasSizeFeature && !minimum && !maximum && !hasRecognizedRange && !hasRecognizedEquality)
-    return false;
-  const combinedMatches = legacyMatches && rangeMatches && equalityMatches;
-  return /^\s*not\b/i.test(conditionText) ? !combinedMatches : combinedMatches;
+  return (
+    !hasFeature ||
+    Boolean(
+      minimum ||
+      maximum ||
+      hasRange ||
+      /(?:width|inline-size)\s*:\s*[\d.]+(?:px|rem)/i.test(conditionText),
+    )
+  );
 }

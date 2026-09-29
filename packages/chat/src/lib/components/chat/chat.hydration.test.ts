@@ -18,24 +18,37 @@
  * This harness compiles server and client from the SAME workspace source, so it
  * structurally cannot exercise either packaged-artifact divergence. The durable
  * regression is the packed-tarball, real-SvelteKit-dev-server, real-browser
- * `/chat-layout` assertion in `packages/components/scripts/validate-consumers.ts`.
+ * `/chat-layout` assertion in `components/cinder/scripts/validate-consumers.ts`.
  */
 import { afterAll, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
-import { renderThenHydrate } from '../../test/hydrate.ts';
+import { prepareSvelteServerSource, renderThenHydrate, setupHappyDom } from '@lostgradient/testing';
 import { createConversation } from './builders.ts';
 import type { ConversationHistory } from './conversation-model.ts';
 
 setupHappyDom();
 
 class TestResizeObserver {
+  constructor(callback: ResizeObserverCallback) {
+    void callback;
+  }
+
   observe(): void {}
   unobserve(): void {}
   disconnect(): void {}
 }
 
 class TestIntersectionObserver {
+  readonly root: Element | null = null;
+  readonly rootMargin = '';
+  readonly scrollMargin = '';
+  readonly thresholds: readonly number[] = [];
+
+  constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+    void callback;
+    void options;
+  }
+
   observe(): void {}
   unobserve(): void {}
   disconnect(): void {}
@@ -46,9 +59,8 @@ class TestIntersectionObserver {
 
 const originalResizeObserver = globalThis.ResizeObserver;
 const originalIntersectionObserver = globalThis.IntersectionObserver;
-globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
-globalThis.IntersectionObserver =
-  TestIntersectionObserver as unknown as typeof IntersectionObserver;
+globalThis.ResizeObserver = TestResizeObserver;
+globalThis.IntersectionObserver = TestIntersectionObserver;
 
 afterAll(() => {
   globalThis.ResizeObserver = originalResizeObserver;
@@ -57,6 +69,13 @@ afterAll(() => {
 
 const { default: Chat } = await import('./chat.svelte');
 const sourcePath = new URL('./chat.svelte', import.meta.url).pathname;
+
+// Compile the server graph before the timed hydration assertions. The root
+// Conversationalist package intentionally exposes the complete library API,
+// so this first compilation can be slower than an individual Bun test timeout
+// when the whole Chat suite is running. The hydration assertions should measure
+// render and hydrate behavior, not one-time compiler work.
+await prepareSvelteServerSource(sourcePath);
 
 const emptyConversation: ConversationHistory = {
   schemaVersion: 4,
@@ -105,7 +124,7 @@ describe('Chat hydration', () => {
       expect(result.ssrHtml).not.toContain(conversation.updatedAt);
       expect(result.ssrHtml).not.toMatch(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
     } finally {
-      result.cleanup();
+      await result.cleanup();
     }
   });
 
@@ -131,7 +150,7 @@ describe('Chat hydration', () => {
         'No messages yet',
       );
     } finally {
-      result.cleanup();
+      await result.cleanup();
     }
   });
 
@@ -162,7 +181,7 @@ describe('Chat hydration', () => {
       expect(result.container.querySelector('[aria-live="assertive"]')).not.toBeNull();
       expect(result.container.querySelectorAll('[aria-live="polite"]').length).toBeGreaterThan(0);
     } finally {
-      result.cleanup();
+      await result.cleanup();
     }
   });
 });

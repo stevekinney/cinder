@@ -3,9 +3,8 @@
   "manifestVersion": 1,
   "package": {
     "name": "@lostgradient/cinder",
-    "version": "0.26.2",
     "framework": "svelte",
-    "frameworkVersionRange": ">=5.56.0 <6",
+    "frameworkVersionRange": "^5.56.7",
     "classPrefix": "cinder-",
     "cssVarPrefix": "--cinder-",
     "tokenNamespaces": [
@@ -64,7 +63,7 @@
       "virtual-list",
       "z"
     ],
-    "stylesEntry": "@lostgradient/cinder/styles",
+    "stylesEntry": "@lostgradient/cinder",
     "schemaDialect": "https://json-schema.org/draft/2020-12/schema"
   },
   "categories": {
@@ -123,7 +122,7 @@
     {
       "name": "AccessGate",
       "id": "access-gate",
-      "import": "@lostgradient/cinder/access-gate",
+      "import": "@lostgradient/cinder",
       "exportName": "AccessGate",
       "category": "feedback",
       "status": "alpha",
@@ -145,9 +144,9 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/access-gate/schema",
-        "variables": "@lostgradient/cinder/access-gate/variables",
-        "examples": "@lostgradient/cinder/access-gate/examples"
+        "schema": "src/components/access-gate/access-gate.schema.json",
+        "variables": "src/components/access-gate/access-gate.variables.json",
+        "examples": "src/components/access-gate/access-gate.examples.json"
       },
       "a11y": {
         "notes": [
@@ -158,7 +157,7 @@
     {
       "name": "Accordion",
       "id": "accordion",
-      "import": "@lostgradient/cinder/accordion",
+      "import": "@lostgradient/cinder",
       "exportName": "Accordion",
       "category": "data-display",
       "status": "stable",
@@ -182,9 +181,9 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/accordion/schema",
-        "variables": "@lostgradient/cinder/accordion/variables",
-        "examples": "@lostgradient/cinder/accordion/examples"
+        "schema": "src/components/accordion/accordion.schema.json",
+        "variables": "src/components/accordion/accordion.variables.json",
+        "examples": "src/components/accordion/accordion.examples.json"
       },
       "a11y": {
         "pattern": "WAI-ARIA Accordion",
@@ -212,7 +211,7 @@
     {
       "name": "AccordionItem",
       "id": "accordion-item",
-      "import": "@lostgradient/cinder/accordion-item",
+      "import": "@lostgradient/cinder",
       "exportName": "AccordionItem",
       "category": "data-display",
       "status": "stable",
@@ -231,14 +230,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/accordion-item/schema",
-        "variables": "@lostgradient/cinder/accordion-item/variables"
+        "schema": "src/components/accordion-item/accordion-item.schema.json",
+        "variables": "src/components/accordion-item/accordion-item.variables.json"
       }
     },
     {
       "name": "ActionRow",
       "id": "action-row",
-      "import": "@lostgradient/cinder/action-row",
+      "import": "@lostgradient/cinder",
       "exportName": "ActionRow",
       "category": "action",
       "status": "beta",
@@ -260,15 +259,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/action-row/schema",
-        "variables": "@lostgradient/cinder/action-row/variables",
-        "examples": "@lostgradient/cinder/action-row/examples"
+        "schema": "src/components/action-row/action-row.schema.json",
+        "variables": "src/components/action-row/action-row.variables.json",
+        "examples": "src/components/action-row/action-row.examples.json"
       }
     },
     {
       "name": "Alert",
       "id": "alert",
-      "import": "@lostgradient/cinder/alert",
+      "import": "@lostgradient/cinder",
       "exportName": "Alert",
       "category": "feedback",
       "status": "stable",
@@ -290,15 +289,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/alert/schema",
-        "variables": "@lostgradient/cinder/alert/variables",
-        "examples": "@lostgradient/cinder/alert/examples"
+        "schema": "src/components/alert/alert.schema.json",
+        "variables": "src/components/alert/alert.variables.json",
+        "examples": "src/components/alert/alert.examples.json"
       }
     },
     {
       "name": "AlertDialog",
       "id": "alert-dialog",
-      "import": "@lostgradient/cinder/alert-dialog",
+      "import": "@lostgradient/cinder",
       "exportName": "AlertDialog",
       "category": "overlay",
       "status": "stable",
@@ -320,15 +319,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/alert-dialog/schema",
-        "variables": "@lostgradient/cinder/alert-dialog/variables",
-        "examples": "@lostgradient/cinder/alert-dialog/examples"
+        "schema": "src/components/alert-dialog/alert-dialog.schema.json",
+        "variables": "src/components/alert-dialog/alert-dialog.variables.json",
+        "examples": "src/components/alert-dialog/alert-dialog.examples.json"
       }
     },
     {
       "name": "ApprovalCard",
       "id": "approval-card",
-      "import": "@lostgradient/cinder/approval-card",
+      "import": "@lostgradient/cinder",
       "exportName": "ApprovalCard",
       "category": "domain",
       "status": "alpha",
@@ -350,9 +349,9 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/approval-card/schema",
-        "variables": "@lostgradient/cinder/approval-card/variables",
-        "examples": "@lostgradient/cinder/approval-card/examples"
+        "schema": "src/components/approval-card/approval-card.schema.json",
+        "variables": "src/components/approval-card/approval-card.variables.json",
+        "examples": "src/components/approval-card/approval-card.examples.json"
       },
       "a11y": {
         "notes": [
@@ -364,7 +363,7 @@
     {
       "name": "AreaChart",
       "id": "area-chart",
-      "import": "@lostgradient/cinder/area-chart",
+      "import": "@lostgradient/cinder",
       "exportName": "AreaChart",
       "category": "data-display",
       "status": "stable",
@@ -386,15 +385,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/area-chart/schema",
-        "variables": "@lostgradient/cinder/area-chart/variables",
-        "examples": "@lostgradient/cinder/area-chart/examples"
+        "schema": "src/components/area-chart/area-chart.schema.json",
+        "variables": "src/components/area-chart/area-chart.variables.json",
+        "examples": "src/components/area-chart/area-chart.examples.json"
       }
     },
     {
       "name": "AspectRatio",
       "id": "aspect-ratio",
-      "import": "@lostgradient/cinder/aspect-ratio",
+      "import": "@lostgradient/cinder",
       "exportName": "AspectRatio",
       "category": "layout",
       "status": "stable",
@@ -416,15 +415,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/aspect-ratio/schema",
-        "variables": "@lostgradient/cinder/aspect-ratio/variables",
-        "examples": "@lostgradient/cinder/aspect-ratio/examples"
+        "schema": "src/components/aspect-ratio/aspect-ratio.schema.json",
+        "variables": "src/components/aspect-ratio/aspect-ratio.variables.json",
+        "examples": "src/components/aspect-ratio/aspect-ratio.examples.json"
       }
     },
     {
       "name": "Autocomplete",
       "id": "autocomplete",
-      "import": "@lostgradient/cinder/autocomplete",
+      "import": "@lostgradient/cinder",
       "exportName": "Autocomplete",
       "category": "form",
       "status": "stable",
@@ -443,15 +442,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/autocomplete/schema",
-        "variables": "@lostgradient/cinder/autocomplete/variables",
-        "examples": "@lostgradient/cinder/autocomplete/examples"
+        "schema": "src/components/autocomplete/autocomplete.schema.json",
+        "variables": "src/components/autocomplete/autocomplete.variables.json",
+        "examples": "src/components/autocomplete/autocomplete.examples.json"
       }
     },
     {
       "name": "Avatar",
       "id": "avatar",
-      "import": "@lostgradient/cinder/avatar",
+      "import": "@lostgradient/cinder",
       "exportName": "Avatar",
       "category": "data-display",
       "status": "stable",
@@ -470,15 +469,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/avatar/schema",
-        "variables": "@lostgradient/cinder/avatar/variables",
-        "examples": "@lostgradient/cinder/avatar/examples"
+        "schema": "src/components/avatar/avatar.schema.json",
+        "variables": "src/components/avatar/avatar.variables.json",
+        "examples": "src/components/avatar/avatar.examples.json"
       }
     },
     {
       "name": "AvatarGroup",
       "id": "avatar-group",
-      "import": "@lostgradient/cinder/avatar-group",
+      "import": "@lostgradient/cinder",
       "exportName": "AvatarGroup",
       "category": "data-display",
       "status": "stable",
@@ -500,15 +499,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/avatar-group/schema",
-        "variables": "@lostgradient/cinder/avatar-group/variables",
-        "examples": "@lostgradient/cinder/avatar-group/examples"
+        "schema": "src/components/avatar-group/avatar-group.schema.json",
+        "variables": "src/components/avatar-group/avatar-group.variables.json",
+        "examples": "src/components/avatar-group/avatar-group.examples.json"
       }
     },
     {
       "name": "Backdrop",
       "id": "backdrop",
-      "import": "@lostgradient/cinder/backdrop",
+      "import": "@lostgradient/cinder",
       "exportName": "Backdrop",
       "category": "overlay",
       "status": "beta",
@@ -533,15 +532,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/backdrop/schema",
-        "variables": "@lostgradient/cinder/backdrop/variables",
-        "examples": "@lostgradient/cinder/backdrop/examples"
+        "schema": "src/components/backdrop/backdrop.schema.json",
+        "variables": "src/components/backdrop/backdrop.variables.json",
+        "examples": "src/components/backdrop/backdrop.examples.json"
       }
     },
     {
       "name": "Badge",
       "id": "badge",
-      "import": "@lostgradient/cinder/badge",
+      "import": "@lostgradient/cinder",
       "exportName": "Badge",
       "category": "data-display",
       "status": "stable",
@@ -565,15 +564,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/badge/schema",
-        "variables": "@lostgradient/cinder/badge/variables",
-        "examples": "@lostgradient/cinder/badge/examples"
+        "schema": "src/components/badge/badge.schema.json",
+        "variables": "src/components/badge/badge.variables.json",
+        "examples": "src/components/badge/badge.examples.json"
       }
     },
     {
       "name": "Banner",
       "id": "banner",
-      "import": "@lostgradient/cinder/banner",
+      "import": "@lostgradient/cinder",
       "exportName": "Banner",
       "category": "feedback",
       "status": "stable",
@@ -595,15 +594,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/banner/schema",
-        "variables": "@lostgradient/cinder/banner/variables",
-        "examples": "@lostgradient/cinder/banner/examples"
+        "schema": "src/components/banner/banner.schema.json",
+        "variables": "src/components/banner/banner.variables.json",
+        "examples": "src/components/banner/banner.examples.json"
       }
     },
     {
       "name": "BarChart",
       "id": "bar-chart",
-      "import": "@lostgradient/cinder/bar-chart",
+      "import": "@lostgradient/cinder",
       "exportName": "BarChart",
       "category": "data-display",
       "status": "stable",
@@ -625,15 +624,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/bar-chart/schema",
-        "variables": "@lostgradient/cinder/bar-chart/variables",
-        "examples": "@lostgradient/cinder/bar-chart/examples"
+        "schema": "src/components/bar-chart/bar-chart.schema.json",
+        "variables": "src/components/bar-chart/bar-chart.variables.json",
+        "examples": "src/components/bar-chart/bar-chart.examples.json"
       }
     },
     {
       "name": "Breadcrumbs",
       "id": "breadcrumbs",
-      "import": "@lostgradient/cinder/breadcrumbs",
+      "import": "@lostgradient/cinder",
       "exportName": "Breadcrumbs",
       "category": "navigation",
       "status": "stable",
@@ -655,15 +654,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/breadcrumbs/schema",
-        "variables": "@lostgradient/cinder/breadcrumbs/variables",
-        "examples": "@lostgradient/cinder/breadcrumbs/examples"
+        "schema": "src/components/breadcrumbs/breadcrumbs.schema.json",
+        "variables": "src/components/breadcrumbs/breadcrumbs.variables.json",
+        "examples": "src/components/breadcrumbs/breadcrumbs.examples.json"
       }
     },
     {
       "name": "Button",
       "id": "button",
-      "import": "@lostgradient/cinder/button",
+      "import": "@lostgradient/cinder",
       "exportName": "Button",
       "category": "action",
       "status": "stable",
@@ -685,16 +684,16 @@
       "hasConstraints": true,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/button/schema",
-        "variables": "@lostgradient/cinder/button/variables",
-        "examples": "@lostgradient/cinder/button/examples",
-        "constraints": "@lostgradient/cinder/button/constraints"
+        "schema": "src/components/button/button.schema.json",
+        "variables": "src/components/button/button.variables.json",
+        "examples": "src/components/button/button.examples.json",
+        "constraints": "src/components/button/button.constraints.json"
       }
     },
     {
       "name": "ButtonGroup",
       "id": "button-group",
-      "import": "@lostgradient/cinder/button-group",
+      "import": "@lostgradient/cinder",
       "exportName": "ButtonGroup",
       "category": "action",
       "status": "stable",
@@ -716,15 +715,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/button-group/schema",
-        "variables": "@lostgradient/cinder/button-group/variables",
-        "examples": "@lostgradient/cinder/button-group/examples"
+        "schema": "src/components/button-group/button-group.schema.json",
+        "variables": "src/components/button-group/button-group.variables.json",
+        "examples": "src/components/button-group/button-group.examples.json"
       }
     },
     {
       "name": "Calendar",
       "id": "calendar",
-      "import": "@lostgradient/cinder/calendar",
+      "import": "@lostgradient/cinder",
       "exportName": "Calendar",
       "category": "form",
       "status": "alpha",
@@ -743,15 +742,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/calendar/schema",
-        "variables": "@lostgradient/cinder/calendar/variables",
-        "examples": "@lostgradient/cinder/calendar/examples"
+        "schema": "src/components/calendar/calendar.schema.json",
+        "variables": "src/components/calendar/calendar.variables.json",
+        "examples": "src/components/calendar/calendar.examples.json"
       }
     },
     {
       "name": "Callout",
       "id": "callout",
-      "import": "@lostgradient/cinder/callout",
+      "import": "@lostgradient/cinder",
       "exportName": "Callout",
       "category": "feedback",
       "status": "stable",
@@ -773,15 +772,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/callout/schema",
-        "variables": "@lostgradient/cinder/callout/variables",
-        "examples": "@lostgradient/cinder/callout/examples"
+        "schema": "src/components/callout/callout.schema.json",
+        "variables": "src/components/callout/callout.variables.json",
+        "examples": "src/components/callout/callout.examples.json"
       }
     },
     {
       "name": "CapabilityGate",
       "id": "capability-gate",
-      "import": "@lostgradient/cinder/capability-gate",
+      "import": "@lostgradient/cinder",
       "exportName": "CapabilityGate",
       "category": "feedback",
       "status": "alpha",
@@ -803,15 +802,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/capability-gate/schema",
-        "variables": "@lostgradient/cinder/capability-gate/variables",
-        "examples": "@lostgradient/cinder/capability-gate/examples"
+        "schema": "src/components/capability-gate/capability-gate.schema.json",
+        "variables": "src/components/capability-gate/capability-gate.variables.json",
+        "examples": "src/components/capability-gate/capability-gate.examples.json"
       }
     },
     {
       "name": "Card",
       "id": "card",
-      "import": "@lostgradient/cinder/card",
+      "import": "@lostgradient/cinder",
       "exportName": "Card",
       "category": "layout",
       "status": "stable",
@@ -833,15 +832,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/card/schema",
-        "variables": "@lostgradient/cinder/card/variables",
-        "examples": "@lostgradient/cinder/card/examples"
+        "schema": "src/components/card/card.schema.json",
+        "variables": "src/components/card/card.variables.json",
+        "examples": "src/components/card/card.examples.json"
       }
     },
     {
       "name": "Carousel",
       "id": "carousel",
-      "import": "@lostgradient/cinder/carousel",
+      "import": "@lostgradient/cinder",
       "exportName": "Carousel",
       "category": "navigation",
       "status": "beta",
@@ -864,9 +863,9 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/carousel/schema",
-        "variables": "@lostgradient/cinder/carousel/variables",
-        "examples": "@lostgradient/cinder/carousel/examples"
+        "schema": "src/components/carousel/carousel.schema.json",
+        "variables": "src/components/carousel/carousel.variables.json",
+        "examples": "src/components/carousel/carousel.examples.json"
       },
       "a11y": {
         "pattern": "WAI-ARIA Carousel",
@@ -882,7 +881,7 @@
     {
       "name": "Checkbox",
       "id": "checkbox",
-      "import": "@lostgradient/cinder/checkbox",
+      "import": "@lostgradient/cinder",
       "exportName": "Checkbox",
       "category": "form",
       "status": "stable",
@@ -904,15 +903,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/checkbox/schema",
-        "variables": "@lostgradient/cinder/checkbox/variables",
-        "examples": "@lostgradient/cinder/checkbox/examples"
+        "schema": "src/components/checkbox/checkbox.schema.json",
+        "variables": "src/components/checkbox/checkbox.variables.json",
+        "examples": "src/components/checkbox/checkbox.examples.json"
       }
     },
     {
       "name": "CheckboxGroup",
       "id": "checkbox-group",
-      "import": "@lostgradient/cinder/checkbox-group",
+      "import": "@lostgradient/cinder",
       "exportName": "CheckboxGroup",
       "category": "form",
       "status": "stable",
@@ -931,15 +930,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/checkbox-group/schema",
-        "variables": "@lostgradient/cinder/checkbox-group/variables",
-        "examples": "@lostgradient/cinder/checkbox-group/examples"
+        "schema": "src/components/checkbox-group/checkbox-group.schema.json",
+        "variables": "src/components/checkbox-group/checkbox-group.variables.json",
+        "examples": "src/components/checkbox-group/checkbox-group.examples.json"
       }
     },
     {
       "name": "Chip",
       "id": "chip",
-      "import": "@lostgradient/cinder/chip",
+      "import": "@lostgradient/cinder",
       "exportName": "Chip",
       "category": "data-display",
       "status": "stable",
@@ -961,15 +960,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/chip/schema",
-        "variables": "@lostgradient/cinder/chip/variables",
-        "examples": "@lostgradient/cinder/chip/examples"
+        "schema": "src/components/chip/chip.schema.json",
+        "variables": "src/components/chip/chip.variables.json",
+        "examples": "src/components/chip/chip.examples.json"
       }
     },
     {
       "name": "ChoiceGrid",
       "id": "choice-grid",
-      "import": "@lostgradient/cinder/choice-grid",
+      "import": "@lostgradient/cinder",
       "exportName": "ChoiceGrid",
       "category": "form",
       "status": "alpha",
@@ -991,15 +990,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/choice-grid/schema",
-        "variables": "@lostgradient/cinder/choice-grid/variables",
-        "examples": "@lostgradient/cinder/choice-grid/examples"
+        "schema": "src/components/choice-grid/choice-grid.schema.json",
+        "variables": "src/components/choice-grid/choice-grid.variables.json",
+        "examples": "src/components/choice-grid/choice-grid.examples.json"
       }
     },
     {
       "name": "ChoiceGridItem",
       "id": "choice-grid-item",
-      "import": "@lostgradient/cinder/choice-grid-item",
+      "import": "@lostgradient/cinder",
       "exportName": "ChoiceGridItem",
       "category": "form",
       "status": "alpha",
@@ -1015,14 +1014,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/choice-grid-item/schema",
-        "variables": "@lostgradient/cinder/choice-grid-item/variables"
+        "schema": "src/components/choice-grid-item/choice-grid-item.schema.json",
+        "variables": "src/components/choice-grid-item/choice-grid-item.variables.json"
       }
     },
     {
       "name": "Citation",
       "id": "citation",
-      "import": "@lostgradient/cinder/citation",
+      "import": "@lostgradient/cinder",
       "exportName": "Citation",
       "category": "data-display",
       "status": "beta",
@@ -1038,15 +1037,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/citation/schema",
-        "variables": "@lostgradient/cinder/citation/variables",
-        "examples": "@lostgradient/cinder/citation/examples"
+        "schema": "src/components/citation/citation.schema.json",
+        "variables": "src/components/citation/citation.variables.json",
+        "examples": "src/components/citation/citation.examples.json"
       }
     },
     {
       "name": "ClickAwayListener",
       "id": "click-away-listener",
-      "import": "@lostgradient/cinder/click-away-listener",
+      "import": "@lostgradient/cinder",
       "exportName": "ClickAwayListener",
       "category": "overlay",
       "status": "beta",
@@ -1064,15 +1063,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/click-away-listener/schema",
-        "variables": "@lostgradient/cinder/click-away-listener/variables",
-        "examples": "@lostgradient/cinder/click-away-listener/examples"
+        "schema": "src/components/click-away-listener/click-away-listener.schema.json",
+        "variables": "src/components/click-away-listener/click-away-listener.variables.json",
+        "examples": "src/components/click-away-listener/click-away-listener.examples.json"
       }
     },
     {
       "name": "CodeBlock",
       "id": "code-block",
-      "import": "@lostgradient/cinder/code-block",
+      "import": "@lostgradient/cinder",
       "exportName": "CodeBlock",
       "category": "data-display",
       "status": "stable",
@@ -1094,15 +1093,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/code-block/schema",
-        "variables": "@lostgradient/cinder/code-block/variables",
-        "examples": "@lostgradient/cinder/code-block/examples"
+        "schema": "src/components/code-block/code-block.schema.json",
+        "variables": "src/components/code-block/code-block.variables.json",
+        "examples": "src/components/code-block/code-block.examples.json"
       }
     },
     {
       "name": "CodeLocation",
       "id": "code-location",
-      "import": "@lostgradient/cinder/code-location",
+      "import": "@lostgradient/cinder",
       "exportName": "CodeLocation",
       "category": "data-display",
       "status": "beta",
@@ -1118,15 +1117,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/code-location/schema",
-        "variables": "@lostgradient/cinder/code-location/variables",
-        "examples": "@lostgradient/cinder/code-location/examples"
+        "schema": "src/components/code-location/code-location.schema.json",
+        "variables": "src/components/code-location/code-location.variables.json",
+        "examples": "src/components/code-location/code-location.examples.json"
       }
     },
     {
       "name": "Collapsible",
       "id": "collapsible",
-      "import": "@lostgradient/cinder/collapsible",
+      "import": "@lostgradient/cinder",
       "exportName": "Collapsible",
       "category": "data-display",
       "status": "stable",
@@ -1145,15 +1144,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/collapsible/schema",
-        "variables": "@lostgradient/cinder/collapsible/variables",
-        "examples": "@lostgradient/cinder/collapsible/examples"
+        "schema": "src/components/collapsible/collapsible.schema.json",
+        "variables": "src/components/collapsible/collapsible.variables.json",
+        "examples": "src/components/collapsible/collapsible.examples.json"
       }
     },
     {
       "name": "ColorField",
       "id": "color-field",
-      "import": "@lostgradient/cinder/color-field",
+      "import": "@lostgradient/cinder",
       "exportName": "ColorField",
       "category": "form",
       "status": "stable",
@@ -1175,15 +1174,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/color-field/schema",
-        "variables": "@lostgradient/cinder/color-field/variables",
-        "examples": "@lostgradient/cinder/color-field/examples"
+        "schema": "src/components/color-field/color-field.schema.json",
+        "variables": "src/components/color-field/color-field.variables.json",
+        "examples": "src/components/color-field/color-field.examples.json"
       }
     },
     {
       "name": "ColorPicker",
       "id": "color-picker",
-      "import": "@lostgradient/cinder/color-picker",
+      "import": "@lostgradient/cinder",
       "exportName": "ColorPicker",
       "category": "form",
       "status": "stable",
@@ -1202,15 +1201,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/color-picker/schema",
-        "variables": "@lostgradient/cinder/color-picker/variables",
-        "examples": "@lostgradient/cinder/color-picker/examples"
+        "schema": "src/components/color-picker/color-picker.schema.json",
+        "variables": "src/components/color-picker/color-picker.variables.json",
+        "examples": "src/components/color-picker/color-picker.examples.json"
       }
     },
     {
       "name": "ColorSwatchPicker",
       "id": "color-swatch-picker",
-      "import": "@lostgradient/cinder/color-swatch-picker",
+      "import": "@lostgradient/cinder",
       "exportName": "ColorSwatchPicker",
       "category": "form",
       "status": "stable",
@@ -1229,15 +1228,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/color-swatch-picker/schema",
-        "variables": "@lostgradient/cinder/color-swatch-picker/variables",
-        "examples": "@lostgradient/cinder/color-swatch-picker/examples"
+        "schema": "src/components/color-swatch-picker/color-swatch-picker.schema.json",
+        "variables": "src/components/color-swatch-picker/color-swatch-picker.variables.json",
+        "examples": "src/components/color-swatch-picker/color-swatch-picker.examples.json"
       }
     },
     {
       "name": "Combobox",
       "id": "combobox",
-      "import": "@lostgradient/cinder/combobox",
+      "import": "@lostgradient/cinder",
       "exportName": "Combobox",
       "category": "form",
       "status": "stable",
@@ -1259,15 +1258,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/combobox/schema",
-        "variables": "@lostgradient/cinder/combobox/variables",
-        "examples": "@lostgradient/cinder/combobox/examples"
+        "schema": "src/components/combobox/combobox.schema.json",
+        "variables": "src/components/combobox/combobox.variables.json",
+        "examples": "src/components/combobox/combobox.examples.json"
       }
     },
     {
       "name": "CommandItem",
       "id": "command-item",
-      "import": "@lostgradient/cinder/command-item",
+      "import": "@lostgradient/cinder",
       "exportName": "CommandItem",
       "category": "action",
       "status": "stable",
@@ -1289,14 +1288,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/command-item/schema",
-        "variables": "@lostgradient/cinder/command-item/variables"
+        "schema": "src/components/command-item/command-item.schema.json",
+        "variables": "src/components/command-item/command-item.variables.json"
       }
     },
     {
       "name": "CommandMenu",
       "id": "command-menu",
-      "import": "@lostgradient/cinder/command-menu",
+      "import": "@lostgradient/cinder",
       "exportName": "CommandMenu",
       "category": "overlay",
       "status": "stable",
@@ -1318,15 +1317,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/command-menu/schema",
-        "variables": "@lostgradient/cinder/command-menu/variables",
-        "examples": "@lostgradient/cinder/command-menu/examples"
+        "schema": "src/components/command-menu/command-menu.schema.json",
+        "variables": "src/components/command-menu/command-menu.variables.json",
+        "examples": "src/components/command-menu/command-menu.examples.json"
       }
     },
     {
       "name": "CommandPalette",
       "id": "command-palette",
-      "import": "@lostgradient/cinder/command-palette",
+      "import": "@lostgradient/cinder",
       "exportName": "CommandPalette",
       "category": "overlay",
       "status": "stable",
@@ -1348,15 +1347,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/command-palette/schema",
-        "variables": "@lostgradient/cinder/command-palette/variables",
-        "examples": "@lostgradient/cinder/command-palette/examples"
+        "schema": "src/components/command-palette/command-palette.schema.json",
+        "variables": "src/components/command-palette/command-palette.variables.json",
+        "examples": "src/components/command-palette/command-palette.examples.json"
       }
     },
     {
       "name": "ConfirmDialog",
       "id": "confirm-dialog",
-      "import": "@lostgradient/cinder/confirm-dialog",
+      "import": "@lostgradient/cinder",
       "exportName": "ConfirmDialog",
       "category": "overlay",
       "status": "stable",
@@ -1378,15 +1377,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/confirm-dialog/schema",
-        "variables": "@lostgradient/cinder/confirm-dialog/variables",
-        "examples": "@lostgradient/cinder/confirm-dialog/examples"
+        "schema": "src/components/confirm-dialog/confirm-dialog.schema.json",
+        "variables": "src/components/confirm-dialog/confirm-dialog.variables.json",
+        "examples": "src/components/confirm-dialog/confirm-dialog.examples.json"
       }
     },
     {
       "name": "ConnectionIndicator",
       "id": "connection-indicator",
-      "import": "@lostgradient/cinder/connection-indicator",
+      "import": "@lostgradient/cinder",
       "exportName": "ConnectionIndicator",
       "category": "feedback",
       "status": "beta",
@@ -1410,9 +1409,9 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/connection-indicator/schema",
-        "variables": "@lostgradient/cinder/connection-indicator/variables",
-        "examples": "@lostgradient/cinder/connection-indicator/examples"
+        "schema": "src/components/connection-indicator/connection-indicator.schema.json",
+        "variables": "src/components/connection-indicator/connection-indicator.variables.json",
+        "examples": "src/components/connection-indicator/connection-indicator.examples.json"
       },
       "a11y": {
         "pattern": "role=\"status\" live region",
@@ -1424,7 +1423,7 @@
     {
       "name": "Container",
       "id": "container",
-      "import": "@lostgradient/cinder/container",
+      "import": "@lostgradient/cinder",
       "exportName": "Container",
       "category": "layout",
       "status": "stable",
@@ -1443,15 +1442,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/container/schema",
-        "variables": "@lostgradient/cinder/container/variables",
-        "examples": "@lostgradient/cinder/container/examples"
+        "schema": "src/components/container/container.schema.json",
+        "variables": "src/components/container/container.variables.json",
+        "examples": "src/components/container/container.examples.json"
       }
     },
     {
       "name": "ContextMenu",
       "id": "context-menu",
-      "import": "@lostgradient/cinder/context-menu",
+      "import": "@lostgradient/cinder",
       "exportName": "ContextMenu",
       "category": "overlay",
       "status": "stable",
@@ -1473,15 +1472,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/context-menu/schema",
-        "variables": "@lostgradient/cinder/context-menu/variables",
-        "examples": "@lostgradient/cinder/context-menu/examples"
+        "schema": "src/components/context-menu/context-menu.schema.json",
+        "variables": "src/components/context-menu/context-menu.variables.json",
+        "examples": "src/components/context-menu/context-menu.examples.json"
       }
     },
     {
       "name": "ContextMenuTrigger",
       "id": "context-menu-trigger",
-      "import": "@lostgradient/cinder/context-menu-trigger",
+      "import": "@lostgradient/cinder",
       "exportName": "ContextMenuTrigger",
       "category": "overlay",
       "status": "stable",
@@ -1503,14 +1502,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/context-menu-trigger/schema",
-        "variables": "@lostgradient/cinder/context-menu-trigger/variables"
+        "schema": "src/components/context-menu-trigger/context-menu-trigger.schema.json",
+        "variables": "src/components/context-menu-trigger/context-menu-trigger.variables.json"
       }
     },
     {
       "name": "CopyButton",
       "id": "copy-button",
-      "import": "@lostgradient/cinder/copy-button",
+      "import": "@lostgradient/cinder",
       "exportName": "CopyButton",
       "category": "action",
       "status": "stable",
@@ -1532,15 +1531,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/copy-button/schema",
-        "variables": "@lostgradient/cinder/copy-button/variables",
-        "examples": "@lostgradient/cinder/copy-button/examples"
+        "schema": "src/components/copy-button/copy-button.schema.json",
+        "variables": "src/components/copy-button/copy-button.variables.json",
+        "examples": "src/components/copy-button/copy-button.examples.json"
       }
     },
     {
       "name": "DataGrid",
       "id": "data-grid",
-      "import": "@lostgradient/cinder/data-grid",
+      "import": "@lostgradient/cinder",
       "exportName": "DataGrid",
       "category": "data-display",
       "status": "alpha",
@@ -1548,29 +1547,29 @@
       "tags": ["grid", "data", "spreadsheet"],
       "useWhen": [
         "Rendering interactive tabular data that will need grid behavior such as selection, virtualization, resizing, or editing.",
-        "You need role=grid semantics instead of native table semantics."
+        "You need role=grid semantics instead of native table semantics.",
+        "You need inline cell editing backed by Cinder's own Input, with commit/cancel keyboard behavior handled for you.",
+        "You need opt-in pointer- and keyboard-driven column resizing or reordering (`resizableColumns` / `reorderableColumns`).",
+        "You need opt-in toolbar search/zoom controls, or `zoom` scaling row/header height, column width, and text."
       ],
       "avoidWhen": [
         {
           "reason": "You only need a semantic read-only table — use DataTable or the Table family instead."
-        },
-        {
-          "reason": "You need resize handles, drag-to-reorder controls, or editing today — DataGrid does not provide them yet."
         }
       ],
       "related": ["data-table", "table"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/data-grid/schema",
-        "variables": "@lostgradient/cinder/data-grid/variables",
-        "examples": "@lostgradient/cinder/data-grid/examples"
+        "schema": "src/components/data-grid/data-grid.schema.json",
+        "variables": "src/components/data-grid/data-grid.variables.json",
+        "examples": "src/components/data-grid/data-grid.examples.json"
       }
     },
     {
       "name": "DataList",
       "id": "data-list",
-      "import": "@lostgradient/cinder/data-list",
+      "import": "@lostgradient/cinder",
       "exportName": "DataList",
       "category": "data-display",
       "status": "stable",
@@ -1593,15 +1592,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/data-list/schema",
-        "variables": "@lostgradient/cinder/data-list/variables",
-        "examples": "@lostgradient/cinder/data-list/examples"
+        "schema": "src/components/data-list/data-list.schema.json",
+        "variables": "src/components/data-list/data-list.variables.json",
+        "examples": "src/components/data-list/data-list.examples.json"
       }
     },
     {
       "name": "DataTable",
       "id": "data-table",
-      "import": "@lostgradient/cinder/data-table",
+      "import": "@lostgradient/cinder",
       "exportName": "DataTable",
       "category": "data-display",
       "status": "alpha",
@@ -1631,15 +1630,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/data-table/schema",
-        "variables": "@lostgradient/cinder/data-table/variables",
-        "examples": "@lostgradient/cinder/data-table/examples"
+        "schema": "src/components/data-table/data-table.schema.json",
+        "variables": "src/components/data-table/data-table.variables.json",
+        "examples": "src/components/data-table/data-table.examples.json"
       }
     },
     {
       "name": "DatePicker",
       "id": "date-picker",
-      "import": "@lostgradient/cinder/date-picker",
+      "import": "@lostgradient/cinder",
       "exportName": "DatePicker",
       "category": "form",
       "status": "alpha",
@@ -1658,15 +1657,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/date-picker/schema",
-        "variables": "@lostgradient/cinder/date-picker/variables",
-        "examples": "@lostgradient/cinder/date-picker/examples"
+        "schema": "src/components/date-picker/date-picker.schema.json",
+        "variables": "src/components/date-picker/date-picker.variables.json",
+        "examples": "src/components/date-picker/date-picker.examples.json"
       }
     },
     {
       "name": "DateRangeField",
       "id": "date-range-field",
-      "import": "@lostgradient/cinder/date-range-field",
+      "import": "@lostgradient/cinder",
       "exportName": "DateRangeField",
       "category": "form",
       "status": "stable",
@@ -1688,15 +1687,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/date-range-field/schema",
-        "variables": "@lostgradient/cinder/date-range-field/variables",
-        "examples": "@lostgradient/cinder/date-range-field/examples"
+        "schema": "src/components/date-range-field/date-range-field.schema.json",
+        "variables": "src/components/date-range-field/date-range-field.variables.json",
+        "examples": "src/components/date-range-field/date-range-field.examples.json"
       }
     },
     {
       "name": "DescriptionList",
       "id": "description-list",
-      "import": "@lostgradient/cinder/description-list",
+      "import": "@lostgradient/cinder",
       "exportName": "DescriptionList",
       "category": "data-display",
       "status": "stable",
@@ -1715,15 +1714,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/description-list/schema",
-        "variables": "@lostgradient/cinder/description-list/variables",
-        "examples": "@lostgradient/cinder/description-list/examples"
+        "schema": "src/components/description-list/description-list.schema.json",
+        "variables": "src/components/description-list/description-list.variables.json",
+        "examples": "src/components/description-list/description-list.examples.json"
       }
     },
     {
       "name": "DiffStatistics",
       "id": "diff-statistics",
-      "import": "@lostgradient/cinder/diff-statistics",
+      "import": "@lostgradient/cinder",
       "exportName": "DiffStatistics",
       "category": "domain",
       "status": "domain-suite",
@@ -1745,15 +1744,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/diff-statistics/schema",
-        "variables": "@lostgradient/cinder/diff-statistics/variables",
-        "examples": "@lostgradient/cinder/diff-statistics/examples"
+        "schema": "src/components/diff-statistics/diff-statistics.schema.json",
+        "variables": "src/components/diff-statistics/diff-statistics.variables.json",
+        "examples": "src/components/diff-statistics/diff-statistics.examples.json"
       }
     },
     {
       "name": "Divider",
       "id": "divider",
-      "import": "@lostgradient/cinder/divider",
+      "import": "@lostgradient/cinder",
       "exportName": "Divider",
       "category": "layout",
       "status": "stable",
@@ -1775,15 +1774,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/divider/schema",
-        "variables": "@lostgradient/cinder/divider/variables",
-        "examples": "@lostgradient/cinder/divider/examples"
+        "schema": "src/components/divider/divider.schema.json",
+        "variables": "src/components/divider/divider.variables.json",
+        "examples": "src/components/divider/divider.examples.json"
       }
     },
     {
       "name": "DonutChart",
       "id": "donut-chart",
-      "import": "@lostgradient/cinder/donut-chart",
+      "import": "@lostgradient/cinder",
       "exportName": "DonutChart",
       "category": "data-display",
       "status": "beta",
@@ -1799,15 +1798,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/donut-chart/schema",
-        "variables": "@lostgradient/cinder/donut-chart/variables",
-        "examples": "@lostgradient/cinder/donut-chart/examples"
+        "schema": "src/components/donut-chart/donut-chart.schema.json",
+        "variables": "src/components/donut-chart/donut-chart.variables.json",
+        "examples": "src/components/donut-chart/donut-chart.examples.json"
       }
     },
     {
       "name": "Drawer",
       "id": "drawer",
-      "import": "@lostgradient/cinder/drawer",
+      "import": "@lostgradient/cinder",
       "exportName": "Drawer",
       "category": "overlay",
       "status": "stable",
@@ -1830,15 +1829,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/drawer/schema",
-        "variables": "@lostgradient/cinder/drawer/variables",
-        "examples": "@lostgradient/cinder/drawer/examples"
+        "schema": "src/components/drawer/drawer.schema.json",
+        "variables": "src/components/drawer/drawer.variables.json",
+        "examples": "src/components/drawer/drawer.examples.json"
       }
     },
     {
       "name": "Dropdown",
       "id": "dropdown",
-      "import": "@lostgradient/cinder/dropdown",
+      "import": "@lostgradient/cinder",
       "exportName": "Dropdown",
       "category": "overlay",
       "status": "stable",
@@ -1866,15 +1865,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/dropdown/schema",
-        "variables": "@lostgradient/cinder/dropdown/variables",
-        "examples": "@lostgradient/cinder/dropdown/examples"
+        "schema": "src/components/dropdown/dropdown.schema.json",
+        "variables": "src/components/dropdown/dropdown.variables.json",
+        "examples": "src/components/dropdown/dropdown.examples.json"
       }
     },
     {
       "name": "DropdownGroup",
       "id": "dropdown-group",
-      "import": "@lostgradient/cinder/dropdown-group",
+      "import": "@lostgradient/cinder",
       "exportName": "DropdownGroup",
       "category": "overlay",
       "status": "stable",
@@ -1902,14 +1901,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/dropdown-group/schema",
-        "variables": "@lostgradient/cinder/dropdown-group/variables"
+        "schema": "src/components/dropdown-group/dropdown-group.schema.json",
+        "variables": "src/components/dropdown-group/dropdown-group.variables.json"
       }
     },
     {
       "name": "DropdownItem",
       "id": "dropdown-item",
-      "import": "@lostgradient/cinder/dropdown-item",
+      "import": "@lostgradient/cinder",
       "exportName": "DropdownItem",
       "category": "overlay",
       "status": "stable",
@@ -1931,14 +1930,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/dropdown-item/schema",
-        "variables": "@lostgradient/cinder/dropdown-item/variables"
+        "schema": "src/components/dropdown-item/dropdown-item.schema.json",
+        "variables": "src/components/dropdown-item/dropdown-item.variables.json"
       }
     },
     {
       "name": "DropdownLabel",
       "id": "dropdown-label",
-      "import": "@lostgradient/cinder/dropdown-label",
+      "import": "@lostgradient/cinder",
       "exportName": "DropdownLabel",
       "category": "overlay",
       "status": "stable",
@@ -1960,14 +1959,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/dropdown-label/schema",
-        "variables": "@lostgradient/cinder/dropdown-label/variables"
+        "schema": "src/components/dropdown-label/dropdown-label.schema.json",
+        "variables": "src/components/dropdown-label/dropdown-label.variables.json"
       }
     },
     {
       "name": "DropdownMenu",
       "id": "dropdown-menu",
-      "import": "@lostgradient/cinder/dropdown-menu",
+      "import": "@lostgradient/cinder",
       "exportName": "DropdownMenu",
       "category": "overlay",
       "status": "stable",
@@ -1995,14 +1994,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/dropdown-menu/schema",
-        "variables": "@lostgradient/cinder/dropdown-menu/variables"
+        "schema": "src/components/dropdown-menu/dropdown-menu.schema.json",
+        "variables": "src/components/dropdown-menu/dropdown-menu.variables.json"
       }
     },
     {
       "name": "DropdownSeparator",
       "id": "dropdown-separator",
-      "import": "@lostgradient/cinder/dropdown-separator",
+      "import": "@lostgradient/cinder",
       "exportName": "DropdownSeparator",
       "category": "overlay",
       "status": "stable",
@@ -2024,14 +2023,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/dropdown-separator/schema",
-        "variables": "@lostgradient/cinder/dropdown-separator/variables"
+        "schema": "src/components/dropdown-separator/dropdown-separator.schema.json",
+        "variables": "src/components/dropdown-separator/dropdown-separator.variables.json"
       }
     },
     {
       "name": "DropdownTrigger",
       "id": "dropdown-trigger",
-      "import": "@lostgradient/cinder/dropdown-trigger",
+      "import": "@lostgradient/cinder",
       "exportName": "DropdownTrigger",
       "category": "form",
       "status": "stable",
@@ -2050,14 +2049,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/dropdown-trigger/schema",
-        "variables": "@lostgradient/cinder/dropdown-trigger/variables"
+        "schema": "src/components/dropdown-trigger/dropdown-trigger.schema.json",
+        "variables": "src/components/dropdown-trigger/dropdown-trigger.variables.json"
       }
     },
     {
       "name": "EmptyState",
       "id": "empty-state",
-      "import": "@lostgradient/cinder/empty-state",
+      "import": "@lostgradient/cinder",
       "exportName": "EmptyState",
       "category": "feedback",
       "status": "stable",
@@ -2079,15 +2078,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/empty-state/schema",
-        "variables": "@lostgradient/cinder/empty-state/variables",
-        "examples": "@lostgradient/cinder/empty-state/examples"
+        "schema": "src/components/empty-state/empty-state.schema.json",
+        "variables": "src/components/empty-state/empty-state.variables.json",
+        "examples": "src/components/empty-state/empty-state.examples.json"
       }
     },
     {
       "name": "Feed",
       "id": "feed",
-      "import": "@lostgradient/cinder/feed",
+      "import": "@lostgradient/cinder",
       "exportName": "Feed",
       "category": "data-display",
       "status": "stable",
@@ -2110,15 +2109,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/feed/schema",
-        "variables": "@lostgradient/cinder/feed/variables",
-        "examples": "@lostgradient/cinder/feed/examples"
+        "schema": "src/components/feed/feed.schema.json",
+        "variables": "src/components/feed/feed.variables.json",
+        "examples": "src/components/feed/feed.examples.json"
       }
     },
     {
       "name": "FeedBoundary",
       "id": "feed-boundary",
-      "import": "@lostgradient/cinder/feed-boundary",
+      "import": "@lostgradient/cinder",
       "exportName": "FeedBoundary",
       "category": "data-display",
       "status": "stable",
@@ -2139,15 +2138,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/feed-boundary/schema",
-        "variables": "@lostgradient/cinder/feed-boundary/variables",
-        "examples": "@lostgradient/cinder/feed-boundary/examples"
+        "schema": "src/components/feed-boundary/feed-boundary.schema.json",
+        "variables": "src/components/feed-boundary/feed-boundary.variables.json",
+        "examples": "src/components/feed-boundary/feed-boundary.examples.json"
       }
     },
     {
       "name": "FeedEvent",
       "id": "feed-event",
-      "import": "@lostgradient/cinder/feed-event",
+      "import": "@lostgradient/cinder",
       "exportName": "FeedEvent",
       "category": "data-display",
       "status": "stable",
@@ -2166,14 +2165,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/feed-event/schema",
-        "variables": "@lostgradient/cinder/feed-event/variables"
+        "schema": "src/components/feed-event/feed-event.schema.json",
+        "variables": "src/components/feed-event/feed-event.variables.json"
       }
     },
     {
       "name": "FileUpload",
       "id": "file-upload",
-      "import": "@lostgradient/cinder/file-upload",
+      "import": "@lostgradient/cinder",
       "exportName": "FileUpload",
       "category": "form",
       "status": "stable",
@@ -2192,15 +2191,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/file-upload/schema",
-        "variables": "@lostgradient/cinder/file-upload/variables",
-        "examples": "@lostgradient/cinder/file-upload/examples"
+        "schema": "src/components/file-upload/file-upload.schema.json",
+        "variables": "src/components/file-upload/file-upload.variables.json",
+        "examples": "src/components/file-upload/file-upload.examples.json"
       }
     },
     {
       "name": "FilterBar",
       "id": "filter-bar",
-      "import": "@lostgradient/cinder/filter-bar",
+      "import": "@lostgradient/cinder",
       "exportName": "FilterBar",
       "category": "form",
       "status": "beta",
@@ -2222,15 +2221,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/filter-bar/schema",
-        "variables": "@lostgradient/cinder/filter-bar/variables",
-        "examples": "@lostgradient/cinder/filter-bar/examples"
+        "schema": "src/components/filter-bar/filter-bar.schema.json",
+        "variables": "src/components/filter-bar/filter-bar.variables.json",
+        "examples": "src/components/filter-bar/filter-bar.examples.json"
       }
     },
     {
       "name": "FindBar",
       "id": "find-bar",
-      "import": "@lostgradient/cinder/find-bar",
+      "import": "@lostgradient/cinder",
       "exportName": "FindBar",
       "category": "navigation",
       "status": "beta",
@@ -2246,15 +2245,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/find-bar/schema",
-        "variables": "@lostgradient/cinder/find-bar/variables",
-        "examples": "@lostgradient/cinder/find-bar/examples"
+        "schema": "src/components/find-bar/find-bar.schema.json",
+        "variables": "src/components/find-bar/find-bar.variables.json",
+        "examples": "src/components/find-bar/find-bar.examples.json"
       }
     },
     {
       "name": "FloatingAction",
       "id": "floating-action",
-      "import": "@lostgradient/cinder/floating-action",
+      "import": "@lostgradient/cinder",
       "exportName": "FloatingAction",
       "category": "action",
       "status": "beta",
@@ -2273,15 +2272,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/floating-action/schema",
-        "variables": "@lostgradient/cinder/floating-action/variables",
-        "examples": "@lostgradient/cinder/floating-action/examples"
+        "schema": "src/components/floating-action/floating-action.schema.json",
+        "variables": "src/components/floating-action/floating-action.variables.json",
+        "examples": "src/components/floating-action/floating-action.examples.json"
       }
     },
     {
       "name": "FocusTrap",
       "id": "focus-trap",
-      "import": "@lostgradient/cinder/focus-trap",
+      "import": "@lostgradient/cinder",
       "exportName": "FocusTrap",
       "category": "overlay",
       "status": "stable",
@@ -2300,15 +2299,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/focus-trap/schema",
-        "variables": "@lostgradient/cinder/focus-trap/variables",
-        "examples": "@lostgradient/cinder/focus-trap/examples"
+        "schema": "src/components/focus-trap/focus-trap.schema.json",
+        "variables": "src/components/focus-trap/focus-trap.variables.json",
+        "examples": "src/components/focus-trap/focus-trap.examples.json"
       }
     },
     {
       "name": "Footer",
       "id": "footer",
-      "import": "@lostgradient/cinder/footer",
+      "import": "@lostgradient/cinder",
       "exportName": "Footer",
       "category": "layout",
       "status": "beta",
@@ -2331,15 +2330,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/footer/schema",
-        "variables": "@lostgradient/cinder/footer/variables",
-        "examples": "@lostgradient/cinder/footer/examples"
+        "schema": "src/components/footer/footer.schema.json",
+        "variables": "src/components/footer/footer.variables.json",
+        "examples": "src/components/footer/footer.examples.json"
       }
     },
     {
       "name": "Form",
       "id": "form",
-      "import": "@lostgradient/cinder/form",
+      "import": "@lostgradient/cinder",
       "exportName": "Form",
       "category": "form",
       "status": "beta",
@@ -2355,15 +2354,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/form/schema",
-        "variables": "@lostgradient/cinder/form/variables",
-        "examples": "@lostgradient/cinder/form/examples"
+        "schema": "src/components/form/form.schema.json",
+        "variables": "src/components/form/form.variables.json",
+        "examples": "src/components/form/form.examples.json"
       }
     },
     {
       "name": "FormField",
       "id": "form-field",
-      "import": "@lostgradient/cinder/form-field",
+      "import": "@lostgradient/cinder",
       "exportName": "FormField",
       "category": "form",
       "status": "stable",
@@ -2382,15 +2381,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/form-field/schema",
-        "variables": "@lostgradient/cinder/form-field/variables",
-        "examples": "@lostgradient/cinder/form-field/examples"
+        "schema": "src/components/form-field/form-field.schema.json",
+        "variables": "src/components/form-field/form-field.variables.json",
+        "examples": "src/components/form-field/form-field.examples.json"
       }
     },
     {
       "name": "FormSection",
       "id": "form-section",
-      "import": "@lostgradient/cinder/form-section",
+      "import": "@lostgradient/cinder",
       "exportName": "FormSection",
       "category": "form",
       "status": "stable",
@@ -2409,15 +2408,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/form-section/schema",
-        "variables": "@lostgradient/cinder/form-section/variables",
-        "examples": "@lostgradient/cinder/form-section/examples"
+        "schema": "src/components/form-section/form-section.schema.json",
+        "variables": "src/components/form-section/form-section.variables.json",
+        "examples": "src/components/form-section/form-section.examples.json"
       }
     },
     {
       "name": "Grid",
       "id": "grid",
-      "import": "@lostgradient/cinder/grid",
+      "import": "@lostgradient/cinder",
       "exportName": "Grid",
       "category": "layout",
       "status": "beta",
@@ -2441,15 +2440,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/grid/schema",
-        "variables": "@lostgradient/cinder/grid/variables",
-        "examples": "@lostgradient/cinder/grid/examples"
+        "schema": "src/components/grid/grid.schema.json",
+        "variables": "src/components/grid/grid.variables.json",
+        "examples": "src/components/grid/grid.examples.json"
       }
     },
     {
       "name": "GridItem",
       "id": "grid-item",
-      "import": "@lostgradient/cinder/grid-item",
+      "import": "@lostgradient/cinder",
       "exportName": "GridItem",
       "category": "layout",
       "status": "beta",
@@ -2466,14 +2465,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/grid-item/schema",
-        "variables": "@lostgradient/cinder/grid-item/variables"
+        "schema": "src/components/grid-item/grid-item.schema.json",
+        "variables": "src/components/grid-item/grid-item.variables.json"
       }
     },
     {
       "name": "GridList",
       "id": "grid-list",
-      "import": "@lostgradient/cinder/grid-list",
+      "import": "@lostgradient/cinder",
       "exportName": "GridList",
       "category": "data-display",
       "status": "stable",
@@ -2495,15 +2494,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/grid-list/schema",
-        "variables": "@lostgradient/cinder/grid-list/variables",
-        "examples": "@lostgradient/cinder/grid-list/examples"
+        "schema": "src/components/grid-list/grid-list.schema.json",
+        "variables": "src/components/grid-list/grid-list.variables.json",
+        "examples": "src/components/grid-list/grid-list.examples.json"
       }
     },
     {
       "name": "GridListItem",
       "id": "grid-list-item",
-      "import": "@lostgradient/cinder/grid-list-item",
+      "import": "@lostgradient/cinder",
       "exportName": "GridListItem",
       "category": "data-display",
       "status": "stable",
@@ -2522,14 +2521,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/grid-list-item/schema",
-        "variables": "@lostgradient/cinder/grid-list-item/variables"
+        "schema": "src/components/grid-list-item/grid-list-item.schema.json",
+        "variables": "src/components/grid-list-item/grid-list-item.variables.json"
       }
     },
     {
       "name": "GuidanceRegion",
       "id": "guidance-region",
-      "import": "@lostgradient/cinder/guidance-region",
+      "import": "@lostgradient/cinder",
       "exportName": "GuidanceRegion",
       "category": "data-display",
       "status": "beta",
@@ -2547,15 +2546,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/guidance-region/schema",
-        "variables": "@lostgradient/cinder/guidance-region/variables",
-        "examples": "@lostgradient/cinder/guidance-region/examples"
+        "schema": "src/components/guidance-region/guidance-region.schema.json",
+        "variables": "src/components/guidance-region/guidance-region.variables.json",
+        "examples": "src/components/guidance-region/guidance-region.examples.json"
       }
     },
     {
       "name": "HostProvider",
       "id": "host-provider",
-      "import": "@lostgradient/cinder/host-provider",
+      "import": "@lostgradient/cinder",
       "exportName": "HostProvider",
       "category": "layout",
       "status": "beta",
@@ -2573,15 +2572,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/host-provider/schema",
-        "variables": "@lostgradient/cinder/host-provider/variables",
-        "examples": "@lostgradient/cinder/host-provider/examples"
+        "schema": "src/components/host-provider/host-provider.schema.json",
+        "variables": "src/components/host-provider/host-provider.variables.json",
+        "examples": "src/components/host-provider/host-provider.examples.json"
       }
     },
     {
       "name": "HoverCard",
       "id": "hover-card",
-      "import": "@lostgradient/cinder/hover-card",
+      "import": "@lostgradient/cinder",
       "exportName": "HoverCard",
       "category": "overlay",
       "status": "stable",
@@ -2603,15 +2602,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/hover-card/schema",
-        "variables": "@lostgradient/cinder/hover-card/variables",
-        "examples": "@lostgradient/cinder/hover-card/examples"
+        "schema": "src/components/hover-card/hover-card.schema.json",
+        "variables": "src/components/hover-card/hover-card.variables.json",
+        "examples": "src/components/hover-card/hover-card.examples.json"
       }
     },
     {
       "name": "Image",
       "id": "image",
-      "import": "@lostgradient/cinder/image",
+      "import": "@lostgradient/cinder",
       "exportName": "Image",
       "category": "data-display",
       "status": "stable",
@@ -2633,15 +2632,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/image/schema",
-        "variables": "@lostgradient/cinder/image/variables",
-        "examples": "@lostgradient/cinder/image/examples"
+        "schema": "src/components/image/image.schema.json",
+        "variables": "src/components/image/image.variables.json",
+        "examples": "src/components/image/image.examples.json"
       }
     },
     {
       "name": "InlineConfirm",
       "id": "inline-confirm",
-      "import": "@lostgradient/cinder/inline-confirm",
+      "import": "@lostgradient/cinder",
       "exportName": "InlineConfirm",
       "category": "feedback",
       "status": "stable",
@@ -2657,15 +2656,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/inline-confirm/schema",
-        "variables": "@lostgradient/cinder/inline-confirm/variables",
-        "examples": "@lostgradient/cinder/inline-confirm/examples"
+        "schema": "src/components/inline-confirm/inline-confirm.schema.json",
+        "variables": "src/components/inline-confirm/inline-confirm.variables.json",
+        "examples": "src/components/inline-confirm/inline-confirm.examples.json"
       }
     },
     {
       "name": "InlineLoading",
       "id": "inline-loading",
-      "import": "@lostgradient/cinder/inline-loading",
+      "import": "@lostgradient/cinder",
       "exportName": "InlineLoading",
       "category": "feedback",
       "status": "alpha",
@@ -2687,15 +2686,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/inline-loading/schema",
-        "variables": "@lostgradient/cinder/inline-loading/variables",
-        "examples": "@lostgradient/cinder/inline-loading/examples"
+        "schema": "src/components/inline-loading/inline-loading.schema.json",
+        "variables": "src/components/inline-loading/inline-loading.variables.json",
+        "examples": "src/components/inline-loading/inline-loading.examples.json"
       }
     },
     {
       "name": "Input",
       "id": "input",
-      "import": "@lostgradient/cinder/input",
+      "import": "@lostgradient/cinder",
       "exportName": "Input",
       "category": "form",
       "status": "stable",
@@ -2717,16 +2716,16 @@
       "hasConstraints": true,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/input/schema",
-        "variables": "@lostgradient/cinder/input/variables",
-        "examples": "@lostgradient/cinder/input/examples",
-        "constraints": "@lostgradient/cinder/input/constraints"
+        "schema": "src/components/input/input.schema.json",
+        "variables": "src/components/input/input.variables.json",
+        "examples": "src/components/input/input.examples.json",
+        "constraints": "src/components/input/input.constraints.json"
       }
     },
     {
       "name": "InvocationRuleBuilder",
       "id": "invocation-rule-builder",
-      "import": "@lostgradient/cinder/invocation-rule-builder",
+      "import": "@lostgradient/cinder",
       "exportName": "InvocationRuleBuilder",
       "category": "form",
       "status": "beta",
@@ -2746,15 +2745,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/invocation-rule-builder/schema",
-        "variables": "@lostgradient/cinder/invocation-rule-builder/variables",
-        "examples": "@lostgradient/cinder/invocation-rule-builder/examples"
+        "schema": "src/components/invocation-rule-builder/invocation-rule-builder.schema.json",
+        "variables": "src/components/invocation-rule-builder/invocation-rule-builder.variables.json",
+        "examples": "src/components/invocation-rule-builder/invocation-rule-builder.examples.json"
       }
     },
     {
       "name": "JsonEditor",
       "id": "json-editor",
-      "import": "@lostgradient/cinder/json-editor",
+      "import": "@lostgradient/cinder",
       "exportName": "JsonEditor",
       "category": "form",
       "status": "stable",
@@ -2778,10 +2777,10 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/json-editor/schema",
-        "variables": "@lostgradient/cinder/json-editor/variables",
-        "examples": "@lostgradient/cinder/json-editor/examples",
-        "enhancement": "@lostgradient/cinder/json-editor/enhancement"
+        "schema": "src/components/json-editor/json-editor.schema.json",
+        "variables": "src/components/json-editor/json-editor.variables.json",
+        "examples": "src/components/json-editor/json-editor.examples.json",
+        "enhancement": "src/components/json-editor/json-editor-enhancement.ts"
       },
       "a11y": {
         "keyboard": [
@@ -2796,7 +2795,7 @@
     {
       "name": "JsonSchemaEditor",
       "id": "json-schema-editor",
-      "import": "@lostgradient/cinder/json-schema-editor",
+      "import": "@lostgradient/cinder",
       "exportName": "JsonSchemaEditor",
       "category": "form",
       "status": "stable",
@@ -2815,15 +2814,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/json-schema-editor/schema",
-        "variables": "@lostgradient/cinder/json-schema-editor/variables",
-        "examples": "@lostgradient/cinder/json-schema-editor/examples"
+        "schema": "src/components/json-schema-editor/json-schema-editor.schema.json",
+        "variables": "src/components/json-schema-editor/json-schema-editor.variables.json",
+        "examples": "src/components/json-schema-editor/json-schema-editor.examples.json"
       }
     },
     {
       "name": "JsonViewer",
       "id": "json-viewer",
-      "import": "@lostgradient/cinder/json-viewer",
+      "import": "@lostgradient/cinder",
       "exportName": "JsonViewer",
       "category": "data-display",
       "status": "stable",
@@ -2845,15 +2844,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/json-viewer/schema",
-        "variables": "@lostgradient/cinder/json-viewer/variables",
-        "examples": "@lostgradient/cinder/json-viewer/examples"
+        "schema": "src/components/json-viewer/json-viewer.schema.json",
+        "variables": "src/components/json-viewer/json-viewer.variables.json",
+        "examples": "src/components/json-viewer/json-viewer.examples.json"
       }
     },
     {
       "name": "KanbanBoard",
       "id": "kanban-board",
-      "import": "@lostgradient/cinder/kanban-board",
+      "import": "@lostgradient/cinder",
       "exportName": "KanbanBoard",
       "category": "data-display",
       "status": "stable",
@@ -2875,15 +2874,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/kanban-board/schema",
-        "variables": "@lostgradient/cinder/kanban-board/variables",
-        "examples": "@lostgradient/cinder/kanban-board/examples"
+        "schema": "src/components/kanban-board/kanban-board.schema.json",
+        "variables": "src/components/kanban-board/kanban-board.variables.json",
+        "examples": "src/components/kanban-board/kanban-board.examples.json"
       }
     },
     {
       "name": "Kbd",
       "id": "kbd",
-      "import": "@lostgradient/cinder/kbd",
+      "import": "@lostgradient/cinder",
       "exportName": "Kbd",
       "category": "typography",
       "status": "stable",
@@ -2902,15 +2901,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/kbd/schema",
-        "variables": "@lostgradient/cinder/kbd/variables",
-        "examples": "@lostgradient/cinder/kbd/examples"
+        "schema": "src/components/kbd/kbd.schema.json",
+        "variables": "src/components/kbd/kbd.variables.json",
+        "examples": "src/components/kbd/kbd.examples.json"
       }
     },
     {
       "name": "KeyValueEditor",
       "id": "key-value-editor",
-      "import": "@lostgradient/cinder/key-value-editor",
+      "import": "@lostgradient/cinder",
       "exportName": "KeyValueEditor",
       "category": "data-display",
       "status": "beta",
@@ -2926,15 +2925,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/key-value-editor/schema",
-        "variables": "@lostgradient/cinder/key-value-editor/variables",
-        "examples": "@lostgradient/cinder/key-value-editor/examples"
+        "schema": "src/components/key-value-editor/key-value-editor.schema.json",
+        "variables": "src/components/key-value-editor/key-value-editor.variables.json",
+        "examples": "src/components/key-value-editor/key-value-editor.examples.json"
       }
     },
     {
       "name": "KeyboardShortcuts",
       "id": "keyboard-shortcuts",
-      "import": "@lostgradient/cinder/keyboard-shortcuts",
+      "import": "@lostgradient/cinder",
       "exportName": "KeyboardShortcuts",
       "category": "typography",
       "status": "alpha",
@@ -2953,15 +2952,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/keyboard-shortcuts/schema",
-        "variables": "@lostgradient/cinder/keyboard-shortcuts/variables",
-        "examples": "@lostgradient/cinder/keyboard-shortcuts/examples"
+        "schema": "src/components/keyboard-shortcuts/keyboard-shortcuts.schema.json",
+        "variables": "src/components/keyboard-shortcuts/keyboard-shortcuts.variables.json",
+        "examples": "src/components/keyboard-shortcuts/keyboard-shortcuts.examples.json"
       }
     },
     {
       "name": "Label",
       "id": "label",
-      "import": "@lostgradient/cinder/label",
+      "import": "@lostgradient/cinder",
       "exportName": "Label",
       "category": "form",
       "status": "stable",
@@ -2980,14 +2979,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/label/schema",
-        "variables": "@lostgradient/cinder/label/variables"
+        "schema": "src/components/label/label.schema.json",
+        "variables": "src/components/label/label.variables.json"
       }
     },
     {
       "name": "LineChart",
       "id": "line-chart",
-      "import": "@lostgradient/cinder/line-chart",
+      "import": "@lostgradient/cinder",
       "exportName": "LineChart",
       "category": "data-display",
       "status": "stable",
@@ -3009,15 +3008,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/line-chart/schema",
-        "variables": "@lostgradient/cinder/line-chart/variables",
-        "examples": "@lostgradient/cinder/line-chart/examples"
+        "schema": "src/components/line-chart/line-chart.schema.json",
+        "variables": "src/components/line-chart/line-chart.variables.json",
+        "examples": "src/components/line-chart/line-chart.examples.json"
       }
     },
     {
       "name": "Link",
       "id": "link",
-      "import": "@lostgradient/cinder/link",
+      "import": "@lostgradient/cinder",
       "exportName": "Link",
       "category": "typography",
       "status": "beta",
@@ -3033,15 +3032,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/link/schema",
-        "variables": "@lostgradient/cinder/link/variables",
-        "examples": "@lostgradient/cinder/link/examples"
+        "schema": "src/components/link/link.schema.json",
+        "variables": "src/components/link/link.variables.json",
+        "examples": "src/components/link/link.examples.json"
       }
     },
     {
       "name": "LoadMore",
       "id": "load-more",
-      "import": "@lostgradient/cinder/load-more",
+      "import": "@lostgradient/cinder",
       "exportName": "LoadMore",
       "category": "navigation",
       "status": "stable",
@@ -3059,15 +3058,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/load-more/schema",
-        "variables": "@lostgradient/cinder/load-more/variables",
-        "examples": "@lostgradient/cinder/load-more/examples"
+        "schema": "src/components/load-more/load-more.schema.json",
+        "variables": "src/components/load-more/load-more.variables.json",
+        "examples": "src/components/load-more/load-more.examples.json"
       }
     },
     {
       "name": "LocaleProvider",
       "id": "locale-provider",
-      "import": "@lostgradient/cinder/locale-provider",
+      "import": "@lostgradient/cinder",
       "exportName": "LocaleProvider",
       "category": "layout",
       "status": "stable",
@@ -3086,14 +3085,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/locale-provider/schema",
-        "variables": "@lostgradient/cinder/locale-provider/variables"
+        "schema": "src/components/locale-provider/locale-provider.schema.json",
+        "variables": "src/components/locale-provider/locale-provider.variables.json"
       }
     },
     {
       "name": "Marquee",
       "id": "marquee",
-      "import": "@lostgradient/cinder/marquee",
+      "import": "@lostgradient/cinder",
       "exportName": "Marquee",
       "category": "layout",
       "status": "beta",
@@ -3116,15 +3115,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/marquee/schema",
-        "variables": "@lostgradient/cinder/marquee/variables",
-        "examples": "@lostgradient/cinder/marquee/examples"
+        "schema": "src/components/marquee/marquee.schema.json",
+        "variables": "src/components/marquee/marquee.variables.json",
+        "examples": "src/components/marquee/marquee.examples.json"
       }
     },
     {
       "name": "Masonry",
       "id": "masonry",
-      "import": "@lostgradient/cinder/masonry",
+      "import": "@lostgradient/cinder",
       "exportName": "Masonry",
       "category": "layout",
       "status": "beta",
@@ -3147,15 +3146,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/masonry/schema",
-        "variables": "@lostgradient/cinder/masonry/variables",
-        "examples": "@lostgradient/cinder/masonry/examples"
+        "schema": "src/components/masonry/masonry.schema.json",
+        "variables": "src/components/masonry/masonry.variables.json",
+        "examples": "src/components/masonry/masonry.examples.json"
       }
     },
     {
       "name": "MatrixChart",
       "id": "matrix-chart",
-      "import": "@lostgradient/cinder/matrix-chart",
+      "import": "@lostgradient/cinder",
       "exportName": "MatrixChart",
       "category": "data-display",
       "status": "alpha",
@@ -3177,15 +3176,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/matrix-chart/schema",
-        "variables": "@lostgradient/cinder/matrix-chart/variables",
-        "examples": "@lostgradient/cinder/matrix-chart/examples"
+        "schema": "src/components/matrix-chart/matrix-chart.schema.json",
+        "variables": "src/components/matrix-chart/matrix-chart.variables.json",
+        "examples": "src/components/matrix-chart/matrix-chart.examples.json"
       }
     },
     {
       "name": "MediaControls",
       "id": "media-controls",
-      "import": "@lostgradient/cinder/media-controls",
+      "import": "@lostgradient/cinder",
       "exportName": "MediaControls",
       "category": "action",
       "status": "alpha",
@@ -3207,15 +3206,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/media-controls/schema",
-        "variables": "@lostgradient/cinder/media-controls/variables",
-        "examples": "@lostgradient/cinder/media-controls/examples"
+        "schema": "src/components/media-controls/media-controls.schema.json",
+        "variables": "src/components/media-controls/media-controls.variables.json",
+        "examples": "src/components/media-controls/media-controls.examples.json"
       }
     },
     {
       "name": "MegaMenu",
       "id": "mega-menu",
-      "import": "@lostgradient/cinder/mega-menu",
+      "import": "@lostgradient/cinder",
       "exportName": "MegaMenu",
       "category": "navigation",
       "status": "beta",
@@ -3239,9 +3238,9 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/mega-menu/schema",
-        "variables": "@lostgradient/cinder/mega-menu/variables",
-        "examples": "@lostgradient/cinder/mega-menu/examples"
+        "schema": "src/components/mega-menu/mega-menu.schema.json",
+        "variables": "src/components/mega-menu/mega-menu.variables.json",
+        "examples": "src/components/mega-menu/mega-menu.examples.json"
       },
       "a11y": {
         "pattern": "Navigation landmark + disclosure buttons",
@@ -3259,7 +3258,7 @@
     {
       "name": "MenuBar",
       "id": "menu-bar",
-      "import": "@lostgradient/cinder/menu-bar",
+      "import": "@lostgradient/cinder",
       "exportName": "MenuBar",
       "category": "navigation",
       "status": "stable",
@@ -3281,15 +3280,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/menu-bar/schema",
-        "variables": "@lostgradient/cinder/menu-bar/variables",
-        "examples": "@lostgradient/cinder/menu-bar/examples"
+        "schema": "src/components/menu-bar/menu-bar.schema.json",
+        "variables": "src/components/menu-bar/menu-bar.variables.json",
+        "examples": "src/components/menu-bar/menu-bar.examples.json"
       }
     },
     {
       "name": "Message",
       "id": "message",
-      "import": "@lostgradient/cinder/message",
+      "import": "@lostgradient/cinder",
       "exportName": "Message",
       "category": "data-display",
       "status": "stable",
@@ -3311,15 +3310,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/message/schema",
-        "variables": "@lostgradient/cinder/message/variables",
-        "examples": "@lostgradient/cinder/message/examples"
+        "schema": "src/components/message/message.schema.json",
+        "variables": "src/components/message/message.variables.json",
+        "examples": "src/components/message/message.examples.json"
       }
     },
     {
       "name": "Meter",
       "id": "meter",
-      "import": "@lostgradient/cinder/meter",
+      "import": "@lostgradient/cinder",
       "exportName": "Meter",
       "category": "feedback",
       "status": "alpha",
@@ -3339,9 +3338,9 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/meter/schema",
-        "variables": "@lostgradient/cinder/meter/variables",
-        "examples": "@lostgradient/cinder/meter/examples"
+        "schema": "src/components/meter/meter.schema.json",
+        "variables": "src/components/meter/meter.variables.json",
+        "examples": "src/components/meter/meter.examples.json"
       },
       "a11y": {
         "pattern": "WAI-ARIA Meter"
@@ -3350,7 +3349,7 @@
     {
       "name": "Modal",
       "id": "modal",
-      "import": "@lostgradient/cinder/modal",
+      "import": "@lostgradient/cinder",
       "exportName": "Modal",
       "category": "overlay",
       "status": "stable",
@@ -3378,16 +3377,16 @@
       "hasConstraints": true,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/modal/schema",
-        "variables": "@lostgradient/cinder/modal/variables",
-        "examples": "@lostgradient/cinder/modal/examples",
-        "constraints": "@lostgradient/cinder/modal/constraints"
+        "schema": "src/components/modal/modal.schema.json",
+        "variables": "src/components/modal/modal.variables.json",
+        "examples": "src/components/modal/modal.examples.json",
+        "constraints": "src/components/modal/modal.constraints.json"
       }
     },
     {
       "name": "ModalRegion",
       "id": "modal-region",
-      "import": "@lostgradient/cinder/modal-region",
+      "import": "@lostgradient/cinder",
       "exportName": "ModalRegion",
       "category": "overlay",
       "status": "beta",
@@ -3405,15 +3404,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/modal-region/schema",
-        "variables": "@lostgradient/cinder/modal-region/variables",
-        "examples": "@lostgradient/cinder/modal-region/examples"
+        "schema": "src/components/modal-region/modal-region.schema.json",
+        "variables": "src/components/modal-region/modal-region.variables.json",
+        "examples": "src/components/modal-region/modal-region.examples.json"
       }
     },
     {
       "name": "MultiSelect",
       "id": "multi-select",
-      "import": "@lostgradient/cinder/multi-select",
+      "import": "@lostgradient/cinder",
       "exportName": "MultiSelect",
       "category": "form",
       "status": "alpha",
@@ -3435,15 +3434,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/multi-select/schema",
-        "variables": "@lostgradient/cinder/multi-select/variables",
-        "examples": "@lostgradient/cinder/multi-select/examples"
+        "schema": "src/components/multi-select/multi-select.schema.json",
+        "variables": "src/components/multi-select/multi-select.variables.json",
+        "examples": "src/components/multi-select/multi-select.examples.json"
       }
     },
     {
       "name": "NavigationBar",
       "id": "navigation-bar",
-      "import": "@lostgradient/cinder/navigation-bar",
+      "import": "@lostgradient/cinder",
       "exportName": "NavigationBar",
       "category": "navigation",
       "status": "stable",
@@ -3465,15 +3464,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/navigation-bar/schema",
-        "variables": "@lostgradient/cinder/navigation-bar/variables",
-        "examples": "@lostgradient/cinder/navigation-bar/examples"
+        "schema": "src/components/navigation-bar/navigation-bar.schema.json",
+        "variables": "src/components/navigation-bar/navigation-bar.variables.json",
+        "examples": "src/components/navigation-bar/navigation-bar.examples.json"
       }
     },
     {
       "name": "NavigationItem",
       "id": "navigation-item",
-      "import": "@lostgradient/cinder/navigation-item",
+      "import": "@lostgradient/cinder",
       "exportName": "NavigationItem",
       "category": "navigation",
       "status": "stable",
@@ -3495,14 +3494,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/navigation-item/schema",
-        "variables": "@lostgradient/cinder/navigation-item/variables"
+        "schema": "src/components/navigation-item/navigation-item.schema.json",
+        "variables": "src/components/navigation-item/navigation-item.variables.json"
       }
     },
     {
       "name": "NumberInput",
       "id": "number-input",
-      "import": "@lostgradient/cinder/number-input",
+      "import": "@lostgradient/cinder",
       "exportName": "NumberInput",
       "category": "form",
       "status": "stable",
@@ -3524,15 +3523,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/number-input/schema",
-        "variables": "@lostgradient/cinder/number-input/variables",
-        "examples": "@lostgradient/cinder/number-input/examples"
+        "schema": "src/components/number-input/number-input.schema.json",
+        "variables": "src/components/number-input/number-input.variables.json",
+        "examples": "src/components/number-input/number-input.examples.json"
       }
     },
     {
       "name": "PageHeader",
       "id": "page-header",
-      "import": "@lostgradient/cinder/page-header",
+      "import": "@lostgradient/cinder",
       "exportName": "PageHeader",
       "category": "layout",
       "status": "stable",
@@ -3554,15 +3553,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/page-header/schema",
-        "variables": "@lostgradient/cinder/page-header/variables",
-        "examples": "@lostgradient/cinder/page-header/examples"
+        "schema": "src/components/page-header/page-header.schema.json",
+        "variables": "src/components/page-header/page-header.variables.json",
+        "examples": "src/components/page-header/page-header.examples.json"
       }
     },
     {
       "name": "Pagination",
       "id": "pagination",
-      "import": "@lostgradient/cinder/pagination",
+      "import": "@lostgradient/cinder",
       "exportName": "Pagination",
       "category": "navigation",
       "status": "stable",
@@ -3584,15 +3583,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/pagination/schema",
-        "variables": "@lostgradient/cinder/pagination/variables",
-        "examples": "@lostgradient/cinder/pagination/examples"
+        "schema": "src/components/pagination/pagination.schema.json",
+        "variables": "src/components/pagination/pagination.variables.json",
+        "examples": "src/components/pagination/pagination.examples.json"
       }
     },
     {
       "name": "ParameterField",
       "id": "parameter-field",
-      "import": "@lostgradient/cinder/parameter-field",
+      "import": "@lostgradient/cinder",
       "exportName": "ParameterField",
       "category": "form",
       "status": "beta",
@@ -3610,15 +3609,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/parameter-field/schema",
-        "variables": "@lostgradient/cinder/parameter-field/variables",
-        "examples": "@lostgradient/cinder/parameter-field/examples"
+        "schema": "src/components/parameter-field/parameter-field.schema.json",
+        "variables": "src/components/parameter-field/parameter-field.variables.json",
+        "examples": "src/components/parameter-field/parameter-field.examples.json"
       }
     },
     {
       "name": "PayloadInspector",
       "id": "payload-inspector",
-      "import": "@lostgradient/cinder/payload-inspector",
+      "import": "@lostgradient/cinder",
       "exportName": "PayloadInspector",
       "category": "data-display",
       "status": "stable",
@@ -3640,15 +3639,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/payload-inspector/schema",
-        "variables": "@lostgradient/cinder/payload-inspector/variables",
-        "examples": "@lostgradient/cinder/payload-inspector/examples"
+        "schema": "src/components/payload-inspector/payload-inspector.schema.json",
+        "variables": "src/components/payload-inspector/payload-inspector.variables.json",
+        "examples": "src/components/payload-inspector/payload-inspector.examples.json"
       }
     },
     {
       "name": "PermissionMatrix",
       "id": "permission-matrix",
-      "import": "@lostgradient/cinder/permission-matrix",
+      "import": "@lostgradient/cinder",
       "exportName": "PermissionMatrix",
       "category": "data-display",
       "status": "alpha",
@@ -3670,15 +3669,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/permission-matrix/schema",
-        "variables": "@lostgradient/cinder/permission-matrix/variables",
-        "examples": "@lostgradient/cinder/permission-matrix/examples"
+        "schema": "src/components/permission-matrix/permission-matrix.schema.json",
+        "variables": "src/components/permission-matrix/permission-matrix.variables.json",
+        "examples": "src/components/permission-matrix/permission-matrix.examples.json"
       }
     },
     {
       "name": "PhoneInput",
       "id": "phone-input",
-      "import": "@lostgradient/cinder/phone-input",
+      "import": "@lostgradient/cinder",
       "exportName": "PhoneInput",
       "category": "form",
       "status": "stable",
@@ -3700,15 +3699,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/phone-input/schema",
-        "variables": "@lostgradient/cinder/phone-input/variables",
-        "examples": "@lostgradient/cinder/phone-input/examples"
+        "schema": "src/components/phone-input/phone-input.schema.json",
+        "variables": "src/components/phone-input/phone-input.variables.json",
+        "examples": "src/components/phone-input/phone-input.examples.json"
       }
     },
     {
       "name": "PinInput",
       "id": "pin-input",
-      "import": "@lostgradient/cinder/pin-input",
+      "import": "@lostgradient/cinder",
       "exportName": "PinInput",
       "category": "form",
       "status": "stable",
@@ -3730,15 +3729,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/pin-input/schema",
-        "variables": "@lostgradient/cinder/pin-input/variables",
-        "examples": "@lostgradient/cinder/pin-input/examples"
+        "schema": "src/components/pin-input/pin-input.schema.json",
+        "variables": "src/components/pin-input/pin-input.variables.json",
+        "examples": "src/components/pin-input/pin-input.examples.json"
       }
     },
     {
       "name": "PolicyLock",
       "id": "policy-lock",
-      "import": "@lostgradient/cinder/policy-lock",
+      "import": "@lostgradient/cinder",
       "exportName": "PolicyLock",
       "category": "form",
       "status": "beta",
@@ -3756,15 +3755,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/policy-lock/schema",
-        "variables": "@lostgradient/cinder/policy-lock/variables",
-        "examples": "@lostgradient/cinder/policy-lock/examples"
+        "schema": "src/components/policy-lock/policy-lock.schema.json",
+        "variables": "src/components/policy-lock/policy-lock.variables.json",
+        "examples": "src/components/policy-lock/policy-lock.examples.json"
       }
     },
     {
       "name": "Popover",
       "id": "popover",
-      "import": "@lostgradient/cinder/popover",
+      "import": "@lostgradient/cinder",
       "exportName": "Popover",
       "category": "overlay",
       "status": "stable",
@@ -3786,15 +3785,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/popover/schema",
-        "variables": "@lostgradient/cinder/popover/variables",
-        "examples": "@lostgradient/cinder/popover/examples"
+        "schema": "src/components/popover/popover.schema.json",
+        "variables": "src/components/popover/popover.variables.json",
+        "examples": "src/components/popover/popover.examples.json"
       }
     },
     {
       "name": "Portal",
       "id": "portal",
-      "import": "@lostgradient/cinder/portal",
+      "import": "@lostgradient/cinder",
       "exportName": "Portal",
       "category": "overlay",
       "status": "stable",
@@ -3813,15 +3812,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/portal/schema",
-        "variables": "@lostgradient/cinder/portal/variables",
-        "examples": "@lostgradient/cinder/portal/examples"
+        "schema": "src/components/portal/portal.schema.json",
+        "variables": "src/components/portal/portal.variables.json",
+        "examples": "src/components/portal/portal.examples.json"
       }
     },
     {
       "name": "PreviewPanel",
       "id": "preview-panel",
-      "import": "@lostgradient/cinder/preview-panel",
+      "import": "@lostgradient/cinder",
       "exportName": "PreviewPanel",
       "category": "layout",
       "status": "alpha",
@@ -3843,15 +3842,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/preview-panel/schema",
-        "variables": "@lostgradient/cinder/preview-panel/variables",
-        "examples": "@lostgradient/cinder/preview-panel/examples"
+        "schema": "src/components/preview-panel/preview-panel.schema.json",
+        "variables": "src/components/preview-panel/preview-panel.variables.json",
+        "examples": "src/components/preview-panel/preview-panel.examples.json"
       }
     },
     {
       "name": "PricingCard",
       "id": "pricing-card",
-      "import": "@lostgradient/cinder/pricing-card",
+      "import": "@lostgradient/cinder",
       "exportName": "PricingCard",
       "category": "data-display",
       "status": "alpha",
@@ -3873,16 +3872,16 @@
       "hasConstraints": true,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/pricing-card/schema",
-        "variables": "@lostgradient/cinder/pricing-card/variables",
-        "examples": "@lostgradient/cinder/pricing-card/examples",
-        "constraints": "@lostgradient/cinder/pricing-card/constraints"
+        "schema": "src/components/pricing-card/pricing-card.schema.json",
+        "variables": "src/components/pricing-card/pricing-card.variables.json",
+        "examples": "src/components/pricing-card/pricing-card.examples.json",
+        "constraints": "src/components/pricing-card/pricing-card.constraints.json"
       }
     },
     {
       "name": "Progress",
       "id": "progress",
-      "import": "@lostgradient/cinder/progress",
+      "import": "@lostgradient/cinder",
       "exportName": "Progress",
       "category": "feedback",
       "status": "stable",
@@ -3908,15 +3907,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/progress/schema",
-        "variables": "@lostgradient/cinder/progress/variables",
-        "examples": "@lostgradient/cinder/progress/examples"
+        "schema": "src/components/progress/progress.schema.json",
+        "variables": "src/components/progress/progress.variables.json",
+        "examples": "src/components/progress/progress.examples.json"
       }
     },
     {
       "name": "QrCode",
       "id": "qr-code",
-      "import": "@lostgradient/cinder/qr-code",
+      "import": "@lostgradient/cinder",
       "exportName": "QrCode",
       "category": "data-display",
       "status": "beta",
@@ -3939,15 +3938,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/qr-code/schema",
-        "variables": "@lostgradient/cinder/qr-code/variables",
-        "examples": "@lostgradient/cinder/qr-code/examples"
+        "schema": "src/components/qr-code/qr-code.schema.json",
+        "variables": "src/components/qr-code/qr-code.variables.json",
+        "examples": "src/components/qr-code/qr-code.examples.json"
       }
     },
     {
       "name": "QuotaMeter",
       "id": "quota-meter",
-      "import": "@lostgradient/cinder/quota-meter",
+      "import": "@lostgradient/cinder",
       "exportName": "QuotaMeter",
       "category": "data-display",
       "status": "beta",
@@ -3963,15 +3962,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/quota-meter/schema",
-        "variables": "@lostgradient/cinder/quota-meter/variables",
-        "examples": "@lostgradient/cinder/quota-meter/examples"
+        "schema": "src/components/quota-meter/quota-meter.schema.json",
+        "variables": "src/components/quota-meter/quota-meter.variables.json",
+        "examples": "src/components/quota-meter/quota-meter.examples.json"
       }
     },
     {
       "name": "RadioGroup",
       "id": "radio-group",
-      "import": "@lostgradient/cinder/radio-group",
+      "import": "@lostgradient/cinder",
       "exportName": "RadioGroup",
       "category": "form",
       "status": "stable",
@@ -3990,15 +3989,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/radio-group/schema",
-        "variables": "@lostgradient/cinder/radio-group/variables",
-        "examples": "@lostgradient/cinder/radio-group/examples"
+        "schema": "src/components/radio-group/radio-group.schema.json",
+        "variables": "src/components/radio-group/radio-group.variables.json",
+        "examples": "src/components/radio-group/radio-group.examples.json"
       }
     },
     {
       "name": "Rating",
       "id": "rating",
-      "import": "@lostgradient/cinder/rating",
+      "import": "@lostgradient/cinder",
       "exportName": "Rating",
       "category": "form",
       "status": "stable",
@@ -4020,15 +4019,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/rating/schema",
-        "variables": "@lostgradient/cinder/rating/variables",
-        "examples": "@lostgradient/cinder/rating/examples"
+        "schema": "src/components/rating/rating.schema.json",
+        "variables": "src/components/rating/rating.variables.json",
+        "examples": "src/components/rating/rating.examples.json"
       }
     },
     {
       "name": "RelativeTime",
       "id": "relative-time",
-      "import": "@lostgradient/cinder/relative-time",
+      "import": "@lostgradient/cinder",
       "exportName": "RelativeTime",
       "category": "data-display",
       "status": "beta",
@@ -4044,15 +4043,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/relative-time/schema",
-        "variables": "@lostgradient/cinder/relative-time/variables",
-        "examples": "@lostgradient/cinder/relative-time/examples"
+        "schema": "src/components/relative-time/relative-time.schema.json",
+        "variables": "src/components/relative-time/relative-time.variables.json",
+        "examples": "src/components/relative-time/relative-time.examples.json"
       }
     },
     {
       "name": "ResizablePanels",
       "id": "resizable-panels",
-      "import": "@lostgradient/cinder/resizable-panels",
+      "import": "@lostgradient/cinder",
       "exportName": "ResizablePanels",
       "category": "layout",
       "status": "stable",
@@ -4074,15 +4073,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/resizable-panels/schema",
-        "variables": "@lostgradient/cinder/resizable-panels/variables",
-        "examples": "@lostgradient/cinder/resizable-panels/examples"
+        "schema": "src/components/resizable-panels/resizable-panels.schema.json",
+        "variables": "src/components/resizable-panels/resizable-panels.variables.json",
+        "examples": "src/components/resizable-panels/resizable-panels.examples.json"
       }
     },
     {
       "name": "RunStepTimeline",
       "id": "run-step-timeline",
-      "import": "@lostgradient/cinder/run-step-timeline",
+      "import": "@lostgradient/cinder",
       "exportName": "RunStepTimeline",
       "category": "data-display",
       "status": "stable",
@@ -4110,15 +4109,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/run-step-timeline/schema",
-        "variables": "@lostgradient/cinder/run-step-timeline/variables",
-        "examples": "@lostgradient/cinder/run-step-timeline/examples"
+        "schema": "src/components/run-step-timeline/run-step-timeline.schema.json",
+        "variables": "src/components/run-step-timeline/run-step-timeline.variables.json",
+        "examples": "src/components/run-step-timeline/run-step-timeline.examples.json"
       }
     },
     {
       "name": "ScheduleBuilder",
       "id": "schedule-builder",
-      "import": "@lostgradient/cinder/schedule-builder",
+      "import": "@lostgradient/cinder",
       "exportName": "ScheduleBuilder",
       "category": "form",
       "status": "beta",
@@ -4142,9 +4141,9 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/schedule-builder/schema",
-        "variables": "@lostgradient/cinder/schedule-builder/variables",
-        "examples": "@lostgradient/cinder/schedule-builder/examples"
+        "schema": "src/components/schedule-builder/schedule-builder.schema.json",
+        "variables": "src/components/schedule-builder/schedule-builder.variables.json",
+        "examples": "src/components/schedule-builder/schedule-builder.examples.json"
       },
       "a11y": {
         "pattern": "WAI-ARIA Tabs",
@@ -4156,7 +4155,7 @@
     {
       "name": "SchemaForm",
       "id": "schema-form",
-      "import": "@lostgradient/cinder/schema-form",
+      "import": "@lostgradient/cinder",
       "exportName": "SchemaForm",
       "category": "form",
       "status": "beta",
@@ -4178,9 +4177,9 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/schema-form/schema",
-        "variables": "@lostgradient/cinder/schema-form/variables",
-        "examples": "@lostgradient/cinder/schema-form/examples"
+        "schema": "src/components/schema-form/schema-form.schema.json",
+        "variables": "src/components/schema-form/schema-form.variables.json",
+        "examples": "src/components/schema-form/schema-form.examples.json"
       },
       "a11y": {
         "pattern": "Native HTML form with labelled controls",
@@ -4198,7 +4197,7 @@
     {
       "name": "ScrollArea",
       "id": "scroll-area",
-      "import": "@lostgradient/cinder/scroll-area",
+      "import": "@lostgradient/cinder",
       "exportName": "ScrollArea",
       "category": "layout",
       "status": "stable",
@@ -4220,15 +4219,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/scroll-area/schema",
-        "variables": "@lostgradient/cinder/scroll-area/variables",
-        "examples": "@lostgradient/cinder/scroll-area/examples"
+        "schema": "src/components/scroll-area/scroll-area.schema.json",
+        "variables": "src/components/scroll-area/scroll-area.variables.json",
+        "examples": "src/components/scroll-area/scroll-area.examples.json"
       }
     },
     {
       "name": "SearchField",
       "id": "search-field",
-      "import": "@lostgradient/cinder/search-field",
+      "import": "@lostgradient/cinder",
       "exportName": "SearchField",
       "category": "form",
       "status": "stable",
@@ -4247,15 +4246,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/search-field/schema",
-        "variables": "@lostgradient/cinder/search-field/variables",
-        "examples": "@lostgradient/cinder/search-field/examples"
+        "schema": "src/components/search-field/search-field.schema.json",
+        "variables": "src/components/search-field/search-field.variables.json",
+        "examples": "src/components/search-field/search-field.examples.json"
       }
     },
     {
       "name": "SecretValueField",
       "id": "secret-value-field",
-      "import": "@lostgradient/cinder/secret-value-field",
+      "import": "@lostgradient/cinder",
       "exportName": "SecretValueField",
       "category": "data-display",
       "status": "stable",
@@ -4277,15 +4276,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/secret-value-field/schema",
-        "variables": "@lostgradient/cinder/secret-value-field/variables",
-        "examples": "@lostgradient/cinder/secret-value-field/examples"
+        "schema": "src/components/secret-value-field/secret-value-field.schema.json",
+        "variables": "src/components/secret-value-field/secret-value-field.variables.json",
+        "examples": "src/components/secret-value-field/secret-value-field.examples.json"
       }
     },
     {
       "name": "SectionHeading",
       "id": "section-heading",
-      "import": "@lostgradient/cinder/section-heading",
+      "import": "@lostgradient/cinder",
       "exportName": "SectionHeading",
       "category": "typography",
       "status": "stable",
@@ -4307,15 +4306,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/section-heading/schema",
-        "variables": "@lostgradient/cinder/section-heading/variables",
-        "examples": "@lostgradient/cinder/section-heading/examples"
+        "schema": "src/components/section-heading/section-heading.schema.json",
+        "variables": "src/components/section-heading/section-heading.variables.json",
+        "examples": "src/components/section-heading/section-heading.examples.json"
       }
     },
     {
       "name": "Segment",
       "id": "segment",
-      "import": "@lostgradient/cinder/segment",
+      "import": "@lostgradient/cinder",
       "exportName": "Segment",
       "category": "form",
       "status": "stable",
@@ -4338,14 +4337,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/segment/schema",
-        "variables": "@lostgradient/cinder/segment/variables"
+        "schema": "src/components/segment/segment.schema.json",
+        "variables": "src/components/segment/segment.variables.json"
       }
     },
     {
       "name": "SegmentedControl",
       "id": "segmented-control",
-      "import": "@lostgradient/cinder/segmented-control",
+      "import": "@lostgradient/cinder",
       "exportName": "SegmentedControl",
       "category": "form",
       "status": "stable",
@@ -4368,15 +4367,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/segmented-control/schema",
-        "variables": "@lostgradient/cinder/segmented-control/variables",
-        "examples": "@lostgradient/cinder/segmented-control/examples"
+        "schema": "src/components/segmented-control/segmented-control.schema.json",
+        "variables": "src/components/segmented-control/segmented-control.variables.json",
+        "examples": "src/components/segmented-control/segmented-control.examples.json"
       }
     },
     {
       "name": "Select",
       "id": "select",
-      "import": "@lostgradient/cinder/select",
+      "import": "@lostgradient/cinder",
       "exportName": "Select",
       "category": "form",
       "status": "stable",
@@ -4398,15 +4397,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/select/schema",
-        "variables": "@lostgradient/cinder/select/variables",
-        "examples": "@lostgradient/cinder/select/examples"
+        "schema": "src/components/select/select.schema.json",
+        "variables": "src/components/select/select.variables.json",
+        "examples": "src/components/select/select.examples.json"
       }
     },
     {
       "name": "SelectableRow",
       "id": "selectable-row",
-      "import": "@lostgradient/cinder/selectable-row",
+      "import": "@lostgradient/cinder",
       "exportName": "SelectableRow",
       "category": "action",
       "status": "beta",
@@ -4430,9 +4429,9 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/selectable-row/schema",
-        "variables": "@lostgradient/cinder/selectable-row/variables",
-        "examples": "@lostgradient/cinder/selectable-row/examples"
+        "schema": "src/components/selectable-row/selectable-row.schema.json",
+        "variables": "src/components/selectable-row/selectable-row.variables.json",
+        "examples": "src/components/selectable-row/selectable-row.examples.json"
       },
       "a11y": {
         "pattern": "Native button or link",
@@ -4454,7 +4453,7 @@
     {
       "name": "SelectionPopover",
       "id": "selection-popover",
-      "import": "@lostgradient/cinder/selection-popover",
+      "import": "@lostgradient/cinder",
       "exportName": "SelectionPopover",
       "category": "overlay",
       "status": "stable",
@@ -4476,15 +4475,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/selection-popover/schema",
-        "variables": "@lostgradient/cinder/selection-popover/variables",
-        "examples": "@lostgradient/cinder/selection-popover/examples"
+        "schema": "src/components/selection-popover/selection-popover.schema.json",
+        "variables": "src/components/selection-popover/selection-popover.variables.json",
+        "examples": "src/components/selection-popover/selection-popover.examples.json"
       }
     },
     {
       "name": "SettingRow",
       "id": "setting-row",
-      "import": "@lostgradient/cinder/setting-row",
+      "import": "@lostgradient/cinder",
       "exportName": "SettingRow",
       "category": "form",
       "status": "beta",
@@ -4500,15 +4499,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/setting-row/schema",
-        "variables": "@lostgradient/cinder/setting-row/variables",
-        "examples": "@lostgradient/cinder/setting-row/examples"
+        "schema": "src/components/setting-row/setting-row.schema.json",
+        "variables": "src/components/setting-row/setting-row.variables.json",
+        "examples": "src/components/setting-row/setting-row.examples.json"
       }
     },
     {
       "name": "ShareCard",
       "id": "share-card",
-      "import": "@lostgradient/cinder/share-card",
+      "import": "@lostgradient/cinder",
       "exportName": "ShareCard",
       "category": "action",
       "status": "alpha",
@@ -4530,15 +4529,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/share-card/schema",
-        "variables": "@lostgradient/cinder/share-card/variables",
-        "examples": "@lostgradient/cinder/share-card/examples"
+        "schema": "src/components/share-card/share-card.schema.json",
+        "variables": "src/components/share-card/share-card.variables.json",
+        "examples": "src/components/share-card/share-card.examples.json"
       }
     },
     {
       "name": "ShortcutField",
       "id": "shortcut-field",
-      "import": "@lostgradient/cinder/shortcut-field",
+      "import": "@lostgradient/cinder",
       "exportName": "ShortcutField",
       "category": "form",
       "status": "beta",
@@ -4554,15 +4553,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/shortcut-field/schema",
-        "variables": "@lostgradient/cinder/shortcut-field/variables",
-        "examples": "@lostgradient/cinder/shortcut-field/examples"
+        "schema": "src/components/shortcut-field/shortcut-field.schema.json",
+        "variables": "src/components/shortcut-field/shortcut-field.variables.json",
+        "examples": "src/components/shortcut-field/shortcut-field.examples.json"
       }
     },
     {
       "name": "ShortcutHint",
       "id": "shortcut-hint",
-      "import": "@lostgradient/cinder/shortcut-hint",
+      "import": "@lostgradient/cinder",
       "exportName": "ShortcutHint",
       "category": "typography",
       "status": "alpha",
@@ -4581,15 +4580,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/shortcut-hint/schema",
-        "variables": "@lostgradient/cinder/shortcut-hint/variables",
-        "examples": "@lostgradient/cinder/shortcut-hint/examples"
+        "schema": "src/components/shortcut-hint/shortcut-hint.schema.json",
+        "variables": "src/components/shortcut-hint/shortcut-hint.variables.json",
+        "examples": "src/components/shortcut-hint/shortcut-hint.examples.json"
       }
     },
     {
       "name": "SideNavigation",
       "id": "side-navigation",
-      "import": "@lostgradient/cinder/side-navigation",
+      "import": "@lostgradient/cinder",
       "exportName": "SideNavigation",
       "category": "navigation",
       "status": "stable",
@@ -4632,15 +4631,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/side-navigation/schema",
-        "variables": "@lostgradient/cinder/side-navigation/variables",
-        "examples": "@lostgradient/cinder/side-navigation/examples"
+        "schema": "src/components/side-navigation/side-navigation.schema.json",
+        "variables": "src/components/side-navigation/side-navigation.variables.json",
+        "examples": "src/components/side-navigation/side-navigation.examples.json"
       }
     },
     {
       "name": "SideNavigationGroup",
       "id": "side-navigation-group",
-      "import": "@lostgradient/cinder/side-navigation-group",
+      "import": "@lostgradient/cinder",
       "exportName": "SideNavigationGroup",
       "category": "navigation",
       "status": "stable",
@@ -4662,14 +4661,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/side-navigation-group/schema",
-        "variables": "@lostgradient/cinder/side-navigation-group/variables"
+        "schema": "src/components/side-navigation-group/side-navigation-group.schema.json",
+        "variables": "src/components/side-navigation-group/side-navigation-group.variables.json"
       }
     },
     {
       "name": "SideNavigationItem",
       "id": "side-navigation-item",
-      "import": "@lostgradient/cinder/side-navigation-item",
+      "import": "@lostgradient/cinder",
       "exportName": "SideNavigationItem",
       "category": "navigation",
       "status": "stable",
@@ -4691,14 +4690,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/side-navigation-item/schema",
-        "variables": "@lostgradient/cinder/side-navigation-item/variables"
+        "schema": "src/components/side-navigation-item/side-navigation-item.schema.json",
+        "variables": "src/components/side-navigation-item/side-navigation-item.variables.json"
       }
     },
     {
       "name": "Sidebar",
       "id": "sidebar",
-      "import": "@lostgradient/cinder/sidebar",
+      "import": "@lostgradient/cinder",
       "exportName": "Sidebar",
       "category": "layout",
       "status": "stable",
@@ -4724,15 +4723,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/sidebar/schema",
-        "variables": "@lostgradient/cinder/sidebar/variables",
-        "examples": "@lostgradient/cinder/sidebar/examples"
+        "schema": "src/components/sidebar/sidebar.schema.json",
+        "variables": "src/components/sidebar/sidebar.variables.json",
+        "examples": "src/components/sidebar/sidebar.examples.json"
       }
     },
     {
       "name": "Skeleton",
       "id": "skeleton",
-      "import": "@lostgradient/cinder/skeleton",
+      "import": "@lostgradient/cinder",
       "exportName": "Skeleton",
       "category": "feedback",
       "status": "stable",
@@ -4754,15 +4753,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/skeleton/schema",
-        "variables": "@lostgradient/cinder/skeleton/variables",
-        "examples": "@lostgradient/cinder/skeleton/examples"
+        "schema": "src/components/skeleton/skeleton.schema.json",
+        "variables": "src/components/skeleton/skeleton.variables.json",
+        "examples": "src/components/skeleton/skeleton.examples.json"
       }
     },
     {
       "name": "SkipLink",
       "id": "skip-link",
-      "import": "@lostgradient/cinder/skip-link",
+      "import": "@lostgradient/cinder",
       "exportName": "SkipLink",
       "category": "navigation",
       "status": "stable",
@@ -4784,15 +4783,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/skip-link/schema",
-        "variables": "@lostgradient/cinder/skip-link/variables",
-        "examples": "@lostgradient/cinder/skip-link/examples"
+        "schema": "src/components/skip-link/skip-link.schema.json",
+        "variables": "src/components/skip-link/skip-link.variables.json",
+        "examples": "src/components/skip-link/skip-link.examples.json"
       }
     },
     {
       "name": "Slider",
       "id": "slider",
-      "import": "@lostgradient/cinder/slider",
+      "import": "@lostgradient/cinder",
       "exportName": "Slider",
       "category": "form",
       "status": "stable",
@@ -4814,15 +4813,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/slider/schema",
-        "variables": "@lostgradient/cinder/slider/variables",
-        "examples": "@lostgradient/cinder/slider/examples"
+        "schema": "src/components/slider/slider.schema.json",
+        "variables": "src/components/slider/slider.variables.json",
+        "examples": "src/components/slider/slider.examples.json"
       }
     },
     {
       "name": "SortableList",
       "id": "sortable-list",
-      "import": "@lostgradient/cinder/sortable-list",
+      "import": "@lostgradient/cinder",
       "exportName": "SortableList",
       "category": "data-display",
       "status": "stable",
@@ -4844,15 +4843,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/sortable-list/schema",
-        "variables": "@lostgradient/cinder/sortable-list/variables",
-        "examples": "@lostgradient/cinder/sortable-list/examples"
+        "schema": "src/components/sortable-list/sortable-list.schema.json",
+        "variables": "src/components/sortable-list/sortable-list.variables.json",
+        "examples": "src/components/sortable-list/sortable-list.examples.json"
       }
     },
     {
       "name": "SourceDiffViewer",
       "id": "source-diff-viewer",
-      "import": "@lostgradient/cinder/source-diff-viewer",
+      "import": "@lostgradient/cinder",
       "exportName": "SourceDiffViewer",
       "category": "data-display",
       "status": "beta",
@@ -4875,15 +4874,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/source-diff-viewer/schema",
-        "variables": "@lostgradient/cinder/source-diff-viewer/variables",
-        "examples": "@lostgradient/cinder/source-diff-viewer/examples"
+        "schema": "src/components/source-diff-viewer/source-diff-viewer.schema.json",
+        "variables": "src/components/source-diff-viewer/source-diff-viewer.variables.json",
+        "examples": "src/components/source-diff-viewer/source-diff-viewer.examples.json"
       }
     },
     {
       "name": "Sparkbar",
       "id": "sparkbar",
-      "import": "@lostgradient/cinder/sparkbar",
+      "import": "@lostgradient/cinder",
       "exportName": "Sparkbar",
       "category": "data-display",
       "status": "stable",
@@ -4906,15 +4905,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/sparkbar/schema",
-        "variables": "@lostgradient/cinder/sparkbar/variables",
-        "examples": "@lostgradient/cinder/sparkbar/examples"
+        "schema": "src/components/sparkbar/sparkbar.schema.json",
+        "variables": "src/components/sparkbar/sparkbar.variables.json",
+        "examples": "src/components/sparkbar/sparkbar.examples.json"
       }
     },
     {
       "name": "Spectrogram",
       "id": "spectrogram",
-      "import": "@lostgradient/cinder/spectrogram",
+      "import": "@lostgradient/cinder",
       "exportName": "Spectrogram",
       "category": "data-display",
       "status": "alpha",
@@ -4939,15 +4938,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/spectrogram/schema",
-        "variables": "@lostgradient/cinder/spectrogram/variables",
-        "examples": "@lostgradient/cinder/spectrogram/examples"
+        "schema": "src/components/spectrogram/spectrogram.schema.json",
+        "variables": "src/components/spectrogram/spectrogram.variables.json",
+        "examples": "src/components/spectrogram/spectrogram.examples.json"
       }
     },
     {
       "name": "SpectrumChart",
       "id": "spectrum-chart",
-      "import": "@lostgradient/cinder/spectrum-chart",
+      "import": "@lostgradient/cinder",
       "exportName": "SpectrumChart",
       "category": "data-display",
       "status": "alpha",
@@ -4972,15 +4971,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/spectrum-chart/schema",
-        "variables": "@lostgradient/cinder/spectrum-chart/variables",
-        "examples": "@lostgradient/cinder/spectrum-chart/examples"
+        "schema": "src/components/spectrum-chart/spectrum-chart.schema.json",
+        "variables": "src/components/spectrum-chart/spectrum-chart.variables.json",
+        "examples": "src/components/spectrum-chart/spectrum-chart.examples.json"
       }
     },
     {
       "name": "SpeedDial",
       "id": "speed-dial",
-      "import": "@lostgradient/cinder/speed-dial",
+      "import": "@lostgradient/cinder",
       "exportName": "SpeedDial",
       "category": "action",
       "status": "beta",
@@ -5003,15 +5002,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/speed-dial/schema",
-        "variables": "@lostgradient/cinder/speed-dial/variables",
-        "examples": "@lostgradient/cinder/speed-dial/examples"
+        "schema": "src/components/speed-dial/speed-dial.schema.json",
+        "variables": "src/components/speed-dial/speed-dial.variables.json",
+        "examples": "src/components/speed-dial/speed-dial.examples.json"
       }
     },
     {
       "name": "SpeedDialAction",
       "id": "speed-dial-action",
-      "import": "@lostgradient/cinder/speed-dial-action",
+      "import": "@lostgradient/cinder",
       "exportName": "SpeedDialAction",
       "category": "action",
       "status": "beta",
@@ -5028,14 +5027,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/speed-dial-action/schema",
-        "variables": "@lostgradient/cinder/speed-dial-action/variables"
+        "schema": "src/components/speed-dial-action/speed-dial-action.schema.json",
+        "variables": "src/components/speed-dial-action/speed-dial-action.variables.json"
       }
     },
     {
       "name": "Spinner",
       "id": "spinner",
-      "import": "@lostgradient/cinder/spinner",
+      "import": "@lostgradient/cinder",
       "exportName": "Spinner",
       "category": "feedback",
       "status": "stable",
@@ -5057,15 +5056,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/spinner/schema",
-        "variables": "@lostgradient/cinder/spinner/variables",
-        "examples": "@lostgradient/cinder/spinner/examples"
+        "schema": "src/components/spinner/spinner.schema.json",
+        "variables": "src/components/spinner/spinner.variables.json",
+        "examples": "src/components/spinner/spinner.examples.json"
       }
     },
     {
       "name": "Stack",
       "id": "stack",
-      "import": "@lostgradient/cinder/stack",
+      "import": "@lostgradient/cinder",
       "exportName": "Stack",
       "category": "layout",
       "status": "alpha",
@@ -5084,15 +5083,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/stack/schema",
-        "variables": "@lostgradient/cinder/stack/variables",
-        "examples": "@lostgradient/cinder/stack/examples"
+        "schema": "src/components/stack/stack.schema.json",
+        "variables": "src/components/stack/stack.variables.json",
+        "examples": "src/components/stack/stack.examples.json"
       }
     },
     {
       "name": "StackedListItem",
       "id": "stacked-list-item",
-      "import": "@lostgradient/cinder/stacked-list-item",
+      "import": "@lostgradient/cinder",
       "exportName": "StackedListItem",
       "category": "data-display",
       "status": "stable",
@@ -5114,15 +5113,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/stacked-list-item/schema",
-        "variables": "@lostgradient/cinder/stacked-list-item/variables",
-        "examples": "@lostgradient/cinder/stacked-list-item/examples"
+        "schema": "src/components/stacked-list-item/stacked-list-item.schema.json",
+        "variables": "src/components/stacked-list-item/stacked-list-item.variables.json",
+        "examples": "src/components/stacked-list-item/stacked-list-item.examples.json"
       }
     },
     {
       "name": "Statistic",
       "id": "statistic",
-      "import": "@lostgradient/cinder/statistic",
+      "import": "@lostgradient/cinder",
       "exportName": "Statistic",
       "category": "data-display",
       "status": "stable",
@@ -5144,14 +5143,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/statistic/schema",
-        "variables": "@lostgradient/cinder/statistic/variables"
+        "schema": "src/components/statistic/statistic.schema.json",
+        "variables": "src/components/statistic/statistic.variables.json"
       }
     },
     {
       "name": "StatisticGroup",
       "id": "statistic-group",
-      "import": "@lostgradient/cinder/statistic-group",
+      "import": "@lostgradient/cinder",
       "exportName": "StatisticGroup",
       "category": "data-display",
       "status": "stable",
@@ -5173,15 +5172,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/statistic-group/schema",
-        "variables": "@lostgradient/cinder/statistic-group/variables",
-        "examples": "@lostgradient/cinder/statistic-group/examples"
+        "schema": "src/components/statistic-group/statistic-group.schema.json",
+        "variables": "src/components/statistic-group/statistic-group.variables.json",
+        "examples": "src/components/statistic-group/statistic-group.examples.json"
       }
     },
     {
       "name": "StatusDot",
       "id": "status-dot",
-      "import": "@lostgradient/cinder/status-dot",
+      "import": "@lostgradient/cinder",
       "exportName": "StatusDot",
       "category": "feedback",
       "status": "stable",
@@ -5205,15 +5204,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/status-dot/schema",
-        "variables": "@lostgradient/cinder/status-dot/variables",
-        "examples": "@lostgradient/cinder/status-dot/examples"
+        "schema": "src/components/status-dot/status-dot.schema.json",
+        "variables": "src/components/status-dot/status-dot.variables.json",
+        "examples": "src/components/status-dot/status-dot.examples.json"
       }
     },
     {
       "name": "Steps",
       "id": "steps",
-      "import": "@lostgradient/cinder/steps",
+      "import": "@lostgradient/cinder",
       "exportName": "Steps",
       "category": "navigation",
       "status": "stable",
@@ -5235,15 +5234,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/steps/schema",
-        "variables": "@lostgradient/cinder/steps/variables",
-        "examples": "@lostgradient/cinder/steps/examples"
+        "schema": "src/components/steps/steps.schema.json",
+        "variables": "src/components/steps/steps.variables.json",
+        "examples": "src/components/steps/steps.examples.json"
       }
     },
     {
       "name": "Surface",
       "id": "surface",
-      "import": "@lostgradient/cinder/surface",
+      "import": "@lostgradient/cinder",
       "exportName": "Surface",
       "category": "layout",
       "status": "stable",
@@ -5265,15 +5264,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/surface/schema",
-        "variables": "@lostgradient/cinder/surface/variables",
-        "examples": "@lostgradient/cinder/surface/examples"
+        "schema": "src/components/surface/surface.schema.json",
+        "variables": "src/components/surface/surface.variables.json",
+        "examples": "src/components/surface/surface.examples.json"
       }
     },
     {
       "name": "Tab",
       "id": "tab",
-      "import": "@lostgradient/cinder/tab",
+      "import": "@lostgradient/cinder",
       "exportName": "Tab",
       "category": "navigation",
       "status": "stable",
@@ -5296,14 +5295,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/tab/schema",
-        "variables": "@lostgradient/cinder/tab/variables"
+        "schema": "src/components/tab/tab.schema.json",
+        "variables": "src/components/tab/tab.variables.json"
       }
     },
     {
       "name": "TabList",
       "id": "tab-list",
-      "import": "@lostgradient/cinder/tab-list",
+      "import": "@lostgradient/cinder",
       "exportName": "TabList",
       "category": "navigation",
       "status": "stable",
@@ -5325,14 +5324,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/tab-list/schema",
-        "variables": "@lostgradient/cinder/tab-list/variables"
+        "schema": "src/components/tab-list/tab-list.schema.json",
+        "variables": "src/components/tab-list/tab-list.variables.json"
       }
     },
     {
       "name": "TabPanel",
       "id": "tab-panel",
-      "import": "@lostgradient/cinder/tab-panel",
+      "import": "@lostgradient/cinder",
       "exportName": "TabPanel",
       "category": "navigation",
       "status": "stable",
@@ -5354,14 +5353,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/tab-panel/schema",
-        "variables": "@lostgradient/cinder/tab-panel/variables"
+        "schema": "src/components/tab-panel/tab-panel.schema.json",
+        "variables": "src/components/tab-panel/tab-panel.variables.json"
       }
     },
     {
       "name": "Table",
       "id": "table",
-      "import": "@lostgradient/cinder/table",
+      "import": "@lostgradient/cinder",
       "exportName": "Table",
       "category": "data-display",
       "status": "stable",
@@ -5391,15 +5390,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/table/schema",
-        "variables": "@lostgradient/cinder/table/variables",
-        "examples": "@lostgradient/cinder/table/examples"
+        "schema": "src/components/table/table.schema.json",
+        "variables": "src/components/table/table.variables.json",
+        "examples": "src/components/table/table.examples.json"
       }
     },
     {
       "name": "TableBody",
       "id": "table-body",
-      "import": "@lostgradient/cinder/table-body",
+      "import": "@lostgradient/cinder",
       "exportName": "TableBody",
       "category": "data-display",
       "status": "stable",
@@ -5415,14 +5414,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/table-body/schema",
-        "variables": "@lostgradient/cinder/table-body/variables"
+        "schema": "src/components/table-body/table-body.schema.json",
+        "variables": "src/components/table-body/table-body.variables.json"
       }
     },
     {
       "name": "TableCell",
       "id": "table-cell",
-      "import": "@lostgradient/cinder/table-cell",
+      "import": "@lostgradient/cinder",
       "exportName": "TableCell",
       "category": "data-display",
       "status": "stable",
@@ -5441,14 +5440,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/table-cell/schema",
-        "variables": "@lostgradient/cinder/table-cell/variables"
+        "schema": "src/components/table-cell/table-cell.schema.json",
+        "variables": "src/components/table-cell/table-cell.variables.json"
       }
     },
     {
       "name": "TableHeader",
       "id": "table-header",
-      "import": "@lostgradient/cinder/table-header",
+      "import": "@lostgradient/cinder",
       "exportName": "TableHeader",
       "category": "data-display",
       "status": "stable",
@@ -5464,14 +5463,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/table-header/schema",
-        "variables": "@lostgradient/cinder/table-header/variables"
+        "schema": "src/components/table-header/table-header.schema.json",
+        "variables": "src/components/table-header/table-header.variables.json"
       }
     },
     {
       "name": "TableHeaderCell",
       "id": "table-header-cell",
-      "import": "@lostgradient/cinder/table-header-cell",
+      "import": "@lostgradient/cinder",
       "exportName": "TableHeaderCell",
       "category": "data-display",
       "status": "stable",
@@ -5490,14 +5489,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/table-header-cell/schema",
-        "variables": "@lostgradient/cinder/table-header-cell/variables"
+        "schema": "src/components/table-header-cell/table-header-cell.schema.json",
+        "variables": "src/components/table-header-cell/table-header-cell.variables.json"
       }
     },
     {
       "name": "TableOfContents",
       "id": "table-of-contents",
-      "import": "@lostgradient/cinder/table-of-contents",
+      "import": "@lostgradient/cinder",
       "exportName": "TableOfContents",
       "category": "navigation",
       "status": "beta",
@@ -5523,9 +5522,9 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/table-of-contents/schema",
-        "variables": "@lostgradient/cinder/table-of-contents/variables",
-        "examples": "@lostgradient/cinder/table-of-contents/examples"
+        "schema": "src/components/table-of-contents/table-of-contents.schema.json",
+        "variables": "src/components/table-of-contents/table-of-contents.variables.json",
+        "examples": "src/components/table-of-contents/table-of-contents.examples.json"
       },
       "a11y": {
         "pattern": "WAI-ARIA Navigation Landmark"
@@ -5534,7 +5533,7 @@
     {
       "name": "TableRow",
       "id": "table-row",
-      "import": "@lostgradient/cinder/table-row",
+      "import": "@lostgradient/cinder",
       "exportName": "TableRow",
       "category": "data-display",
       "status": "stable",
@@ -5553,14 +5552,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/table-row/schema",
-        "variables": "@lostgradient/cinder/table-row/variables"
+        "schema": "src/components/table-row/table-row.schema.json",
+        "variables": "src/components/table-row/table-row.variables.json"
       }
     },
     {
       "name": "Tabs",
       "id": "tabs",
-      "import": "@lostgradient/cinder/tabs",
+      "import": "@lostgradient/cinder",
       "exportName": "Tabs",
       "category": "navigation",
       "status": "stable",
@@ -5582,15 +5581,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/tabs/schema",
-        "variables": "@lostgradient/cinder/tabs/variables",
-        "examples": "@lostgradient/cinder/tabs/examples"
+        "schema": "src/components/tabs/tabs.schema.json",
+        "variables": "src/components/tabs/tabs.variables.json",
+        "examples": "src/components/tabs/tabs.examples.json"
       }
     },
     {
       "name": "TagInput",
       "id": "tag-input",
-      "import": "@lostgradient/cinder/tag-input",
+      "import": "@lostgradient/cinder",
       "exportName": "TagInput",
       "category": "form",
       "status": "stable",
@@ -5612,15 +5611,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/tag-input/schema",
-        "variables": "@lostgradient/cinder/tag-input/variables",
-        "examples": "@lostgradient/cinder/tag-input/examples"
+        "schema": "src/components/tag-input/tag-input.schema.json",
+        "variables": "src/components/tag-input/tag-input.variables.json",
+        "examples": "src/components/tag-input/tag-input.examples.json"
       }
     },
     {
       "name": "TerminalFrame",
       "id": "terminal-frame",
-      "import": "@lostgradient/cinder/terminal-frame",
+      "import": "@lostgradient/cinder",
       "exportName": "TerminalFrame",
       "category": "feedback",
       "status": "alpha",
@@ -5638,15 +5637,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/terminal-frame/schema",
-        "variables": "@lostgradient/cinder/terminal-frame/variables",
-        "examples": "@lostgradient/cinder/terminal-frame/examples"
+        "schema": "src/components/terminal-frame/terminal-frame.schema.json",
+        "variables": "src/components/terminal-frame/terminal-frame.variables.json",
+        "examples": "src/components/terminal-frame/terminal-frame.examples.json"
       }
     },
     {
       "name": "TerminalOutput",
       "id": "terminal-output",
-      "import": "@lostgradient/cinder/terminal-output",
+      "import": "@lostgradient/cinder",
       "exportName": "TerminalOutput",
       "category": "feedback",
       "status": "alpha",
@@ -5664,15 +5663,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/terminal-output/schema",
-        "variables": "@lostgradient/cinder/terminal-output/variables",
-        "examples": "@lostgradient/cinder/terminal-output/examples"
+        "schema": "src/components/terminal-output/terminal-output.schema.json",
+        "variables": "src/components/terminal-output/terminal-output.variables.json",
+        "examples": "src/components/terminal-output/terminal-output.examples.json"
       }
     },
     {
       "name": "Textarea",
       "id": "textarea",
-      "import": "@lostgradient/cinder/textarea",
+      "import": "@lostgradient/cinder",
       "exportName": "Textarea",
       "category": "form",
       "status": "stable",
@@ -5691,15 +5690,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/textarea/schema",
-        "variables": "@lostgradient/cinder/textarea/variables",
-        "examples": "@lostgradient/cinder/textarea/examples"
+        "schema": "src/components/textarea/textarea.schema.json",
+        "variables": "src/components/textarea/textarea.variables.json",
+        "examples": "src/components/textarea/textarea.examples.json"
       }
     },
     {
       "name": "TimeField",
       "id": "time-field",
-      "import": "@lostgradient/cinder/time-field",
+      "import": "@lostgradient/cinder",
       "exportName": "TimeField",
       "category": "form",
       "status": "stable",
@@ -5718,15 +5717,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/time-field/schema",
-        "variables": "@lostgradient/cinder/time-field/variables",
-        "examples": "@lostgradient/cinder/time-field/examples"
+        "schema": "src/components/time-field/time-field.schema.json",
+        "variables": "src/components/time-field/time-field.variables.json",
+        "examples": "src/components/time-field/time-field.examples.json"
       }
     },
     {
       "name": "Timeline",
       "id": "timeline",
-      "import": "@lostgradient/cinder/timeline",
+      "import": "@lostgradient/cinder",
       "exportName": "Timeline",
       "category": "data-display",
       "status": "stable",
@@ -5753,15 +5752,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/timeline/schema",
-        "variables": "@lostgradient/cinder/timeline/variables",
-        "examples": "@lostgradient/cinder/timeline/examples"
+        "schema": "src/components/timeline/timeline.schema.json",
+        "variables": "src/components/timeline/timeline.variables.json",
+        "examples": "src/components/timeline/timeline.examples.json"
       }
     },
     {
       "name": "ToastRegion",
       "id": "toast-region",
-      "import": "@lostgradient/cinder/toast-region",
+      "import": "@lostgradient/cinder",
       "exportName": "ToastRegion",
       "category": "feedback",
       "status": "stable",
@@ -5783,15 +5782,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/toast-region/schema",
-        "variables": "@lostgradient/cinder/toast-region/variables",
-        "examples": "@lostgradient/cinder/toast-region/examples"
+        "schema": "src/components/toast-region/toast-region.schema.json",
+        "variables": "src/components/toast-region/toast-region.variables.json",
+        "examples": "src/components/toast-region/toast-region.examples.json"
       }
     },
     {
       "name": "Toggle",
       "id": "toggle",
-      "import": "@lostgradient/cinder/toggle",
+      "import": "@lostgradient/cinder",
       "exportName": "Toggle",
       "category": "form",
       "status": "stable",
@@ -5812,15 +5811,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/toggle/schema",
-        "variables": "@lostgradient/cinder/toggle/variables",
-        "examples": "@lostgradient/cinder/toggle/examples"
+        "schema": "src/components/toggle/toggle.schema.json",
+        "variables": "src/components/toggle/toggle.variables.json",
+        "examples": "src/components/toggle/toggle.examples.json"
       }
     },
     {
       "name": "Toolbar",
       "id": "toolbar",
-      "import": "@lostgradient/cinder/toolbar",
+      "import": "@lostgradient/cinder",
       "exportName": "Toolbar",
       "category": "action",
       "status": "stable",
@@ -5839,15 +5838,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/toolbar/schema",
-        "variables": "@lostgradient/cinder/toolbar/variables",
-        "examples": "@lostgradient/cinder/toolbar/examples"
+        "schema": "src/components/toolbar/toolbar.schema.json",
+        "variables": "src/components/toolbar/toolbar.variables.json",
+        "examples": "src/components/toolbar/toolbar.examples.json"
       }
     },
     {
       "name": "Tooltip",
       "id": "tooltip",
-      "import": "@lostgradient/cinder/tooltip",
+      "import": "@lostgradient/cinder",
       "exportName": "Tooltip",
       "category": "overlay",
       "status": "stable",
@@ -5869,15 +5868,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/tooltip/schema",
-        "variables": "@lostgradient/cinder/tooltip/variables",
-        "examples": "@lostgradient/cinder/tooltip/examples"
+        "schema": "src/components/tooltip/tooltip.schema.json",
+        "variables": "src/components/tooltip/tooltip.variables.json",
+        "examples": "src/components/tooltip/tooltip.examples.json"
       }
     },
     {
       "name": "TransferList",
       "id": "transfer-list",
-      "import": "@lostgradient/cinder/transfer-list",
+      "import": "@lostgradient/cinder",
       "exportName": "TransferList",
       "category": "form",
       "status": "beta",
@@ -5897,15 +5896,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/transfer-list/schema",
-        "variables": "@lostgradient/cinder/transfer-list/variables",
-        "examples": "@lostgradient/cinder/transfer-list/examples"
+        "schema": "src/components/transfer-list/transfer-list.schema.json",
+        "variables": "src/components/transfer-list/transfer-list.variables.json",
+        "examples": "src/components/transfer-list/transfer-list.examples.json"
       }
     },
     {
       "name": "Tree",
       "id": "tree",
-      "import": "@lostgradient/cinder/tree",
+      "import": "@lostgradient/cinder",
       "exportName": "Tree",
       "category": "data-display",
       "status": "stable",
@@ -5935,15 +5934,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/tree/schema",
-        "variables": "@lostgradient/cinder/tree/variables",
-        "examples": "@lostgradient/cinder/tree/examples"
+        "schema": "src/components/tree/tree.schema.json",
+        "variables": "src/components/tree/tree.variables.json",
+        "examples": "src/components/tree/tree.examples.json"
       }
     },
     {
       "name": "TreeItem",
       "id": "tree-item",
-      "import": "@lostgradient/cinder/tree-item",
+      "import": "@lostgradient/cinder",
       "exportName": "TreeItem",
       "category": "data-display",
       "status": "stable",
@@ -5962,14 +5961,14 @@
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
-        "schema": "@lostgradient/cinder/tree-item/schema",
-        "variables": "@lostgradient/cinder/tree-item/variables"
+        "schema": "src/components/tree-item/tree-item.schema.json",
+        "variables": "src/components/tree-item/tree-item.variables.json"
       }
     },
     {
       "name": "VirtualList",
       "id": "virtual-list",
-      "import": "@lostgradient/cinder/virtual-list",
+      "import": "@lostgradient/cinder",
       "exportName": "VirtualList",
       "category": "data-display",
       "status": "beta",
@@ -5997,15 +5996,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/virtual-list/schema",
-        "variables": "@lostgradient/cinder/virtual-list/variables",
-        "examples": "@lostgradient/cinder/virtual-list/examples"
+        "schema": "src/components/virtual-list/virtual-list.schema.json",
+        "variables": "src/components/virtual-list/virtual-list.variables.json",
+        "examples": "src/components/virtual-list/virtual-list.examples.json"
       }
     },
     {
       "name": "VisuallyHidden",
       "id": "visually-hidden",
-      "import": "@lostgradient/cinder/visually-hidden",
+      "import": "@lostgradient/cinder",
       "exportName": "VisuallyHidden",
       "category": "typography",
       "status": "stable",
@@ -6027,15 +6026,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/visually-hidden/schema",
-        "variables": "@lostgradient/cinder/visually-hidden/variables",
-        "examples": "@lostgradient/cinder/visually-hidden/examples"
+        "schema": "src/components/visually-hidden/visually-hidden.schema.json",
+        "variables": "src/components/visually-hidden/visually-hidden.variables.json",
+        "examples": "src/components/visually-hidden/visually-hidden.examples.json"
       }
     },
     {
       "name": "Waveform",
       "id": "waveform",
-      "import": "@lostgradient/cinder/waveform",
+      "import": "@lostgradient/cinder",
       "exportName": "Waveform",
       "category": "data-display",
       "status": "alpha",
@@ -6057,15 +6056,15 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/waveform/schema",
-        "variables": "@lostgradient/cinder/waveform/variables",
-        "examples": "@lostgradient/cinder/waveform/examples"
+        "schema": "src/components/waveform/waveform.schema.json",
+        "variables": "src/components/waveform/waveform.variables.json",
+        "examples": "src/components/waveform/waveform.examples.json"
       }
     },
     {
       "name": "ZoomPanViewer",
       "id": "zoom-pan-viewer",
-      "import": "@lostgradient/cinder/zoom-pan-viewer",
+      "import": "@lostgradient/cinder",
       "exportName": "ZoomPanViewer",
       "category": "data-display",
       "status": "beta",
@@ -6083,9 +6082,9 @@
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
-        "schema": "@lostgradient/cinder/zoom-pan-viewer/schema",
-        "variables": "@lostgradient/cinder/zoom-pan-viewer/variables",
-        "examples": "@lostgradient/cinder/zoom-pan-viewer/examples"
+        "schema": "src/components/zoom-pan-viewer/zoom-pan-viewer.schema.json",
+        "variables": "src/components/zoom-pan-viewer/zoom-pan-viewer.variables.json",
+        "examples": "src/components/zoom-pan-viewer/zoom-pan-viewer.examples.json"
       }
     }
   ]

@@ -12,20 +12,17 @@ describe('createFormDirtyGuard', () => {
   });
   test('beforeunload only prevents navigation when dirty', () => {
     const guard = createFormDirtyGuard();
-    const clean = {
-      preventDefault: () => {},
-      returnValue: undefined,
-    } as unknown as BeforeUnloadEvent;
+    const clean = new Event('beforeunload', { cancelable: true });
+    Object.defineProperty(clean, 'returnValue', { value: undefined, writable: true });
     guard.handleBeforeUnload(clean);
     expect(clean.returnValue).toBeUndefined();
     guard.markDirty();
     let prevented = false;
-    const dirty = {
-      preventDefault: () => {
-        prevented = true;
-      },
-      returnValue: undefined,
-    } as unknown as BeforeUnloadEvent;
+    const dirty = new Event('beforeunload', { cancelable: true });
+    Object.defineProperty(dirty, 'returnValue', { value: undefined, writable: true });
+    dirty.preventDefault = () => {
+      prevented = true;
+    };
     guard.handleBeforeUnload(dirty);
     expect(prevented).toBe(true);
   });

@@ -17,7 +17,7 @@
   import Alert from '../alert/alert.svelte';
   import Badge from '../badge/badge.svelte';
   import Button from '../button/button.svelte';
-  import CodeBlock from '@lostgradient/cinder/code-block';
+  import { default as CodeBlock } from '../code-block/index.ts';
   import Textarea from '../textarea/textarea.svelte';
 
   import type { JsonSchemaValidationError } from './json-schema-editor-types.ts';
@@ -74,6 +74,7 @@
     let cancelled = false;
     void validateMetaSchema(parse.value, activeDraft).then((result) => {
       if (!cancelled) draftMeta = result;
+      return undefined;
     });
     return () => {
       cancelled = true;
@@ -112,6 +113,7 @@
   let shouldRestoreEditFocus = $state(false);
   let shouldFocusTextarea = $state(false);
   let discardWasFocused = $state(false);
+  let textareaWasFocused = $state(false);
   let previouslyReadonly = false;
 
   function focusEditingExitTarget(): void {
@@ -140,8 +142,6 @@
   // so transfer focus to the stable edit control after the DOM updates.
   $effect.pre(() => {
     const isEditable = editable;
-    const focusMovedFromTextarea =
-      previouslyEditable && !isEditable && document.activeElement?.id === `${idPrefix}-textarea`;
     const focusMovedFromCodeBlock =
       !previouslyEditable &&
       isEditable &&
@@ -159,7 +159,7 @@
     previouslyEditable = isEditable;
     previouslyReadonly = isReadonly;
 
-    if (focusMovedFromTextarea || focusMovedFromJsonActions) shouldRestoreEditFocus = true;
+    if (focusMovedFromJsonActions) shouldRestoreEditFocus = true;
     if (focusMovedFromCodeBlock || focusMovedFromDoneToMalformed) shouldFocusTextarea = true;
     if (focusMovedFromEditToReadonly) shouldRestoreEditFocus = true;
   });
@@ -185,6 +185,15 @@
   $effect(() => {
     if (discardWasFocused && !editorState.jsonDraftIsDirty) {
       discardWasFocused = false;
+      focusEditingExitTarget();
+    }
+  });
+
+  // Synchronization can remove the textarea in the same post-render batch
+  // that changes editable. Remember focus before that node is detached.
+  $effect(() => {
+    if (textareaWasFocused && !editable) {
+      textareaWasFocused = false;
       focusEditingExitTarget();
     }
   });
@@ -268,6 +277,12 @@
       rows={20}
       variant="code"
       class="cinder-jse-json-view__textarea"
+      onfocus={() => {
+        textareaWasFocused = true;
+      }}
+      onblur={() => {
+        if (editable) textareaWasFocused = false;
+      }}
       oninput={(event: Event) =>
         editorState.setJsonDraftText((event.target as HTMLTextAreaElement).value)}
     />

@@ -11,7 +11,7 @@
 
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import.
 // testing-library reads `globalThis.document` / `window` at module-init.
@@ -21,6 +21,12 @@ const { cleanup, render } = await import('@testing-library/svelte');
 const { default: EditorSkeleton } = await import('./editor-skeleton.svelte');
 
 afterEach(() => cleanup());
+
+function extractWidths(container: HTMLElement): string[] {
+  return Array.from(container.querySelectorAll('.skeleton-line')).map((element) =>
+    requiredInstance(element, HTMLElement).style.getPropertyValue('--skeleton-line-width'),
+  );
+}
 
 describe('EditorSkeleton — no duplicate IDs across two instances', () => {
   test('two instances with default props share no duplicate DOM id values', () => {
@@ -40,12 +46,6 @@ describe('EditorSkeleton — no duplicate IDs across two instances', () => {
 
 describe('EditorSkeleton — deterministic shimmer widths', () => {
   test('renders the same line widths for the same `lines` value on every mount', () => {
-    const extractWidths = (container: HTMLElement): string[] => {
-      return Array.from(container.querySelectorAll('.skeleton-line')).map((el) =>
-        (el as HTMLElement).style.getPropertyValue('--skeleton-line-width'),
-      );
-    };
-
     const { container: firstContainer } = render(EditorSkeleton, { props: { lines: 8 } });
     const firstWidths = extractWidths(firstContainer);
     cleanup();
@@ -59,17 +59,13 @@ describe('EditorSkeleton — deterministic shimmer widths', () => {
 
   test('first line is always 45% (heading width)', () => {
     const { container } = render(EditorSkeleton, { props: { lines: 5 } });
-    const lines = Array.from(container.querySelectorAll('.skeleton-line'));
-    const firstWidth = (lines[0] as HTMLElement).style.getPropertyValue('--skeleton-line-width');
+    const firstWidth = extractWidths(container)[0];
     expect(firstWidth).toBe('45%');
   });
 
   test('last line is always 30% (tail width)', () => {
     const { container } = render(EditorSkeleton, { props: { lines: 5 } });
-    const lines = Array.from(container.querySelectorAll('.skeleton-line'));
-    const lastWidth = (lines[lines.length - 1] as HTMLElement).style.getPropertyValue(
-      '--skeleton-line-width',
-    );
+    const lastWidth = extractWidths(container).at(-1);
     expect(lastWidth).toBe('30%');
   });
 
@@ -80,11 +76,7 @@ describe('EditorSkeleton — deterministic shimmer widths', () => {
     const expectedInterior = ['84%', '56%', '92%', '72%', '80%', '60%', '88%', '68%'];
 
     const { container } = render(EditorSkeleton, { props: { lines: 10 } });
-    const lines = Array.from(container.querySelectorAll('.skeleton-line'));
-
-    const interiorWidths = lines
-      .slice(1, -1)
-      .map((el) => (el as HTMLElement).style.getPropertyValue('--skeleton-line-width'));
+    const interiorWidths = extractWidths(container).slice(1, -1);
     expect(interiorWidths).toEqual(expectedInterior);
   });
 });

@@ -10,7 +10,7 @@
  * coverage.
  *
  * The mechanism it implements replaces a hand-maintained, source-text scan
- * (`packages/components/src/styles/border-tier-non-border-uses.test.ts`) for
+ * (`components/cinder/src/styles/border-tier-non-border-uses.test.ts`) for
  * exactly the two shapes that scan cannot see, because neither is present as
  * literal text in any one file:
  *

@@ -1,3 +1,19 @@
+function elapsedMilliseconds(
+  startOrMilliseconds: number | Date | string | null,
+  end: Date | string | number | null | undefined,
+): number | null {
+  if (startOrMilliseconds === null || end === null) return null;
+  if (end === undefined) {
+    return typeof startOrMilliseconds === 'number' ? startOrMilliseconds : 0;
+  }
+  const startTime =
+    typeof startOrMilliseconds === 'number'
+      ? startOrMilliseconds
+      : new Date(startOrMilliseconds).getTime();
+  const endTime = typeof end === 'number' ? end : new Date(end).getTime();
+  return endTime - startTime;
+}
+
 /** Format a duration in milliseconds to a human-readable string (e.g., "45s", "3m 12s", "2h 15m"). */
 export function formatDuration(milliseconds: number | null): string;
 export function formatDuration(
@@ -8,23 +24,8 @@ export function formatDuration(
   startOrMilliseconds: number | Date | string | null,
   end?: Date | string | number | null,
 ): string {
-  let milliseconds: number;
-
-  if (end !== undefined) {
-    if (startOrMilliseconds === null || end === null) return '-';
-
-    const startTime =
-      typeof startOrMilliseconds === 'number'
-        ? startOrMilliseconds
-        : new Date(startOrMilliseconds).getTime();
-    const endTime = typeof end === 'number' ? end : new Date(end).getTime();
-    milliseconds = endTime - startTime;
-  } else {
-    if (startOrMilliseconds === null) return '-';
-    milliseconds = typeof startOrMilliseconds === 'number' ? startOrMilliseconds : 0;
-  }
-
-  if (milliseconds < 0) return '-';
+  const milliseconds = elapsedMilliseconds(startOrMilliseconds, end);
+  if (milliseconds === null || milliseconds < 0) return '-';
 
   const seconds = Math.floor(milliseconds / 1000);
   const minutes = Math.floor(seconds / 60);

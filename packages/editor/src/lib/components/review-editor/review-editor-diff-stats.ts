@@ -7,7 +7,7 @@
  * `review-editor.snapshot-mode.test.ts`), but this computation only ever
  * touches its two string arguments, so it does not need the component at all.
  */
-import { computeLineDiff, getDiffStats } from '@lostgradient/markdown/diff/line-diff';
+import { computeLineDiff, getDiffStats } from '@lostgradient/markdown';
 import { normalizeDocument } from '../../export/normalize-document.js';
 
 export interface ReviewEditorDiffStats {

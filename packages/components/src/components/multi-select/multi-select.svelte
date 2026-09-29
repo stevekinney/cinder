@@ -164,6 +164,11 @@
   });
   const triggerSummary = $derived(selectedCount > 0 ? `${selectedCount} selected` : placeholder);
   const emptyListMessage = $derived(filterable ? 'No matching options' : 'No options');
+  // COR-499: one status description outside the listbox, mirroring
+  // CommandMenu's `emptyStateId`/`showEmptyState` pattern — a sibling of
+  // `<ul role="listbox">`, referenced from it via aria-describedby, never a
+  // fake `role="option"` row inside the listbox.
+  const emptyStatusId = $derived(`${id}-empty-status`);
   const initialSelectedIds = untrack(() => [...selectedIds]);
   const commandList = createCommandListState(() => listboxId);
 
@@ -228,6 +233,7 @@
       if (nextIndex >= 0) commandList.setActiveById(`${id}-option-${nextIndex}`);
       if (filterable) filterElement?.focus();
       else listboxElement?.focus();
+      return undefined;
     });
   }
 
@@ -487,6 +493,7 @@
           aria-required={field.required || undefined}
           aria-readonly={readonly || undefined}
           aria-activedescendant={filterable ? undefined : activeOptionId}
+          aria-describedby={visibleItems.length === 0 ? emptyStatusId : undefined}
           tabindex={filterable ? -1 : 0}
           onkeydown={handleListNavigationKeydown}
         >
@@ -526,25 +533,25 @@
                 {/if}
               </span>
             </li>
-          {:else}
-            <li
-              class="cinder-multi-select__empty"
-              role="option"
-              aria-disabled="true"
-              aria-selected="false"
-            >
-              {emptyListMessage}
-            </li>
           {/each}
         </ul>
+        <!--
+          COR-499: zero role="option" elements when visibleItems is empty —
+          the {:else} fake disabled option row above is gone. This status is
+          the one visible-and-announced description, a sibling of the listbox
+          (never nested inside it), matching CommandMenu's own empty-state
+          div (command-menu.svelte's `emptyStateId`/`showEmptyState`).
+        -->
+        {#if visibleItems.length === 0}
+          <div id={emptyStatusId} class="cinder-multi-select__empty" role="status">
+            {emptyListMessage}
+          </div>
+        {/if}
       </div>
     {/if}
   </div>
 
   {#if filterable}
-    <p class="cinder-multi-select__sr-status" role="status" aria-live="polite">
-      {open && visibleItems.length === 0 ? emptyListMessage : ''}
-    </p>
     <span id={filterLabelHintId} class="cinder-multi-select__sr-status">Filter options</span>
   {/if}
 

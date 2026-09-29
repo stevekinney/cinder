@@ -1,10 +1,9 @@
-// @ts-nocheck — test file; noUncheckedIndexedAccess and bun:test types disabled per project convention
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { createRawSnippet, tick } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, requiredValue, setupHappyDom } from '@lostgradient/testing';
 import { SortableController, reorder } from '../../utilities/sortable-controller.svelte.ts';
 
 setupHappyDom();
@@ -92,8 +91,8 @@ describe('SortableController', () => {
     expect(controller.liftedFrom).toBe(0);
     expect(controller.liftedTo).toBe(0);
     expect(announce).toHaveBeenCalledTimes(1);
-    expect(announce.mock.calls[0][0]).toContain('Alpha');
-    expect(announce.mock.calls[0][0]).toContain('1 of 3');
+    expect(requiredValue(requiredValue(announce.mock.calls[0])[0])).toContain('Alpha');
+    expect(requiredValue(requiredValue(announce.mock.calls[0])[0])).toContain('1 of 3');
   });
 
   test('move updates liftedTo and announces only on actual change', () => {
@@ -144,7 +143,7 @@ describe('SortableController', () => {
     expect(result!.nextItems.map((i) => i.id)).toEqual(['b', 'c', 'a']);
     expect(result!.change).toEqual({ itemKey: 'a', fromIndex: 0, toIndex: 2 });
     expect(announce).toHaveBeenCalledTimes(1);
-    expect(announce.mock.calls[0][0]).toContain('dropped');
+    expect(requiredValue(requiredValue(announce.mock.calls[0])[0])).toContain('dropped');
     expect(controller.phase).toBe('idle');
   });
 
@@ -159,7 +158,7 @@ describe('SortableController', () => {
 
     expect(result).toBeNull();
     expect(announce).toHaveBeenCalledTimes(1);
-    expect(announce.mock.calls[0][0]).toContain('dropped');
+    expect(requiredValue(requiredValue(announce.mock.calls[0])[0])).toContain('dropped');
   });
 
   test('completeDrop announces and resets without requiring a list item array', () => {
@@ -173,7 +172,7 @@ describe('SortableController', () => {
 
     expect(controller.phase).toBe('idle');
     expect(announce).toHaveBeenCalledTimes(1);
-    expect(announce.mock.calls[0][0]).toContain('2 of 2');
+    expect(requiredValue(requiredValue(announce.mock.calls[0])[0])).toContain('2 of 2');
   });
 
   test('cancel resets all state fields, announces cancelled', () => {
@@ -191,7 +190,7 @@ describe('SortableController', () => {
     expect(controller.liftedFrom).toBe(0);
     expect(controller.liftedTo).toBe(0);
     expect(announce).toHaveBeenCalledTimes(1);
-    expect(announce.mock.calls[0][0]).toContain('cancelled');
+    expect(requiredValue(requiredValue(announce.mock.calls[0])[0])).toContain('cancelled');
   });
 
   test('lift while already lifted is a no-op (prevents concurrent drag corruption)', () => {
@@ -232,8 +231,8 @@ describe('SortableController', () => {
     expect(controller.phase).toBe('idle');
     expect(announce).toHaveBeenCalledTimes(1);
     // Announcement should use the stored label "Alpha" (not an empty string).
-    expect(announce.mock.calls[0][0]).toContain('Alpha');
-    expect(announce.mock.calls[0][0]).toContain('cancelled');
+    expect(requiredValue(requiredValue(announce.mock.calls[0])[0])).toContain('Alpha');
+    expect(requiredValue(requiredValue(announce.mock.calls[0])[0])).toContain('cancelled');
   });
 
   test('reconcileLiftedKey when key moved updates liftedFrom without announcing', () => {
@@ -258,11 +257,6 @@ describe('SortableController', () => {
   test('reconcileLiftedKey clamps liftedTo when list shrinks from the end (index unchanged)', () => {
     const announce = mock();
     const controller = new SortableController<Item>({ announce });
-    const items: Item[] = [
-      { id: 'a', label: 'Alpha' },
-      { id: 'b', label: 'Beta' },
-      { id: 'c', label: 'Gamma' },
-    ];
     // Lift 'a' and move it to position 2 (last).
     controller.lift('a', 0, 'Alpha', 3);
     controller.move(2, 'Alpha', 3);
@@ -291,7 +285,7 @@ describe('SortableController', () => {
 
     controller.lift('a', 0, 'Alpha', 3);
 
-    expect(announce.mock.calls[0][0]).toBe('CUSTOM LIFT Alpha');
+    expect(requiredValue(requiredValue(announce.mock.calls[0])[0])).toBe('CUSTOM LIFT Alpha');
   });
 });
 
@@ -350,9 +344,9 @@ describe('SortableList', () => {
     const { container } = renderList();
     const handles = container.querySelectorAll('.cinder-sortable-handle');
     expect(handles.length).toBe(3);
-    expect(handles[0].getAttribute('aria-label')).toBe('Reorder Alpha');
-    expect(handles[1].getAttribute('aria-label')).toBe('Reorder Beta');
-    expect(handles[2].getAttribute('aria-label')).toBe('Reorder Gamma');
+    expect(requiredValue(handles[0]).getAttribute('aria-label')).toBe('Reorder Alpha');
+    expect(requiredValue(handles[1]).getAttribute('aria-label')).toBe('Reorder Beta');
+    expect(requiredValue(handles[2]).getAttribute('aria-label')).toBe('Reorder Gamma');
   });
 
   test('custom formatHandleLabel is applied to handles', () => {
@@ -360,7 +354,7 @@ describe('SortableList', () => {
       formatHandleLabel: (label: string) => `Drag ${label}`,
     });
     const handles = container.querySelectorAll('.cinder-sortable-handle');
-    expect(handles[0].getAttribute('aria-label')).toBe('Drag Alpha');
+    expect(requiredValue(handles[0]).getAttribute('aria-label')).toBe('Drag Alpha');
   });
 
   test('handle has aria-pressed=false initially', () => {
@@ -389,7 +383,10 @@ describe('SortableList', () => {
 
   test('Space on handle lifts item — aria-pressed becomes true', async () => {
     const { container } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
 
     await fireEvent.keyDown(handle, { key: ' ' });
 
@@ -398,77 +395,86 @@ describe('SortableList', () => {
 
   test('Arrow Down moves lifted item to next visual position', async () => {
     const { container } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
 
     await fireEvent.keyDown(handle, { key: ' ' }); // Lift Alpha (was at index 0).
     await fireEvent.keyDown(handle, { key: 'ArrowDown' }); // Move to index 1.
 
     // Alpha should now appear at visual index 1; Beta should have shifted to index 0.
     const rows = container.querySelectorAll('[data-sortable-row]');
-    expect(rows[0].getAttribute('data-key')).toBe('b'); // Beta shifted to first.
-    expect(rows[1].getAttribute('data-key')).toBe('a'); // Alpha at second.
+    expect(requiredValue(rows[0]).getAttribute('data-key')).toBe('b'); // Beta shifted to first.
+    expect(requiredValue(rows[1]).getAttribute('data-key')).toBe('a'); // Alpha at second.
     expect(handle.getAttribute('aria-pressed')).toBe('true');
   });
 
   test('Arrow Down at last position clamps — item stays at last slot', async () => {
     const { container } = renderList();
     const handles = container.querySelectorAll('.cinder-sortable-handle');
-    const lastHandle = handles[handles.length - 1] as HTMLElement; // Gamma at index 2.
+    const lastHandle = requiredInstance(handles[handles.length - 1], HTMLElement); // Gamma at index 2.
 
     await fireEvent.keyDown(lastHandle, { key: ' ' });
     await fireEvent.keyDown(lastHandle, { key: 'ArrowDown' }); // At last — clamps.
 
     const rows = container.querySelectorAll('[data-sortable-row]');
-    expect(rows[2].getAttribute('data-key')).toBe('c'); // Gamma stays at index 2.
+    expect(requiredValue(rows[2]).getAttribute('data-key')).toBe('c'); // Gamma stays at index 2.
     expect(lastHandle.getAttribute('aria-pressed')).toBe('true');
   });
 
   test('Arrow Up at first position clamps — item stays at first slot', async () => {
     const { container } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement; // Alpha at index 0.
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    ); // Alpha at index 0.
 
     await fireEvent.keyDown(handle, { key: ' ' });
     await fireEvent.keyDown(handle, { key: 'ArrowUp' }); // Already at 0 — clamps.
 
     const rows = container.querySelectorAll('[data-sortable-row]');
-    expect(rows[0].getAttribute('data-key')).toBe('a'); // Alpha stays at index 0.
+    expect(requiredValue(rows[0]).getAttribute('data-key')).toBe('a'); // Alpha stays at index 0.
     expect(handle.getAttribute('aria-pressed')).toBe('true');
   });
 
   test('End moves lifted item to last visual position', async () => {
     const { container } = renderList();
     const handles = container.querySelectorAll('.cinder-sortable-handle');
-    const middleHandle = handles[1] as HTMLElement; // Beta at index 1.
+    const middleHandle = requiredInstance(requiredValue(handles[1]), HTMLElement); // Beta at index 1.
 
     await fireEvent.keyDown(middleHandle, { key: ' ' }); // Lift Beta.
     await fireEvent.keyDown(middleHandle, { key: 'End' }); // Move to last.
 
     const rows = container.querySelectorAll('[data-sortable-row]');
-    expect(rows[2].getAttribute('data-key')).toBe('b'); // Beta moved to index 2.
+    expect(requiredValue(rows[2]).getAttribute('data-key')).toBe('b'); // Beta moved to index 2.
   });
 
   test('Home moves lifted item to first visual position', async () => {
     const { container } = renderList();
     const handles = container.querySelectorAll('.cinder-sortable-handle');
-    const middleHandle = handles[1] as HTMLElement; // Beta at index 1.
+    const middleHandle = requiredInstance(requiredValue(handles[1]), HTMLElement); // Beta at index 1.
 
     await fireEvent.keyDown(middleHandle, { key: ' ' }); // Lift Beta.
     await fireEvent.keyDown(middleHandle, { key: 'Home' }); // Move to first.
 
     const rows = container.querySelectorAll('[data-sortable-row]');
-    expect(rows[0].getAttribute('data-key')).toBe('b'); // Beta moved to index 0.
+    expect(requiredValue(rows[0]).getAttribute('data-key')).toBe('b'); // Beta moved to index 0.
   });
 
   test('Space drops and calls onReorder with reordered array', async () => {
     const { container, onReorder } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
 
     await fireEvent.keyDown(handle, { key: ' ' }); // Lift Alpha.
     await fireEvent.keyDown(handle, { key: 'ArrowDown' }); // Move to position 2.
     await fireEvent.keyDown(handle, { key: ' ' }); // Drop.
 
     expect(onReorder).toHaveBeenCalledTimes(1);
-    const [nextItems, change] = onReorder.mock.calls[0];
+    const [nextItems, change] = requiredValue(onReorder.mock.calls[0]);
     expect(nextItems.map((i: Item) => i.id)).toEqual(['b', 'a', 'c']);
     expect(change.fromIndex).toBe(0);
     expect(change.toIndex).toBe(1);
@@ -478,7 +484,10 @@ describe('SortableList', () => {
 
   test('Escape cancels — onReorder not called, aria-pressed returns false', async () => {
     const { container, onReorder } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
 
     await fireEvent.keyDown(handle, { key: ' ' });
     await fireEvent.keyDown(handle, { key: 'ArrowDown' });
@@ -490,7 +499,10 @@ describe('SortableList', () => {
 
   test('drop at same position does not call onReorder', async () => {
     const { container, onReorder } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
 
     await fireEvent.keyDown(handle, { key: ' ' }); // Lift.
     await fireEvent.keyDown(handle, { key: ' ' }); // Drop at same index.
@@ -501,14 +513,14 @@ describe('SortableList', () => {
   test('onReorder receives full reordered array and correct change metadata', async () => {
     const { container, onReorder } = renderList();
     const handles = container.querySelectorAll('.cinder-sortable-handle');
-    const lastHandle = handles[handles.length - 1] as HTMLElement; // Gamma (index 2).
+    const lastHandle = requiredInstance(handles[handles.length - 1], HTMLElement); // Gamma (index 2).
 
     await fireEvent.keyDown(lastHandle, { key: ' ' }); // Lift Gamma.
     await fireEvent.keyDown(lastHandle, { key: 'ArrowUp' }); // Move to index 1.
     await fireEvent.keyDown(lastHandle, { key: ' ' }); // Drop.
 
     expect(onReorder).toHaveBeenCalledTimes(1);
-    const [nextItems, change] = onReorder.mock.calls[0];
+    const [nextItems, change] = requiredValue(onReorder.mock.calls[0]);
     expect(nextItems.length).toBe(3);
     expect(change.itemKey).toBe('c');
     expect(change.fromIndex).toBe(2);
@@ -522,11 +534,14 @@ describe('SortableList', () => {
     ];
     const frozen = Object.freeze(original.map((i) => Object.freeze({ ...i })));
     const { container, onReorder } = renderList({
-      items: frozen as any,
+      items: frozen,
       label: 'Frozen list',
     });
 
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
 
     await fireEvent.keyDown(handle, { key: ' ' });
     await fireEvent.keyDown(handle, { key: 'ArrowDown' });
@@ -550,7 +565,10 @@ describe('SortableList', () => {
         lifted: (label: string, _position: number, _total: number) => `CUSTOM ${label} LIFTED`,
       },
     });
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
 
     await fireEvent.keyDown(handle, { key: ' ' });
 
@@ -602,7 +620,10 @@ describe('SortableList pointer drag preview', () => {
 
   test('pointer drag appends a drag preview portal to document.body', async () => {
     const { container } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
     installPointerCaptureOnHandle(handle);
 
     await dispatchPointerEvent(handle, 'pointerdown', {
@@ -625,7 +646,10 @@ describe('SortableList pointer drag preview', () => {
 
   test('standalone drag previews retain the resting row layout', async () => {
     const { container } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
     installPointerCaptureOnHandle(handle);
 
     await dispatchPointerEvent(handle, 'pointerdown', {
@@ -648,7 +672,10 @@ describe('SortableList pointer drag preview', () => {
   test('preview tagging does not cross a nested component boundary', async () => {
     const { container } = renderList();
     const list = container.querySelector('.cinder-sortable-list');
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
     installPointerCaptureOnHandle(handle);
 
     list?.removeAttribute('data-cinder-sortable-list');
@@ -670,7 +697,10 @@ describe('SortableList pointer drag preview', () => {
 
   test('preview has aria-hidden=true so it does not duplicate AT content', async () => {
     const { container } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
     installPointerCaptureOnHandle(handle);
 
     await fireEvent.pointerDown(handle, {
@@ -689,7 +719,10 @@ describe('SortableList pointer drag preview', () => {
 
   test('lifted row has --placeholder class during pointer drag (not --lifted)', async () => {
     const { container } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
     installPointerCaptureOnHandle(handle);
 
     await fireEvent.pointerDown(handle, {
@@ -700,7 +733,7 @@ describe('SortableList pointer drag preview', () => {
       pointerType: 'mouse',
     });
 
-    const liftedRow = container.querySelector('[data-key="a"]') as HTMLElement;
+    const liftedRow = requiredInstance(container.querySelector('[data-key="a"]'), HTMLElement);
     expect(liftedRow?.classList.contains('cinder-sortable-item--placeholder')).toBe(true);
     expect(liftedRow?.classList.contains('cinder-sortable-item--lifted')).toBe(false);
 
@@ -709,7 +742,10 @@ describe('SortableList pointer drag preview', () => {
 
   test('lifted row exposes data-preview-x and data-preview-y during pointer drag', async () => {
     const { container } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
     installPointerCaptureOnHandle(handle);
 
     await fireEvent.pointerDown(handle, {
@@ -720,7 +756,7 @@ describe('SortableList pointer drag preview', () => {
       pointerType: 'mouse',
     });
 
-    const liftedRow = container.querySelector('[data-key="a"]') as HTMLElement;
+    const liftedRow = requiredInstance(container.querySelector('[data-key="a"]'), HTMLElement);
     expect(liftedRow?.getAttribute('data-preview-x')).toBe('50');
     expect(liftedRow?.getAttribute('data-preview-y')).toBe('100');
 
@@ -729,7 +765,10 @@ describe('SortableList pointer drag preview', () => {
 
   test('preview position attributes update on pointer move', async () => {
     const { container } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
     installPointerCaptureOnHandle(handle);
 
     await fireEvent.pointerDown(handle, {
@@ -748,7 +787,7 @@ describe('SortableList pointer drag preview', () => {
     });
     await waitForAnimationFrame();
 
-    const liftedRow = container.querySelector('[data-key="a"]') as HTMLElement;
+    const liftedRow = requiredInstance(container.querySelector('[data-key="a"]'), HTMLElement);
     expect(liftedRow?.getAttribute('data-preview-x')).toBe('80');
     expect(liftedRow?.getAttribute('data-preview-y')).toBe('160');
 
@@ -757,7 +796,10 @@ describe('SortableList pointer drag preview', () => {
 
   test('drop removes the preview portal from document.body', async () => {
     const { container } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
     installPointerCaptureOnHandle(handle);
 
     await fireEvent.pointerDown(handle, {
@@ -777,7 +819,10 @@ describe('SortableList pointer drag preview', () => {
 
   test('drop clears placeholder class and data-preview-x/y from the row', async () => {
     const { container } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
     installPointerCaptureOnHandle(handle);
 
     await fireEvent.pointerDown(handle, {
@@ -789,7 +834,7 @@ describe('SortableList pointer drag preview', () => {
     });
     await fireEvent.pointerUp(handle, { pointerId: 1, pointerType: 'mouse' });
 
-    const row = container.querySelector('[data-key="a"]') as HTMLElement;
+    const row = requiredInstance(container.querySelector('[data-key="a"]'), HTMLElement);
     expect(row?.classList.contains('cinder-sortable-item--placeholder')).toBe(false);
     expect(row?.hasAttribute('data-preview-x')).toBe(false);
     expect(row?.hasAttribute('data-preview-y')).toBe(false);
@@ -797,7 +842,10 @@ describe('SortableList pointer drag preview', () => {
 
   test('pointercancel removes the preview portal (cancel path)', async () => {
     const { container } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
     installPointerCaptureOnHandle(handle);
 
     await fireEvent.pointerDown(handle, {
@@ -817,7 +865,10 @@ describe('SortableList pointer drag preview', () => {
 
   test('Escape during pointer drag removes the preview portal', async () => {
     const { container } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
     installPointerCaptureOnHandle(handle);
 
     await fireEvent.pointerDown(handle, {
@@ -837,14 +888,17 @@ describe('SortableList pointer drag preview', () => {
 
   test('keyboard lift does NOT create a preview portal', async () => {
     const { container } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
 
     await fireEvent.keyDown(handle, { key: ' ' });
 
     // Keyboard drag: no preview portal should exist.
     expect(document.querySelector('[data-cinder-drag-preview]')).toBeNull();
     // Keyboard drag: row should have --lifted class, not --placeholder.
-    const row = container.querySelector('[data-key="a"]') as HTMLElement;
+    const row = requiredInstance(container.querySelector('[data-key="a"]'), HTMLElement);
     expect(row?.classList.contains('cinder-sortable-item--lifted')).toBe(true);
     expect(row?.classList.contains('cinder-sortable-item--placeholder')).toBe(false);
 
@@ -854,7 +908,10 @@ describe('SortableList pointer drag preview', () => {
 
   test('window Escape during pointer drag removes the preview portal', async () => {
     const { container } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
     installPointerCaptureOnHandle(handle);
 
     await fireEvent.pointerDown(handle, {
@@ -885,7 +942,10 @@ describe('SortableList pointer drag preview', () => {
 
   test('Escape during pointer drag followed by queued rAF — no orphaned frame / no leftover portal', async () => {
     const { container } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
     installPointerCaptureOnHandle(handle);
 
     await fireEvent.pointerDown(handle, {
@@ -916,7 +976,10 @@ describe('SortableList pointer drag preview', () => {
 
   test('portal count is 0 when idle and exactly 1 during a single drag', async () => {
     const { container } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
     installPointerCaptureOnHandle(handle);
 
     // Idle: no portals.
@@ -942,8 +1005,8 @@ describe('SortableList pointer drag preview', () => {
   test('rejected lift (another item already lifted) does NOT create an orphaned preview portal', async () => {
     const { container } = renderList();
     const handles = container.querySelectorAll('.cinder-sortable-handle');
-    const firstHandle = handles[0] as HTMLElement;
-    const secondHandle = handles[1] as HTMLElement;
+    const firstHandle = requiredInstance(requiredValue(handles[0]), HTMLElement);
+    const secondHandle = requiredInstance(requiredValue(handles[1]), HTMLElement);
     installPointerCaptureOnHandle(firstHandle);
     installPointerCaptureOnHandle(secondHandle);
 
@@ -978,7 +1041,10 @@ describe('SortableList pointer drag preview', () => {
 
   test('rapid second drag after drop does not leave extra portals', async () => {
     const { container } = renderList();
-    const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+    const handle = requiredInstance(
+      requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+      HTMLElement,
+    );
     installPointerCaptureOnHandle(handle);
 
     // First drag.
@@ -1031,7 +1097,10 @@ describe('SortableList pointer drag preview', () => {
       },
     });
 
-    const handle = container.querySelector('.cinder-sortable-handle') as HTMLElement;
+    const handle = requiredInstance(
+      container.querySelector('.cinder-sortable-handle'),
+      HTMLElement,
+    );
     installPointerCaptureOnHandle(handle);
 
     // Pre-drag: exactly one element with the id inside the container.
@@ -1048,7 +1117,10 @@ describe('SortableList pointer drag preview', () => {
     // The source row still has the id.
     expect(container.querySelectorAll('#unique-span-id').length).toBe(1);
     // The portal clone must NOT contain any element with that id.
-    const portal = document.querySelector('[data-cinder-drag-preview]') as HTMLElement;
+    const portal = requiredInstance(
+      document.querySelector('[data-cinder-drag-preview]'),
+      HTMLElement,
+    );
     expect(portal).not.toBeNull();
     expect(portal.querySelectorAll('#unique-span-id').length).toBe(0);
     // The portal itself must have no id attribute.
@@ -1118,7 +1190,7 @@ function installOrderedRowGeometry(): () => void {
           toJSON() {
             return this;
           },
-        } as DOMRect;
+        };
       }
     }
     return original.call(this);
@@ -1141,7 +1213,10 @@ describe('SortableList multi-position pointer drag', () => {
           { id: 'e', label: 'Epsilon' },
         ],
       });
-      const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+      const handle = requiredInstance(
+        requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+        HTMLElement,
+      );
       installPointerCaptureOnHandle(handle);
 
       await dispatchPointerEvent(handle, 'pointerdown', {
@@ -1187,7 +1262,10 @@ describe('SortableList multi-position pointer drag', () => {
           { id: 'e', label: 'Epsilon' },
         ],
       });
-      const handle = container.querySelectorAll('.cinder-sortable-handle')[0] as HTMLElement;
+      const handle = requiredInstance(
+        requiredValue(container.querySelectorAll('.cinder-sortable-handle')[0]),
+        HTMLElement,
+      );
       installPointerCaptureOnHandle(handle);
 
       await dispatchPointerEvent(handle, 'pointerdown', {

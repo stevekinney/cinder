@@ -1,219 +1,123 @@
 /**
  * ProseMirror plugin for decorating invalid `{{…}}` template placeholder tokens.
  *
- * Scans the document on every change, parses `{{…}}` tokens from each text block,
- * validates them against the current candidate set, and applies inline decorations
- * to invalid tokens with a CSS class and a `data-placeholder-validation-reason`
- * attribute describing the failure.
+ * Scans each eligible same-mark text run (see `template-placeholder-runs.ts`),
+ * validates its tokens against the active configuration's candidates, and
+ * decorates each invalid token with a CSS class and a
+ * `data-placeholder-validation-reason` attribute naming the diagnostic code:
+ * `malformed_token`, `invalid_path_format`, `blocked_path` or
+ * `unknown_placeholder`.
  *
  * DEP-583: WYSIWYG invalid-token decoration for saved-prompt template authoring.
  */
 
-import {
-  parsePlaceholderTokens,
-  validatePlaceholderTokens,
-} from '@lostgradient/markdown/templates/template-placeholders';
-import type { PlaceholderCandidate } from '@lostgradient/markdown/templates/types';
+import type { PlaceholderCandidate } from '@lostgradient/markdown';
+import { parsePlaceholderTokens, validatePlaceholderTokens } from '@lostgradient/markdown';
 import type { Node as ProseMirrorNode } from 'prosemirror-model';
 import { Plugin, PluginKey } from 'prosemirror-state';
 import { Decoration, DecorationSet } from 'prosemirror-view';
 
-import { createLazyProsePlugin } from './milkdown-plugin-runtime.js';
-import { textOffsetToBlockDocumentPosition } from './template-position-utilities.js';
+import { createLazyProsePlugin, type LazyProsePlugin } from './milkdown-plugin-runtime.js';
+import {
+  placeholderConfigurationChange,
+  readPlaceholderConfiguration,
+} from './template-placeholder-configuration-plugin.js';
+import type {
+  PlaceholderDecorationSource,
+  ResolvedPlaceholderConfiguration,
+} from './template-placeholder-configuration.js';
+import { forEachPlaceholderRun } from './template-placeholder-runs.js';
 
 /** Plugin key for the template invalid decoration plugin. */
-export const templateInvalidDecorationPluginKey = new PluginKey('template-invalid-decoration');
+export const templateInvalidDecorationPluginKey = new PluginKey<DecorationPluginState>(
+  'template-invalid-decoration',
+);
 
 /**
- * Convert a text offset within a block node to a ProseMirror document position.
+ * Build decorations for every invalid `{{…}}` token in the document.
  *
- * Thin adapter over the shared `textOffsetToBlockDocumentPosition` utility.
- * The parameter name `blockPosition` refers to the absolute document position
- * of the block node itself (the value yielded by `document.descendants`).
- * Internally it is converted to `blockContentStart = blockPosition + 1` before
- * delegating to the shared walker.
+ * Tokens are parsed per eligible run, so a token never spans a node or mark
+ * boundary, and code blocks and inline code are never scanned.
  *
  * @internal Exported for testing only.
- *
- * @param block - The block-level ProseMirror node (paragraph, heading, etc.).
- * @param blockPosition - The absolute document position of the block node itself.
- * @param textOffset - A character offset into `block.textContent`.
- * @returns The absolute ProseMirror position corresponding to `textOffset`.
- */
-export function textOffsetToDocumentPosition(
-  block: ProseMirrorNode,
-  blockPosition: number,
-  textOffset: number,
-): number {
-  // blockPosition is the node's own position (before its opening tag).
-  // blockContentStart = blockPosition + 1 is the position of the first
-  // character inside the block.
-  return textOffsetToBlockDocumentPosition(block, blockPosition + 1, textOffset);
-}
-
-/**
- * Build decorations for all invalid `{{…}}` tokens in the document.
- *
- * Walks every block-level node, extracts its text content, parses placeholder
- * tokens, validates them against the candidate set, and creates inline
- * decorations for each invalid token.
- *
- * @internal Exported for testing only.
- *
- * @param document - The ProseMirror document node.
- * @param candidates - Known placeholder candidates for validation.
- * @param invalidClassName - CSS class applied to invalid token decorations.
- * @returns An array of ProseMirror inline decorations.
  */
 export function buildInvalidTokenDecorations(
   document: ProseMirrorNode,
-  candidates: PlaceholderCandidate[],
+  candidates: readonly PlaceholderCandidate[],
   invalidClassName: string,
 ): Decoration[] {
   const decorations: Decoration[] = [];
-
-  document.descendants((node, position) => {
-    // Only process block-level nodes that contain inline content.
-    if (!node.isBlock || node.isAtom || !node.inlineContent) return;
-
-    const textContent = node.textContent;
-    if (!textContent) return;
-
-    const tokens = parsePlaceholderTokens(textContent);
+  forEachPlaceholderRun(document, (run) => {
+    const tokens = parsePlaceholderTokens(run.text);
     if (tokens.length === 0) return;
-
-    const { issues } = validatePlaceholderTokens(tokens, candidates);
-
-    for (const issue of issues) {
-      const from = textOffsetToDocumentPosition(node, position, issue.token.startOffset);
-      const to = textOffsetToDocumentPosition(node, position, issue.token.endOffset);
-
+    for (const issue of validatePlaceholderTokens(tokens, candidates)) {
+      const { location } = issue;
+      if (location.kind !== 'token') continue;
       decorations.push(
-        Decoration.inline(from, to, {
+        Decoration.inline(run.from + location.startOffset, run.from + location.endOffset, {
           class: invalidClassName,
-          'data-placeholder-validation-reason': issue.reason,
+          'data-placeholder-validation-reason': issue.code,
         }),
       );
     }
-
-    // Do not descend into children — we already processed the full text content
-    // of this block via textContent.
-    return false;
   });
-
   return decorations;
 }
 
-/**
- * Internal state stored by `createTemplateInvalidDecorationPlugin` in its
- * ProseMirror plugin state field.
- */
+/** State kept by the decoration plugin. */
 interface DecorationPluginState {
-  /** The current decoration set, mapped or rebuilt each transaction. */
   decorations: DecorationSet;
-  /** JSON.stringify of the last candidate set used to build decorations. */
-  candidatesKey: string;
-  /** The CSS class used to build the current decorations. */
-  invalidClassName: string;
+  source: PlaceholderDecorationSource | undefined;
+}
+
+function buildState(
+  document: ProseMirrorNode,
+  source: PlaceholderDecorationSource | undefined,
+): DecorationPluginState {
+  if (!source) return { decorations: DecorationSet.empty, source };
+  const specs = buildInvalidTokenDecorations(document, source.candidates, source.invalidClassName);
+  return {
+    decorations: specs.length === 0 ? DecorationSet.empty : DecorationSet.create(document, specs),
+    source,
+  };
 }
 
 /**
- * Create a Milkdown plugin that decorates invalid `{{…}}` template tokens.
+ * Create the plugin that decorates invalid tokens.
  *
- * Caches the `DecorationSet` in plugin state and rebuilds it only when the
- * document changes or when the candidate set/class name changes. For unchanged
- * transactions the existing set is mapped through `tr.mapping` so ProseMirror
- * can update decoration positions without a full document scan.
+ * It follows the placeholder configuration plugin: with no decoration
+ * configured it scans nothing, and a configuration replacement rebuilds the
+ * decorations without touching the document. Other transactions rebuild only
+ * when the document changes and otherwise map the existing decorations.
  *
- * The factory accepts accessor functions so the candidate set and class name
- * can change at runtime without recreating the plugin.
- *
- * @param getCandidates - Returns the current set of placeholder candidates.
- * @param getInvalidClassName - Returns the CSS class for invalid tokens.
- *   Defaults to returning `'template-placeholder-invalid'`.
- * @returns A Milkdown-compatible plugin created via `$prose`.
- *
- * @example
- * ```typescript
- * const plugin = createTemplateInvalidDecorationPlugin(
- *   () => candidates,
- *   () => 'my-invalid-class',
- * );
- * ```
+ * @param initial - The configuration installed when the editor is created.
  */
 export function createTemplateInvalidDecorationPlugin(
-  getCandidates: () => PlaceholderCandidate[],
-  getInvalidClassName?: () => string,
-) {
-  const resolveInvalidClassName = () => getInvalidClassName?.() ?? 'template-placeholder-invalid';
-
-  return createLazyProsePlugin(() => {
-    return new Plugin<DecorationPluginState>({
-      key: templateInvalidDecorationPluginKey,
-
-      state: {
-        init(_config, editorState) {
-          const candidates = getCandidates();
-          const invalidClassName = resolveInvalidClassName();
-          const candidatesKey = JSON.stringify(candidates);
-          const decorationSpecs = buildInvalidTokenDecorations(
-            editorState.doc,
-            candidates,
-            invalidClassName,
-          );
-
-          const decorations =
-            decorationSpecs.length === 0
-              ? DecorationSet.empty
-              : DecorationSet.create(editorState.doc, decorationSpecs);
-
-          return { decorations, candidatesKey, invalidClassName };
-        },
-
-        apply(transaction, pluginState, _oldEditorState, newEditorState) {
-          const nextCandidates = getCandidates();
-          const nextInvalidClassName = resolveInvalidClassName();
-          const nextCandidatesKey = JSON.stringify(nextCandidates);
-
-          const shouldRebuild =
-            transaction.docChanged ||
-            nextCandidatesKey !== pluginState.candidatesKey ||
-            nextInvalidClassName !== pluginState.invalidClassName;
-
-          if (shouldRebuild) {
-            const decorationSpecs = buildInvalidTokenDecorations(
-              newEditorState.doc,
-              nextCandidates,
-              nextInvalidClassName,
-            );
-
-            const decorations =
-              decorationSpecs.length === 0
-                ? DecorationSet.empty
-                : DecorationSet.create(newEditorState.doc, decorationSpecs);
-
+  initial: ResolvedPlaceholderConfiguration,
+): LazyProsePlugin {
+  return createLazyProsePlugin(
+    () =>
+      new Plugin<DecorationPluginState>({
+        key: templateInvalidDecorationPluginKey,
+        state: {
+          init: (_config, editorState) => buildState(editorState.doc, initial.decoration),
+          apply(transaction, pluginState, oldEditorState, newEditorState) {
+            const change = placeholderConfigurationChange(transaction);
+            const source = (change ?? readPlaceholderConfiguration(oldEditorState)).decoration;
+            if (transaction.docChanged || source !== pluginState.source) {
+              return buildState(newEditorState.doc, source);
+            }
             return {
-              decorations,
-              candidatesKey: nextCandidatesKey,
-              invalidClassName: nextInvalidClassName,
+              decorations: pluginState.decorations.map(transaction.mapping, newEditorState.doc),
+              source,
             };
-          }
-
-          // Map existing decorations through the transaction's position mapping
-          // to keep them aligned when text is inserted/deleted elsewhere.
-          return {
-            decorations: pluginState.decorations.map(transaction.mapping, newEditorState.doc),
-            candidatesKey: pluginState.candidatesKey,
-            invalidClassName: pluginState.invalidClassName,
-          };
+          },
         },
-      },
-
-      props: {
-        decorations(state) {
-          return templateInvalidDecorationPluginKey.getState(state)?.decorations ?? null;
+        props: {
+          decorations(state) {
+            return templateInvalidDecorationPluginKey.getState(state)?.decorations ?? null;
+          },
         },
-      },
-    });
-  });
+      }),
+  );
 }

@@ -8,8 +8,8 @@ See the [SideNavigation versus Sidebar decision](https://github.com/stevekinney/
 
 ```svelte
 <script lang="ts">
-  import Sidebar from '@lostgradient/cinder/sidebar';
-  import SideNavigation from '@lostgradient/cinder/side-navigation';
+  import { Sidebar } from '@lostgradient/cinder';
+  import { SideNavigation } from '@lostgradient/cinder';
 </script>
 
 <Sidebar label="App sidebar">
@@ -42,7 +42,6 @@ See the [SideNavigation versus Sidebar decision](https://github.com/stevekinney/
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

@@ -17,11 +17,124 @@
  */
 
 export type ParseLocaleNumberResult =
-  | { value: number; status: 'valid' }
-  | { value: null; status: 'empty' | 'malformed' };
+  { value: number; status: 'valid' } | { value: null; status: 'empty' | 'malformed' };
 
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeLocalizedDigits(text: string, locale: string): string {
+  let working = text;
+  // Localized digit mapping (e.g. ar-EG, hi-IN extended-arabic).
+  const digitFormatter = new Intl.NumberFormat(locale, {
+    useGrouping: false,
+    maximumFractionDigits: 0,
+  });
+  for (let d = 0; d <= 9; d++) {
+    const glyph = digitFormatter.format(d);
+    if (glyph !== String(d)) {
+      working = working.split(glyph).join(String(d));
+    }
+  }
+
+  return working;
+}
+
+const formatAffixTypes = new Set(['currency', 'percentSign', 'literal', 'unit', 'compact']);
+
+function stripFormatAffixes(
+  text: string,
+  locale: string,
+  format: Intl.NumberFormatOptions | undefined,
+): string {
+  let working = text;
+  let isNegativeByFormatAffix = false;
+  if (format) {
+    // Strip currency / percent / literal / unit / compact glyphs derived from
+    // both positive and negative samples so accounting formats like `($1.00)`
+    // round-trip — `formatToParts(0)` alone misses the parentheses.
+    const positiveAffixValues = new Set(
+      new Intl.NumberFormat(locale, format)
+        .formatToParts(0)
+        .filter((part) => formatAffixTypes.has(part.type))
+        .map((part) => part.value),
+    );
+    const negativeParts = new Intl.NumberFormat(locale, format).formatToParts(-1);
+    const negativeOnlyAffixes = negativeParts
+      .filter(
+        (part) =>
+          formatAffixTypes.has(part.type) &&
+          part.value.trim() !== '' &&
+          !positiveAffixValues.has(part.value),
+      )
+      .map((part) => part.value);
+    isNegativeByFormatAffix =
+      negativeOnlyAffixes.length > 0 && negativeOnlyAffixes.every((part) => working.includes(part));
+
+    const stripSamples = [0, -1];
+    for (const sample of stripSamples) {
+      const parts = new Intl.NumberFormat(locale, format).formatToParts(sample);
+      for (const part of parts) {
+        if (formatAffixTypes.has(part.type)) {
+          if (part.value) working = working.split(part.value).join('');
+        }
+      }
+    }
+  }
+  if (isNegativeByFormatAffix && !/^[+-]/.test(working)) {
+    working = '-' + working;
+  }
+  return working;
+}
+
+function hasValidGrouping(integerPart: string, groupSep: string, locale: string): boolean {
+  if (groupSep && integerPart.includes(groupSep)) {
+    const probeParts = new Intl.NumberFormat(locale, {
+      useGrouping: true,
+    }).formatToParts(12345678);
+    const integerRuns: string[] = [];
+    for (const p of probeParts) {
+      if (p.type === 'integer') integerRuns.push(p.value);
+    }
+    const primary = integerRuns.length > 0 ? (integerRuns[integerRuns.length - 1] ?? '').length : 3;
+    const secondary =
+      integerRuns.length > 1 ? (integerRuns[integerRuns.length - 2] ?? '').length : primary;
+    const groupEsc = escapeRegex(groupSep);
+    const grouped = new RegExp(
+      `^[+-]?\\d{1,${secondary}}(${groupEsc}\\d{${secondary}})*${groupEsc}\\d{${primary}}$`,
+    );
+    return grouped.test(integerPart);
+  }
+
+  return true;
+}
+
+function parseNumericParts(
+  working: string,
+  locale: string,
+  groupSep: string,
+  decimalSep: string,
+): ParseLocaleNumberResult {
+  if (working === '') return { value: null, status: 'empty' };
+
+  const decimalSplit = working.split(decimalSep);
+  if (decimalSplit.length > 2) return { value: null, status: 'malformed' };
+  const integerPart = decimalSplit[0] ?? '';
+  const fractionPart = decimalSplit[1];
+
+  if (!hasValidGrouping(integerPart, groupSep, locale)) {
+    return { value: null, status: 'malformed' };
+  }
+
+  let normalized = groupSep.length > 0 ? integerPart.split(groupSep).join('') : integerPart;
+  if (fractionPart !== undefined) normalized += '.' + fractionPart;
+
+  if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(normalized)) {
+    return { value: null, status: 'malformed' };
+  }
+  const parsed = parseFloat(normalized);
+  if (!Number.isFinite(parsed)) return { value: null, status: 'malformed' };
+  return { value: parsed, status: 'valid' };
 }
 
 /**
@@ -36,19 +149,7 @@ export function parseLocaleNumber(
 ): ParseLocaleNumberResult {
   if (text.trim() === '') return { value: null, status: 'empty' };
 
-  let working = text;
-
-  // Localized digit mapping (e.g. ar-EG, hi-IN extended-arabic).
-  const digitFormatter = new Intl.NumberFormat(locale, {
-    useGrouping: false,
-    maximumFractionDigits: 0,
-  });
-  for (let d = 0; d <= 9; d++) {
-    const glyph = digitFormatter.format(d);
-    if (glyph !== String(d)) {
-      working = working.split(glyph).join(String(d));
-    }
-  }
+  let working = normalizeLocalizedDigits(text, locale);
 
   // Separator discovery via a plain decimal formatter.
   const sepParts = new Intl.NumberFormat(locale, {
@@ -65,8 +166,7 @@ export function parseLocaleNumber(
   // or they cause negative values to be rejected as malformed.
   // Covers: U+061C ALM, U+200E/200F LTR/RTL marks, U+202A–202E bidi embedding,
   // U+2066–2069 bidi isolates.
-  // eslint-disable-next-line no-misleading-character-class
-  working = working.replace(/[؜‎‏‪-‮⁦-⁩]/g, '');
+  working = working.replace(/[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, '');
 
   // Normalize a localized MINUS SIGN (U+2212) to ASCII hyphen-minus.
   const localeMinus = sepParts.find((p) => p.type === 'minusSign')?.value ?? '-';
@@ -74,59 +174,7 @@ export function parseLocaleNumber(
     working = working.split(localeMinus).join('-');
   }
 
-  let isNegativeByFormatAffix = false;
-  if (format) {
-    // Strip currency / percent / literal / unit / compact glyphs derived from
-    // both positive and negative samples so accounting formats like `($1.00)`
-    // round-trip — `formatToParts(0)` alone misses the parentheses.
-    const positiveAffixValues = new Set(
-      new Intl.NumberFormat(locale, format)
-        .formatToParts(0)
-        .filter(
-          (part) =>
-            part.type === 'currency' ||
-            part.type === 'percentSign' ||
-            part.type === 'literal' ||
-            part.type === 'unit' ||
-            part.type === 'compact',
-        )
-        .map((part) => part.value),
-    );
-    const negativeParts = new Intl.NumberFormat(locale, format).formatToParts(-1);
-    const negativeOnlyAffixes = negativeParts
-      .filter(
-        (part) =>
-          (part.type === 'currency' ||
-            part.type === 'percentSign' ||
-            part.type === 'literal' ||
-            part.type === 'unit' ||
-            part.type === 'compact') &&
-          part.value.trim() !== '' &&
-          !positiveAffixValues.has(part.value),
-      )
-      .map((part) => part.value);
-    isNegativeByFormatAffix =
-      negativeOnlyAffixes.length > 0 && negativeOnlyAffixes.every((part) => working.includes(part));
-
-    const stripSamples = [0, -1];
-    for (const sample of stripSamples) {
-      const parts = new Intl.NumberFormat(locale, format).formatToParts(sample);
-      for (const part of parts) {
-        if (
-          part.type === 'currency' ||
-          part.type === 'percentSign' ||
-          part.type === 'literal' ||
-          part.type === 'unit' ||
-          part.type === 'compact'
-        ) {
-          if (part.value) working = working.split(part.value).join('');
-        }
-      }
-    }
-  }
-  if (isNegativeByFormatAffix && !/^[+-]/.test(working)) {
-    working = '-' + working;
-  }
+  working = stripFormatAffixes(working, locale, format);
   // Always allow a stray percent literal.
   working = working.split('%').join('');
 
@@ -135,38 +183,5 @@ export function parseLocaleNumber(
   // validation below.
   working = working.replace(/^[\s  ]+|[\s  ]+$/g, '');
 
-  if (working === '') return { value: null, status: 'empty' };
-
-  const decimalSplit = working.split(decimalSep);
-  if (decimalSplit.length > 2) return { value: null, status: 'malformed' };
-  const integerPart = decimalSplit[0] ?? '';
-  const fractionPart = decimalSplit[1];
-
-  if (groupSep && integerPart.includes(groupSep)) {
-    const probeParts = new Intl.NumberFormat(locale, {
-      useGrouping: true,
-    }).formatToParts(12345678);
-    const integerRuns: string[] = [];
-    for (const p of probeParts) {
-      if (p.type === 'integer') integerRuns.push(p.value);
-    }
-    const primary = integerRuns.length > 0 ? (integerRuns[integerRuns.length - 1] ?? '').length : 3;
-    const secondary =
-      integerRuns.length > 1 ? (integerRuns[integerRuns.length - 2] ?? '').length : primary;
-    const groupEsc = escapeRegex(groupSep);
-    const grouped = new RegExp(
-      `^[+-]?\\d{1,${secondary}}(${groupEsc}\\d{${secondary}})*${groupEsc}\\d{${primary}}$`,
-    );
-    if (!grouped.test(integerPart)) return { value: null, status: 'malformed' };
-  }
-
-  let normalized = groupSep.length > 0 ? integerPart.split(groupSep).join('') : integerPart;
-  if (fractionPart !== undefined) normalized += '.' + fractionPart;
-
-  if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(normalized)) {
-    return { value: null, status: 'malformed' };
-  }
-  const parsed = parseFloat(normalized);
-  if (!Number.isFinite(parsed)) return { value: null, status: 'malformed' };
-  return { value: parsed, status: 'valid' };
+  return parseNumericParts(working, locale, groupSep, decimalSep);
 }

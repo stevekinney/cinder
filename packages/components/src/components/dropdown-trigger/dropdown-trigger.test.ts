@@ -2,7 +2,7 @@
 import { describe, expect, mock, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -32,7 +32,10 @@ describe('DropdownTrigger', () => {
 
   test('aria-expanded reflects the open state and flips on click', async () => {
     const { container } = render(Fixture);
-    const trigger = container.querySelector('.cinder-dropdown-trigger') as HTMLElement;
+    const trigger = requiredInstance(
+      container.querySelector('.cinder-dropdown-trigger'),
+      HTMLElement,
+    );
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
 
     await fireEvent.click(trigger);
@@ -49,7 +52,10 @@ describe('DropdownTrigger', () => {
         event.preventDefault();
       },
     });
-    const trigger = container.querySelector('.cinder-dropdown-trigger') as HTMLElement;
+    const trigger = requiredInstance(
+      container.querySelector('.cinder-dropdown-trigger'),
+      HTMLElement,
+    );
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
 
     await fireEvent.click(trigger);
@@ -60,7 +66,10 @@ describe('DropdownTrigger', () => {
   test('a consumer onclick without preventDefault still opens the dropdown and is invoked', async () => {
     const handleClick = mock((_event: MouseEvent) => {});
     const { container } = render(OnclickFixture, { onclick: handleClick });
-    const trigger = container.querySelector('.cinder-dropdown-trigger') as HTMLElement;
+    const trigger = requiredInstance(
+      container.querySelector('.cinder-dropdown-trigger'),
+      HTMLElement,
+    );
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
 
     await fireEvent.click(trigger);
@@ -75,7 +84,10 @@ describe('DropdownTrigger', () => {
 
   test('a consumer style prop merges with the anchor-name style instead of clobbering it', () => {
     const { container } = render(Fixture, { props: { triggerStyle: 'margin-top: 4px;' } });
-    const trigger = container.querySelector('.cinder-dropdown-trigger') as HTMLElement;
+    const trigger = requiredInstance(
+      container.querySelector('.cinder-dropdown-trigger'),
+      HTMLElement,
+    );
 
     expect(trigger.style.getPropertyValue('margin-top')).toBe('4px');
     expect(trigger.style.getPropertyValue('anchor-name')).toBe('--actions-menu-menu');
@@ -85,7 +97,10 @@ describe('DropdownTrigger', () => {
     const { container } = render(Fixture, {
       props: { triggerStyle: 'anchor-name: --consumer-injected;' },
     });
-    const trigger = container.querySelector('.cinder-dropdown-trigger') as HTMLElement;
+    const trigger = requiredInstance(
+      container.querySelector('.cinder-dropdown-trigger'),
+      HTMLElement,
+    );
 
     expect(trigger.style.getPropertyValue('anchor-name')).toBe('--actions-menu-menu');
   });

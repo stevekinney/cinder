@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { describe, expect, mock, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -317,7 +317,7 @@ describe('ScrollArea scrollbar tokens', () => {
   describe('dragToScroll', () => {
     test('defaults to false — no drag-to-scroll affordance or behavior', () => {
       const { container } = render(ScrollArea, { children: textSnippet('body') });
-      const root = container.querySelector('.cinder-scroll-area') as HTMLElement;
+      const root = requiredInstance(container.querySelector('.cinder-scroll-area'), HTMLElement);
 
       expect(root.hasAttribute('data-cinder-drag-to-scroll')).toBe(false);
 
@@ -331,7 +331,7 @@ describe('ScrollArea scrollbar tokens', () => {
         dragToScroll: true,
         children: textSnippet('body'),
       });
-      const root = container.querySelector('.cinder-scroll-area') as HTMLElement;
+      const root = requiredInstance(container.querySelector('.cinder-scroll-area'), HTMLElement);
 
       expect(root.getAttribute('data-cinder-drag-to-scroll')).toBe('');
 
@@ -348,7 +348,7 @@ describe('ScrollArea scrollbar tokens', () => {
         direction: 'horizontal',
         children: textSnippet('body'),
       });
-      const root = container.querySelector('.cinder-scroll-area') as HTMLElement;
+      const root = requiredInstance(container.querySelector('.cinder-scroll-area'), HTMLElement);
 
       root.dispatchEvent(mousePointerEvent('pointerdown', { clientX: 0 }));
       root.dispatchEvent(mousePointerEvent('pointermove', { clientX: 20, movementX: 20 }));
@@ -367,7 +367,7 @@ describe('ScrollArea scrollbar tokens', () => {
           direction: 'both',
           children: textSnippet('body'),
         });
-        const root = container.querySelector('.cinder-scroll-area') as HTMLElement;
+        const root = requiredInstance(container.querySelector('.cinder-scroll-area'), HTMLElement);
 
         expect(root.hasAttribute('data-cinder-drag-to-scroll')).toBe(false);
 

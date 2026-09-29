@@ -8,7 +8,7 @@
  */
 
 import { existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 
 import * as prettier from 'prettier';
 
@@ -60,11 +60,10 @@ const prettierConfigurationCache = new Map<string, Promise<prettier.Options | nu
 export async function formatGenerated(content: string, filepath: string): Promise<string> {
   assertPrettierResolvesToRoot();
   try {
-    const configurationDirectory = dirname(filepath);
-    let optionsPromise = prettierConfigurationCache.get(configurationDirectory);
+    let optionsPromise = prettierConfigurationCache.get(filepath);
     if (!optionsPromise) {
       optionsPromise = prettier.resolveConfig(filepath);
-      prettierConfigurationCache.set(configurationDirectory, optionsPromise);
+      prettierConfigurationCache.set(filepath, optionsPromise);
     }
     const options = await optionsPromise;
     return await prettier.format(content, { ...options, filepath });

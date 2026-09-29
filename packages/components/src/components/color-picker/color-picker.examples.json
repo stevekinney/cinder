@@ -1,31 +1,31 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "color-picker",
-  "import": "@lostgradient/cinder/color-picker",
+  "import": "@lostgradient/cinder",
   "examples": [
     {
       "id": "alpha",
       "title": "Color picker with alpha",
       "description": "Alpha slider enabled: emits an 8-character hex value. The footer row shows the full #rrggbbaa string.",
-      "code": "<script lang=\"ts\">\n  import { ColorPicker } from '@lostgradient/cinder/color-picker';\n\n  const swatches = ['#ef444480', '#22c55e80', '#3b82f680'];\n</script>\n\n<ColorPicker value=\"#3b82f680\" label=\"Color with opacity\" alpha {swatches} />\n"
+      "code": "<script lang=\"ts\">\n  import { ColorPicker } from '@lostgradient/cinder';\n\n  const swatches = ['#ef444480', '#22c55e80', '#3b82f680'];\n</script>\n\n<ColorPicker value=\"#3b82f680\" label=\"Color with opacity\" alpha {swatches} />\n"
     },
     {
       "id": "basic",
       "title": "Basic color picker",
       "description": "A color picker with preset swatches where the selected swatch shows a persistent check indicator without looking keyboard-focused.",
-      "code": "<script lang=\"ts\">\n  import { ColorPicker } from '@lostgradient/cinder/color-picker';\n\n  const swatches = ['#ef4444', '#22c55e', '#3b82f6', '#f59e0b'];\n</script>\n\n<ColorPicker value=\"#22c55e\" label=\"Accent color\" {swatches} />\n"
+      "code": "<script lang=\"ts\">\n  import { ColorPicker } from '@lostgradient/cinder';\n\n  const swatches = ['#ef4444', '#22c55e', '#3b82f6', '#f59e0b'];\n</script>\n\n<ColorPicker value=\"#22c55e\" label=\"Accent color\" {swatches} />\n"
     },
     {
       "id": "no-swatches",
       "title": "Color picker without swatches",
       "description": "Omitting the swatches prop renders only the gradient, sliders, and footer row — useful when a freeform pick without preset guidance is needed.",
-      "code": "<script lang=\"ts\">\n  import { ColorPicker } from '@lostgradient/cinder/color-picker';\n</script>\n\n<ColorPicker value=\"#6366f1\" label=\"Custom color\" />\n"
+      "code": "<script lang=\"ts\">\n  import { ColorPicker } from '@lostgradient/cinder';\n</script>\n\n<ColorPicker value=\"#6366f1\" label=\"Custom color\" />\n"
     },
     {
       "id": "output-format",
       "title": "Output format",
       "description": "The format prop controls the emitted string syntax (hex, rgb, hsl, hwb, or oklch) for the bindable value.",
-      "code": "<script lang=\"ts\">\n  import { ColorPicker } from '@lostgradient/cinder/color-picker';\n  import type { ColorPickerFormat } from '@lostgradient/cinder/color-picker';\n  import { Select } from '@lostgradient/cinder/select';\n\n  const formatOptions: { value: ColorPickerFormat; label: string }[] = [\n    { value: 'hex', label: 'hex' },\n    { value: 'rgb', label: 'rgb' },\n    { value: 'hsl', label: 'hsl' },\n    { value: 'hwb', label: 'hwb' },\n    { value: 'oklch', label: 'oklch' },\n  ];\n  let selectedFormat = $state<ColorPickerFormat>('oklch');\n  let current = $state('');\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.75rem; max-width: 20rem;\">\n  <Select\n    id=\"picker-format\"\n    bind:value={selectedFormat}\n    options={formatOptions}\n    label=\"Output format\"\n  />\n\n  <ColorPicker\n    value=\"#22c55e\"\n    label=\"Accent color\"\n    format={selectedFormat}\n    onValueChange={(color) => {\n      current = color;\n    }}\n  />\n  {#if current}\n    <p style=\"font-size: 0.75rem; color: var(--cinder-text-muted);\">Current: {current}</p>\n  {/if}\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { ColorPicker } from '@lostgradient/cinder';\n  import type { ColorPickerFormat } from '@lostgradient/cinder';\n  import { Select } from '@lostgradient/cinder';\n\n  const formatOptions: { value: ColorPickerFormat; label: string }[] = [\n    { value: 'hex', label: 'hex' },\n    { value: 'rgb', label: 'rgb' },\n    { value: 'hsl', label: 'hsl' },\n    { value: 'hwb', label: 'hwb' },\n    { value: 'oklch', label: 'oklch' },\n  ];\n  let selectedFormat = $state<ColorPickerFormat>('oklch');\n  let current = $state('');\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.75rem; max-width: 20rem;\">\n  <Select\n    id=\"picker-format\"\n    bind:value={selectedFormat}\n    options={formatOptions}\n    label=\"Output format\"\n  />\n\n  <ColorPicker\n    value=\"#22c55e\"\n    label=\"Accent color\"\n    format={selectedFormat}\n    onValueChange={(color) => {\n      current = color;\n    }}\n  />\n  {#if current}\n    <p style=\"font-size: 0.75rem; color: var(--cinder-text-muted);\">Current: {current}</p>\n  {/if}\n</div>\n"
     }
   ]
 }

@@ -4,8 +4,7 @@
  * DEP-49: Chat markdown rendering pipeline + sanitization.
  */
 
-import { beforeAll, beforeEach, describe, expect, it } from 'bun:test';
-import { initializeHighlighter } from './highlighter.js';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { clearRenderCache, renderMarkdown } from './render.js';
 
 describe('renderMarkdown', () => {
@@ -133,10 +132,10 @@ describe('renderMarkdown', () => {
     it('extracts code block metadata', () => {
       const result = renderMarkdown('```typescript title=example.ts\nconst x = 1;\n```');
       expect(result.codeBlocks).toHaveLength(1);
-      expect(result.codeBlocks[0].language).toBe('typescript');
-      expect(result.codeBlocks[0].meta).toBe('title=example.ts');
-      expect(result.codeBlocks[0].value).toBe('const x = 1;');
-      expect(result.codeBlocks[0].index).toBe(0);
+      expect(result.codeBlocks[0]!.language).toBe('typescript');
+      expect(result.codeBlocks[0]!.meta).toBe('title=example.ts');
+      expect(result.codeBlocks[0]!.value).toBe('const x = 1;');
+      expect(result.codeBlocks[0]!.index).toBe(0);
     });
 
     it('extracts multiple code blocks in order', () => {
@@ -144,19 +143,19 @@ describe('renderMarkdown', () => {
         '```js\nfirst\n```\n\n```python\nsecond\n```\n\n```rust\nthird\n```',
       );
       expect(result.codeBlocks).toHaveLength(3);
-      expect(result.codeBlocks[0].language).toBe('js');
-      expect(result.codeBlocks[0].index).toBe(0);
-      expect(result.codeBlocks[1].language).toBe('python');
-      expect(result.codeBlocks[1].index).toBe(1);
-      expect(result.codeBlocks[2].language).toBe('rust');
-      expect(result.codeBlocks[2].index).toBe(2);
+      expect(result.codeBlocks[0]!.language).toBe('js');
+      expect(result.codeBlocks[0]!.index).toBe(0);
+      expect(result.codeBlocks[1]!.language).toBe('python');
+      expect(result.codeBlocks[1]!.index).toBe(1);
+      expect(result.codeBlocks[2]!.language).toBe('rust');
+      expect(result.codeBlocks[2]!.index).toBe(2);
     });
 
     it('handles code blocks without language', () => {
       const result = renderMarkdown('```\nplain code\n```');
       expect(result.codeBlocks).toHaveLength(1);
-      expect(result.codeBlocks[0].language).toBeNull();
-      expect(result.codeBlocks[0].value).toBe('plain code');
+      expect(result.codeBlocks[0]!.language).toBeNull();
+      expect(result.codeBlocks[0]!.value).toBe('plain code');
     });
 
     it('escapes HTML entities in code blocks', () => {
@@ -250,9 +249,9 @@ describe('renderMarkdown', () => {
       const results2 = inputs.toReversed().map((input) => renderMarkdown(input).html);
 
       // Results should match (accounting for reversal)
-      expect(results1[0]).toBe(results2[2]);
-      expect(results1[1]).toBe(results2[1]);
-      expect(results1[2]).toBe(results2[0]);
+      expect(results1[0]!).toBe(results2[2]!);
+      expect(results1[1]!).toBe(results2[1]!);
+      expect(results1[2]!).toBe(results2[0]!);
     });
   });
 
@@ -326,264 +325,6 @@ describe('renderMarkdown', () => {
       const result2 = renderMarkdown(input, { allowDataImages: true });
 
       expect(result1).not.toBe(result2);
-    });
-  });
-
-  describe('stripLinks option', () => {
-    it('strips links when stripLinks is true', () => {
-      const result = renderMarkdown('[Example](https://example.com)', { stripLinks: true });
-      expect(result.html).not.toContain('<a');
-      expect(result.html).not.toContain('href');
-      expect(result.html).toContain('Example');
-    });
-
-    it('preserves links when stripLinks is false or undefined', () => {
-      const resultFalse = renderMarkdown('[Example](https://example.com)', { stripLinks: false });
-      const resultUndefined = renderMarkdown('[Example](https://example.com)');
-
-      expect(resultFalse.html).toContain('<a href="https://example.com">Example</a>');
-      expect(resultUndefined.html).toContain('<a href="https://example.com">Example</a>');
-    });
-
-    it('preserves link text when stripping links', () => {
-      const result = renderMarkdown(
-        'Check out [the docs](https://docs.example.com) for more info.',
-        { stripLinks: true },
-      );
-      expect(result.html).toContain('the docs');
-      expect(result.html).not.toContain('href');
-    });
-
-    it('handles multiple links when stripping', () => {
-      const result = renderMarkdown('[First](https://first.com) and [Second](https://second.com)', {
-        stripLinks: true,
-      });
-      expect(result.html).toContain('First');
-      expect(result.html).toContain('Second');
-      expect(result.html).not.toContain('<a');
-    });
-
-    it('preserves nested formatting within stripped links', () => {
-      const result = renderMarkdown('[**Bold link text**](https://example.com)', {
-        stripLinks: true,
-      });
-      expect(result.html).toContain('<strong>Bold link text</strong>');
-      expect(result.html).not.toContain('<a');
-    });
-
-    it('strips autolinks', () => {
-      const result = renderMarkdown('<https://example.com>', { stripLinks: true });
-      expect(result.html).not.toContain('<a');
-      expect(result.html).toContain('https://example.com');
-    });
-
-    it('strips reference-style links', () => {
-      const markdown =
-        'Check out [the docs][docs] for more info.\n\n[docs]: https://docs.example.com';
-      const result = renderMarkdown(markdown, { stripLinks: true });
-      expect(result.html).toContain('the docs');
-      expect(result.html).not.toContain('<a');
-      expect(result.html).not.toContain('href');
-    });
-
-    it('strips shortcut reference links', () => {
-      const markdown = 'See [example] for details.\n\n[example]: https://example.com';
-      const result = renderMarkdown(markdown, { stripLinks: true });
-      expect(result.html).toContain('example');
-      expect(result.html).not.toContain('<a');
-    });
-
-    it('strips collapsed reference links', () => {
-      const markdown = 'Read the [docs][] here.\n\n[docs]: https://docs.example.com';
-      const result = renderMarkdown(markdown, { stripLinks: true });
-      expect(result.html).toContain('docs');
-      expect(result.html).not.toContain('<a');
-    });
-
-    it('preserves reference-style images when stripping links', () => {
-      const markdown = 'See the ![logo][img] for branding.\n\n[img]: https://example.com/logo.png';
-      const result = renderMarkdown(markdown, { stripLinks: true });
-      expect(result.html).toContain('<img');
-      expect(result.html).toContain('src="https://example.com/logo.png"');
-      expect(result.html).toContain('alt="logo"');
-    });
-
-    it('strips links but preserves images in mixed content', () => {
-      const markdown =
-        'Check [the docs][docs] and see ![diagram][img].\n\n[docs]: https://docs.example.com\n[img]: https://example.com/diagram.png';
-      const result = renderMarkdown(markdown, { stripLinks: true });
-      // Link should be stripped
-      expect(result.html).toContain('the docs');
-      expect(result.html).not.toContain('href="https://docs.example.com"');
-      // Image should be preserved
-      expect(result.html).toContain('<img');
-      expect(result.html).toContain('src="https://example.com/diagram.png"');
-    });
-
-    it('preserves images when definition is shared with link', () => {
-      // Edge case: same identifier used for both link and image
-      const markdown =
-        'See [the resource][ref] or ![the resource][ref].\n\n[ref]: https://example.com/resource';
-      const result = renderMarkdown(markdown, { stripLinks: true });
-      // Link should be stripped (text preserved)
-      expect(result.html).toContain('the resource');
-      // Image should still work because we don't remove shared definitions
-      expect(result.html).toContain('<img');
-      expect(result.html).toContain('src="https://example.com/resource"');
-    });
-  });
-
-  describe('syntax highlighting', () => {
-    // Initialize highlighter before all tests in this block
-    beforeAll(async () => {
-      await initializeHighlighter();
-    });
-
-    it('highlights TypeScript code blocks', () => {
-      const result = renderMarkdown('```typescript\nconst x: number = 42;\n```');
-      // Should have syntax highlighting styles
-      expect(result.html).toContain('style=');
-      // Should preserve code content
-      expect(result.html).toContain('const');
-      expect(result.html).toContain('42');
-      // Should have data-language attribute
-      expect(result.html).toContain('data-language="typescript"');
-    });
-
-    it('highlights JavaScript code blocks', () => {
-      const result = renderMarkdown(
-        '```javascript\nfunction greet(name) {\n  return `Hello, ${name}!`;\n}\n```',
-      );
-      expect(result.html).toContain('style=');
-      expect(result.html).toContain('function');
-      expect(result.html).toContain('greet');
-      expect(result.html).toContain('data-language="javascript"');
-    });
-
-    it('highlights Python code blocks', () => {
-      const result = renderMarkdown('```python\ndef hello():\n    print("world")\n```');
-      expect(result.html).toContain('style=');
-      expect(result.html).toContain('def');
-      expect(result.html).toContain('print');
-      expect(result.html).toContain('data-language="python"');
-    });
-
-    it('highlights SQL code blocks', () => {
-      const result = renderMarkdown('```sql\nSELECT * FROM users WHERE id = 1;\n```');
-      expect(result.html).toContain('style=');
-      expect(result.html).toContain('SELECT');
-      expect(result.html).toContain('data-language="sql"');
-    });
-
-    it('handles language aliases', () => {
-      // ts -> typescript
-      const resultTs = renderMarkdown('```ts\nconst x = 1;\n```');
-      expect(resultTs.html).toContain('data-language="typescript"');
-
-      // js -> javascript
-      const resultJs = renderMarkdown('```js\nlet y = 2;\n```');
-      expect(resultJs.html).toContain('data-language="javascript"');
-
-      // py -> python
-      const resultPy = renderMarkdown('```py\nx = 1\n```');
-      expect(resultPy.html).toContain('data-language="python"');
-    });
-
-    it('leaves plaintext code blocks unhighlighted', () => {
-      const result = renderMarkdown('```plaintext\nThis is plain text.\n```');
-      // Should NOT have inline styles for highlighting
-      expect(result.html).not.toMatch(/<span[^>]*style="color:/);
-      // Should have the data-language attribute
-      expect(result.html).toContain('data-language="plaintext"');
-      // Content should be preserved
-      expect(result.html).toContain('This is plain text.');
-    });
-
-    it('handles code blocks without language as plaintext', () => {
-      const result = renderMarkdown('```\nNo language specified.\n```');
-      // Should have pre and code tags
-      expect(result.html).toContain('<pre');
-      expect(result.html).toContain('<code');
-      // Content should be preserved
-      expect(result.html).toContain('No language specified.');
-    });
-
-    it('falls back to plaintext for unknown languages', () => {
-      const result = renderMarkdown('```unknownlang\nconst x = 1;\n```');
-      // Should have data-language attribute set to plaintext
-      expect(result.html).toContain('data-language="plaintext"');
-      // Content should still be preserved
-      expect(result.html).toContain('const x = 1');
-    });
-
-    it('uses CSS variables for colors', () => {
-      const result = renderMarkdown('```typescript\nconst x = "hello";\n```');
-      // Should use CSS variables from design tokens
-      expect(result.html).toMatch(/var\(--syntax-/);
-    });
-
-    it('preserves code content exactly', () => {
-      const code = 'function test() {\n  return 42;\n}';
-      const result = renderMarkdown('```javascript\n' + code + '\n```');
-      // The code should be preserved (check key parts)
-      expect(result.html).toContain('function');
-      expect(result.html).toContain('test');
-      expect(result.html).toContain('return');
-      expect(result.html).toContain('42');
-    });
-
-    it('highlights multiple code blocks independently', () => {
-      const markdown = `
-\`\`\`typescript
-const ts = "TypeScript";
-\`\`\`
-
-\`\`\`python
-py = "Python"
-\`\`\`
-`;
-      const result = renderMarkdown(markdown);
-      expect(result.html).toContain('data-language="typescript"');
-      expect(result.html).toContain('data-language="python"');
-      expect(result.html).toContain('TypeScript');
-      expect(result.html).toContain('Python');
-    });
-
-    it('handles diff highlighting', () => {
-      const result = renderMarkdown('```diff\n+ added line\n- removed line\n```');
-      expect(result.html).toContain('data-language="diff"');
-      expect(result.html).toContain('added line');
-      expect(result.html).toContain('removed line');
-    });
-
-    it('highlights Svelte code blocks', () => {
-      const result = renderMarkdown('```svelte\n<script>\n  let count = 0;\n</script>\n```');
-      expect(result.html).toContain('style=');
-      expect(result.html).toContain('data-language="svelte"');
-      expect(result.html).toContain('count');
-    });
-
-    it('sanitizes highlighted output', () => {
-      // Ensure XSS payloads don't survive highlighting + sanitization
-      const result = renderMarkdown('```html\n<script>alert("xss")</script>\n```');
-      // Should not contain raw script tags
-      expect(result.html).not.toMatch(/<script>/);
-      // Content should be preserved (escaped) - the exact encoding varies
-      // (could be &lt; or &#x3C;) but must NOT be double-encoded &#x26;#x3C;
-      expect(result.html).toContain('script');
-      // The key assertion: no executable script tag
-      expect(result.html).not.toContain('<script>alert');
-      // Must not double-encode: Shiki outputs &#x3C; for < and rehype-stringify
-      // must not further encode the & to produce &#x26;#x3C;
-      expect(result.html).not.toContain('&#x26;#x3C;');
-    });
-
-    it('does not double-encode ampersand in highlighted code', () => {
-      const result = renderMarkdown('```javascript\nconst x = a && b;\n```');
-      // & in source → Shiki may emit &#x26; → must decode to & → rehype-stringify re-encodes as &amp;
-      // The final output must contain &amp; for the ampersand, never &#x26;
-      expect(result.html).not.toContain('&#x26;');
-      expect(result.html).toContain('&amp;');
     });
   });
 });

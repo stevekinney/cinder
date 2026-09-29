@@ -16,9 +16,9 @@ import type {
   Message as ConversationalistMessage,
   MultiModalContent as ConversationalistMultiModalContent,
   ToolCall as ConversationalistToolCall,
+  ToolCallPair as ConversationalistToolCallPair,
   ToolResult as ConversationalistToolResult,
 } from 'conversationalist';
-import type { ToolCallPair as ConversationalistToolCallPair } from 'conversationalist/utilities';
 
 import type {
   ConversationHistory,

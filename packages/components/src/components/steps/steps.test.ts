@@ -1,13 +1,13 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: Steps } = await import('./steps.svelte');
-const { default: ExportedSteps } = await import('@lostgradient/cinder/steps');
+const { Steps: ExportedSteps } = await import('@lostgradient/cinder');
 
 // Read once at module load — `describe` callbacks are synchronous, so the
 // CSS-contract tests below reference this constant instead of awaiting inside them.
@@ -303,15 +303,18 @@ describe('Steps — interactive step items', () => {
       { id: 'b', label: 'Review' },
     ];
     const { container } = render(Steps, { steps, currentStep: 1 });
-    const anchor = container.querySelector('a.cinder-steps__interactive') as HTMLAnchorElement;
+    const anchor = requiredInstance(
+      container.querySelector('a.cinder-steps__interactive'),
+      HTMLAnchorElement,
+    );
     expect(anchor).not.toBeNull();
     expect(anchor.getAttribute('href')).toBe('/account');
     expect(anchor.tagName).toBe('A');
     expect(anchor.textContent).toContain('Account');
     expect(anchor.textContent).toContain('Sign in');
     // Marker stays a separate non-interactive sibling (not inside the anchor).
-    const li = anchor.closest('li') as HTMLElement;
-    const marker = li.querySelector('.cinder-steps__marker') as HTMLElement;
+    const li = requiredInstance(anchor.closest('li'), HTMLElement);
+    const marker = requiredInstance(li.querySelector('.cinder-steps__marker'), HTMLElement);
     expect(marker).not.toBeNull();
     expect(anchor.contains(marker)).toBe(false);
   });
@@ -323,7 +326,10 @@ describe('Steps — interactive step items', () => {
       { id: 'b', label: 'Review' },
     ];
     const { container } = render(Steps, { steps, currentStep: 0 });
-    const button = container.querySelector('button.cinder-steps__interactive') as HTMLButtonElement;
+    const button = requiredInstance(
+      container.querySelector('button.cinder-steps__interactive'),
+      HTMLButtonElement,
+    );
     expect(button).not.toBeNull();
     expect(button.getAttribute('type')).toBe('button');
     button.click();
@@ -336,7 +342,10 @@ describe('Steps — interactive step items', () => {
       { id: 'b', label: 'Next' },
     ];
     const { container } = render(Steps, { steps, currentStep: 0 });
-    const anchor = container.querySelector('a.cinder-steps__interactive') as HTMLAnchorElement;
+    const anchor = requiredInstance(
+      container.querySelector('a.cinder-steps__interactive'),
+      HTMLAnchorElement,
+    );
     expect(anchor).not.toBeNull();
     expect(anchor.getAttribute('href')).toBe('');
     // Must NOT fall through to the button arm just because href is falsy.
@@ -359,7 +368,10 @@ describe('Steps — interactive step items', () => {
       { id: 'b', label: 'Next' },
     ];
     const { container } = render(Steps, { steps, currentStep: 0 });
-    const anchor = container.querySelector('a.cinder-steps__interactive') as HTMLAnchorElement;
+    const anchor = requiredInstance(
+      container.querySelector('a.cinder-steps__interactive'),
+      HTMLAnchorElement,
+    );
     expect(anchor).not.toBeNull();
     expect(container.querySelector('button.cinder-steps__interactive')).toBeNull();
     anchor.click();

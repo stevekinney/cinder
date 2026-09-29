@@ -1,8 +1,6 @@
 # Feed, FeedEvent & FeedBoundary — Accessibility Notes
 
-Feed has two arms. The notes below through "Live region" describe the default
-`list` arm; the `kind="log"` arm's contract (which deliberately DOES scroll on
-insertion) is documented in its own section at the end.
+Feed has two arms. The notes below through "Live region" describe the default `list` arm; the `kind="log"` arm's contract (which deliberately DOES scroll on insertion) is documented in its own section at the end.
 
 ## Semantic element choice
 
@@ -94,12 +92,7 @@ If you change any of these layout tokens, update the others to match.
 
 ## The log arm (`kind="log"`)
 
-Ported review record from the retired EventStreamViewer (whose interaction
-model this arm inherits; see
-`docs/decisions/chronological-display-boundaries.md`). Log / live region
-pattern: the scroll viewport uses `role="log"` — an implicit ARIA live region
-with polite politeness — so screen readers announce appended entries without
-interrupting the current reading context.
+Ported review record from the retired EventStreamViewer (whose interaction model this arm inherits; see `documentation/decisions/chronological-display-boundaries.md`). Log / live region pattern: the scroll viewport uses `role="log"` — an implicit ARIA live region with polite politeness — so screen readers announce appended entries without interrupting the current reading context.
 
 ### Roles, names, states
 
@@ -119,13 +112,7 @@ interrupting the current reading context.
 
 ### Auto-scroll — the reviewed exception to "scroll only on user gesture"
 
-While `following` is active, appended content scrolls the viewport to the
-bottom (a ResizeObserver on the entry list). The mitigation that makes this
-acceptable: **the user's reading position always wins.** Scrolling away from
-the bottom pauses following immediately (`data-cinder-paused`); nothing
-scrolls again until the user returns to the bottom or activates the visible
-"Resume following" control. The `following` bindable lets a parent build
-its own jump-to-latest control; setting it `true` also scrolls.
+While `following` is active, appended content scrolls the viewport to the bottom (a ResizeObserver on the entry list). The mitigation that makes this acceptable: **the user's reading position always wins.** Scrolling away from the bottom pauses following immediately (`data-cinder-paused`); nothing scrolls again until the user returns to the bottom or activates the visible "Resume following" control. The `following` bindable lets a parent build its own jump-to-latest control; setting it `true` also scrolls.
 
 ### Keyboard and focus
 
@@ -135,21 +122,12 @@ its own jump-to-latest control; setting it `true` also scrolls.
 | Enter / Space         | Activate the focused button                                                                                 |
 | Arrow Up / Arrow Down | Scroll the viewport when the log region has focus                                                           |
 
-Activating "Resume following" unmounts the control itself; the component
-moves focus to the `tabindex="0"` viewport so keyboard focus is never dropped
-to `<body>`. The control is overlaid on the viewport rather than mounted in a
-toolbar row, so pausing never shifts the content the user just scrolled to.
+Activating "Resume following" unmounts the control itself; the component moves focus to the `tabindex="0"` viewport so keyboard focus is never dropped to `<body>`. The control is overlaid on the viewport rather than mounted in a toolbar row, so pausing never shifts the content the user just scrolled to.
 
 ### Hard scope caps (unchanged from the review)
 
-- **No virtualization** — consumers cap retention themselves and set
-  `truncated` to surface the notice.
-- **No roving focus between entries** — AT users navigate with standard list
-  reading commands.
-- **Live region is opt-out only** — provide a pre-snapshotted set of children
-  rather than suppressing `role="log"`.
-- **No built-in empty state** — with authored children the component cannot
-  know the stream is empty; render your own `role="status"` entry (or plain
-  prose) when your source array is empty.
-- **Boundaries are advisory and consumer-emitted** — the component does not
-  detect sequence gaps; emit `Feed.Boundary` entries yourself.
+- **No virtualization** — consumers cap retention themselves and set `truncated` to surface the notice.
+- **No roving focus between entries** — AT users navigate with standard list reading commands.
+- **Live region is opt-out only** — provide a pre-snapshotted set of children rather than suppressing `role="log"`.
+- **No built-in empty state** — with authored children the component cannot know the stream is empty; render your own `role="status"` entry (or plain prose) when your source array is empty.
+- **Boundaries are advisory and consumer-emitted** — the component does not detect sequence gaps; emit `Feed.Boundary` entries yourself.

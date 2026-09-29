@@ -6,7 +6,7 @@ Page-level heading with named title, description, breadcrumb, and action regions
 
 ```svelte
 <script lang="ts">
-  import PageHeader from '@lostgradient/cinder/page-header';
+  import { PageHeader } from '@lostgradient/cinder';
 </script>
 
 <PageHeader title="Approvals" />
@@ -31,7 +31,6 @@ Page-level heading with named title, description, breadcrumb, and action regions
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

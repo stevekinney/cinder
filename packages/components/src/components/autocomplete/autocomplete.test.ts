@@ -1,8 +1,8 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
-import { tick } from 'svelte';
+import { flushSync, tick } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -10,13 +10,13 @@ setupHappyDom();
 // export map. Keep the component on its public subpath while mapping that entry
 // to the source implementation for this focused test process.
 const inputModule = await import('../input/index.ts');
-mock.module('@lostgradient/cinder/input', () => inputModule);
+mock.module('@lostgradient/cinder', () => inputModule);
 
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
 const { default: Autocomplete } = await import('./autocomplete.svelte');
 const { default: FormFieldAutocompleteFixture } =
   await import('../../test/fixtures/form-field-autocomplete-fixture.svelte');
-const { _resetEscapeStack, pushEscapeHandler } = await import('../../_internal/overlay.ts');
+const { resetEscapeStack, pushEscapeHandler } = await import('../../_internal/overlay.ts');
 
 type Suggestion = {
   value: string;
@@ -36,7 +36,7 @@ function deferred<T>() {
 }
 
 function getInput(container: HTMLElement): HTMLInputElement {
-  return container.querySelector('input') as HTMLInputElement;
+  return requiredInstance(container.querySelector('input'), HTMLInputElement);
 }
 
 function getListbox(): HTMLElement | null {
@@ -59,7 +59,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
-  _resetEscapeStack();
+  resetEscapeStack();
 });
 
 describe('Autocomplete — rendering and ARIA', () => {
@@ -74,10 +74,10 @@ describe('Autocomplete — rendering and ARIA', () => {
       Bun.file(new URL('./autocomplete.types.ts', import.meta.url)).text(),
     ]);
 
-    expect(componentSource).toContain("from '@lostgradient/cinder/input';");
-    expect(typesSource).toContain("from '@lostgradient/cinder/input';");
-    expect(componentSource).not.toContain("from '../input/");
-    expect(typesSource).not.toContain("from '../input/");
+    expect(componentSource).toContain("from '../input/index.ts';");
+    expect(typesSource).toContain("from '../input/index.ts';");
+    expect(componentSource).not.toContain("from '../input/input.svelte'");
+    expect(typesSource).not.toContain("from '../input/input.svelte'");
   });
 
   test('renders a combobox input with autocomplete=list semantics', () => {
@@ -343,6 +343,7 @@ describe('Autocomplete — keyboard completion', () => {
     const nativeInputListener = mock((_event: Event) => {});
     input.addEventListener('input', nativeInputListener);
 
+    input.focus();
     await fireEvent.input(input, { target: { value: 'a' } });
     await waitFor(() => {
       expect(getOptions()).toHaveLength(3);
@@ -403,7 +404,7 @@ describe('Autocomplete — keyboard completion', () => {
         cancelable: true,
       });
       window.dispatchEvent(firstEscape);
-      await waitFor(() => expect(getListbox()).toBeNull());
+      await waitFor(() => expect(getListbox()?.outerHTML ?? null).toBeNull());
 
       expect(firstEscape.defaultPrevented).toBe(true);
       expect(parentEscape).not.toHaveBeenCalled();
@@ -619,9 +620,8 @@ describe('Autocomplete — async source handling', () => {
     await fireEvent.input(getInput(container), { target: { value: 'ap' } });
     await tick();
 
-    await waitFor(() => {
-      expect(getListbox()).toBeNull();
-    });
+    flushSync();
+    expect(getListbox()?.outerHTML ?? null).toBeNull();
 
     expect(warnings.some((warning) => warning.includes('[cinder/autocomplete]'))).toBe(true);
     console.warn = originalWarn;
@@ -648,10 +648,9 @@ describe('Autocomplete — async source handling', () => {
     await fireEvent.input(getInput(container), { target: { value: 'ap' } });
     await tick();
 
-    await waitFor(() => {
-      expect(getListbox()).toBeNull();
-      expect(document.body.textContent).not.toContain('Loading suggestions');
-    });
+    flushSync();
+    expect(getListbox()?.outerHTML ?? null).toBeNull();
+    expect(document.body.textContent).not.toContain('Loading suggestions');
 
     expect(warnings.some((warning) => warning.includes('[cinder/autocomplete]'))).toBe(true);
     console.warn = originalWarn;
@@ -677,9 +676,8 @@ describe('Autocomplete — async source handling', () => {
     });
 
     await fireEvent.keyDown(input, { key: 'Escape' });
-    await waitFor(() => {
-      expect(getListbox()).toBeNull();
-    });
+    flushSync();
+    expect(getListbox()?.outerHTML ?? null).toBeNull();
 
     await rendered.rerender({
       id: 'fruit-search',
@@ -817,7 +815,7 @@ describe('Autocomplete — out-of-portal status live region', () => {
         suggestionSource: source,
       },
     });
-    const input = container.querySelector('input') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
     await fireEvent.input(input, { target: { value: 'a' } });
 
     const statusRegion = () => container.querySelector('[role="status"]');
@@ -841,7 +839,7 @@ describe('Autocomplete — out-of-portal status live region', () => {
         suggestionSource: () => [],
       },
     });
-    const input = container.querySelector('input') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
     await fireEvent.input(input, { target: { value: 'z' } });
 
     const statusRegion = () => container.querySelector('[role="status"]');
@@ -873,7 +871,7 @@ describe('Autocomplete — each-key behavior', () => {
           suggestionSource: () => duplicateFruits,
         },
       });
-      const input = container.querySelector('input') as HTMLInputElement;
+      const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
       await fireEvent.input(input, { target: { value: 'a' } });
       // Wait for the deduped suggestions to be committed to state and rendered.
       await waitFor(() => {
@@ -900,7 +898,7 @@ describe('Autocomplete — each-key behavior', () => {
           suggestionSource: () => fruits,
         },
       });
-      const input = container.querySelector('input') as HTMLInputElement;
+      const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
       await fireEvent.input(input, { target: { value: 'a' } });
 
       await waitFor(() => {
@@ -934,7 +932,7 @@ describe('Autocomplete — each-key behavior', () => {
           suggestionSource: () => withTailDuplicate,
         },
       });
-      const input = container.querySelector('input') as HTMLInputElement;
+      const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
       await fireEvent.input(input, { target: { value: 'a' } });
 
       // No crash; the deduped list is apple/banana/cherry, sliced to 2 visible.

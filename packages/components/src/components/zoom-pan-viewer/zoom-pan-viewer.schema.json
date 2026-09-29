@@ -3,13 +3,18 @@
   "type": "object",
   "properties": {
     "class": {
-      "type": "string"
+      "type": "string",
+      "description": "Additional class merged with the component's root class."
     },
     "scale": {
-      "type": "number"
+      "type": "number",
+      "description": "Starting zoom scale. Bindable, but clamping is render-only: an\nout-of-range or non-finite value is clamped to `0.25`–`8` (or\nnormalized to `1` if non-finite) only in the transform actually\nrendered—the bound `scale` value itself is left as the caller set it\nand is not written back, so a parent observes its own out-of-range or\nnon-finite value until an internal pointer/keyboard/control\ninteraction calls `update()` and overwrites it. A programmatic\nexternal change to this prop does not itself fire `onTransformChange`\n(see that prop). Defaults to `1`.",
+      "default": 1
     },
     "ariaLabel": {
-      "type": "string"
+      "type": "string",
+      "description": "Names the viewport. Does not describe the diagram itself. Defaults to\n`'Zoomable viewer'`.",
+      "default": "Zoomable viewer"
     }
   },
   "additionalProperties": false,
@@ -18,11 +23,13 @@
       {
         "name": "children",
         "reason": "function-or-snippet",
-        "required": true
+        "required": true,
+        "description": "Content the viewer pans and zooms."
       },
       {
         "name": "onTransformChange",
-        "reason": "function-or-snippet"
+        "reason": "function-or-snippet",
+        "description": "Called with `{ scale, x, y }` after a pointer, keyboard, or control\ninteraction runs, whether or not that interaction actually changed the\ntransform—zooming in at the already-clamped `8` maximum, or resetting\nwhen already at the initial `{ scale: 1, x: 0, y: 0 }`, still calls\nthis with the same values. Don't treat every call as a real change;\ncompare against the previous transform if that matters. Not called\nwhen `scale` changes only because the caller passed a new value\nexternally—hosts that need to react to that must watch `scale`\nthemselves."
       }
     ]
   }

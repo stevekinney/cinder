@@ -37,6 +37,55 @@ describe('review editor front matter helpers', () => {
     expect(next.endsWith('\n# Architecture\n')).toBe(true);
   });
 
+  test('preserves existing top-level front matter key order when persisting an edited field', () => {
+    const markdown =
+      '---\nfirst: one\ntags: [alpha]\nsecond: two\nobj:\n  beta: true\n---\n\n# Architecture\n';
+    const next = replaceFrontMatterData(markdown, {
+      first: 'one',
+      tags: ['alpha', 'beta'],
+      second: 'two',
+      obj: { beta: true },
+    });
+
+    expect(next).toBe(
+      '---\nfirst: one\ntags: [alpha, beta]\nsecond: two\nobj:\n  beta: true\n---\n\n# Architecture\n',
+    );
+  });
+
+  test('preserves edited front matter key order when keys require YAML quoting', () => {
+    const markdown =
+      '---\nfirst: one\n"tag: group #1": [alpha]\n"quoted \\"key\\"": value\nsecond: two\n---\n\n# Architecture\n';
+    const next = replaceFrontMatterData(markdown, {
+      first: 'one',
+      'tag: group #1': ['alpha', 'beta'],
+      'quoted "key"': 'value',
+      second: 'two',
+    });
+
+    expect(next).toBe(
+      '---\nfirst: one\n"tag: group #1": [alpha, beta]\n"quoted \\"key\\"": value\nsecond: two\n---\n\n# Architecture\n',
+    );
+    expect(parseReviewEditorFrontMatter(next).data).toEqual({
+      first: 'one',
+      'tag: group #1': ['alpha', 'beta'],
+      'quoted "key"': 'value',
+      second: 'two',
+    });
+  });
+
+  test('preserves quoted numeric-looking key order when persisting an unrelated edit', () => {
+    const markdown = '---\nfirst: one\n"2": two\nsecond: two\n---\n\n# Architecture\n';
+    const parsed = parseReviewEditorFrontMatter(markdown);
+    if (!parsed.data) throw new Error('Expected parsed front matter data.');
+
+    const next = replaceFrontMatterData(markdown, {
+      ...parsed.data,
+      second: 'updated',
+    });
+
+    expect(next).toBe('---\nfirst: one\n"2": two\nsecond: updated\n---\n\n# Architecture\n');
+  });
+
   test('preserves comment-only raw text instead of collapsing it to an empty fence (cinder#1330 round-6 finding)', () => {
     // `FrontMatterFields`' raw-YAML textarea commits comment-only content
     // (`# TODO: fill this in`) as `data: null` -- the same shape genuinely

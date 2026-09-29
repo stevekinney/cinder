@@ -274,7 +274,7 @@ export function moveTreeNode<Node extends TreeMoveNode>(
   const subtree = nodes.filter((node) => subtreeIds.has(node.id));
   const nextParentId = target.position === 'child' ? target.id : targetNode.parentId;
   const movedSubtree = subtree.map((node) =>
-    node.id === draggedId ? ({ ...node, parentId: nextParentId } as Node) : node,
+    node.id === draggedId ? { ...node, parentId: nextParentId } : node,
   );
 
   const insertionIndex = insertionIndexFor(withoutSubtree, target);

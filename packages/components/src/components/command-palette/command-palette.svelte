@@ -86,8 +86,8 @@
       // focusDialogBodyUnlessAutofocused's own tick() deferral for
       // Modal/Drawer in create-sliding-dialog-state.svelte.ts.
       void tick().then(() => {
-        if (!open) return;
-        inputElement?.focus();
+        if (open) inputElement?.focus();
+        return undefined;
       });
     },
     onClosed: () => onClose?.(),

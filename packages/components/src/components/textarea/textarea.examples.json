@@ -1,43 +1,43 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "textarea",
-  "import": "@lostgradient/cinder/textarea",
+  "import": "@lostgradient/cinder",
   "examples": [
     {
       "id": "basic",
       "title": "Basic textarea",
       "description": "Multi-line text input with label and bound value.",
-      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder/textarea';\n\n  let bio = $state('');\n</script>\n\n<Textarea\n  id=\"field\"\n  bind:value={bio}\n  label=\"Bio\"\n  description=\"Tell us a little about yourself.\"\n  placeholder=\"I'm a designer who…\"\n/>\n{#if bio.length > 0}\n  <p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">{bio.length} characters</p>\n{/if}\n"
+      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder';\n\n  let bio = $state('');\n</script>\n\n<Textarea\n  id=\"field\"\n  bind:value={bio}\n  label=\"Bio\"\n  description=\"Tell us a little about yourself.\"\n  placeholder=\"I'm a designer who…\"\n/>\n{#if bio.length > 0}\n  <p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">{bio.length} characters</p>\n{/if}\n"
     },
     {
       "id": "code-variant",
       "title": "Code variant",
       "description": "variant=\"code\" applies a shared monospace metric set for source-like values such as raw JSON, YAML, or configuration text.",
-      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder/textarea';\n\n  let json = $state('{\\n  \"name\": \"Ada\",\\n  \"active\": true\\n}');\n</script>\n\n<Textarea id=\"field\" bind:value={json} label=\"Raw JSON\" variant=\"code\" rows={6} />\n"
+      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder';\n\n  let json = $state('{\\n  \"name\": \"Ada\",\\n  \"active\": true\\n}');\n</script>\n\n<Textarea id=\"field\" bind:value={json} label=\"Raw JSON\" variant=\"code\" rows={6} />\n"
     },
     {
       "id": "disabled",
       "title": "Disabled textarea",
       "description": "A disabled textarea is dimmed and non-editable; its value is still shown so context is preserved while editing is locked.",
-      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder/textarea';\n\n</script>\n\n<Textarea\n  id=\"field\"\n  value=\"This account note is read-only and managed by your administrator.\"\n  label=\"Account note\"\n  description=\"Contact an administrator to change this.\"\n  disabled\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder';\n\n</script>\n\n<Textarea\n  id=\"field\"\n  value=\"This account note is read-only and managed by your administrator.\"\n  label=\"Account note\"\n  description=\"Contact an administrator to change this.\"\n  disabled\n/>\n"
     },
     {
       "id": "required",
       "title": "Required textarea",
       "description": "Setting `required` forwards the native `required` attribute, which browsers expose as `aria-required=\"true\"` and enforce during form submission.",
-      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder/textarea';\n\n  let message = $state('');\n</script>\n\n<Textarea\n  id=\"field\"\n  bind:value={message}\n  label=\"Message\"\n  description=\"This field is required.\"\n  required\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder';\n\n  let message = $state('');\n</script>\n\n<Textarea\n  id=\"field\"\n  bind:value={message}\n  label=\"Message\"\n  description=\"This field is required.\"\n  required\n/>\n"
     },
     {
       "id": "with-character-count",
       "title": "Live character counter",
       "description": "Set `countVisible` together with `maxlength` to render a live `{used}/{limit}` counter below the field that updates as the user types.",
-      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder/textarea';\n\n  let summary = $state('A short product summary.');\n</script>\n\n<Textarea\n  id=\"field\"\n  bind:value={summary}\n  label=\"Summary\"\n  description=\"Keep it under 200 characters.\"\n  countVisible\n  maxlength={200}\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder';\n\n  let summary = $state('A short product summary.');\n</script>\n\n<Textarea\n  id=\"field\"\n  bind:value={summary}\n  label=\"Summary\"\n  description=\"Keep it under 200 characters.\"\n  countVisible\n  maxlength={200}\n/>\n"
     },
     {
       "id": "with-error",
       "title": "Textarea with error",
       "description": "Validation error wired via aria-invalid and aria-describedby.",
-      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder/textarea';\n  let message = $state('');\n  const hasError = $derived(message.length > 0 && message.length < 20);\n</script>\n\n<Textarea\n  id=\"message\"\n  bind:value={message}\n  label=\"Message\"\n  rows={5}\n  placeholder=\"Write at least 20 characters…\"\n  {...hasError ? { error: 'Minimum 20 characters.' } : {}}\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder';\n  let message = $state('');\n  const hasError = $derived(message.length > 0 && message.length < 20);\n</script>\n\n<Textarea\n  id=\"message\"\n  bind:value={message}\n  label=\"Message\"\n  rows={5}\n  placeholder=\"Write at least 20 characters…\"\n  {...hasError ? { error: 'Minimum 20 characters.' } : {}}\n/>\n"
     }
   ]
 }

@@ -1,0 +1,680 @@
+/* Never write `:global(...)` in this file. `:global()` is a Svelte
+ * `\3c style>`-block construct (escaping per-component scoping); this file is
+ * plain CSS reached via a chain of `@import`s from `src/styles/index.css`
+ * (main.ts → index.css → this file), never through Svelte's compiler, so
+ * `:global(.foo)` is not valid CSS at all — the whole rule fails to parse
+ * and is silently dropped (confirmed live: `document.styleSheets` had zero
+ * rules matching a `:global(...)`-wrapped selector that had been written
+ * here). Write the bare selector directly, e.g. `.weft-foo`, not
+ * `:global(.weft-foo)`. */
+
+/* ── Workflow list (list/workflow-list.svelte, workflow-table.svelte, workflow-list-filters.svelte, workflow-list-pagination.svelte, bulk-selection-bar.svelte, query-fault-banner.svelte) ── */
+
+.weft-workflow-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-4);
+  padding: 22px 26px 60px;
+  max-width: var(--cinder-content-width-wide, 1180px);
+  margin: 0 auto;
+}
+
+.weft-workflow-list__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--cinder-space-4);
+  flex-wrap: wrap;
+}
+
+.weft-workflow-list__header h1 {
+  margin: 0;
+  font-size: var(--cinder-text-2xl);
+  font-weight: 600;
+  letter-spacing: var(--cinder-tracking-tight, -0.01em);
+}
+
+.weft-workflow-list__subtitle {
+  margin: 2px 0 0;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text-subtle);
+}
+
+.weft-workflow-list__header-actions {
+  display: flex;
+  gap: var(--cinder-space-2);
+  flex-wrap: wrap;
+}
+
+.weft-workflow-filters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-2);
+}
+
+.weft-workflow-filters__status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cinder-space-1-5, 6px);
+}
+
+.weft-workflow-filters__query-builder-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cinder-space-1-5, 6px);
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--cinder-text-xs);
+  font-weight: 600;
+  color: var(--cinder-text-subtle);
+  padding: var(--cinder-space-1, 4px) 0;
+  align-self: flex-start;
+  min-height: 40px;
+}
+
+.weft-workflow-filters__condition-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  padding: 0 5px;
+  border-radius: var(--cinder-radius-full);
+  background: var(--cinder-accent);
+  color: var(--cinder-accent-contrast);
+  font-size: var(--cinder-text-2xs);
+  font-weight: 700;
+}
+
+.weft-workflow-list__toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-3, 12px);
+  padding: var(--cinder-space-2-5, 10px) 0;
+  border-top: 1px solid var(--cinder-border);
+  border-bottom: 1px solid var(--cinder-border);
+  flex-wrap: wrap;
+}
+
+.weft-workflow-list__new-count {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--cinder-accent);
+  border-radius: var(--cinder-radius-full);
+  background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
+  color: var(--cinder-text);
+  font: inherit;
+  font-size: var(--cinder-text-xs);
+  font-weight: 600;
+  padding: 4px 10px;
+  cursor: pointer;
+  min-height: 40px;
+}
+
+.weft-workflow-list__showing {
+  margin-inline-start: auto;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text-subtle);
+}
+
+.weft-workflow-list__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-2);
+}
+
+/* Table: no page-level horizontal scroll — the table itself scrolls inside
+ * its own container (`Table`'s own `scrollable` prop wraps it in Cinder's
+ * generated scroll wrapper, per binding responsive rule). */
+.weft-workflows-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.weft-workflows-table__id-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-1-5, 6px);
+  min-width: 0;
+}
+
+.weft-workflows-table__id-link {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .weft-workflows-table__id-link:hover {
+    text-decoration: underline;
+  }
+}
+
+.weft-workflows-table__id-link code {
+  font-family: var(--cinder-font-mono);
+}
+
+.weft-workflows-table__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.weft-workflows-table__time {
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-subtle);
+  font-family: var(--cinder-font-mono);
+}
+
+.weft-workflows-table__revision {
+  font-family: var(--cinder-font-mono);
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-subtle);
+}
+
+.weft-workflows-table__row--recent {
+  animation: weft-row-highlight 2s ease-out;
+}
+
+@keyframes weft-row-highlight {
+  from {
+    background: color-mix(in oklch, var(--cinder-accent), transparent 85%);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .weft-workflows-table__row--recent {
+    animation: none;
+  }
+}
+
+/* Bulk selection bar */
+.weft-bulk-bar {
+  position: sticky;
+  bottom: 0;
+  border-top: 1px solid var(--cinder-accent);
+  background: var(--cinder-surface-raised);
+  box-shadow: var(--cinder-shadow-lg);
+  border-radius: var(--cinder-radius-md) var(--cinder-radius-md) 0 0;
+}
+
+.weft-bulk-bar__banner {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-2);
+  padding: 7px 18px;
+  background: var(--cinder-color-warning-bg);
+  border-bottom: 1px solid var(--cinder-color-warning-border);
+  color: var(--cinder-color-warning-fg);
+  font-size: var(--cinder-text-xs);
+  flex-wrap: wrap;
+}
+
+.weft-bulk-bar__row {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-2-5, 10px);
+  padding: 11px 18px;
+  flex-wrap: wrap;
+}
+
+.weft-bulk-bar__count {
+  display: inline-flex;
+  border-radius: var(--cinder-radius-full);
+  background: color-mix(in oklch, var(--cinder-accent), transparent 85%);
+  color: var(--cinder-accent-text);
+  padding: 3px 10px;
+  font-size: var(--cinder-text-xs);
+  font-weight: 600;
+}
+
+.weft-bulk-bar__actions {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.weft-bulk-bar__deselect {
+  margin-inline-start: auto;
+  border: 0;
+  background: transparent;
+  color: var(--cinder-text-subtle);
+  font: inherit;
+  font-size: var(--cinder-text-sm);
+  cursor: pointer;
+  min-height: 40px;
+}
+
+/* Query fault banner (shared by list/start/aggregate) */
+.weft-query-fault {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-2-5, 10px);
+  padding: 11px 14px;
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md);
+  background: var(--cinder-surface-raised);
+  flex-wrap: wrap;
+}
+
+.weft-query-fault[data-tone='warning'] {
+  border-color: var(--cinder-color-warning-border);
+  background: var(--cinder-color-warning-bg);
+}
+
+.weft-query-fault[data-tone='danger'] {
+  border-color: var(--cinder-color-danger-border);
+  background: var(--cinder-color-danger-bg);
+}
+
+.weft-query-fault__icon {
+  flex: none;
+  color: var(--cinder-text-subtle);
+}
+
+.weft-query-fault[data-tone='warning'] .weft-query-fault__icon {
+  color: var(--cinder-color-warning-fg);
+}
+
+.weft-query-fault[data-tone='danger'] .weft-query-fault__icon {
+  color: var(--cinder-color-danger-fg);
+}
+
+.weft-query-fault__message {
+  flex: 1 1 auto;
+  min-width: 160px;
+  margin: 0;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text);
+}
+
+/* Pagination */
+.weft-workflow-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cinder-space-3, 12px);
+  flex-wrap: wrap;
+  padding-top: var(--cinder-space-2);
+}
+
+.weft-workflow-pagination #weft-workflow-page-size {
+  width: 120px;
+}
+
+/* ── Start wizard (start/*.svelte) ── */
+
+.weft-start-wizard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-4);
+  padding: 22px 26px 60px;
+  max-width: var(--cinder-content-width-narrow, 640px);
+  margin: 0 auto;
+}
+
+.weft-start-wizard__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.weft-start-wizard__header h1 {
+  margin: 0;
+  font-size: var(--cinder-text-xl);
+  font-weight: 600;
+}
+
+.weft-start-wizard__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: var(--cinder-radius-md);
+  background: transparent;
+  color: var(--cinder-text-subtle);
+  cursor: pointer;
+}
+
+.weft-start-wizard__denied {
+  padding: var(--cinder-space-3, 12px);
+  border: 1px solid var(--cinder-color-danger-border);
+  border-radius: var(--cinder-radius-md);
+  background: var(--cinder-color-danger-bg);
+  color: var(--cinder-color-danger-fg);
+  font-size: var(--cinder-text-sm);
+}
+
+.weft-start-type,
+.weft-start-configure,
+.weft-start-review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-3, 14px);
+  padding: var(--cinder-space-4) 0;
+}
+
+.weft-start-type__hint {
+  margin: 0;
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-disabled);
+}
+
+.weft-start-type__actions,
+.weft-start-configure__actions,
+.weft-start-review__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--cinder-space-2);
+}
+
+.weft-start-type__continue,
+.weft-start-configure__continue,
+.weft-start-review__submit {
+  border: 0;
+  border-radius: var(--cinder-radius-md);
+  background: var(--cinder-accent);
+  color: var(--cinder-accent-contrast);
+  font: inherit;
+  font-size: var(--cinder-text-sm);
+  font-weight: 600;
+  padding: 8px 16px;
+  min-height: 40px;
+  cursor: pointer;
+}
+
+.weft-start-type__continue:disabled,
+.weft-start-configure__continue:disabled,
+.weft-start-review__submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.weft-start-configure__back,
+.weft-start-review__back {
+  border: 0;
+  background: transparent;
+  color: var(--cinder-text-subtle);
+  font: inherit;
+  font-size: var(--cinder-text-sm);
+  cursor: pointer;
+  min-height: 40px;
+  padding: 8px 4px;
+}
+
+.weft-start-configure__no-schema {
+  margin: 0;
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-disabled);
+}
+
+.weft-start-advanced__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--cinder-space-3, 12px);
+  margin-bottom: var(--cinder-space-3, 12px);
+}
+
+.weft-start-advanced__tags {
+  margin-bottom: var(--cinder-space-3, 12px);
+}
+
+.weft-start-advanced__attributes-label {
+  display: block;
+  font-size: var(--cinder-text-xs);
+  font-weight: 600;
+  margin-bottom: var(--cinder-space-2);
+}
+
+.weft-start-advanced__attribute-row {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-2);
+  margin-bottom: var(--cinder-space-2);
+}
+
+.weft-start-advanced__remove,
+.weft-start-advanced__add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cinder-space-1-5, 6px);
+  border-radius: var(--cinder-radius-md);
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-subtle);
+}
+
+.weft-start-advanced__remove {
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--cinder-border);
+  flex: none;
+}
+
+.weft-start-advanced__add {
+  border: 1px dashed var(--cinder-border);
+  padding: 6px 10px;
+}
+
+.weft-start-review__revision-note {
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--cinder-surface-inset);
+  border-radius: var(--cinder-radius-sm);
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-subtle);
+}
+
+.weft-start-review__revision-note code {
+  font-family: var(--cinder-font-mono);
+}
+
+.weft-start-review__payload-label {
+  display: block;
+  font-size: var(--cinder-text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cinder-text-disabled);
+  margin-bottom: var(--cinder-space-2);
+}
+
+.weft-start-review__result {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-2-5, 9px);
+  padding: 11px 14px;
+  border-radius: var(--cinder-radius-md);
+  flex-wrap: wrap;
+}
+
+.weft-start-review__result--success {
+  background: var(--cinder-color-success-bg);
+  border: 1px solid var(--cinder-color-success-border);
+  color: var(--cinder-color-success-fg);
+}
+
+.weft-start-review__result--conflict {
+  background: var(--cinder-color-warning-bg);
+  border: 1px solid var(--cinder-color-warning-border);
+  color: var(--cinder-color-warning-fg);
+}
+
+.weft-start-review__view-link {
+  margin-inline-start: auto;
+  color: var(--cinder-accent-text);
+  font-size: var(--cinder-text-sm);
+  font-weight: 600;
+}
+
+/* ── Aggregate view (aggregate/aggregate-view.svelte) ── */
+
+.weft-aggregate-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-4);
+  padding: 22px 26px 60px;
+  max-width: var(--cinder-content-width-wide, 1180px);
+  margin: 0 auto;
+}
+
+.weft-aggregate-view__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cinder-space-2);
+}
+
+.weft-aggregate-view__header h1 {
+  margin: 0;
+  font-size: var(--cinder-text-xl);
+  font-weight: 600;
+}
+
+.weft-aggregate-view__back {
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-accent-text);
+}
+
+.weft-aggregate-view__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-3, 12px);
+  flex-wrap: wrap;
+}
+
+.weft-aggregate-view__group-by-label {
+  font-size: var(--cinder-text-sm);
+  font-weight: 600;
+}
+
+.weft-aggregate-view__attribute-form-field {
+  width: 200px;
+}
+
+.weft-aggregate-view__total {
+  margin-inline-start: auto;
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-subtle);
+  font-family: var(--cinder-font-mono);
+}
+
+/* Table wide enough to need its own scroll container, never the page. */
+.weft-aggregate-view__table {
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.weft-aggregate-view__table-caption {
+  caption-side: bottom;
+  text-align: left;
+  padding-top: var(--cinder-space-2);
+  font-size: var(--cinder-text-2xs);
+  color: var(--cinder-text-disabled);
+}
+
+.weft-aggregate-view__table th,
+.weft-aggregate-view__table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--cinder-border-muted);
+  text-align: left;
+  font-size: var(--cinder-text-sm);
+}
+
+.weft-aggregate-view__row[data-clickable] {
+  cursor: pointer;
+}
+
+.weft-aggregate-view__row a {
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .weft-aggregate-view__row a:hover {
+    text-decoration: underline;
+  }
+}
+
+.weft-aggregate-view__bar-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-2);
+}
+
+.weft-aggregate-view__bar {
+  display: block;
+  height: 8px;
+  border-radius: var(--cinder-radius-full);
+  background: var(--cinder-accent);
+  min-width: 2px;
+}
+
+.weft-aggregate-view__truncated {
+  margin: 0;
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-disabled);
+}
+
+/* ── Workflows dashboard card (cards/dashboard-card.svelte) ── */
+
+.weft-workflows-card__stat-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--cinder-radius-md);
+  padding: 4px;
+  margin: -4px;
+}
+
+@media (hover: hover) {
+  .weft-workflows-card__stat-link:hover {
+    background: var(--cinder-surface-inset);
+  }
+}
+
+/* ── Responsive: no page-level horizontal scroll; single-column below 640px;
+ * two-column-ish controls stack; touch targets stay ≥40px throughout (set
+ * above per-control, not just here). ── */
+@media (max-width: 640px) {
+  .weft-workflow-list,
+  .weft-start-wizard,
+  .weft-aggregate-view {
+    padding: 16px 16px 40px;
+  }
+
+  .weft-workflow-list__header,
+  .weft-aggregate-view__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .weft-workflow-list__header-actions {
+    width: 100%;
+  }
+
+  .weft-workflow-list__header-actions .weft-workflow-list__header-action {
+    flex: 1;
+  }
+
+  .weft-start-advanced__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .weft-aggregate-view__attribute-form-field {
+    width: 100%;
+  }
+}

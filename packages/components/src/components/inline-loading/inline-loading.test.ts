@@ -2,8 +2,7 @@
 import { afterEach, describe, expect, jest, test } from 'bun:test';
 import { tick } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
-import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
+import { expectNoLeakedTimers, setupHappyDom, trackTimers } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -80,7 +79,9 @@ describe('InlineLoading', () => {
 
     await waitFor(() => {
       expect(root?.getAttribute('data-cinder-status')).toBe('inactive');
-      expect(container.querySelector('.cinder-inline-loading__label')).toBeNull();
+      expect(
+        container.querySelector('.cinder-inline-loading__label')?.outerHTML ?? null,
+      ).toBeNull();
     });
   });
 

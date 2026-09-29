@@ -2,8 +2,8 @@
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import { injectStrippedStyles } from '../../test/css.ts';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
 // reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
@@ -178,7 +178,10 @@ describe('Input rendering', () => {
         },
       },
     });
-    const input = container.querySelector('#attached-forwarding') as HTMLInputElement;
+    const input = requiredInstance(
+      container.querySelector('#attached-forwarding'),
+      HTMLInputElement,
+    );
 
     expect(input.getAttribute('aria-label')).toBe('Search records');
     await fireEvent.input(input, { target: { value: 'records' } });
@@ -195,7 +198,7 @@ describe('Input rendering', () => {
 
   test('defaults to variant="default"', () => {
     const { container } = render(Input, { props: { id: 'name', value: '' } });
-    const input = container.querySelector('#name') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#name'), HTMLInputElement);
 
     expect(input.getAttribute('data-cinder-variant')).toBe('default');
   });
@@ -204,7 +207,7 @@ describe('Input rendering', () => {
     const { container } = render(Input, {
       props: { id: 'pattern', value: '', variant: 'code' },
     });
-    const input = container.querySelector('#pattern') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#pattern'), HTMLInputElement);
 
     expect(input.getAttribute('data-cinder-variant')).toBe('code');
   });
@@ -232,7 +235,7 @@ describe('Input rendering', () => {
       props: { id: 'demo-token', value: '', label: 'Demo token', labelVisible: false },
     });
     const label = container.querySelector('label[for="demo-token"]');
-    const input = container.querySelector('#demo-token') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#demo-token'), HTMLInputElement);
     expect(label).not.toBeNull();
     expect(label?.classList.contains('cinder-sr-only')).toBe(true);
     expect(input.labels?.[0]?.getAttribute('for')).toBe('demo-token');
@@ -354,7 +357,7 @@ describe('Input rendering', () => {
     const { container } = render(Input, {
       props: { id: 'name', value: '' },
     });
-    const input = container.querySelector('#name') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#name'), HTMLInputElement);
     expect(input).not.toBeNull();
     await fireEvent.input(input, { target: { value: 'Alice' } });
     expect(input.value).toBe('Alice');
@@ -364,7 +367,7 @@ describe('Input rendering', () => {
     const { container } = render(Input, {
       props: { id: 'name', value: '', onValueChangeRequest: (next: string) => next.toUpperCase() },
     });
-    const input = container.querySelector('#name') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#name'), HTMLInputElement);
 
     await fireEvent.input(input, { target: { value: 'Alice' } });
 
@@ -375,7 +378,7 @@ describe('Input rendering', () => {
     const { container } = render(Input, {
       props: { id: 'name', value: 'Alice', onValueChangeRequest: () => 'Alice' },
     });
-    const input = container.querySelector('#name') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#name'), HTMLInputElement);
 
     await fireEvent.input(input, { target: { value: 'Alice!' } });
 
@@ -393,7 +396,7 @@ describe('Input rendering', () => {
         },
       },
     });
-    const input = container.querySelector('#name') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#name'), HTMLInputElement);
 
     await fireEvent.input(input, { target: { value: 'Alice' } });
 
@@ -407,12 +410,12 @@ describe('Input rendering', () => {
         inputAttachment: () => {},
       },
     });
-    const input = container.querySelector('#name') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#name'), HTMLInputElement);
 
     await fireEvent.input(input, { target: { value: 'Bob' } });
     expect(getByTestId('value').textContent).toBe('Bob');
 
-    (getByTestId('form') as HTMLFormElement).reset();
+    requiredInstance(getByTestId('form'), HTMLFormElement).reset();
 
     await waitFor(() => expect(getByTestId('value').textContent).toBe(''));
     expect(input.value).toBe('');
@@ -431,7 +434,7 @@ describe('Input rendering', () => {
     const { container } = render(Input, {
       props: { id: 'locked', value: '', disabled: true },
     });
-    const input = container.querySelector('#locked') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#locked'), HTMLInputElement);
     expect(input?.disabled).toBe(true);
   });
 
@@ -587,7 +590,7 @@ describe('Input context inheritance from FormField', () => {
     const { container } = render(FormFieldInputFixture, {
       props: { fieldId: 'ctx-field', fieldLabel: 'Label', fieldRequired: true },
     });
-    const input = container.querySelector('#ctx-field') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#ctx-field'), HTMLInputElement);
     expect(input?.required).toBe(true);
   });
 
@@ -600,7 +603,7 @@ describe('Input context inheritance from FormField', () => {
         inputRequired: false,
       },
     });
-    const input = container.querySelector('#ctx-field') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#ctx-field'), HTMLInputElement);
     expect(input?.required).toBe(false);
   });
 
@@ -608,7 +611,7 @@ describe('Input context inheritance from FormField', () => {
     const { container } = render(FormFieldInputFixture, {
       props: { fieldId: 'ctx-field', fieldLabel: 'Label', fieldDisabled: true },
     });
-    const input = container.querySelector('#ctx-field') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#ctx-field'), HTMLInputElement);
     expect(input?.disabled).toBe(true);
   });
 
@@ -621,7 +624,7 @@ describe('Input context inheritance from FormField', () => {
         inputDisabled: false,
       },
     });
-    const input = container.querySelector('#ctx-field') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#ctx-field'), HTMLInputElement);
     expect(input?.disabled).toBe(false);
   });
 
@@ -925,7 +928,7 @@ describe('Input group (leading/trailing addons)', () => {
     });
     const group = container.querySelector('.cinder-input-group');
     expect(group?.getAttribute('data-disabled')).toBe('');
-    const input = container.querySelector('#disabled-group') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#disabled-group'), HTMLInputElement);
     expect(input?.disabled).toBe(true);
   });
 
@@ -937,7 +940,7 @@ describe('Input group (leading/trailing addons)', () => {
         leading: textSnippet('$'),
       },
     });
-    const input = container.querySelector('#grouped-value') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#grouped-value'), HTMLInputElement);
     expect(input).not.toBeNull();
     await fireEvent.input(input, { target: { value: '42' } });
     expect(input.value).toBe('42');

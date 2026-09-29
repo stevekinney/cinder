@@ -1,11 +1,10 @@
 /// <reference lib="dom" />
-import { rm } from 'node:fs/promises';
 import { resolve as resolvePath } from 'node:path';
 
 import { afterEach, describe, expect, test } from 'bun:test';
 import ts from 'typescript';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import { stripRootPreTabIndex } from './strip-root-pre-tab-index.ts';
 
 setupHappyDom();
@@ -394,7 +393,7 @@ describe('shikiHighlighter — fallback contract', () => {
 describe('shikiHighlighter — import strategy (issue #773)', () => {
   // Pins the fix for #773: this adapter must never pull in Shiki's default
   // `shiki` barrel (which statically references every bundled grammar and
-  // theme in one module — see `docs/decisions/package-boundaries.md` for the
+  // theme in one module — see `documentation/decisions/package-boundaries.md` for the
   // ~10 MB measurement). It must instead build on `shiki/core` +
   // `@shikijs/engine-oniguruma`, resolving languages and themes through the
   // standalone `shiki/langs` / `shiki/themes` lookup tables, converging on
@@ -469,60 +468,5 @@ describe('shikiHighlighter — import strategy (issue #773)', () => {
       Array.from(html.matchAll(/color:#[0-9A-Fa-f]{6}/g), (match) => match[0]),
     );
     expect(colors.size).toBeGreaterThan(1);
-  });
-
-  test("cinder's own build externalizes every Shiki subpath this adapter imports", async () => {
-    // The real regression this issue guards against: `scripts/build.ts` runs
-    // with `splitting: false`, so any Shiki-family specifier THIS file
-    // imports that is missing from that build's `external` list gets
-    // inlined whole into cinder's own published `dist/highlighters/shiki/index.js`
-    // — vendoring every bundled grammar (~10 MB) into cinder's package
-    // regardless of what a consumer ever highlights.
-    //
-    // This is two separate, complementary checks rather than one — they are
-    // NOT reading the same list, so a change to `scripts/build.ts` alone
-    // cannot silently desync this test:
-    //   1. Below: regex-check that `scripts/build.ts`'s SOURCE TEXT contains
-    //      each required specifier as its own quoted string literal
-    //      (independent of quote style/formatting, so a prettier pass alone
-    //      can't break it).
-    //   2. Further down: build THIS file with a copy of that same external
-    //      list, hand-kept in sync with `scripts/build.ts` (not read from
-    //      it), and assert output stays tiny. If `scripts/build.ts` and this
-    //      hard-coded copy drift apart, check 1 still catches a REMOVED
-    //      entry, and check 2 still catches what actually happens to THIS
-    //      file's build output under whatever list is written here.
-    const buildScriptPath = resolvePath(import.meta.dir, '../../../scripts/build.ts');
-    const buildScriptSource = await Bun.file(buildScriptPath).text();
-    for (const required of ['@shikijs/engine-oniguruma', 'shiki/\\*', 'shiki']) {
-      const pattern = new RegExp(`['"]${required}['"]`);
-      expect(
-        pattern.test(buildScriptSource),
-        `scripts/build.ts must externalize a '${required}' specifier for the Shiki adapter`,
-      ).toBe(true);
-    }
-
-    const entryPath = resolvePath(import.meta.dir, 'index.ts');
-    const outdirectory = `${import.meta.dir}/.build-weight-probe-${process.pid}`;
-    try {
-      // Kept in sync with `scripts/build.ts`'s `runtimeDependencyExternals`
-      // by hand — see the comment above for why that's an acceptable,
-      // covered gap rather than reading the list dynamically.
-      const result = await Bun.build({
-        entrypoints: [entryPath],
-        outdir: outdirectory,
-        target: 'browser',
-        format: 'esm',
-        splitting: false,
-        external: ['svelte', 'svelte/*', 'shiki', 'shiki/*', '@shikijs/engine-oniguruma'],
-      });
-      expect(result.success).toBe(true);
-      const totalBytes = result.outputs.reduce((sum, output) => sum + output.size, 0);
-      // Our own adapter is a few KB; anything approaching Shiki's grammar
-      // bundle (~10 MB) means a subpath leaked into the output uninlined.
-      expect(totalBytes).toBeLessThan(100_000);
-    } finally {
-      await rm(outdirectory, { recursive: true, force: true });
-    }
   });
 });

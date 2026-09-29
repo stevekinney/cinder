@@ -55,7 +55,7 @@ export function computeDiff(original: string, current: string): DiffResult {
     : (text: string) => text;
 
   if (!tokenizedText) {
-    console.warn(
+    globalThis.console.warn(
       `Diff token limit (${MAX_TOKENS}) exceeded. Falling back to character-level diff for this document.`,
     );
   }

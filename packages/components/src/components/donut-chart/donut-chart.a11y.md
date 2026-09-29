@@ -16,6 +16,8 @@ Visual outcome: a fixed-size ring that preserves distinct arc boundaries and pla
 
 When `onSeriesClick` is provided, each series group is keyboard focusable with `role="button"`, an accessible label containing the series name and value, and a click activation target. Consumers should provide a callback when series activation is part of the interaction contract. Without the callback, arcs are visual marks and are not placed in the tab order. The component does not intercept arrow keys; Tab follows native document order.
 
+Every `DonutChartDatum` requires a unique `id`, which the rendered arc and value-list row are keyed by. A focused arc keeps its DOM element (and, with it, keyboard focus) across a `data` reorder, an insertion or removal elsewhere in the list, or a fresh array of cloned objects carrying the same ids — only its own id disappearing, or its value dropping to zero area, moves focus. In that case focus moves to the next surviving interactive datum in the list's prior order, falling back to the previous one, and finally to the chart's root element (programmatically focusable, but not a tab stop) when no interactive datum remains.
+
 ## Names, roles, and state
 
 The figure and SVG both receive the required `label`. The optional legend exposes every exact value in ordinary list semantics, so screen-reader users are not required to infer proportions from geometry or color. The center total is supplemental and never the only representation of a datum. Series color is not the sole signal; labels and values remain available.

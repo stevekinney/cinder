@@ -12,6 +12,30 @@
   }
 
   /*
+   * `windowScroll`: the list virtualizes against the window's own scroll
+   * position instead of owning a scrolling container, so it renders no
+   * scrolling box of its own here — `height` plays no part. It takes its full
+   * virtual size in normal document flow, like any other block element, and
+   * the page's own scrollbar covers it.
+   *
+   * `horizontal` never combines with this attribute: the component itself
+   * resolves that combination to plain vertical windowing (see `isHorizontal`
+   * in the script), so `data-cinder-orientation` is never present alongside
+   * `data-cinder-window-scroll`, and this rule does not need to out-specificity
+   * the horizontal-mode one below.
+   *
+   * `contain: layout paint` on the base rule is intentionally left in place —
+   * it still holds for this element's own subtree even though it no longer
+   * establishes the scroll container that subtree's offsets are positioned
+   * within a document sense of "contained," and dropping it here would cost
+   * nothing this mode needs.
+   */
+  .cinder-virtual-list[data-cinder-window-scroll='true'] {
+    block-size: auto;
+    overflow: visible;
+  }
+
+  /*
    * Dynamic sizing anchors the viewport itself: when a measured row above the
    * fold turns out to differ from its estimate, the component adds that delta to
    * the scroll offset before paint.

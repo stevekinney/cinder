@@ -1,5 +1,5 @@
+import { setupHappyDom } from '@lostgradient/testing';
 import { expect, test } from 'bun:test';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 import HostProvider from './host-provider.svelte';
 
 setupHappyDom();

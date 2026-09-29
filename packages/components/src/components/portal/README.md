@@ -6,7 +6,7 @@ Moves content into `document.body` or another host element while keeping inline 
 
 ```svelte
 <script lang="ts">
-  import Portal from '@lostgradient/cinder/portal';
+  import { Portal } from '@lostgradient/cinder';
 </script>
 
 <Portal>
@@ -28,16 +28,13 @@ Moves content into `document.body` or another host element while keeping inline 
 
 <!-- generated:props:end -->
 
-The table above shows the JSON-Schema-facing type; the actual prop type, `PortalTargetInput`,
-additionally accepts an `HTMLElement`. If a selector cannot be resolved after hydration, Portal
-keeps its children inline and warns in development.
+The table above shows the JSON-Schema-facing type; the actual prop type, `PortalTargetInput`, additionally accepts an `HTMLElement`. If a selector cannot be resolved after hydration, Portal keeps its children inline and warns in development.
 
 ## CSS Variables
 
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

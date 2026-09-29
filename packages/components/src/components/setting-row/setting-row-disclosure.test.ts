@@ -1,6 +1,6 @@
+import { setupHappyDom } from '@lostgradient/testing';
 import { expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 const { render } = await import('@testing-library/svelte');
 const { default: Disclosure } = await import('./setting-row-disclosure.svelte');

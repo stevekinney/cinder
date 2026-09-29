@@ -14,7 +14,7 @@
 
 <script lang="ts">
   import { onDestroy, tick } from 'svelte';
-  import Button from '@lostgradient/cinder/button';
+  import { default as Button } from '../button/index.ts';
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import type { InlineConfirmProps } from './inline-confirm.types.ts';

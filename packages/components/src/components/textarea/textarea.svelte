@@ -74,8 +74,7 @@
     aria-invalid={field.ariaInvalid}
     aria-describedby={field.describedBy}
     bind:value
-    {...rest}
-  ></textarea>
+    {...rest}></textarea>
 {/snippet}
 
 {#snippet counter()}

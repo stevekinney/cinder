@@ -1,7 +1,7 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "click-away-listener",
-  "import": "@lostgradient/cinder/click-away-listener",
+  "import": "@lostgradient/cinder",
   "examples": [
     {
       "id": "basic",

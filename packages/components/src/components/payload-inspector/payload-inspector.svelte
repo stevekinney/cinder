@@ -49,7 +49,7 @@
 
   function shouldParseString(raw: string): boolean {
     const trimmed = raw.trim();
-    if (/^[{\["]/.test(trimmed)) return true;
+    if (/^[{["]/.test(trimmed)) return true;
     return /^(?:true|false|null|-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?)$/.test(trimmed);
   }
 

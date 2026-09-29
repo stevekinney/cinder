@@ -6,7 +6,7 @@ Primary navigation with wide multi-column content panels, optional hover activat
 
 ```svelte
 <script lang="ts">
-  import { MegaMenu } from '@lostgradient/cinder/mega-menu';
+  import { MegaMenu } from '@lostgradient/cinder';
 
   const items = [
     {
@@ -43,5 +43,4 @@ Primary navigation with wide multi-column content panels, optional hover activat
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->

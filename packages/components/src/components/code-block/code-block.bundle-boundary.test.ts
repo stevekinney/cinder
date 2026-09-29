@@ -128,7 +128,7 @@ describe('CodeBlock — Shiki bundle boundary', () => {
 describe('CodeBlock — SSR two-phase contract', () => {
   test('server render emits the plain <pre><code> fallback with escaped code, no highlight', () => {
     const sourcePath = resolvePath(HERE, 'code-block.svelte');
-    const repositoryRoot = resolvePath(HERE, '../../../../../');
+    const repositoryRoot = resolvePath(HERE, '../../..');
     const malicious = '<img src=x onError=alert(1)>';
 
     // Compile the component for the server and render it in a child process so

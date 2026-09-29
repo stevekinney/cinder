@@ -6,8 +6,8 @@ Wraps an input, label, and helper or error text into a cohesive accessible field
 
 ```svelte
 <script lang="ts">
-  import FormField from '@lostgradient/cinder/form-field';
-  import Input from '@lostgradient/cinder/input';
+  import { FormField } from '@lostgradient/cinder';
+  import { Input } from '@lostgradient/cinder';
 
   let name = $state('');
 </script>
@@ -42,7 +42,6 @@ Wraps an input, label, and helper or error text into a cohesive accessible field
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

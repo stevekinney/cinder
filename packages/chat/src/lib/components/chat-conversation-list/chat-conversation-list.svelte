@@ -34,9 +34,9 @@
   }: ChatConversationListProps = $props();
 
   const sortedConversations = $derived.by(() =>
-    [...conversations].sort(
-      (a, b) => conversationSummaryTimestamp(b) - conversationSummaryTimestamp(a),
-    ),
+    conversations
+      .slice()
+      .sort((a, b) => conversationSummaryTimestamp(b) - conversationSummaryTimestamp(a)),
   );
 
   function preview(summary: (typeof sortedConversations)[number]): string {

@@ -2,8 +2,8 @@
 import { describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
+import { setupHappyDom } from '@lostgradient/testing';
 import { injectStrippedStyles } from '../../test/css.ts';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 

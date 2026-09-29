@@ -35,7 +35,7 @@ export function overflowFadeEdges(): Attachment<HTMLElement> {
     if (typeof ResizeObserver === 'undefined') {
       node.removeAttribute('data-cinder-overflows-start');
       node.removeAttribute('data-cinder-overflows');
-      return;
+      return undefined;
     }
 
     const update = () => {

@@ -7,7 +7,7 @@ const COMPONENTS_DIR = join(import.meta.dir, '..', 'components');
 const STYLES_DIR = join(import.meta.dir, 'components');
 
 // diff-viewer and review-editor moved to @lostgradient/editor (see
-// docs/decisions/package-boundaries.md); their audit entries moved with them
+// documentation/decisions/package-boundaries.md); their audit entries moved with them
 // and are no longer part of this package's source tree.
 const auditedFiles = [
   join(COMPONENTS_DIR, 'badge', 'badge.css'),

@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { tick } from 'svelte';
 
-import { setupHappyDom } from '../../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import {
   DataGridVirtualizationAdapter,
   type DataGridVirtualizationAdapterOptions,
@@ -35,18 +35,17 @@ function scrollElement({
   Object.defineProperty(element, 'clientWidth', { configurable: true, value: width });
   element.scrollTop = scrollTop;
   element.scrollLeft = scrollLeft;
-  element.getBoundingClientRect = () =>
-    ({
-      width,
-      height,
-      top: 0,
-      right: width,
-      bottom: height,
-      left: 0,
-      x: 0,
-      y: 0,
-      toJSON: () => ({}),
-    }) as DOMRect;
+  element.getBoundingClientRect = () => ({
+    width,
+    height,
+    top: 0,
+    right: width,
+    bottom: height,
+    left: 0,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  });
   document.body.append(element);
   return element;
 }

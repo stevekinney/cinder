@@ -18,7 +18,9 @@ Rows use `role="list"` and `role="listitem"`; the key and value inputs, remove B
 
 ## Names, roles, and state
 
-Each Input has a programmatic label (`Key` or `Value`) and a unique id derived from the editor instance and row index. Remove Buttons use `removeLabel(key)` so the action identifies its row. When `secret(key)` returns true, the value Input uses `type="password"` while remaining editable. Consumers should provide meaningful keys for row action labels.
+Each Input has a programmatic label (`Key` or `Value`) and a unique id derived from the editor instance and the row's immutable `id` (not its position), so a row keeps the same control ids — and its focused input keeps its DOM node and focus — when a parent reorders, inserts, or removes other rows. Remove Buttons use `removeLabel(key)` so the action identifies its row. When `secret(key)` returns true, the value Input uses `type="password"` while remaining editable. Consumers should provide meaningful keys for row action labels.
+
+When a parent-driven `entries` update removes the row that currently holds focus, focus moves to the previous row's Remove control, else the next row's Remove control, else "Add pair" — the same fallback the Remove button already used for user-triggered removal.
 
 ## Verification
 

@@ -107,8 +107,7 @@
     onfocus={(event) => syncTrigger(event.currentTarget)}
     oninput={(event) => syncTrigger(event.currentTarget)}
     onclick={(event) => syncTrigger(event.currentTarget)}
-    onkeyup={(event) => syncTrigger(event.currentTarget)}
-  ></textarea>
+    onkeyup={(event) => syncTrigger(event.currentTarget)}></textarea>
 {:else}
   <input
     bind:this={anchor}

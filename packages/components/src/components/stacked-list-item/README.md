@@ -6,8 +6,8 @@ Single row within a stacked list, typically pairing a label with metadata or an 
 
 ```svelte
 <script lang="ts">
-  import { DataList } from '@lostgradient/cinder/data-list';
-  import { StackedListItem } from '@lostgradient/cinder/stacked-list-item';
+  import { DataList } from '@lostgradient/cinder';
+  import { StackedListItem } from '@lostgradient/cinder';
 
   const members = [{ id: 'alice', name: 'Alice Chen', role: 'Engineer' }];
 </script>
@@ -47,7 +47,6 @@ Single row within a stacked list, typically pairing a label with metadata or an 
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

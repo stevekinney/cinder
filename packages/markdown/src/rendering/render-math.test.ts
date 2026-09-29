@@ -1,3 +1,4 @@
+import { setMathPluginLoaderForTests } from './render-parser.js';
 /**
  * Unit tests for LaTeX/math rendering in the markdown pipeline.
  *
@@ -13,7 +14,6 @@
 
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import {
-  __setMathPluginLoaderForTests,
   clearRenderCache,
   probablyHasMath,
   renderMarkdown,
@@ -106,7 +106,7 @@ describe('math rendering', () => {
       expect(result.html).toContain('<code');
       expect(result.html).toContain('energy');
       expect(result.codeBlocks).toHaveLength(1);
-      expect(result.codeBlocks[0].language).toBe('typescript');
+      expect(result.codeBlocks[0]!.language).toBe('typescript');
     });
 
     it('renders math alongside GFM tables without interference', async () => {
@@ -139,7 +139,7 @@ describe('math rendering', () => {
   describe('invalid LaTeX', () => {
     it('does not throw on invalid LaTeX — renders error markup instead', async () => {
       // rehype-katex sets throwOnError=false by default
-      await expect(renderMarkdownWithMath('$\\invalidcommand{broken$')).resolves.toBeDefined();
+      expect(await renderMarkdownWithMath('$\\invalidcommand{broken$')).toBeDefined();
     });
 
     it('produces output even for malformed LaTeX', async () => {
@@ -210,8 +210,8 @@ describe('math rendering', () => {
         '```python title=example.py\nprint("hello")\n```',
       );
       expect(result.codeBlocks).toHaveLength(1);
-      expect(result.codeBlocks[0].language).toBe('python');
-      expect(result.codeBlocks[0].meta).toBe('title=example.py');
+      expect(result.codeBlocks[0]!.language).toBe('python');
+      expect(result.codeBlocks[0]!.meta).toBe('title=example.py');
     });
   });
 
@@ -235,7 +235,7 @@ describe('math rendering', () => {
 
   describe('edge cases', () => {
     it('does not throw on empty display math delimiters', async () => {
-      await expect(renderMarkdownWithMath('$$')).resolves.toBeDefined();
+      expect(await renderMarkdownWithMath('$$')).toBeDefined();
     });
 
     it('does not treat dollar signs inside code fences as math', async () => {
@@ -326,7 +326,7 @@ describe('math-plugin loader is called only on math input', () => {
 
   beforeEach(() => {
     calls = 0;
-    restore = __setMathPluginLoaderForTests(async () => {
+    restore = setMathPluginLoaderForTests(async () => {
       calls += 1;
       const [m, k] = await Promise.all([import('remark-math'), import('rehype-katex')]);
       return { remarkMath: m.default, rehypeKatex: k.default };

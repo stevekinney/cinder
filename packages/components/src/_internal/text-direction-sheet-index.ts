@@ -119,34 +119,15 @@ function scanRuleList(rules: CSSRuleList | Iterable<CSSRule>, state: ScanState):
   for (const rule of Array.from(rules)) {
     if (state.declaresDirection) return;
 
-    // CSSImportRule. An imported sheet loads asynchronously, so its importer's
-    // rule count is not a sound key for a NEGATIVE result — scan it, but mark
-    // the sheet uncacheable unless the scan comes back positive.
-    if (Reflect.get(rule, 'type') === 3) {
-      state.cacheable = false;
-      const imported = Reflect.get(rule, 'styleSheet');
-      if (imported) {
-        try {
-          const importedRules: unknown = Reflect.get(imported, 'cssRules');
-          if (isRuleCollection(importedRules)) scanRuleList(importedRules, state);
-        } catch {
-          // Cross-origin imports deny CSSOM access; assume they could declare it.
-          state.declaresDirection = true;
-        }
-      }
+    if (rule.type === 3) {
+      scanImportedRule(rule, state);
       continue;
     }
 
     // Mirrors `isCssStyleRule` in text-direction-css.ts: a style rule is the
     // only rule kind whose `direction` the walk can ever act on, and it is
     // identified by having both a `style` object and a string `selectorText`.
-    const style: unknown = Reflect.get(rule, 'style');
-    if (
-      typeof style === 'object' &&
-      style !== null &&
-      typeof Reflect.get(rule, 'selectorText') === 'string' &&
-      Boolean(Reflect.get(style, 'direction'))
-    ) {
+    if (ruleDeclaresDirection(rule)) {
       state.declaresDirection = true;
       return;
     }
@@ -167,4 +148,28 @@ function isRuleCollection(value: unknown): value is CSSRuleList | Iterable<CSSRu
   if (Array.isArray(value)) return true;
   if (typeof value !== 'object' || value === null) return false;
   return typeof Reflect.get(value, Symbol.iterator) === 'function';
+}
+
+function scanImportedRule(rule: CSSRule, state: ScanState): void {
+  // Imports can load without changing their parent's rule count.
+  state.cacheable = false;
+  const imported: unknown = Reflect.get(rule, 'styleSheet');
+  if (typeof imported !== 'object' || imported === null) return;
+  try {
+    const rules: unknown = Reflect.get(imported, 'cssRules');
+    if (isRuleCollection(rules)) scanRuleList(rules, state);
+  } catch {
+    // An inaccessible imported sheet might declare direction.
+    state.declaresDirection = true;
+  }
+}
+
+function ruleDeclaresDirection(rule: CSSRule): boolean {
+  const style: unknown = Reflect.get(rule, 'style');
+  return (
+    typeof style === 'object' &&
+    style !== null &&
+    typeof Reflect.get(rule, 'selectorText') === 'string' &&
+    Boolean(Reflect.get(style, 'direction'))
+  );
 }

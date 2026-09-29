@@ -1,6 +1,3 @@
-// @ts-nocheck — test file performs heavy AST walking via svelte/compiler.parse;
-// per project conventions, test files may use any and skip strict property access.
-
 /**
  * API contract tests: validate every component's exported Props type against
  * the hand-maintained contract in src/api-contract.ts.
@@ -30,7 +27,6 @@ function toPascal(kebab: string): string {
     .join('');
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ASTNode = any;
 
 function extractPropNames(typeLiteral: ASTNode): Set<string> {
@@ -234,8 +230,7 @@ describe('api contract', () => {
         continue;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let moduleBody = ast.module?.content?.body as ASTNode[] | undefined;
+      let moduleBody = ast['module']?.content?.body as ASTNode[] | undefined;
       if (!moduleBody) {
         errors.push(`${file}: missing module script`);
         continue;
@@ -253,7 +248,6 @@ describe('api contract', () => {
           const typesSource = await readFile(typesPath, 'utf-8');
           const wrapped = `<script module lang="ts">\n${typesSource}\n</script>`;
           const typesAst = parse(wrapped, { filename: `${name}.types.ts`, modern: true });
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const typesBody = typesAst.module?.content?.body as ASTNode[] | undefined;
           if (typesBody) {
             moduleBody = typesBody;
@@ -278,7 +272,7 @@ describe('api contract', () => {
       // Svelte 5 surfaces the generics attribute on the instance script's attributes array,
       // not on the parsed content body. Find it via ast.instance.attributes.
       if (contract.generics && contract.generics.length > 0) {
-        const instanceAttrs: ASTNode[] = ast.instance?.attributes ?? [];
+        const instanceAttrs: ASTNode[] = ast['instance']?.attributes ?? [];
         const genericsAttrNode = instanceAttrs.find((a: ASTNode) => a.name === 'generics');
         const genericsAttr = (genericsAttrNode?.value?.[0]?.data as string | undefined) ?? '';
         for (const gen of contract.generics) {

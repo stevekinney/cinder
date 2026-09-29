@@ -6,9 +6,9 @@ Present feature availability and next action for browser permission or support s
 
 ```svelte
 <script lang="ts">
-  import Button from '@lostgradient/cinder/button';
-  import CapabilityGate from '@lostgradient/cinder/capability-gate';
-  import Link from '@lostgradient/cinder/link';
+  import { Button } from '@lostgradient/cinder';
+  import { CapabilityGate } from '@lostgradient/cinder';
+  import { Link } from '@lostgradient/cinder';
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 1rem;">
@@ -59,7 +59,6 @@ Present feature availability and next action for browser permission or support s
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

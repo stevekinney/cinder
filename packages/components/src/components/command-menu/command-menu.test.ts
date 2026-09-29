@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:
 import { parse } from 'postcss';
 import selectorParser from 'postcss-selector-parser';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -38,8 +38,8 @@ mock.module('@floating-ui/dom', () => ({
 }));
 
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
-const { tick } = await import('svelte');
-const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
+const { tick, flushSync } = await import('svelte');
+const { pushEscapeHandler, resetEscapeStack } = await import('../../_internal/overlay.ts');
 const { default: CommandMenuHostFixture } =
   await import('../../test/fixtures/command-menu-host-fixture.svelte');
 const { default: CommandMenuFixture } =
@@ -114,7 +114,7 @@ beforeEach(() => {
   // Clear the shared module-level escape stack so a sibling-overlay handler
   // registered by one test doesn't leak into the next (see combobox.test.ts
   // / popover.test.ts, the canonical pattern this file follows).
-  _resetEscapeStack();
+  resetEscapeStack();
 });
 
 afterEach(() => {
@@ -166,8 +166,7 @@ describe('CommandMenu', () => {
     render(CommandMenuFixture);
     await waitFor(() => expect(computePositionSpy).toHaveBeenCalled());
     const firstCall = computePositionSpy.mock.calls[0] as
-      | [unknown, HTMLElement, { placement: string; strategy: string }]
-      | undefined;
+      [unknown, HTMLElement, { placement: string; strategy: string }] | undefined;
     expect(firstCall).toBeDefined();
     const [reference, panel, options] = firstCall!;
     expect(typeof (reference as { getBoundingClientRect?: unknown }).getBoundingClientRect).toBe(
@@ -218,8 +217,7 @@ describe('CommandMenu', () => {
     const { getByTestId } = render(CommandMenuFixture);
     await waitFor(() => expect(autoUpdateSpy).toHaveBeenCalledTimes(1));
     const firstCall = autoUpdateSpy.mock.calls[0] as
-      | [{ getBoundingClientRect: () => DOMRect }, HTMLElement, () => void]
-      | undefined;
+      [{ getBoundingClientRect: () => DOMRect }, HTMLElement, () => void] | undefined;
     expect(firstCall).toBeDefined();
     const [reference] = firstCall!;
 
@@ -235,7 +233,10 @@ describe('CommandMenu', () => {
       onSelected: (value: string, query: string) => selected.push({ value, query }),
     });
     await waitFor(() => expect(queryMenu()).not.toBeNull());
-    const anchor = document.querySelector('[data-testid="anchor"]') as HTMLTextAreaElement;
+    const anchor = requiredInstance(
+      document.querySelector('[data-testid="anchor"]'),
+      HTMLTextAreaElement,
+    );
 
     await fireEvent.keyDown(anchor, { key: 'End' });
     await settleCommandMenu();
@@ -259,7 +260,7 @@ describe('CommandMenu', () => {
     });
     await waitFor(() => expect(queryMenu()).not.toBeNull());
 
-    const option = document.body.querySelector('[role="option"]') as HTMLElement;
+    const option = requiredInstance(document.body.querySelector('[role="option"]'), HTMLElement);
     await fireEvent.pointerDown(option);
     await fireEvent.click(option);
 
@@ -291,7 +292,7 @@ describe('CommandMenu', () => {
     render(CommandMenuFixture);
     await waitFor(() => expect(queryMenu()).not.toBeNull());
 
-    const option = document.body.querySelector('[role="option"]') as HTMLElement;
+    const option = requiredInstance(document.body.querySelector('[role="option"]'), HTMLElement);
     const pointerDownResult = await fireEvent.pointerDown(option);
 
     // fireEvent resolves false when the event's default action was
@@ -308,7 +309,7 @@ describe('CommandMenu', () => {
     });
     await waitFor(() => expect(queryMenu()).not.toBeNull());
 
-    const option = document.body.querySelector('[role="option"]') as HTMLElement;
+    const option = requiredInstance(document.body.querySelector('[role="option"]'), HTMLElement);
     expect(option.getAttribute('aria-disabled')).toBe('true');
 
     await fireEvent.click(option);
@@ -325,7 +326,7 @@ describe('CommandMenu', () => {
       },
     });
     await waitFor(() => expect(queryMenu()).not.toBeNull());
-    const anchor = getByTestId('anchor') as HTMLTextAreaElement;
+    const anchor = requiredInstance(getByTestId('anchor'), HTMLTextAreaElement);
 
     await fireEvent.keyDown(anchor, { key: 'Escape' });
     expect(dismissCount).toBe(1);
@@ -334,10 +335,11 @@ describe('CommandMenu', () => {
   test('Escape keeps a reopened menu dismissed for unchanged trigger text', async () => {
     const { getByTestId } = render(CommandMenuFixture);
     await waitFor(() => expect(queryMenu()).not.toBeNull());
-    const anchor = getByTestId('anchor') as HTMLTextAreaElement;
+    const anchor = requiredInstance(getByTestId('anchor'), HTMLTextAreaElement);
 
     await fireEvent.keyDown(anchor, { key: 'Escape' });
-    await waitFor(() => expect(queryMenu()).toBeNull());
+    flushSync();
+    expect(queryMenu()?.outerHTML ?? null).toBeNull();
 
     await fireEvent.click(getByTestId('reopen'));
     await settleCommandMenu();
@@ -346,7 +348,7 @@ describe('CommandMenu', () => {
 
   test('moving the DOM selection clears the Escape dismissal latch', async () => {
     const { getByTestId } = render(CommandMenuHostFixture);
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
 
     await fireEvent.input(host, { target: { value: '/a' } });
     host.setSelectionRange(2, 2);
@@ -354,7 +356,8 @@ describe('CommandMenu', () => {
     await waitFor(() => expect(queryMenu()).not.toBeNull());
 
     await fireEvent.keyDown(host, { key: 'Escape' });
-    await waitFor(() => expect(queryMenu()).toBeNull());
+    flushSync();
+    expect(queryMenu()?.outerHTML ?? null).toBeNull();
 
     host.setSelectionRange(0, 0);
     await fireEvent.keyUp(host, { key: 'ArrowLeft' });
@@ -376,13 +379,17 @@ describe('CommandMenu', () => {
 
     await fireEvent.pointerDown(getByTestId('outside'));
     expect(dismissCount).toBe(1);
-    await waitFor(() => expect(queryMenu()).toBeNull());
+    flushSync();
+    expect(queryMenu()?.outerHTML ?? null).toBeNull();
   });
 
   test('modified host-field navigation keys are not intercepted', async () => {
     render(CommandMenuFixture);
     await waitFor(() => expect(queryMenu()).not.toBeNull());
-    const anchor = document.querySelector('[data-testid="anchor"]') as HTMLTextAreaElement;
+    const anchor = requiredInstance(
+      document.querySelector('[data-testid="anchor"]'),
+      HTMLTextAreaElement,
+    );
 
     await fireEvent.keyDown(anchor, { key: 'End', ctrlKey: true });
     await settleCommandMenu();
@@ -395,7 +402,10 @@ describe('CommandMenu', () => {
       onSelected: (value: string) => selected.push(value),
     });
     await waitFor(() => expect(queryMenu()).not.toBeNull());
-    const anchor = document.querySelector('[data-testid="anchor"]') as HTMLTextAreaElement;
+    const anchor = requiredInstance(
+      document.querySelector('[data-testid="anchor"]'),
+      HTMLTextAreaElement,
+    );
 
     await fireEvent.keyDown(anchor, { key: 'End' });
     await settleCommandMenu();
@@ -435,9 +445,12 @@ describe('CommandMenu', () => {
     await settleCommandMenu();
 
     const listbox = queryListbox()!;
-    const emptyState = Array.from(queryMenu()?.children ?? []).find(
-      (child) => child.getAttribute('role') === 'status',
-    ) as HTMLElement;
+    const emptyState = requiredInstance(
+      Array.from(queryMenu()?.children ?? []).find(
+        (child) => child.getAttribute('role') === 'status',
+      ),
+      HTMLElement,
+    );
 
     expect(emptyState?.id).toBeTruthy();
     expect(listbox.getAttribute('aria-describedby')).toBe(emptyState.id);
@@ -466,7 +479,10 @@ describe('CommandMenu', () => {
 
     await fireEvent.click(getByTestId('empty-query'));
     await settleCommandMenu();
-    const anchor = document.querySelector('[data-testid="anchor"]') as HTMLTextAreaElement;
+    const anchor = requiredInstance(
+      document.querySelector('[data-testid="anchor"]'),
+      HTMLTextAreaElement,
+    );
     const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
 
     anchor.dispatchEvent(event);
@@ -500,7 +516,8 @@ describe('CommandMenu', () => {
 
       await fireEvent.keyDown(host, { key: 'Enter' });
       expect(selected).toEqual([{ value: 'beta', query: 'a' }]);
-      await waitFor(() => expect(queryMenu()).toBeNull());
+      flushSync();
+      expect(queryMenu()?.outerHTML ?? null).toBeNull();
       expect(host.getAttribute('aria-controls')).toBeNull();
       expect(host.getAttribute('aria-activedescendant')).toBeNull();
 
@@ -511,7 +528,8 @@ describe('CommandMenu', () => {
 
       await fireEvent.keyDown(host, { key: 'Escape' });
       expect(dismissed).toHaveBeenCalledTimes(1);
-      await waitFor(() => expect(queryMenu()).toBeNull());
+      flushSync();
+      expect(queryMenu()?.outerHTML ?? null).toBeNull();
       expect(host.getAttribute('aria-controls')).toBeNull();
       expect(host.getAttribute('aria-activedescendant')).toBeNull();
     },
@@ -520,7 +538,7 @@ describe('CommandMenu', () => {
   test('outside pointerdown in host fixture dismisses through document capture', async () => {
     const dismissed = mock(() => {});
     const { getByTestId } = render(CommandMenuHostFixture, { onDismissed: dismissed });
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
 
     await fireEvent.input(host, { target: { value: '/a' } });
     host.setSelectionRange(2, 2);
@@ -529,7 +547,8 @@ describe('CommandMenu', () => {
 
     await fireEvent.pointerDown(getByTestId('outside'));
     expect(dismissed).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(queryMenu()).toBeNull());
+    flushSync();
+    expect(queryMenu()?.outerHTML ?? null).toBeNull();
   });
 
   test('state changes clear active id when the menu closes or empties', async () => {
@@ -562,7 +581,7 @@ describe('CommandMenu escape-stack registration (CIN-427)', () => {
     try {
       const { getByTestId } = render(CommandMenuFixture);
       await waitFor(() => expect(queryMenu()).not.toBeNull());
-      const anchor = getByTestId('anchor') as HTMLTextAreaElement;
+      const anchor = requiredInstance(getByTestId('anchor'), HTMLTextAreaElement);
 
       // While open, the menu's registration sits on top of the stack: the
       // parent handler underneath does not fire.
@@ -572,7 +591,8 @@ describe('CommandMenu escape-stack registration (CIN-427)', () => {
         cancelable: true,
       });
       anchor.dispatchEvent(escapeEvent);
-      await waitFor(() => expect(queryMenu()).toBeNull());
+      flushSync();
+      expect(queryMenu()?.outerHTML ?? null).toBeNull();
       expect(escapeEvent.defaultPrevented).toBe(true);
       expect(parentEscapeCount).toBe(0);
 
@@ -626,7 +646,7 @@ describe('CommandMenu escape-stack registration (CIN-427)', () => {
         },
       });
       await waitFor(() => expect(queryMenu()).not.toBeNull());
-      const anchor = getByTestId('anchor') as HTMLTextAreaElement;
+      const anchor = requiredInstance(getByTestId('anchor'), HTMLTextAreaElement);
 
       const escapeEvent = new window.KeyboardEvent('keydown', {
         key: 'Escape',
@@ -698,7 +718,7 @@ describe('CommandMenu escape-stack registration (CIN-427)', () => {
       ghostTextEnabled: true,
       onDismissed: dismissed,
     });
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
 
     await typeIntoHost(host, '/al');
     await waitFor(() => expect(queryGhost()?.textContent).toBe('pha'));
@@ -712,7 +732,8 @@ describe('CommandMenu escape-stack registration (CIN-427)', () => {
     window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await settleCommandMenu();
     expect(dismissed).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(queryMenu()).toBeNull());
+    flushSync();
+    expect(queryMenu()?.outerHTML ?? null).toBeNull();
   });
 
   test('Escape dismisses the menu with focus outside the anchor', async () => {
@@ -728,20 +749,21 @@ describe('CommandMenu escape-stack registration (CIN-427)', () => {
     });
     await waitFor(() => expect(queryMenu()).not.toBeNull());
 
-    const outside = getByTestId('outside') as HTMLButtonElement;
+    const outside = requiredInstance(getByTestId('outside'), HTMLButtonElement);
     outside.focus();
     expect(document.activeElement).toBe(outside);
 
     window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect(dismissCount).toBe(1);
-    await waitFor(() => expect(queryMenu()).toBeNull());
+    flushSync();
+    expect(queryMenu()?.outerHTML ?? null).toBeNull();
   });
 });
 
 describe('CommandMenu inline ghost-text completion (#970)', () => {
   test('renders the active item’s remainder as aria-hidden ghost text', async () => {
     const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
 
     await typeIntoHost(host, '/al');
     await waitFor(() => expect(queryMenu()).not.toBeNull());
@@ -757,7 +779,7 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
     // See command-menu.a11y.md (b): the remainder must not silently
     // normalize what the user already typed.
     const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
 
     await typeIntoHost(host, '/AL');
     await waitFor(() => expect(queryMenu()).not.toBeNull());
@@ -768,7 +790,7 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
 
   test('updates ghost text as ArrowUp/ArrowDown move the active item', async () => {
     const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
 
     await typeIntoHost(host, '/');
     await waitFor(() => expect(queryMenu()).not.toBeNull());
@@ -782,7 +804,7 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
 
   test('hides ghost text when the caret is not at the field end', async () => {
     const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
 
     await typeIntoHost(host, '/al');
     await waitFor(() => expect(queryGhost()).not.toBeNull());
@@ -796,7 +818,7 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
 
   test('hides ghost text for an RTL field', async () => {
     const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
     host.setAttribute('dir', 'rtl');
 
     await typeIntoHost(host, '/al');
@@ -808,7 +830,7 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
 
   test('hides ghost text when the filtered list is empty', async () => {
     const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
 
     await typeIntoHost(host, '/zz');
     await waitFor(() => expect(queryMenu()).not.toBeNull());
@@ -819,7 +841,7 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
 
   test('suppresses ghost text on the keystroke that shrinks the query, then re-arms', async () => {
     const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
 
     await typeIntoHost(host, '/al');
     await waitFor(() => expect(queryGhost()?.textContent).toBe('pha'));
@@ -835,7 +857,7 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
 
   test('a paste that grows the query still shows ghost text', async () => {
     const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
 
     await typeIntoHost(host, '/');
     await waitFor(() => expect(queryMenu()).not.toBeNull());
@@ -850,7 +872,7 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
 
   test('hides ghost text while IME composition is active, and re-shows after it ends', async () => {
     const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
 
     await typeIntoHost(host, '/al');
     await waitFor(() => expect(queryGhost()?.textContent).toBe('pha'));
@@ -870,7 +892,7 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
     // cancelled, or the composition simply outlives the menu — must not latch
     // `composing` true forever. The next open has to show ghost text again.
     const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
 
     await typeIntoHost(host, '/al');
     await waitFor(() => expect(queryGhost()?.textContent).toBe('pha'));
@@ -880,7 +902,8 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
     expect(queryGhost()).toBeNull();
 
     await fireEvent.pointerDown(getByTestId('outside'));
-    await waitFor(() => expect(queryMenu()).toBeNull());
+    flushSync();
+    expect(queryMenu()?.outerHTML ?? null).toBeNull();
 
     await typeIntoHost(host, '/al');
     await waitFor(() => expect(queryGhost()?.textContent).toBe('pha'));
@@ -895,7 +918,7 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
         completed.push(detail),
       onSelected: (value: string, query: string) => selected.push({ value, query }),
     });
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
 
     await typeIntoHost(host, '/al');
     await waitFor(() => expect(queryGhost()?.textContent).toBe('pha'));
@@ -918,7 +941,7 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
 
   test('Tab accepts, keeps focus on the anchor, and Shift+Tab is never intercepted', async () => {
     const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
     host.focus();
 
     // Regression guard (Copilot review on #1146): preventDefault alone
@@ -962,7 +985,7 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
       ghostTextEnabled: true,
       onSelected: (value: string, query: string) => selected.push({ value, query }),
     });
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
 
     await typeIntoHost(host, '/al');
     await waitFor(() => expect(queryGhost()?.textContent).toBe('pha'));
@@ -971,7 +994,8 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
 
     expect(selected).toEqual([{ value: 'alpha', query: 'al' }]);
     expect(host.value).toBe('[alpha]');
-    await waitFor(() => expect(queryMenu()).toBeNull());
+    flushSync();
+    expect(queryMenu()?.outerHTML ?? null).toBeNull();
   });
 
   test('End moves the active item to the last option instead of accepting ghost text', async () => {
@@ -984,7 +1008,7 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
       ghostTextEnabled: true,
       onCompleted: (detail: unknown) => completed.push(detail),
     });
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
 
     await typeIntoHost(host, '/');
     await waitFor(() => expect(queryGhost()?.textContent).toBe('alpha'));
@@ -1004,7 +1028,7 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
       ghostTextEnabled: true,
       onDismissed: dismissed,
     });
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
 
     await typeIntoHost(host, '/al');
     await waitFor(() => expect(queryGhost()?.textContent).toBe('pha'));
@@ -1018,12 +1042,13 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
     await fireEvent.keyDown(host, { key: 'Escape' });
     await settleCommandMenu();
     expect(dismissed).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(queryMenu()).toBeNull());
+    flushSync();
+    expect(queryMenu()?.outerHTML ?? null).toBeNull();
   });
 
   test('disabled feature: without onComplete, no ghost text renders and Tab is untouched', async () => {
     const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: false });
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
 
     await typeIntoHost(host, '/al');
     await waitFor(() => expect(queryMenu()).not.toBeNull());
@@ -1040,7 +1065,7 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
       ghostTextEnabled: true,
       explicitCaretIndex: false,
     });
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
 
     await typeIntoHost(host, '/al');
     await waitFor(() => expect(queryMenu()).not.toBeNull());
@@ -1051,7 +1076,7 @@ describe('CommandMenu inline ghost-text completion (#970)', () => {
 
   test('positions the ghost overlay from a measured caret rect once one is available', async () => {
     const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
-    const host = getByTestId('host') as HTMLTextAreaElement;
+    const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
     Object.defineProperty(host, 'getBoundingClientRect', {
       value: () => new DOMRect(20, 30, 200, 20),
       configurable: true,
@@ -1107,7 +1132,7 @@ describe('CommandMenu ghost overlay scroll coalescing (#1186 row 1)', () => {
 
     try {
       const { getByTestId } = render(CommandMenuHostFixture, { ghostTextEnabled: true });
-      const host = getByTestId('host') as HTMLTextAreaElement;
+      const host = requiredInstance(getByTestId('host'), HTMLTextAreaElement);
       Object.defineProperty(host, 'getBoundingClientRect', {
         value: () => new DOMRect(20, 30, 200, 20),
         configurable: true,

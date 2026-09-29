@@ -6,8 +6,8 @@ Horizontal or vertical step indicator for multi-step wizards and onboarding flow
 
 ```svelte
 <script lang="ts">
-  import { Steps } from '@lostgradient/cinder/steps';
-  import type { StepItem } from '@lostgradient/cinder/steps';
+  import { Steps } from '@lostgradient/cinder';
+  import type { StepItem } from '@lostgradient/cinder';
 
   const steps: StepItem[] = [
     { id: 'account', label: 'Account' },
@@ -21,11 +21,7 @@ Horizontal or vertical step indicator for multi-step wizards and onboarding flow
 
 ## Interactive steps
 
-A step is static text by default. Give a `StepItem` an `href` or an `onclick`
-and its body (label + description) becomes a focusable control — an `<a>` for
-`href`, a `<button>` for `onclick`. The marker circle and the connector line
-stay decorative, so only the body region is clickable and the marker never
-joins the accessible name.
+A step is static text by default. Give a `StepItem` an `href` or an `onclick` and its body (label + description) becomes a focusable control — an `<a>` for `href`, a `<button>` for `onclick`. The marker circle and the connector line stay decorative, so only the body region is clickable and the marker never joins the accessible name.
 
 ```svelte
 <script lang="ts">
@@ -37,19 +33,11 @@ joins the accessible name.
 </script>
 ```
 
-When a step has both `href` and `onclick`, it renders as a link and still runs
-the callback on click — the consumer decides whether to `preventDefault` (for
-SPA routing interception, analytics, or confirmation). For the current step,
-`aria-current="step"` moves onto the interactive element; static steps keep it
-on the list item.
+When a step has both `href` and `onclick`, it renders as a link and still runs the callback on click — the consumer decides whether to `preventDefault` (for SPA routing interception, analytics, or confirmation). For the current step, `aria-current="step"` moves onto the interactive element; static steps keep it on the list item.
 
 ## Skipped steps
 
-By default, state is derived from `currentStep`: earlier steps are complete,
-the matching index is current, and later steps are upcoming. Set
-`state: 'skipped'` on a `StepItem` when a flow advances past a step without
-completing it. Skipped steps keep their numeric marker, use neutral styling,
-and announce the `skippedLabel` text instead of the completed label.
+By default, state is derived from `currentStep`: earlier steps are complete, the matching index is current, and later steps are upcoming. Set `state: 'skipped'` on a `StepItem` when a flow advances past a step without completing it. Skipped steps keep their numeric marker, use neutral styling, and announce the `skippedLabel` text instead of the completed label.
 
 ```svelte
 <script lang="ts">
@@ -82,7 +70,6 @@ and announce the `skippedLabel` text instead of the completed label.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

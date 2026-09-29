@@ -5,6 +5,7 @@ import {
   cancelStreamingMessage,
   createConversation,
   finalizeStreamingMessage,
+  isStreamingMessage,
   updateStreamingMessage,
 } from './index.ts';
 
@@ -24,9 +25,11 @@ describe('public chat streaming builders', () => {
       environment,
     );
     expect(updated.messages[started.messageId]?.content).toBe('Hello');
+    expect(isStreamingMessage(updated.messages[started.messageId]!)).toBe(true);
 
     const finalized = finalizeStreamingMessage(updated, started.messageId, undefined, environment);
     expect(finalized.messages[started.messageId]?.content).toBe('Hello');
+    expect(isStreamingMessage(finalized.messages[started.messageId]!)).toBe(false);
 
     const cancelled = cancelStreamingMessage(started.conversation, started.messageId, environment);
     expect(cancelled.ids).toEqual([]);

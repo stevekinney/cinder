@@ -19,7 +19,7 @@ export class TreeVirtualizer {
 
   constructor(readonly options: TreeVirtualizerOptions) {
     this.#subscribe = createSubscriber((update) => {
-      if (typeof window === 'undefined') return;
+      if (typeof window === 'undefined') return undefined;
 
       this.#update = update;
       this.#virtualizer = new Virtualizer(this.#buildOptions());

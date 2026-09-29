@@ -32,7 +32,7 @@
     setSortableContext,
   } from '../../utilities/sortable-controller.svelte.ts';
   import { useAnnouncer } from '../../utilities/use-announcer.svelte.ts';
-  import Button from '@lostgradient/cinder/button';
+  import { default as Button } from '../button/index.ts';
   import SortableItem from '../_sortable-item.svelte';
   import {
     buildCardLocationMap,

@@ -1,4 +1,4 @@
-import type { PopoverPlacement } from '@lostgradient/cinder/popover';
+import type { PopoverPlacement } from '@lostgradient/cinder';
 import type { Snippet } from 'svelte';
 
 export type ChatComposerPopoverItem = {
@@ -39,7 +39,7 @@ export type ChatComposerPopoverComposerProps = {
   composerAriaControls: string | undefined;
   composerAriaActiveDescendant: string | undefined;
   composerAriaAutocomplete: 'list';
-  oncomposerinput: (value: string, event?: Event) => void;
+  onComposerInput: (value: string, event?: Event) => void;
   oncomposerkeydown: (event: KeyboardEvent) => void;
   oncomposerselectionchange: (event: Event) => void;
   oncomposerblur: (event: FocusEvent) => void;
@@ -68,7 +68,7 @@ export type ChatComposerPopoverSource<TItem extends ChatComposerPopoverItem> = {
 export type ChatComposerPopoverProps<TItem extends ChatComposerPopoverItem> = {
   /** Unique identifier used for the listbox and item ids. */
   id: string;
-  /** Current composer value. Keep this synchronized through ChatInput binding or Chat's oncomposerinput. */
+  /** Current composer value. Keep this synchronized through ChatInput binding or Chat's onComposerInput. */
   value?: string;
   /** Consumer-owned command or mention definitions. */
   /** Immediate, ungrouped suggestions. Default `[]`. */

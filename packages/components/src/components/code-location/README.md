@@ -8,7 +8,7 @@
 
 ```svelte
 <script lang="ts">
-  import CodeLocation from '@lostgradient/cinder/code-location';
+  import { CodeLocation } from '@lostgradient/cinder';
 </script>
 
 <CodeLocation file="src/routes/+page.svelte" />
@@ -32,9 +32,7 @@
 
 <!-- generated:authoring:start -->
 
-Before publishing this component, complete the live
-[component authoring pre-flight](../../../AGENTS.md#component-authoring-pre-flight).
-
+Before publishing this component, complete the live [component authoring pre-flight](../../../README.md#component-authoring-checklist).
 <!-- generated:authoring:end -->
 
 ## CSS Variables
@@ -42,7 +40,6 @@ Before publishing this component, complete the live
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

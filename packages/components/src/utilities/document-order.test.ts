@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import { inDocumentOrder } from './document-order.ts';
 
 setupHappyDom();
@@ -24,12 +24,10 @@ describe('inDocumentOrder', () => {
   });
 
   test('keeps nodes stable when compareDocumentPosition reports no order', () => {
-    const first = {
-      compareDocumentPosition: () => 0,
-    } as unknown as Node;
-    const second = {
-      compareDocumentPosition: () => 0,
-    } as unknown as Node;
+    const first = document.createElement('button');
+    const second = document.createElement('button');
+    first.compareDocumentPosition = () => 0;
+    second.compareDocumentPosition = () => 0;
     const items = [
       { id: 'first', node: first },
       { id: 'second', node: second },
@@ -39,13 +37,10 @@ describe('inDocumentOrder', () => {
   });
 
   test('sorts nodes after a following sibling when compareDocumentPosition reports preceding', () => {
-    let first: Node;
-    const second = {
-      compareDocumentPosition: (candidate: Node) => (candidate === first ? 0x02 : 0),
-    } as unknown as Node;
-    first = {
-      compareDocumentPosition: (candidate: Node) => (candidate === second ? 0x04 : 0),
-    } as unknown as Node;
+    const first = document.createElement('button');
+    const second = document.createElement('button');
+    second.compareDocumentPosition = (candidate: Node) => (candidate === first ? 0x02 : 0);
+    first.compareDocumentPosition = (candidate: Node) => (candidate === second ? 0x04 : 0);
     const items = [
       { id: 'second', node: second },
       { id: 'first', node: first },

@@ -7,6 +7,7 @@
  * outside the Svelte language service.
  */
 
+import type { ApprovalResolution } from '@lostgradient/cinder';
 import type { Snippet } from 'svelte';
 
 import type {
@@ -63,6 +64,14 @@ export type ChatMessagePartsRendererProps = {
   /** The ordered render parts for one message. */
   parts: ChatMessagePart[];
   /**
+   * Owning message identity for occurrence-scoped child IDs.
+   *
+   * Tool call IDs can be reused by separate message occurrences. The renderer
+   * forwards this ID to nested tool activity so its section/heading IDs stay
+   * unique without making the nested card a separate transcript navigation row.
+   */
+  messageId?: string | undefined;
+  /**
    * Optional per-part override. Applies to body parts (markdown, tool-call,
    * tool-result, tool-approval, reasoning). Image parts, step parts, and
    * suggestion parts always render through the grouped default paths; they are
@@ -78,10 +87,9 @@ export type ChatMessagePartsRendererProps = {
   expanded?: boolean;
   /** Called when a tool-call part's disclosure toggle is activated. */
   onToggle?: (() => void) | undefined;
-  /** Called when the user approves an action-required tool call. */
-  onapprove?: ((toolCallId: string) => void) | undefined;
-  /** Called when the user denies an action-required tool call. */
-  ondeny?: ((toolCallId: string) => void) | undefined;
+  /** Called when the user resolves an action-required approval. */
+  onApprovalResolve?:
+    ((toolCallId: string, resolution: ApprovalResolution) => void | Promise<void>) | undefined;
   /** Whether the reasoning block for this message is expanded. */
   reasoningExpanded?: boolean | undefined;
   /** Called when the reasoning disclosure toggle is activated. */

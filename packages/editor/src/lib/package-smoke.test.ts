@@ -1,4 +1,3 @@
-// @ts-nocheck -- migrated commentary assertions use runtime-verified fixture indexing.
 import { describe, expect, test } from 'bun:test';
 
 import { generateBlockId } from './anchoring.js';

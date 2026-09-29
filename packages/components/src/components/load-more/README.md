@@ -10,7 +10,7 @@ Use `LoadMore` to fetch the next page of results as the reader reaches the end o
 
 ```svelte
 <script lang="ts">
-  import LoadMore from '@lostgradient/cinder/load-more';
+  import { LoadMore } from '@lostgradient/cinder';
 
   let loading = $state(false);
   let hasMore = $state(true);
@@ -51,7 +51,6 @@ Use `LoadMore` to fetch the next page of results as the reader reaches the end o
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

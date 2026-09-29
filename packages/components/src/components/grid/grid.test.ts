@@ -1,8 +1,8 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import { stripCinderComponentsLayer } from '../../test/css.ts';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
@@ -130,7 +130,7 @@ describe('Grid', () => {
     const { container } = render(Grid, {
       props: { children: textSnippet('content') },
     });
-    const root = container.querySelector('.cinder-grid') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-grid'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe('');
     expect(root.style.getPropertyValue('--cinder-grid-row-gap')).toBe('');
     expect(root.style.getPropertyValue('--cinder-grid-column-gap')).toBe('');
@@ -141,7 +141,7 @@ describe('Grid', () => {
     const { container } = render(Grid, {
       props: { columns: 3, children: textSnippet('content') },
     });
-    const root = container.querySelector('.cinder-grid') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-grid'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe('repeat(3, minmax(0, 1fr))');
   });
 
@@ -149,7 +149,7 @@ describe('Grid', () => {
     const { container } = render(Grid, {
       props: { columns: 0, children: textSnippet('content') },
     });
-    const root = container.querySelector('.cinder-grid') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-grid'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe('');
   });
 
@@ -157,7 +157,7 @@ describe('Grid', () => {
     const { container } = render(Grid, {
       props: { columns: '12rem minmax(0, 1fr)', children: textSnippet('content') },
     });
-    const root = container.querySelector('.cinder-grid') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-grid'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe('12rem minmax(0, 1fr)');
   });
 
@@ -165,7 +165,7 @@ describe('Grid', () => {
     const { container } = render(Grid, {
       props: { gap: '1rem', children: textSnippet('content') },
     });
-    const root = container.querySelector('.cinder-grid') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-grid'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-grid-row-gap')).toBe('1rem');
     expect(root.style.getPropertyValue('--cinder-grid-column-gap')).toBe('1rem');
   });
@@ -179,7 +179,7 @@ describe('Grid', () => {
         children: textSnippet('content'),
       },
     });
-    const root = container.querySelector('.cinder-grid') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-grid'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-grid-row-gap')).toBe('2rem');
     expect(root.style.getPropertyValue('--cinder-grid-column-gap')).toBe('3rem');
   });
@@ -188,7 +188,7 @@ describe('Grid', () => {
     const { container } = render(Grid, {
       props: { columns: 4, minItemWidth: '16rem', children: textSnippet('content') },
     });
-    const root = container.querySelector('.cinder-grid') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-grid'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-grid-min-item-width')).toBe('16rem');
     expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe(
       'repeat(auto-fill, minmax(min(var(--cinder-grid-min-item-width), 100%), 1fr))',

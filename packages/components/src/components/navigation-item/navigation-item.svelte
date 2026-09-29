@@ -20,6 +20,7 @@
 
   import { classNames } from '../../utilities/class-names.ts';
   import type { NavigationItemProps } from './navigation-item.types.ts';
+  import { rowDividerAttachment } from '../../utilities/row-divider.ts';
 
   // `href` and `onclick` are destructured explicitly because they drive the link-vs-button
   // discriminant and are handled by the internal `handleClick` wrapper.
@@ -89,6 +90,7 @@
     plain <a aria-disabled> yourself instead of a disabled NavigationItem.
   -->
   <a
+    {@attach rowDividerAttachment}
     {...anchorAttributes}
     href={disabled ? undefined : href}
     aria-current={ariaCurrent}
@@ -104,6 +106,7 @@
   </a>
 {:else}
   <button
+    {@attach rowDividerAttachment}
     {...buttonAttributes}
     type="button"
     aria-current={ariaCurrent}

@@ -33,6 +33,7 @@ export function orderedTextThreads(threads: Thread[]): Thread[] {
         thread.anchor.status !== 'orphaned' &&
         getVisibleComments(thread).length > 0,
     )
+    .slice()
     .sort((a, b) => (a.anchor.from ?? 0) - (b.anchor.from ?? 0));
 }
 

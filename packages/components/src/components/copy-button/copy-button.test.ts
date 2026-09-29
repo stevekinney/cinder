@@ -1,8 +1,12 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
-import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
+import {
+  expectNoLeakedTimers,
+  requiredInstance,
+  setupHappyDom,
+  trackTimers,
+} from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -41,7 +45,7 @@ function mockRejectingClipboard(): ClipboardLike {
 
 describe('CopyButton', () => {
   beforeEach(() => {
-    originalClipboard = globalThis.navigator.clipboard as unknown as ClipboardLike | undefined;
+    originalClipboard = globalThis.navigator.clipboard;
   });
 
   afterEach(() => {
@@ -92,7 +96,7 @@ describe('CopyButton', () => {
       copiedLabel: 'Code copied',
       iconOnly: true,
     });
-    const button = container.querySelector('button') as HTMLButtonElement;
+    const button = requiredInstance(container.querySelector('button'), HTMLButtonElement);
     expect(button.getAttribute('aria-label')).toBe('Copy code');
     // The button has NO aria-live — the live region owns announcements.
     expect(button.hasAttribute('aria-live')).toBe(false);
@@ -112,7 +116,7 @@ describe('CopyButton', () => {
   test('default "Copied" is announced in the live region when no copiedLabel provided', async () => {
     mockClipboard();
     const { container } = render(CopyButton, { value: 'x', label: 'Copy code' });
-    const button = container.querySelector('button') as HTMLButtonElement;
+    const button = requiredInstance(container.querySelector('button'), HTMLButtonElement);
     expect(button.getAttribute('aria-label')).toBe('Copy code');
     await fireEvent.click(button);
     await waitFor(() => {
@@ -127,7 +131,7 @@ describe('CopyButton', () => {
     mockClipboard(writes);
 
     const { container } = render(CopyButton, { value: 'payload' });
-    const button = container.querySelector('button') as HTMLButtonElement;
+    const button = requiredInstance(container.querySelector('button'), HTMLButtonElement);
     await fireEvent.click(button);
 
     await waitFor(() => {
@@ -151,7 +155,7 @@ describe('CopyButton', () => {
   test('iconOnly mode swaps icon and aria-label after click', async () => {
     mockClipboard();
     const { container } = render(CopyButton, { value: 'hello', iconOnly: true });
-    const button = container.querySelector('button') as HTMLButtonElement;
+    const button = requiredInstance(container.querySelector('button'), HTMLButtonElement);
     const idleSvgPath = button.querySelector('svg path')?.getAttribute('d');
 
     await fireEvent.click(button);
@@ -176,7 +180,7 @@ describe('CopyButton', () => {
     // the copied branch must fall through to the literal "Copied" text.
     mockClipboard();
     const { container } = render(CopyButton, { value: 'hello' });
-    const button = container.querySelector('button') as HTMLButtonElement;
+    const button = requiredInstance(container.querySelector('button'), HTMLButtonElement);
     await fireEvent.click(button);
     await waitFor(() => {
       expect(button.textContent?.trim()).toBe('Copied');
@@ -225,7 +229,7 @@ describe('CopyButton', () => {
         consumerFired += 1;
       },
     } as never);
-    const button = container.querySelector('button') as HTMLButtonElement;
+    const button = requiredInstance(container.querySelector('button'), HTMLButtonElement);
     await fireEvent.click(button);
     // The internal handler ran (value copied)…
     await waitFor(() => expect(writes).toEqual(['copy-me']));
@@ -249,7 +253,7 @@ describe('CopyButton', () => {
     const timers = trackTimers();
     try {
       const { container, unmount } = render(CopyButton, { value: 'hi', confirmDuration: 10_000 });
-      const button = container.querySelector('button') as HTMLButtonElement;
+      const button = requiredInstance(container.querySelector('button'), HTMLButtonElement);
       await fireEvent.click(button);
       // Wait for the copied state (announced in the live region), confirming both
       // the reset timer and the live-region auto-clear timer are now pending.
@@ -270,7 +274,7 @@ describe('CopyButton', () => {
     mockRejectingClipboard();
     const onError = mock(() => {});
     const { container } = render(CopyButton, { value: 'hi', onError });
-    const button = container.querySelector('button') as HTMLButtonElement;
+    const button = requiredInstance(container.querySelector('button'), HTMLButtonElement);
 
     await fireEvent.click(button);
 
@@ -282,7 +286,7 @@ describe('CopyButton', () => {
   test('a failed clipboard write does not throw when onError is omitted', async () => {
     mockRejectingClipboard();
     const { container } = render(CopyButton, { value: 'hi' });
-    const button = container.querySelector('button') as HTMLButtonElement;
+    const button = requiredInstance(container.querySelector('button'), HTMLButtonElement);
 
     await fireEvent.click(button);
 

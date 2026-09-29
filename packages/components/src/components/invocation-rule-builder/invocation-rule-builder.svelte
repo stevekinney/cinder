@@ -249,8 +249,7 @@
       return;
     }
     const ruleChangeHandler = onValueChange as
-      | ((nextRules: InvocationRule[], ruleChange: InvocationRuleChange) => void)
-      | undefined;
+      ((nextRules: InvocationRule[], ruleChange: InvocationRuleChange) => void) | undefined;
     ruleChangeHandler?.(rulesToEmit, change);
   }
 
@@ -262,8 +261,9 @@
     announcement = '';
     // Reset then set on the next tick so repeated identical messages re-trigger
     // the live region update.
-    tick().then(() => {
+    void tick().then(() => {
       announcement = message;
+      return undefined;
     });
   }
 
@@ -304,7 +304,7 @@
     announce(`${ruleLabel} removed.`);
 
     // Move focus to the previous rule's remove button, or the add-rule button.
-    tick().then(() => {
+    void tick().then(() => {
       const targetIndex = ruleIndex > 0 ? ruleIndex - 1 : 0;
       const ruleElements = document.querySelectorAll<HTMLElement>(
         `[data-irb-region="${baseId}"] [data-irb-rule-remove]`,
@@ -313,6 +313,7 @@
         ruleElements[targetIndex] ??
         document.querySelector<HTMLElement>(`[data-irb-region="${baseId}"] [data-irb-add-rule]`);
       targetButton?.focus();
+      return undefined;
     });
   }
 
@@ -327,8 +328,8 @@
     announce(`${moved!.label} moved to position ${toIndex + 1} of ${nextRules.length}.`);
   }
 
-  function handleRenameRule(ruleId: string, label: string): void {
-    const nextLabel = label.trim() || 'Untitled rule';
+  function handleRenameRule(ruleId: string, nextLabelValue: string): void {
+    const nextLabel = nextLabelValue.trim() || 'Untitled rule';
     const { [ruleId]: _removedDraft, ...remainingDrafts } = ruleLabelDrafts;
     ruleLabelDrafts = remainingDrafts;
     const currentLabel = renderedRules.find((rule) => rule.id === ruleId)?.label;
@@ -381,7 +382,7 @@
     emitChange(nextRules, change);
     announce('Condition removed.');
 
-    tick().then(() => {
+    void tick().then(() => {
       const ruleEl = document.querySelector<HTMLElement>(
         `[data-irb-region="${baseId}"] [data-irb-rule="${ruleIndex}"]`,
       );
@@ -390,6 +391,7 @@
       const targetButton =
         (removeButtons && removeButtons[conditionIndex > 0 ? conditionIndex - 1 : 0]) ?? addBtn;
       targetButton?.focus();
+      return undefined;
     });
   }
 
@@ -459,7 +461,7 @@
     emitChange(nextRules, change);
     announce('Action removed.');
 
-    tick().then(() => {
+    void tick().then(() => {
       const ruleEl = document.querySelector<HTMLElement>(
         `[data-irb-region="${baseId}"] [data-irb-rule="${ruleIndex}"]`,
       );
@@ -468,6 +470,7 @@
       const targetButton =
         (removeButtons && removeButtons[actionIndex > 0 ? actionIndex - 1 : 0]) ?? addBtn;
       targetButton?.focus();
+      return undefined;
     });
   }
 

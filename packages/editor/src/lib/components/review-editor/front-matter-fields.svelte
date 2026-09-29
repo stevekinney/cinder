@@ -20,11 +20,17 @@
 
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { parseFrontMatter, validateFrontMatter } from '@lostgradient/markdown/pipeline';
-  import Checkbox from '@lostgradient/cinder/checkbox';
-  import Input from '@lostgradient/cinder/input';
-  import Textarea from '@lostgradient/cinder/textarea';
-  import { parseYamlFieldValue, serializeYamlFieldValue } from './review-editor-front-matter.ts';
+  import { parseFrontMatter, validateFrontMatter } from '@lostgradient/markdown';
+  import {
+    Checkbox,
+    FormField,
+    Input,
+    JsonEditor,
+    NumberInput,
+    PayloadInspector,
+    TagInput,
+    Textarea,
+  } from '@lostgradient/cinder';
 
   let { id, data, raw, readonly = false, onchange }: FrontMatterFieldsProps = $props();
 
@@ -38,6 +44,17 @@
   let complexDrafts = $state<Record<string, string>>({});
   let complexErrors = $state<Record<string, string | undefined>>({});
   let lastComplexKeys = $state('');
+  let expanded = $state(true);
+  let lastId = $state(untrack(() => id));
+
+  const bodyId = $derived(`${id}-body`);
+
+  $effect(() => {
+    if (id !== lastId) {
+      expanded = true;
+      lastId = id;
+    }
+  });
 
   $effect(() => {
     if (raw !== lastRaw) {
@@ -48,15 +65,15 @@
   });
 
   $effect(() => {
-    const complexEntries = entries.filter(([, value]) => isComplexValue(value));
+    const complexEntries = entries.filter(([, value]) => isJsonEditableValue(value));
     const key = complexEntries
-      .map(([name, value]) => `${name}:${serializeYamlFieldValue(value)}`)
+      .map(([name, value]) => `${name}:${serializeJsonFieldValue(value)}`)
       .join('|');
     if (key === lastComplexKeys) return;
 
     const nextDrafts: Record<string, string> = {};
     for (const [name, value] of complexEntries) {
-      nextDrafts[name] = serializeYamlFieldValue(value);
+      nextDrafts[name] = serializeJsonFieldValue(value);
     }
     complexDrafts = nextDrafts;
     complexErrors = {};
@@ -65,32 +82,26 @@
 
   function patchField(name: string, value: unknown): void {
     if (readonly) return;
-    onchange({ ...(data ?? {}), [name]: value });
-  }
-
-  function handleNumberInput(name: string, rawValue: string): void {
-    if (rawValue.trim() === '') {
-      patchField(name, null);
-      return;
-    }
-
-    const parsed = Number(rawValue);
-    if (!Number.isFinite(parsed)) return;
-    patchField(name, parsed);
+    onchange({ ...data, [name]: value });
   }
 
   function handleComplexInput(name: string, rawValue: string): void {
     complexDrafts = { ...complexDrafts, [name]: rawValue };
-    const parsed = parseYamlFieldValue(rawValue);
-    if (!parsed.valid) {
-      complexErrors = { ...complexErrors, [name]: parsed.error };
+    try {
+      const parsed = JSON.parse(rawValue);
+      const nextErrors = { ...complexErrors };
+      delete nextErrors[name];
+      complexErrors = nextErrors;
+      patchField(name, parsed);
+    } catch {
+      complexErrors = { ...complexErrors, [name]: 'Enter valid JSON.' };
       return;
     }
+  }
 
-    const nextErrors = { ...complexErrors };
-    delete nextErrors[name];
-    complexErrors = nextErrors;
-    patchField(name, parsed.value);
+  function handleStringInput(name: string, previousValue: string | null, nextValue: string): void {
+    if (previousValue === null && nextValue === '') return;
+    patchField(name, nextValue);
   }
 
   function handleRawInput(rawValue: string): void {
@@ -136,61 +147,104 @@
   function isComplexValue(value: unknown): boolean {
     return typeof value === 'object' && value !== null;
   }
+
+  function isStringArray(value: unknown): value is string[] {
+    return Array.isArray(value) && value.every((item) => typeof item === 'string');
+  }
+
+  function isJsonEditableValue(value: unknown): boolean {
+    return isComplexValue(value) && !isStringArray(value);
+  }
+
+  function serializeJsonFieldValue(value: unknown): string {
+    return JSON.stringify(value, null, 2);
+  }
 </script>
 
 <section class="review-editor-front-matter" aria-labelledby={`${id}-heading`}>
   <div class="review-editor-front-matter__header">
-    <h3 id={`${id}-heading`} class="review-editor-front-matter__title">Front matter</h3>
+    <h3 id={`${id}-heading`} class="review-editor-front-matter__title">
+      <button
+        type="button"
+        class="review-editor-front-matter__toggle"
+        aria-expanded={expanded}
+        aria-controls={bodyId}
+        onclick={() => {
+          expanded = !expanded;
+        }}
+      >
+        Front matter
+      </button>
+    </h3>
   </div>
 
-  <div class="review-editor-front-matter__body">
+  <div id={bodyId} class="review-editor-front-matter__body" hidden={!expanded}>
     {#if hasParsedFields}
       {#each entries as [name, fieldValue] (name)}
         <div class="review-editor-front-matter__field">
-          {#if typeof fieldValue === 'boolean'}
+          {#if readonly}
+            {#if isStringArray(fieldValue)}
+              <FormField id={fieldId(name)} label={name}>
+                <TagInput id={fieldId(name)} value={fieldValue} delimiter="," readonly />
+              </FormField>
+            {:else if isJsonEditableValue(fieldValue)}
+              <PayloadInspector value={fieldValue} label={name} />
+            {:else}
+              <div class="review-editor-front-matter__readonly-field">
+                <span class="review-editor-front-matter__readonly-label">{name}</span>
+                <span class="review-editor-front-matter__readonly-value">
+                  {fieldValue === null ? '' : String(fieldValue)}
+                </span>
+              </div>
+            {/if}
+          {:else if typeof fieldValue === 'boolean'}
             <Checkbox
               id={fieldId(name)}
               label={name}
               checked={fieldValue}
-              disabled={readonly}
               onchange={(event) => patchField(name, event.currentTarget.checked)}
             />
           {:else if typeof fieldValue === 'number'}
-            <Input
-              id={fieldId(name)}
-              label={name}
-              value={String(fieldValue)}
-              disabled={readonly}
-              oninput={(event) => handleNumberInput(name, event.currentTarget.value)}
-            />
-          {:else if typeof fieldValue === 'string'}
-            <Input
+            <NumberInput
               id={fieldId(name)}
               label={name}
               value={fieldValue}
-              disabled={readonly}
-              oninput={(event) => patchField(name, event.currentTarget.value)}
+              onValueChange={(nextValue) => patchField(name, nextValue)}
             />
-          {:else if isComplexValue(fieldValue)}
-            <Textarea
+          {:else if typeof fieldValue === 'string' || fieldValue === null}
+            <Input
               id={fieldId(name)}
               label={name}
-              value={complexDrafts[name] ?? serializeYamlFieldValue(fieldValue)}
+              value={fieldValue === null ? '' : fieldValue}
+              oninput={(event) => handleStringInput(name, fieldValue, event.currentTarget.value)}
+            />
+          {:else if isStringArray(fieldValue)}
+            <FormField id={fieldId(name)} label={name}>
+              <TagInput
+                id={fieldId(name)}
+                value={fieldValue}
+                delimiter=","
+                onValueChange={(nextValue) => patchField(name, nextValue)}
+              />
+            </FormField>
+          {:else if isJsonEditableValue(fieldValue)}
+            <JsonEditor
+              id={fieldId(name)}
+              label={name}
+              value={complexDrafts[name] ?? serializeJsonFieldValue(fieldValue)}
               error={complexErrors[name] ?? ''}
-              disabled={readonly}
               rows={Math.max(
                 3,
-                (complexDrafts[name] ?? serializeYamlFieldValue(fieldValue)).split('\n').length,
+                (complexDrafts[name] ?? serializeJsonFieldValue(fieldValue)).split('\n').length,
               )}
-              variant="code"
-              oninput={(event) => handleComplexInput(name, event.currentTarget.value)}
+              highlight
+              onValueChange={(nextValue) => handleComplexInput(name, nextValue)}
             />
           {:else}
             <Input
               id={fieldId(name)}
               label={name}
               value={fieldValue === null ? 'null' : String(fieldValue)}
-              disabled={readonly}
               oninput={(event) => patchField(name, event.currentTarget.value)}
             />
           {/if}

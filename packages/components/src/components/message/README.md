@@ -2,15 +2,13 @@
 
 Chat-style bubble that renders a role label, optional timestamp, and arbitrary body content for transcript or run-stream views.
 
-See the [editor/chat/Cinder surface boundary](https://github.com/stevekinney/cinder/blob/main/docs/decisions/editor-chat-cinder-surfaces.md).
-This is the domain-neutral Cinder message surface; use Chat's `ChatMessage` when
-conversation, streaming, or tool-call state is required.
+See the [editor/chat/Cinder surface boundary](https://github.com/stevekinney/cinder/blob/main/docs/decisions/editor-chat-cinder-surfaces.md). This is the domain-neutral Cinder message surface; use Chat's `ChatMessage` when conversation, streaming, or tool-call state is required.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import Message from '@lostgradient/cinder/message';
+  import { Message } from '@lostgradient/cinder';
 </script>
 
 <Message role="assistant" timestamp="10:00">How can I help?</Message>
@@ -36,7 +34,6 @@ conversation, streaming, or tool-call state is required.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

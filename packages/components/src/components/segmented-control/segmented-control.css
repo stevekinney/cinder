@@ -334,7 +334,7 @@
   }
 
   /* ── Tablist variant (single mode only) ─────────────────────────────────────
- * See docs/decisions/segmented-control-tablist-variant.md. The tablist variant
+ * See documentation/decisions/segmented-control-tablist-variant.md. The tablist variant
  * carries tab semantics for externally owned panels, so it must read as a
  * tab strip rather than the default filled-pill radiogroup. All rules here are
  * scoped to single-selection roots so the invalid `selectionMode="multiple"` +

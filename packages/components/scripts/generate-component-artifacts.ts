@@ -1,202 +1,128 @@
-/**
- * For each directory-shaped component under `src/components/`, regenerate the
- * schema (`.schema.{json,ts}`), variables (`.variables.{json,ts}`), and the
- * generated regions of its `README.md`.
- *
- * After per-component artifacts, this orchestrator also runs:
- *   1. Constraints generator — serializes `{name}.constraints.ts` → `.json`.
- *   2. Examples generator   — serializes playground examples → `{name}.examples.json`.
- *   3. Manifest generator   — builds `components.json` from all metadata (runs last
- *                             so it observes `hasConstraints`/`hasExamples` from above).
- *
- * Used by:
- *   - `bun run components:generate` — writes to disk.
- *   - `bun run components:check`    — compares against committed files; non-zero on drift.
- *     In check mode all stages run; an early failure does not suppress later reports.
- *   - The Phase 1 build pipeline (prebuild step).
- *
- * Flat legacy components (single `.svelte` files in `src/components/`) are
- * skipped entirely until they migrate.
- */
+/** Generate or check component-local artifacts, constraints, and manifest. */
 
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import type { DriftIssue } from './component-artifact-operations.ts';
+import type { Manifest } from './generate-manifest.ts';
 
-async function main(): Promise<void> {
-  const args = process.argv.slice(2);
-  const checkMode = args.includes('--check');
+type CheckStage = { issues: string[] };
 
-  if (checkMode) {
-    const { checkComponentArtifacts, formatGenerated } =
-      await import('./component-artifact-operations.ts');
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function runArtifactCheck(): Promise<CheckStage> {
+  try {
+    const { checkComponentArtifacts } = await import('./component-artifact-operations.ts');
+    const issues = await checkComponentArtifacts();
+    return {
+      issues: issues.map((issue) => `${issue.component}/${issue.file} (${issue.reason})`),
+    };
+  } catch (error) {
+    process.stderr.write(`components:check — artifacts stage failed: ${errorMessage(error)}\n`);
+    return { issues: ['artifacts: stage threw — see error above'] };
+  }
+}
+
+async function runConstraintCheck(): Promise<CheckStage> {
+  try {
     const { checkConstraintsDrift } = await import('./generate-component-constraints.ts');
-    const { checkExamplesDrift, generateAllExamples } =
-      await import('./generate-component-examples.ts');
+    const issues = await checkConstraintsDrift();
+    return {
+      issues: issues.map((issue) => `constraints: ${issue.name}/${issue.file} (${issue.reason})`),
+    };
+  } catch (error) {
+    process.stderr.write(`components:check — constraints stage failed: ${errorMessage(error)}\n`);
+    return { issues: ['constraints: stage threw — see error above'] };
+  }
+}
+
+async function runExampleCheck(): Promise<CheckStage> {
+  try {
+    const { checkCommittedExamples } = await import('./check-component-examples.ts');
+    const issues = await checkCommittedExamples();
+    for (const issue of issues) process.stderr.write(`components:check — examples: ${issue}\n`);
+    return { issues: issues.map((issue) => `examples: ${issue}`) };
+  } catch (error) {
+    process.stderr.write(`components:check — examples stage failed: ${errorMessage(error)}\n`);
+    return { issues: ['examples: stage threw — see error above'] };
+  }
+}
+
+async function runManifestCheck(): Promise<{ stage: CheckStage; manifest?: Manifest }> {
+  try {
     const { buildManifest } = await import('./generate-manifest.ts');
-
-    // Stage 1: per-component schema/variables/README drift check.
-    //
-    // Isolated like every later stage. `formatGenerated` no longer swallows a
-    // formatter failure (it used to return content unformatted and let the
-    // drift report imply a mismatch), so a thrown error here would otherwise
-    // abort the run before constraints/examples/manifest/agents-md report --
-    // contradicting the contract above that all stages run in check mode.
-    let perComponentIssues: Awaited<ReturnType<typeof checkComponentArtifacts>> = [];
-    let artifactsStageFailed = false;
-    try {
-      perComponentIssues = await checkComponentArtifacts();
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      process.stderr.write(`components:check — artifacts stage failed: ${message}\n`);
-      artifactsStageFailed = true;
-    }
-
-    // Stage 2: constraints drift check.
-    let constraintIssues: DriftIssue[] = [];
-    let constraintsStageFailed = false;
-    try {
-      const issues = await checkConstraintsDrift();
-      constraintIssues = issues.map((issue) => ({
-        component: issue.name,
-        file: issue.file,
-        reason: issue.reason,
-      }));
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      process.stderr.write(`components:check — constraints stage failed: ${message}\n`);
-      constraintsStageFailed = true;
-    }
-
-    // Stage 3: examples drift check.
-    let exampleIssues: string[] = [];
-    let exampleExtractionErrors = 0;
-    let examplesStageFailed = false;
-    try {
-      const result = await generateAllExamples();
-      exampleIssues = await checkExamplesDrift(result);
-      exampleExtractionErrors = result.errors.length;
-      if (result.errors.length > 0) {
-        process.stderr.write(
-          `components:check — ${result.errors.length} example(s) have extraction errors\n`,
-        );
-        for (const error of result.errors.slice(0, 5)) {
-          process.stderr.write(`  [${error.componentId}] ${error.reason}\n`);
-        }
-        if (result.errors.length > 5) {
-          process.stderr.write(`  … and ${result.errors.length - 5} more\n`);
-        }
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      process.stderr.write(`components:check — examples stage failed: ${message}\n`);
-      examplesStageFailed = true;
-    }
-
-    // Stage 4: manifest drift check.
-    // The format must match what `writeManifest()` produces — JSON.stringify
-    // run through prettier — so the comparison succeeds against the
-    // committed-and-formatted file.
-    let manifestDrift = false;
-    let manifest: Awaited<ReturnType<typeof buildManifest>> | undefined;
-    try {
-      manifest = await buildManifest();
-      const MANIFEST_PATH = join(import.meta.dir, '..', 'components.json');
-      const generated = await formatGenerated(
-        JSON.stringify(manifest, null, 2) + '\n',
-        MANIFEST_PATH,
+    const { formatGenerated } = await import('./component-artifact-operations.ts');
+    const manifest = await buildManifest();
+    const manifestPath = join(import.meta.dir, '..', 'components.json');
+    const generated = await formatGenerated(JSON.stringify(manifest, null, 2) + '\n', manifestPath);
+    const committed = existsSync(manifestPath) ? await Bun.file(manifestPath).text() : undefined;
+    const drift = committed === undefined || generated !== committed;
+    if (drift) {
+      process.stderr.write(
+        `components:check — components.json is ${committed === undefined ? 'missing' : 'stale'}\n`,
       );
-      if (!existsSync(MANIFEST_PATH)) {
-        manifestDrift = true;
-        process.stderr.write('components:check — components.json is missing\n');
-      } else {
-        const committed = await Bun.file(MANIFEST_PATH).text();
-        if (generated !== committed) {
-          manifestDrift = true;
-          process.stderr.write('components:check — components.json is stale\n');
-        }
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      process.stderr.write(`components:check — manifest stage failed: ${message}\n`);
-      manifestDrift = true;
     }
+    return {
+      stage: { issues: drift ? ['manifest: components.json is missing or stale'] : [] },
+      manifest,
+    };
+  } catch (error) {
+    process.stderr.write(`components:check — manifest stage failed: ${errorMessage(error)}\n`);
+    return { stage: { issues: ['manifest: components.json is missing or stale'] } };
+  }
+}
 
-    // Stage 5: AGENTS.md overlap-family drift check.
-    // Compares against the manifest Stage 4 just BUILT from source (not the
-    // committed components.json), so an ordinary component metadata edit
-    // (`@purpose`/`@useWhen`/`overlapFamilies` in manifest.meta.ts) is caught
-    // here even if `components:generate` was never run at all.
-    //
-    // This runs unconditionally as part of `components:check`, which itself
-    // runs unconditionally in CI (see check-pipeline-coverage.ts) — unlike
-    // the drift test in `render-agents-md.test.ts`, which lives under
-    // `scripts/` and is excluded from scoped `test:changed` runs unless a
-    // `scripts/` file itself changed. Metadata-only edits are exactly the
-    // case a scoped run would otherwise miss.
-    let agentsMdIssues: string[] = [];
-    try {
-      if (!manifest) {
-        throw new Error('manifest unavailable — see manifest stage failure above');
-      }
-      const { findOverlapFamilyDrift } = await import('./render-agents-md.ts');
-      const AGENTS_PATH = join(import.meta.dir, '..', 'AGENTS.md');
-      const agentsMd = await Bun.file(AGENTS_PATH).text();
-      agentsMdIssues = findOverlapFamilyDrift(manifest, agentsMd);
-      for (const issue of agentsMdIssues) {
-        process.stderr.write(`components:check — AGENTS.md: ${issue}\n`);
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      process.stderr.write(`components:check — agents-md stage failed: ${message}\n`);
-      agentsMdIssues = ['stage threw — see error above'];
-    }
-
-    // Collect and report all failures. Generator stage failures and example
-    // extraction errors are non-drift issues — they must still fail the check
-    // even when the on-disk artifacts match.
-    const allIssues: string[] = [
-      ...perComponentIssues.map((issue) => `${issue.component}/${issue.file} (${issue.reason})`),
-      ...(artifactsStageFailed ? ['artifacts: stage threw — see error above'] : []),
-      ...constraintIssues.map(
-        (issue) => `constraints: ${issue.component}/${issue.file} (${issue.reason})`,
-      ),
-      ...(constraintsStageFailed ? ['constraints: stage threw — see error above'] : []),
-      ...exampleIssues.map((issue) => `examples: ${issue}`),
-      ...(exampleExtractionErrors > 0
-        ? [`examples: ${exampleExtractionErrors} example(s) have extraction errors`]
-        : []),
-      ...(examplesStageFailed ? ['examples: stage threw — see error above'] : []),
-      ...(manifestDrift ? ['manifest: components.json is missing or stale'] : []),
-      ...agentsMdIssues.map((issue) => `agents-md: ${issue}`),
-    ];
-
-    if (allIssues.length === 0) {
-      process.stdout.write('components:check — OK\n');
-      return;
-    }
-
+async function runRootMetadataExportCheck(manifest: Manifest): Promise<CheckStage> {
+  try {
+    const { checkRootMetadataExports } = await import('./generate-root-metadata-exports.ts');
+    return { issues: await checkRootMetadataExports(manifest) };
+  } catch (error) {
     process.stderr.write(
-      'components:check — drift detected. Run `bun run components:generate` to fix:\n',
+      `components:check — root metadata export stage failed: ${errorMessage(error)}\n`,
     );
-    for (const issue of allIssues) {
-      process.stderr.write(`  • ${issue}\n`);
-    }
-    process.exitCode = 1;
+    return { issues: ['root metadata exports: stage threw — see error above'] };
+  }
+}
+
+async function runCheckMode(): Promise<void> {
+  const artifacts = await runArtifactCheck();
+  const constraints = await runConstraintCheck();
+  const examples = await runExampleCheck();
+  const manifest = await runManifestCheck();
+  const rootMetadata = manifest.manifest
+    ? await runRootMetadataExportCheck(manifest.manifest)
+    : { issues: ['root metadata exports: manifest unavailable'] };
+  const issues = [
+    ...artifacts.issues,
+    ...constraints.issues,
+    ...examples.issues,
+    ...manifest.stage.issues,
+    ...rootMetadata.issues,
+  ];
+  if (issues.length === 0) {
+    process.stdout.write('components:check — OK\n');
     return;
   }
+  process.stderr.write(
+    'components:check — drift detected. Run `bun run components:generate` to fix:\n',
+  );
+  for (const issue of issues) process.stderr.write(`  • ${issue}\n`);
+  process.exitCode = 1;
+}
 
-  // Generate mode.
+async function runGenerateMode(args: string[]): Promise<void> {
   const { discoverComponentDirectories } = await import('./discover-component-directories.ts');
   const { generateArtifactsForComponent, writeArtifacts } =
     await import('./component-artifact-operations.ts');
   const targetName = args.find((arg) => !arg.startsWith('-'));
   const components = await discoverComponentDirectories();
   const filtered = targetName
-    ? components.filter((c) => c.name === targetName || `experimental/${c.name}` === targetName)
+    ? components.filter(
+        (component) =>
+          component.name === targetName || `experimental/${component.name}` === targetName,
+      )
     : components;
-
   if (filtered.length === 0) {
     process.stderr.write(
       targetName
@@ -206,62 +132,29 @@ async function main(): Promise<void> {
     process.exitCode = 1;
     return;
   }
-
-  // Stage 1: per-component schema/variables/README.
   for (const component of filtered) {
-    const artifacts = await generateArtifactsForComponent(component);
-    await writeArtifacts(artifacts);
+    await writeArtifacts(await generateArtifactsForComponent(component));
     process.stdout.write(`generated ${component.name}\n`);
   }
-
-  // Stages 2–4 run only when processing the full component set (no target filter).
-  // Targeted single-component runs skip the package-level artifacts.
   if (targetName !== undefined) return;
-
   const { generateAllConstraints } = await import('./generate-component-constraints.ts');
-  const { generateAllExamples, writeExampleArtifacts } =
-    await import('./generate-component-examples.ts');
   const { writeManifest } = await import('./generate-manifest.ts');
-
-  // Stage 2: constraints.
   const constraintsCount = await generateAllConstraints();
   if (constraintsCount > 0) {
     process.stdout.write(`generated ${constraintsCount} constraints sidecar(s)\n`);
   }
-
-  // Stage 3: examples.
-  // Extraction errors are hard failures — never write artifacts or proceed to
-  // the manifest stage when the examples set is incomplete.
-  const examplesResult = await generateAllExamples();
-  if (examplesResult.errors.length > 0) {
-    process.stderr.write(
-      `components:generate — refusing to write artifacts: ${examplesResult.errors.length} example(s) have extraction errors\n`,
-    );
-    for (const error of examplesResult.errors.slice(0, 10)) {
-      process.stderr.write(`  [${error.componentId}] ${error.reason}\n`);
-    }
-    if (examplesResult.errors.length > 10) {
-      process.stderr.write(`  … and ${examplesResult.errors.length - 10} more\n`);
-    }
-    process.exitCode = 1;
-    return;
-  }
-  await writeExampleArtifacts(examplesResult);
-  process.stdout.write(
-    `generated examples: ${examplesResult.exampleSets.length} component(s), ` +
-      `${examplesResult.exampleSets.reduce((sum, s) => sum + s.examples.length, 0)} example(s)\n`,
-  );
-
-  // Stage 4: manifest (last — observes hasExamples/hasConstraints from the above).
   await writeManifest();
   process.stdout.write('generated components.json\n');
+  const { buildManifest } = await import('./generate-manifest.ts');
+  const { writeRootMetadataExports } = await import('./generate-root-metadata-exports.ts');
+  await writeRootMetadataExports(await buildManifest());
+  process.stdout.write('generated root metadata exports\n');
 }
 
-if (import.meta.main) {
-  if (process.argv.includes('--check')) {
-    await main();
-  } else {
-    const { withLocalValidationGateLock } = await import('./husky/utilities.ts');
-    await withLocalValidationGateLock(main);
-  }
+async function main(): Promise<void> {
+  const args = process.argv.slice(2);
+  if (args.includes('--check')) return runCheckMode();
+  return runGenerateMode(args);
 }
+
+if (import.meta.main) await main();

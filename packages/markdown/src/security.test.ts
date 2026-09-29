@@ -16,8 +16,7 @@
  * - Round-trip behavior is predictable
  */
 
-import { parse, serialize } from '@lostgradient/markdown/pipeline';
-import { isSafeUrl, sanitizeUrl } from '@lostgradient/markdown/utilities/safe-url';
+import { isSafeUrl, parse, sanitizeUrl, serialize } from '@lostgradient/markdown';
 import { describe, expect, it } from 'bun:test';
 
 describe('URL Safety - Protocol Attacks', () => {
@@ -165,7 +164,7 @@ describe('Markdown Link URL Validation', () => {
 
     if (result.success) {
       // Find the link node
-      const linkNode = result.ast.children[0];
+      const linkNode = result.ast.children[0]!;
       expect(linkNode.type).toBe('paragraph');
 
       // The URL in the AST should be validated before use

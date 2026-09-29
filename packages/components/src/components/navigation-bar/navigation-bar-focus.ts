@@ -1,10 +1,12 @@
 import {
   composedContains,
   composedFocusScopes,
+  type SequentialFocusTarget,
+} from '../../utilities/composed-tree.ts';
+import {
   findSequentialEntryTarget,
   getSequentialFocusTargets,
   getTabIndexValue,
-  type SequentialFocusTarget,
 } from '../../utilities/focus.ts';
 
 export function getNavigationBarBrandFocusTargets(
@@ -88,6 +90,14 @@ export function findFocusTargetAfterNavigationItems(
   if (actionTarget) return actionTarget;
   if (!navigationBar || typeof document === 'undefined') return null;
 
+  return findFocusTargetOutsideNavigationBar(navigationBar, itemsRegion, navigationItem);
+}
+
+function findFocusTargetOutsideNavigationBar(
+  navigationBar: HTMLElement,
+  itemsRegion: HTMLElement | null,
+  navigationItem: HTMLElement | null,
+): SequentialFocusTarget | null {
   // Search the composed focus scope outward: the navigation bar's own root
   // (its ShadowRoot, if it is rendered inside one) first, then each
   // enclosing shadow host's root in turn, until a following candidate is

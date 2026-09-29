@@ -59,7 +59,7 @@ Key points:
 - This primitive does **not** move focus programmatically. Activation of the anchor relies on the browser's default in-page navigation behavior.
 - Using `tabindex={0}` on a non-interactive element (e.g., `as="div"`) creates a keyboard stop with no action. If you must do it, add a valid interactive `role` and keyboard handlers — that is outside this primitive's scope.
 
-See also: [`docs/recipes/skip-link.md`](../../../../docs/recipes/skip-link.md) for the full skip-link recipe — placement guidance, multiple-skip-link patterns, and common pitfalls.
+Place the skip link before the navigation it bypasses and point it at an existing main-content target. Give multiple skip links distinct accessible names.
 
 ## Styling the focused state
 

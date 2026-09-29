@@ -109,6 +109,44 @@ describe('validateMetaSchema', () => {
     expect(result.valid).toBe(false);
     expect(result.errors.length).toBeGreaterThan(0);
   });
+
+  // A schema whose shape json-schema-library must walk synchronously (e.g.
+  // reading `properties`) can throw rather than report a structured
+  // `schemaErrors` entry when that access itself fails. validateMetaSchema's
+  // try/catch turns that synchronous throw into the same { valid: false }
+  // shape callers already get from a reported schema error, instead of an
+  // unhandled rejection.
+  test('a schema that throws synchronously while being compiled is reported as invalid, not thrown', async () => {
+    const schema: Record<string, unknown> = { type: 'object' };
+    Object.defineProperty(schema, 'properties', {
+      enumerable: true,
+      get(): never {
+        throw new Error('boom from properties getter');
+      },
+    });
+    const result = await validateMetaSchema(schema);
+    expect(result).toEqual({
+      valid: false,
+      errors: [{ path: '', message: 'boom from properties getter', keyword: '' }],
+    });
+  });
+
+  test('a non-Error throw while compiling still returns a valid: false result with a fallback message', async () => {
+    const schema: Record<string, unknown> = { type: 'object' };
+    Object.defineProperty(schema, 'properties', {
+      enumerable: true,
+      get(): never {
+        // Intentionally not an Error instance — exercises the catch's
+        // non-Error fallback branch, which stringifies whatever was thrown.
+        throw 'not an Error instance';
+      },
+    });
+    const result = await validateMetaSchema(schema);
+    expect(result).toEqual({
+      valid: false,
+      errors: [{ path: '', message: 'Meta-schema validation failed', keyword: '' }],
+    });
+  });
 });
 
 describe('tryCompile', () => {
@@ -170,6 +208,122 @@ describe('tryCompile', () => {
   test('non-object schemas do not compile', async () => {
     const result = await tryCompile('not a schema');
     expect(result.ok).toBe(false);
+  });
+
+  // COR-228 parity fixtures — preserved across the CSP-safe interpreter swap.
+  test('2019-09 $recursiveRef compiles and its meta-schema is valid', async () => {
+    const schema = {
+      $schema: 'https://json-schema.org/draft/2019-09/schema',
+      $id: 'https://example.com/tree',
+      $recursiveAnchor: true,
+      type: 'object',
+      properties: { children: { type: 'array', items: { $recursiveRef: '#' } } },
+    };
+    expect(await validateMetaSchema(schema, '2019-09')).toEqual({ valid: true, errors: [] });
+    expect(await tryCompile(schema, '2019-09')).toEqual({ ok: true });
+  });
+
+  test('2020-12 $dynamicRef compiles and its meta-schema is valid', async () => {
+    const schema = {
+      $schema: 'https://json-schema.org/draft/2020-12/schema',
+      $id: 'https://example.com/tree2020',
+      $dynamicAnchor: 'node',
+      type: 'object',
+      properties: { children: { type: 'array', items: { $dynamicRef: '#node' } } },
+    };
+    expect(await validateMetaSchema(schema, '2020-12')).toEqual({ valid: true, errors: [] });
+    expect(await tryCompile(schema, '2020-12')).toEqual({ ok: true });
+  });
+
+  test('a general (non-$defs-shorthand) unresolved $ref fails to compile', async () => {
+    const schema = { type: 'object', properties: { a: { $ref: '#/nonexistent' } } };
+    const result = await tryCompile(schema);
+    expect(result.ok).toBe(false);
+  });
+
+  test('an unrecognised keyword is preserved without failing meta-schema or compile checks', async () => {
+    const schema = { type: 'string', 'x-vendor-extension': 42 };
+    const meta = await validateMetaSchema(schema);
+    expect(meta.valid).toBe(true);
+    expect(await tryCompile(schema)).toEqual({ ok: true });
+  });
+
+  // Mirrors the validateMetaSchema regression above: compilation can throw
+  // synchronously rather than report a structured error when reading the
+  // schema itself fails. tryCompile's try/catch must turn that into
+  // { ok: false, error } like any other compile failure, not an unhandled
+  // rejection.
+  test('a schema that throws synchronously while being compiled is reported as a compile failure, not thrown', async () => {
+    const schema: Record<string, unknown> = { type: 'object' };
+    Object.defineProperty(schema, 'properties', {
+      enumerable: true,
+      get(): never {
+        throw new Error('boom from properties getter');
+      },
+    });
+    const result = await tryCompile(schema);
+    expect(result).toEqual({ ok: false, error: 'boom from properties getter' });
+  });
+
+  test('a non-Error throw while compiling still returns an ok: false result with a stringified error', async () => {
+    const schema: Record<string, unknown> = { type: 'object' };
+    Object.defineProperty(schema, 'properties', {
+      enumerable: true,
+      get(): never {
+        // Intentionally not an Error instance — exercises the catch's
+        // non-Error fallback branch, which stringifies whatever was thrown.
+        throw 'not an Error instance';
+      },
+    });
+    const result = await tryCompile(schema);
+    expect(result).toEqual({ ok: false, error: 'not an Error instance' });
+  });
+
+  // Every format ajv-formats' `fullFormats` set registers must remain a
+  // recognised `format` value (no compile warning), matching the existing
+  // "registers the standard email format" regression above.
+  const AJV_FORMATS = [
+    'date',
+    'time',
+    'date-time',
+    'iso-time',
+    'iso-date-time',
+    'duration',
+    'uri',
+    'uri-reference',
+    'uri-template',
+    'url',
+    'email',
+    'hostname',
+    'ipv4',
+    'ipv6',
+    'regex',
+    'uuid',
+    'json-pointer',
+    'json-pointer-uri-fragment',
+    'relative-json-pointer',
+    'byte',
+    'int32',
+    'int64',
+    'float',
+    'double',
+    'password',
+    'binary',
+  ] as const;
+
+  test('every ajv-formats format compiles without a warning', async () => {
+    const originalWarn = console.warn;
+    const warnings: unknown[][] = [];
+    console.warn = (...values: unknown[]) => warnings.push(values);
+    try {
+      for (const format of AJV_FORMATS) {
+        const type = ['int32', 'int64', 'float', 'double'].includes(format) ? 'number' : 'string';
+        expect(await tryCompile({ type, format })).toEqual({ ok: true });
+      }
+    } finally {
+      console.warn = originalWarn;
+    }
+    expect(warnings).toEqual([]);
   });
 });
 
@@ -323,15 +477,15 @@ describe('normaliseSchemaInput', () => {
   });
 
   test('rejects NaN and Infinity', () => {
-    expect(normaliseSchemaInput({ foo: Number.NaN } as never).ok).toBe(false);
-    expect(normaliseSchemaInput({ foo: Number.POSITIVE_INFINITY } as never).ok).toBe(false);
-    expect(normaliseSchemaInput({ foo: Number.NEGATIVE_INFINITY } as never).ok).toBe(false);
+    expect(normaliseSchemaInput({ foo: Number.NaN }).ok).toBe(false);
+    expect(normaliseSchemaInput({ foo: Number.POSITIVE_INFINITY }).ok).toBe(false);
+    expect(normaliseSchemaInput({ foo: Number.NEGATIVE_INFINITY }).ok).toBe(false);
   });
 
   test('rejects cyclic graphs', () => {
     const cyclic: Record<string, unknown> = { foo: 1 };
     cyclic['self'] = cyclic;
-    const result = normaliseSchemaInput(cyclic as never);
+    const result = normaliseSchemaInput(cyclic);
     expect(result.ok).toBe(false);
   });
 

@@ -613,6 +613,62 @@ describe('createEditorState — onValidate callback', () => {
     expect(state.activeDraft).toBe('draft-07');
   });
 
+  // COR-228 parity fixtures — preserved across the CSP-safe interpreter
+  // swap, exercised through the editor's real apply/validate pipeline.
+  test('applyJsonDraft accepts a 2019-09 schema using $recursiveRef', async () => {
+    const state = createEditorState({ schema: { type: 'string' } });
+    state.setJsonDraftText(
+      JSON.stringify({
+        $schema: 'https://json-schema.org/draft/2019-09/schema',
+        $id: 'https://example.com/tree',
+        $recursiveAnchor: true,
+        type: 'object',
+        properties: { children: { type: 'array', items: { $recursiveRef: '#' } } },
+      }),
+    );
+
+    const applied = await state.applyJsonDraft();
+    await flushValidation();
+
+    expect(applied).toBe(true);
+    expect(state.validationResult.valid).toBe(true);
+    expect(state.validationResult.compilable).toBe(true);
+  });
+
+  test('applyJsonDraft accepts a 2020-12 schema using $dynamicRef', async () => {
+    const state = createEditorState({ schema: { type: 'string' } });
+    state.setJsonDraftText(
+      JSON.stringify({
+        $schema: 'https://json-schema.org/draft/2020-12/schema',
+        $id: 'https://example.com/tree2020',
+        $dynamicAnchor: 'node',
+        type: 'object',
+        properties: { children: { type: 'array', items: { $dynamicRef: '#node' } } },
+      }),
+    );
+
+    const applied = await state.applyJsonDraft();
+    await flushValidation();
+
+    expect(applied).toBe(true);
+    expect(state.validationResult.valid).toBe(true);
+    expect(state.validationResult.compilable).toBe(true);
+  });
+
+  test('applyJsonDraft accepts an unresolved $ref as valid shape but reports it not compilable', async () => {
+    const state = createEditorState({ schema: { type: 'string' } });
+    state.setJsonDraftText(
+      JSON.stringify({ type: 'object', properties: { a: { $ref: '#/nonexistent' } } }),
+    );
+
+    const applied = await state.applyJsonDraft();
+    await flushValidation();
+
+    expect(applied).toBe(true);
+    expect(state.validationResult.compilable).toBe(false);
+    expect(state.validationStatus).toBe('invalid');
+  });
+
   test('draftOverride wins for parseable dirty JSON drafts', () => {
     const state = createEditorState({
       schema: { type: 'string' },

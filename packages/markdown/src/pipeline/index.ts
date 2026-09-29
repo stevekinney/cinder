@@ -38,18 +38,13 @@ export {
   astEquals,
   clearNormalizeCache,
   contentEquals,
-  contentEqualsWithFrontMatter,
   diffAsts,
   normalize,
   normalizeWithCache,
-  // Front matter extensions (DEP-61)
-  normalizeWithFrontMatter,
   roundTrip,
-  roundTripWithFrontMatter,
-  stripPositions,
   validatePositions,
 } from './ast.js';
-export type { RoundTripResult, RoundTripWithFrontMatterResult } from './ast.js';
+export type { RoundTripResult } from './ast.js';
 
 // Types
 export type {
@@ -88,16 +83,8 @@ export type {
 export { MarkdownParseError, PositionValidationError } from './errors.js';
 
 // Front matter (DEP-61)
-export {
-  extractFrontMatter,
-  getFrontMatterBlock,
-  hasFrontMatter,
-  mergeFrontMatter,
-  parseFrontMatter,
-  serializeYaml,
-  stringifyFrontMatter,
-  validateFrontMatter,
-} from './frontmatter.js';
+export { extractFrontMatter, hasFrontMatter, mergeFrontMatter } from './frontmatter-extras.js';
+export { getFrontMatterBlock, parseFrontMatter, validateFrontMatter } from './frontmatter.js';
 
 export type {
   DocumentWithFrontMatter,
@@ -105,4 +92,12 @@ export type {
   FrontMatterSerializeOptions,
 } from './types.js';
 
+export {
+  contentEqualsWithFrontMatter,
+  normalizeWithFrontMatter,
+  roundTripWithFrontMatter,
+  type RoundTripWithFrontMatterResult,
+} from './frontmatter-normalization.js';
+export { serializeYaml, stringifyFrontMatter } from './frontmatter-serializer.js';
 export type { FrontMatterBlock } from './frontmatter.js';
+export { stripPositions } from './strip-positions.js';

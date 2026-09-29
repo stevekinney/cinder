@@ -5,14 +5,14 @@
  *   1. A tool-result message with outcome === 'action_required' + action emits a
  *      `tool-approval` part instead of the plain `tool-result` part.
  *   2. The approval part carries the correct key, toolCallId, action, and derived
- *      `approved` state from the context's approved/denied id sets.
+ *      `state` from the context approval map.
  *   3. A tool-result with outcome === 'success' or 'error' still emits a plain
  *      `tool-result` part (the existing path is unchanged).
  *   4. A tool-result with outcome === 'action_required' but WITHOUT an action still
  *      emits the plain `tool-result` part (guard on `action` presence).
- *   5. The approved state is `undefined` when the call id is in neither set.
- *   6. The approved state is `true` when the call id is in the approvedToolCallIds set.
- *   7. The approved state is `false` when the call id is in the deniedToolCallIds set.
+ *   5. The approval state is `pending` when the call id is absent from the map.
+ *   6. The approval state is `approved` when the call id maps to approved.
+ *   7. The approval state is `denied` when the call id maps to denied.
  *   8. A plain conversationalist transcript with normal tool results sees zero change.
  */
 
@@ -33,17 +33,6 @@ function message(overrides: Partial<Message> & Pick<Message, 'role'>): Message {
   };
 }
 
-function approvalAction(message: string) {
-  return {
-    type: 'approval' as const,
-    message,
-    risk: 'low' as const,
-    operation: { kind: 'command' as const, command: 'test-command', argsPreview: {} },
-    policyVersion: 'test-policy',
-    idempotencyKey: `approval-${message}`,
-  };
-}
-
 describe('C3 — tool-approval derivation (action_required with action)', () => {
   it('emits a tool-approval part (not tool-result) for action_required + action', () => {
     const msg = message({
@@ -53,7 +42,18 @@ describe('C3 — tool-approval derivation (action_required with action)', () => 
         callId: 'call-1',
         outcome: 'action_required',
         content: null,
-        action: approvalAction('Deploy to prod?'),
+        action: {
+          type: 'approval',
+          message: 'Deploy to prod?',
+          risk: 'high' as const,
+          operation: {
+            kind: 'command' as const,
+            command: 'echo approval',
+            argsPreview: { ok: true },
+          },
+          policyVersion: 'test-policy',
+          idempotencyKey: 'test-approval',
+        },
       },
     });
     const parts = deriveMessageParts(msg);
@@ -69,7 +69,18 @@ describe('C3 — tool-approval derivation (action_required with action)', () => 
         callId: 'call-1',
         outcome: 'action_required',
         content: null,
-        action: approvalAction('Deploy?'),
+        action: {
+          type: 'approval',
+          message: 'Deploy?',
+          risk: 'high' as const,
+          operation: {
+            kind: 'command' as const,
+            command: 'echo approval',
+            argsPreview: { ok: true },
+          },
+          policyVersion: 'test-policy',
+          idempotencyKey: 'test-approval',
+        },
       },
     });
     const parts = deriveMessageParts(msg);
@@ -84,7 +95,18 @@ describe('C3 — tool-approval derivation (action_required with action)', () => 
         callId: 'call-99',
         outcome: 'action_required',
         content: null,
-        action: approvalAction('Confirm?'),
+        action: {
+          type: 'approval',
+          message: 'Confirm?',
+          risk: 'high' as const,
+          operation: {
+            kind: 'command' as const,
+            command: 'echo approval',
+            argsPreview: { ok: true },
+          },
+          policyVersion: 'test-policy',
+          idempotencyKey: 'test-approval',
+        },
       },
     });
     const parts = deriveMessageParts(msg);
@@ -93,7 +115,14 @@ describe('C3 — tool-approval derivation (action_required with action)', () => 
   });
 
   it('carries the action object from the tool result', () => {
-    const action = approvalAction('Approve this?');
+    const action = {
+      type: 'approval' as const,
+      message: 'Approve this?',
+      risk: 'high' as const,
+      operation: { kind: 'command' as const, command: 'echo approval', argsPreview: { ok: true } },
+      policyVersion: 'test-policy',
+      idempotencyKey: 'test-approval',
+    };
     const msg = message({
       id: 'tr',
       role: 'tool-result',
@@ -109,7 +138,7 @@ describe('C3 — tool-approval derivation (action_required with action)', () => 
     expect(part?.type === 'tool-approval' && part.action).toEqual(action);
   });
 
-  it('approved is undefined when call id is in neither set', () => {
+  it('state is pending when call id is absent from the approval state map', () => {
     const msg = message({
       id: 'tr',
       role: 'tool-result',
@@ -117,18 +146,31 @@ describe('C3 — tool-approval derivation (action_required with action)', () => 
         callId: 'call-1',
         outcome: 'action_required',
         content: null,
-        action: approvalAction('Proceed?'),
+        action: {
+          type: 'approval',
+          message: 'Proceed?',
+          risk: 'high' as const,
+          operation: {
+            kind: 'command' as const,
+            command: 'echo approval',
+            argsPreview: { ok: true },
+          },
+          policyVersion: 'test-policy',
+          idempotencyKey: 'test-approval',
+        },
       },
     });
     const parts = deriveMessageParts(msg, {
-      approvedToolCallIds: new Set(['call-99']),
-      deniedToolCallIds: new Set(['call-88']),
+      approvalStates: new Map([
+        ['call-99', 'approved'],
+        ['call-88', 'denied'],
+      ]),
     });
     const part = parts[0];
-    expect(part?.type === 'tool-approval' && part.approved).toBeUndefined();
+    expect(part?.type === 'tool-approval' && part.state).toBe('pending');
   });
 
-  it('approved is true when call id is in approvedToolCallIds', () => {
+  it('state is approved when call id maps to approved', () => {
     const msg = message({
       id: 'tr',
       role: 'tool-result',
@@ -136,17 +178,28 @@ describe('C3 — tool-approval derivation (action_required with action)', () => 
         callId: 'call-1',
         outcome: 'action_required',
         content: null,
-        action: approvalAction('Proceed?'),
+        action: {
+          type: 'approval',
+          message: 'Proceed?',
+          risk: 'high' as const,
+          operation: {
+            kind: 'command' as const,
+            command: 'echo approval',
+            argsPreview: { ok: true },
+          },
+          policyVersion: 'test-policy',
+          idempotencyKey: 'test-approval',
+        },
       },
     });
     const parts = deriveMessageParts(msg, {
-      approvedToolCallIds: new Set(['call-1']),
+      approvalStates: new Map([['call-1', 'approved']]),
     });
     const part = parts[0];
-    expect(part?.type === 'tool-approval' && part.approved).toBe(true);
+    expect(part?.type === 'tool-approval' && part.state).toBe('approved');
   });
 
-  it('approved is false when call id is in deniedToolCallIds', () => {
+  it('state is denied when call id maps to denied', () => {
     const msg = message({
       id: 'tr',
       role: 'tool-result',
@@ -154,36 +207,25 @@ describe('C3 — tool-approval derivation (action_required with action)', () => 
         callId: 'call-1',
         outcome: 'action_required',
         content: null,
-        action: approvalAction('Proceed?'),
+        action: {
+          type: 'approval',
+          message: 'Proceed?',
+          risk: 'high' as const,
+          operation: {
+            kind: 'command' as const,
+            command: 'echo approval',
+            argsPreview: { ok: true },
+          },
+          policyVersion: 'test-policy',
+          idempotencyKey: 'test-approval',
+        },
       },
     });
     const parts = deriveMessageParts(msg, {
-      deniedToolCallIds: new Set(['call-1']),
+      approvalStates: new Map([['call-1', 'denied']]),
     });
     const part = parts[0];
-    expect(part?.type === 'tool-approval' && part.approved).toBe(false);
-  });
-
-  it('approved prefers approvedToolCallIds over deniedToolCallIds when call id is in both (approved wins)', () => {
-    // Defense-in-depth: if a call id ends up in both sets (should not happen
-    // under normal operation), the approved check runs first so the UI shows
-    // approved rather than denied.
-    const msg = message({
-      id: 'tr',
-      role: 'tool-result',
-      toolResult: {
-        callId: 'call-1',
-        outcome: 'action_required',
-        content: null,
-        action: approvalAction('Proceed?'),
-      },
-    });
-    const parts = deriveMessageParts(msg, {
-      approvedToolCallIds: new Set(['call-1']),
-      deniedToolCallIds: new Set(['call-1']),
-    });
-    const part = parts[0];
-    expect(part?.type === 'tool-approval' && part.approved).toBe(true);
+    expect(part?.type === 'tool-approval' && part.state).toBe('denied');
   });
 });
 
@@ -196,7 +238,18 @@ describe('C3 — toolName resolution', () => {
         callId: 'call-deploy-prod',
         outcome: 'action_required',
         content: null,
-        action: approvalAction('Deploy to prod?'),
+        action: {
+          type: 'approval',
+          message: 'Deploy to prod?',
+          risk: 'high' as const,
+          operation: {
+            kind: 'command' as const,
+            command: 'echo approval',
+            argsPreview: { ok: true },
+          },
+          policyVersion: 'test-policy',
+          idempotencyKey: 'test-approval',
+        },
       },
     });
     const parts = deriveMessageParts(msg);
@@ -212,7 +265,18 @@ describe('C3 — toolName resolution', () => {
         callId: 'call-deploy-prod',
         outcome: 'action_required',
         content: null,
-        action: approvalAction('Deploy to prod?'),
+        action: {
+          type: 'approval',
+          message: 'Deploy to prod?',
+          risk: 'high' as const,
+          operation: {
+            kind: 'command' as const,
+            command: 'echo approval',
+            argsPreview: { ok: true },
+          },
+          policyVersion: 'test-policy',
+          idempotencyKey: 'test-approval',
+        },
       },
     });
     const parts = deriveMessageParts(msg, {
@@ -233,7 +297,18 @@ describe('C3 — toolName resolution', () => {
         callId: 'call-abc',
         outcome: 'action_required',
         content: null,
-        action: approvalAction('Continue?'),
+        action: {
+          type: 'approval',
+          message: 'Continue?',
+          risk: 'high' as const,
+          operation: {
+            kind: 'command' as const,
+            command: 'echo approval',
+            argsPreview: { ok: true },
+          },
+          policyVersion: 'test-policy',
+          idempotencyKey: 'test-approval',
+        },
       },
     });
     // No toolCallPair in context at all
@@ -255,7 +330,18 @@ describe('C3 — paired tool-call whose result is action_required', () => {
       callId: 'call-7',
       outcome: 'action_required' as const,
       content: null,
-      action: approvalAction('Deploy to production?'),
+      action: {
+        type: 'approval' as const,
+        message: 'Deploy to production?',
+        risk: 'high' as const,
+        operation: {
+          kind: 'command' as const,
+          command: 'echo approval',
+          argsPreview: { ok: true },
+        },
+        policyVersion: 'test-policy',
+        idempotencyKey: 'test-approval',
+      },
     };
     const msg = message({ id: 'tc', role: 'tool-call', toolCall: call });
     const parts = deriveMessageParts(msg, { toolCallPair: { call, result } });
@@ -267,21 +353,55 @@ describe('C3 — paired tool-call whose result is action_required', () => {
     expect(approval?.type === 'tool-approval' && approval.toolName).toBe('deploy_to_production');
   });
 
-  it('reflects the approved/denied state on the paired approval part', () => {
+  it('reflects the mapped state on the paired approval part', () => {
     const call = { id: 'call-7', name: 'deploy', arguments: {} };
     const result = {
       callId: 'call-7',
       outcome: 'action_required' as const,
       content: null,
-      action: approvalAction('Go?'),
+      action: {
+        type: 'approval' as const,
+        message: 'Go?',
+        risk: 'high' as const,
+        operation: {
+          kind: 'command' as const,
+          command: 'echo approval',
+          argsPreview: { ok: true },
+        },
+        policyVersion: 'test-policy',
+        idempotencyKey: 'test-approval',
+      },
     };
     const msg = message({ id: 'tc', role: 'tool-call', toolCall: call });
     const parts = deriveMessageParts(msg, {
       toolCallPair: { call, result },
-      approvedToolCallIds: new Set(['call-7']),
+      approvalStates: new Map([['call-7', 'approved']]),
     });
     const approval = parts[1];
-    expect(approval?.type === 'tool-approval' && approval.approved).toBe(true);
+    expect(approval?.type === 'tool-approval' && approval.state).toBe('approved');
+  });
+
+  it('keeps a paired input action on the neutral tool-call card and never emits approval controls', () => {
+    const call = { id: 'call-input', name: 'collect_input', arguments: {} };
+    const result = {
+      callId: 'call-input',
+      outcome: 'action_required' as const,
+      content: null,
+      action: {
+        type: 'input' as const,
+        message: 'Provide a deployment reason',
+        schema: {
+          type: 'object',
+          properties: { reason: { type: 'string' } },
+          required: ['reason'],
+        },
+      },
+    };
+    const msg = message({ id: 'tc-input', role: 'tool-call', toolCall: call });
+    const parts = deriveMessageParts(msg, { toolCallPair: { call, result } });
+
+    expect(parts.map((part) => part.type)).toEqual(['tool-call']);
+    expect(parts[0]?.type === 'tool-call' && parts[0].pair.result?.action).toEqual(result.action);
   });
 
   it('a paired SUCCESS result emits only the tool-call card (no approval prompt)', () => {
@@ -317,6 +437,33 @@ describe('C3 — plain tool-result path is unchanged', () => {
     });
     const parts = deriveMessageParts(msg);
     expect(parts[0]?.type).toBe('tool-result');
+  });
+
+  it('keeps a standalone input action on the neutral tool-result path with prompt and schema intact', () => {
+    const action = {
+      type: 'input' as const,
+      message: 'Provide a deployment reason',
+      schema: {
+        type: 'object',
+        properties: { reason: { type: 'string' } },
+        required: ['reason'],
+      },
+    };
+    const msg = message({
+      id: 'tr-input',
+      role: 'tool-result',
+      toolResult: {
+        callId: 'call-input',
+        outcome: 'action_required',
+        content: null,
+        action,
+      },
+    });
+
+    const parts = deriveMessageParts(msg);
+
+    expect(parts[0]?.type).toBe('tool-result');
+    expect(parts[0]?.type === 'tool-result' && parts[0].result.action).toEqual(action);
   });
 
   it('outcome=action_required WITHOUT action still emits a tool-result part', () => {
@@ -355,14 +502,14 @@ describe('C3 — compatibility: plain transcripts render unchanged', () => {
     expect(parts[0]?.type).toBe('markdown');
   });
 
-  it('context with no approval sets does not affect existing parts', () => {
+  it('context with no approval state does not affect existing parts', () => {
     const msg = message({
       role: 'tool-result',
       toolResult: { callId: 'c', outcome: 'success', content: 'done' },
     });
     const parts = deriveMessageParts(msg, {
-      approvedToolCallIds: undefined,
-      deniedToolCallIds: undefined,
+      approvalStates: undefined,
+      approvalResolutionInFlightIds: undefined,
     });
     expect(parts[0]?.type).toBe('tool-result');
   });

@@ -25,15 +25,17 @@
  * `view.dispatch`.
  */
 
+import { setupHappyDom } from '@lostgradient/testing';
 import type { Node as ProseMirrorNode } from '@milkdown/kit/prose/model';
 import { Schema } from '@milkdown/kit/prose/model';
-import type { Plugin, Transaction } from '@milkdown/kit/prose/state';
+import type { Transaction } from '@milkdown/kit/prose/state';
 import { EditorState } from '@milkdown/kit/prose/state';
-import type { EditorView } from '@milkdown/kit/prose/view';
+import { EditorView } from '@milkdown/kit/prose/view';
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import type { AnchorPluginState, AnchorState } from './anchor-decorations.js';
-import { anchorPluginKey, createAnchorPlugin } from './anchor-decorations.js';
+import { anchorPluginKey } from './anchor-plugin-state.js';
+import type { AnchorPluginState, AnchorState } from './anchor-plugin-types.js';
+import { createAnchorProsePlugin } from './anchor-plugin.js';
 import type { AnchorUpdate, Thread } from './comments/types.js';
 import type { FakeClock } from './test/fake-clock.js';
 import { installFakeClock } from './test/fake-clock.js';
@@ -97,17 +99,7 @@ function rangeOf(doc: ProseMirrorNode, quote: string): { from: number; to: numbe
 // Harness
 // ============================================================================
 
-/**
- * `createAnchorPlugin` returns a Milkdown `$prose` wrapper. Running its
- * initializer with a stub ctx hands back the real ProseMirror plugin.
- */
-type MilkdownProsePlugin = {
-  (ctx: {
-    wait: (timer: unknown) => Promise<void>;
-    update: (slice: unknown, updater: (plugins: Plugin[]) => Plugin[]) => void;
-  }): () => Promise<unknown>;
-  plugin: () => Plugin;
-};
+setupHappyDom();
 
 interface Harness {
   readonly state: EditorState;
@@ -122,48 +114,30 @@ interface Harness {
 
 async function createHarness(doc: ProseMirrorNode): Promise<Harness> {
   const updates: AnchorUpdate[] = [];
-  const milkdownPlugin = createAnchorPlugin({
+  const prosePlugin = createAnchorProsePlugin({
     onAnchorsUpdate: (received) => updates.push(...received),
-  }) as unknown as MilkdownProsePlugin;
-
-  const initialize = milkdownPlugin({
-    wait: async () => {},
-    update: () => {},
   });
-  await initialize();
-  const prosePlugin = milkdownPlugin.plugin();
-
-  let state = EditorState.create({ schema, doc, plugins: [prosePlugin] });
+  const mount = document.createElement('div');
+  document.body.append(mount);
   let transactionCount = 0;
-  let pluginView: {
-    update?: (view: EditorView, previous: EditorState) => void;
-    destroy?: () => void;
-  } = {};
-
-  const view = {
-    get state() {
-      return state;
-    },
-    dispatch(transaction: Transaction) {
-      const previous = state;
+  let view!: EditorView;
+  view = new EditorView(mount, {
+    state: EditorState.create({ schema, doc, plugins: [prosePlugin] }),
+    dispatchTransaction(transaction) {
       transactionCount += 1;
-      state = state.apply(transaction);
-      // Real ProseMirror notifies every plugin view after `updateState`.
-      pluginView.update?.(view as unknown as EditorView, previous);
+      view.updateState(view.state.apply(transaction));
     },
-  };
-
-  pluginView = prosePlugin.spec.view?.(view as unknown as EditorView) ?? {};
+  });
 
   function pluginState(): AnchorPluginState {
-    const current = anchorPluginKey.getState(state);
+    const current = anchorPluginKey.getState(view.state);
     if (!current) throw new Error('anchor plugin state missing');
     return current;
   }
 
   return {
     get state() {
-      return state;
+      return view.state;
     },
     get transactionCount() {
       return transactionCount;
@@ -174,7 +148,7 @@ async function createHarness(doc: ProseMirrorNode): Promise<Harness> {
     },
     syncThreads(threads) {
       view.dispatch(
-        state.tr.setMeta(anchorPluginKey, { type: 'sync', threads, source: 'external' }),
+        view.state.tr.setMeta(anchorPluginKey, { type: 'sync', threads, source: 'external' }),
       );
     },
     pluginState,
@@ -184,7 +158,8 @@ async function createHarness(doc: ProseMirrorNode): Promise<Harness> {
       return anchor;
     },
     destroy() {
-      pluginView.destroy?.();
+      view.destroy();
+      mount.remove();
     },
   };
 }
@@ -317,6 +292,51 @@ describe('a persistent orphan does not reschedule itself', () => {
     expect(clock.pendingCount).toBe(0);
     expect(harness.transactionCount).toBe(transactionsAfterOrphaning);
     expect(harness.updates).toHaveLength(1);
+  });
+
+  test('replaces a pending pass when a same-size edit supersedes its document', async () => {
+    const doc = makeDoc('Alpha beta gamma delta.');
+    const beta = rangeOf(doc, 'beta');
+
+    harness = await createHarness(doc);
+    clock = installFakeClock();
+    harness.syncThreads([
+      makeThread('thread-1', { ...beta, quote: 'beta', prefix: 'Alpha ', suffix: ' gamma delta.' }),
+    ]);
+    harness.dispatch(harness.state.tr.delete(beta.from, beta.to));
+    expect(clock.pendingCount).toBe(1);
+
+    const replacementPosition = 1;
+    harness.dispatch(
+      harness.state.tr.replaceWith(replacementPosition, replacementPosition + 1, schema.text('X')),
+    );
+    expect(clock.pendingCount).toBe(1);
+
+    clock.advance(DEBOUNCE_MS);
+    expect(harness.anchor('thread-1').status).toBe('orphaned');
+    expect(harness.updates).toHaveLength(1);
+  });
+
+  test('destroy clears a pending pass before it can dispatch', async () => {
+    const doc = makeDoc('Alpha beta gamma delta.');
+    const beta = rangeOf(doc, 'beta');
+
+    harness = await createHarness(doc);
+    clock = installFakeClock();
+    harness.syncThreads([
+      makeThread('thread-1', { ...beta, quote: 'beta', prefix: 'Alpha ', suffix: ' gamma delta.' }),
+    ]);
+    harness.dispatch(harness.state.tr.delete(beta.from, beta.to));
+    expect(clock.pendingCount).toBe(1);
+
+    const destroyedHarness = harness;
+    const transactionsBeforeDestroy = destroyedHarness.transactionCount;
+    destroyedHarness.destroy();
+    harness = null;
+    clock.advance(DEBOUNCE_MS);
+
+    expect(clock.pendingCount).toBe(0);
+    expect(destroyedHarness.transactionCount).toBe(transactionsBeforeDestroy);
   });
 
   test('the orphan is retried once per document change, and recovers when the text returns', async () => {

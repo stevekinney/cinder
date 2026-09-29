@@ -4,11 +4,7 @@ Expandable or leaf node within a tree view for hierarchical data navigation.
 
 ## Usage
 
-`TreeItem` is a compose-only leaf of [`Tree`](../tree/README.md).
-The idiomatic API is `Tree.Item`, reached through the parent
-namespace — see the [tree README](../tree/README.md#usage) for the composed
-snippet. The flat `@lostgradient/cinder/tree-item` subpath remains exported for
-à-la-carte builds that import the leaf directly.
+`TreeItem` is a compose-only leaf of [`Tree`](../tree/README.md). The idiomatic API is `Tree.Item`, reached through the parent namespace — see the [tree README](../tree/README.md#usage) for the composed snippet. The flat `@lostgradient/cinder` subpath remains exported for à-la-carte builds that import the leaf directly.
 
 ## Props
 
@@ -36,7 +32,6 @@ snippet. The flat `@lostgradient/cinder/tree-item` subpath remains exported for
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

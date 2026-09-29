@@ -15,6 +15,15 @@ type ResolutionOptions = {
 };
 const tierName = /^--cinder-border(?:-muted|-strong)?$/;
 
+function terminalTierReference(
+  reference: string,
+  depth: number,
+  mixed: boolean,
+  alias: string | undefined,
+): TierReference[] {
+  return [{ tier: reference, depth, isMix: mixed, ...(alias ? { alias } : {}) }];
+}
+
 /** The audit follows unescaped custom-property names; unsupported syntax fails closed. */
 function variableReference(
   node: Extract<valueParser.Node, { type: 'function' }>,
@@ -71,6 +80,82 @@ export function resolveTierReferences(
     return found;
   }
 
+  function currentColorReference(
+    depth: number,
+    mixed: boolean,
+    alias: string | undefined,
+  ): TierReference | undefined {
+    const currentColor = options.currentColor?.();
+    if (currentColor === undefined) return undefined;
+
+    const reference = {
+      tier: currentColor.tier,
+      depth: depth + currentColor.depth,
+      isMix: mixed || currentColor.isMix,
+    };
+    const resolvedAlias = alias ?? currentColor.alias;
+    return resolvedAlias === undefined ? reference : { ...reference, alias: resolvedAlias };
+  }
+
+  function resolveVarFunction(
+    node: Extract<valueParser.Node, { type: 'function' }>,
+    level: number,
+    depth: number,
+    mixed: boolean,
+    alias: string | undefined,
+  ): TierReference[] | undefined {
+    const comma = node.nodes.findIndex((item) => item.type === 'div' && item.value === ',');
+    const reference = variableReference(node);
+    if (reference === undefined) return undefined;
+
+    const variable = lookup(reference, level);
+    const invalid = variable?.value.trim().toLowerCase() === 'initial';
+    if (tierName.test(reference) && !invalid) {
+      return terminalTierReference(reference, depth, mixed, alias);
+    }
+
+    if (variable && !invalid && !cyclic(reference, level)) {
+      return visit(
+        valueParser(variable.value).nodes,
+        variable.level,
+        depth + 1,
+        mixed,
+        alias ?? reference,
+      );
+    }
+
+    return comma >= 0 ? visit(node.nodes.slice(comma + 1), level, depth, mixed, alias) : undefined;
+  }
+
+  function visitFunction(
+    node: Extract<valueParser.Node, { type: 'function' }>,
+    level: number,
+    depth: number,
+    mixed: boolean,
+    alias: string | undefined,
+  ): TierReference[] | undefined {
+    const name = node.value.toLowerCase();
+    return name === 'var'
+      ? resolveVarFunction(node, level, depth, mixed, alias)
+      : visit(node.nodes, level, depth, mixed || name === 'color-mix', alias);
+  }
+
+  function visitNode(
+    node: valueParser.Node,
+    level: number,
+    depth: number,
+    mixed: boolean,
+    alias: string | undefined,
+  ): TierReference[] | undefined {
+    if ('unclosed' in node && node.unclosed) return undefined;
+    if (node.type === 'word' && node.value.toLowerCase() === 'currentcolor') {
+      const reference = currentColorReference(depth, mixed, alias);
+      return reference === undefined ? [] : [reference];
+    }
+    if (node.type !== 'function') return [];
+    return visitFunction(node, level, depth, mixed, alias);
+  }
+
   function visit(
     nodes: readonly valueParser.Node[],
     level: number,
@@ -80,52 +165,7 @@ export function resolveTierReferences(
   ): TierReference[] | undefined {
     const references: TierReference[] = [];
     for (const node of nodes) {
-      if ('unclosed' in node && node.unclosed) return undefined;
-      if (node.type === 'word' && node.value.toLowerCase() === 'currentcolor') {
-        const currentColor = options.currentColor?.();
-        if (currentColor !== undefined) {
-          const reference = {
-            tier: currentColor.tier,
-            depth: depth + currentColor.depth,
-            isMix: mixed || currentColor.isMix,
-          };
-          const resolvedAlias = alias ?? currentColor.alias;
-          references.push(
-            resolvedAlias === undefined ? reference : { ...reference, alias: resolvedAlias },
-          );
-        }
-        continue;
-      }
-      if (node.type !== 'function') continue;
-      const name = node.value.toLowerCase();
-      if (name !== 'var') {
-        const nested = visit(node.nodes, level, depth, mixed || name === 'color-mix', alias);
-        if (!nested) return undefined;
-        references.push(...nested);
-        continue;
-      }
-      const comma = node.nodes.findIndex((item) => item.type === 'div' && item.value === ',');
-      const reference = variableReference(node);
-      if (reference === undefined) return undefined;
-      const variable = lookup(reference, level);
-      const invalid = variable?.value.trim().toLowerCase() === 'initial';
-      let resolved: TierReference[] | undefined;
-      // The three library tiers are terminal ink tokens supplied by the base
-      // stylesheet. Keep their identity instead of substituting their color.
-      if (tierName.test(reference) && !invalid) {
-        resolved = [{ tier: reference, depth, isMix: mixed, ...(alias ? { alias } : {}) }];
-      } else if (variable && !invalid && !cyclic(reference, level)) {
-        resolved = visit(
-          valueParser(variable.value).nodes,
-          variable.level,
-          depth + 1,
-          mixed,
-          alias ?? reference,
-        );
-      }
-      if (resolved === undefined && comma >= 0) {
-        resolved = visit(node.nodes.slice(comma + 1), level, depth, mixed, alias);
-      }
+      const resolved = visitNode(node, level, depth, mixed, alias);
       if (resolved === undefined) return undefined;
       references.push(...resolved);
     }

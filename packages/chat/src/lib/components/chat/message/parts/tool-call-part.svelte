@@ -4,6 +4,8 @@
   export type ToolCallPartProps = {
     /** The tool-call render part (call + optional resolved result). */
     part: ToolCallMessagePart;
+    /** Owning message occurrence ID, used to avoid duplicated nested timeline IDs. */
+    messageId?: string | undefined;
     /** Whether the tool-call card is expanded. Owned by the message. */
     expanded?: boolean;
     /** Called when the card's disclosure toggle is activated. */
@@ -13,26 +15,35 @@
 </script>
 
 <script lang="ts">
-  import ToolCallGroup from '../tool-call-group.svelte';
+  import ToolCallTimeline from '../tool-call-timeline.svelte';
 
-  const noop = (): void => {};
+  let {
+    part,
+    messageId,
+    expanded = false,
+    onToggle,
+    activityActive = true,
+  }: ToolCallPartProps = $props();
 
-  let { part, expanded = false, onToggle, activityActive = true }: ToolCallPartProps = $props();
-
-  // ToolCallGroup's `onToggle` is non-optional under exactOptionalPropertyTypes;
-  // collapse an omitted handler to a noop so we never forward `undefined`.
-  const handleToggle = $derived(onToggle ?? noop);
+  const pairs = $derived([part.pair]);
+  const timelineMessageId = $derived(
+    messageId === undefined ? part.pair.call.id : `${messageId}-tool-call-${part.pair.call.id}`,
+  );
+  const describeToolCall = $derived(
+    part.presentation === undefined ? undefined : () => part.presentation,
+  );
 </script>
 
 <!--
-  A tool invocation paired with its result, if one has arrived. The disclosure
-  state stays owned by the message (forwarded through `expanded`/`onToggle`) so
-  the historical "Show more / less" coupling is preserved unchanged.
+  A tool invocation paired with its result, if one has arrived. The timeline
+  owns its compact detail disclosure state so all tool activity shares one
+  hierarchy.
 -->
-<ToolCallGroup
-  pair={part.pair}
-  {...part.presentation ? { presentation: part.presentation } : {}}
+<ToolCallTimeline
+  {pairs}
+  messageId={timelineMessageId}
+  {...describeToolCall === undefined ? {} : { describeToolCall }}
   {expanded}
-  onToggle={handleToggle}
+  {onToggle}
   {activityActive}
 />

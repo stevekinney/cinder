@@ -1,7 +1,7 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 
-import type { PortalAttachmentOptions, PortalTargetInput } from './portal.utilities.svelte.ts';
+import type { PortalTargetInput } from './portal-attachment-types.ts';
 
 export type PortalProps = Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'class'> & {
   children: Snippet;
@@ -22,4 +22,4 @@ export interface PortalSchemaProps {
   inheritAttributes?: boolean;
 }
 
-export type { PortalAttachmentOptions };
+export type { PortalAttachmentOptions } from './portal-attachment-types.ts';

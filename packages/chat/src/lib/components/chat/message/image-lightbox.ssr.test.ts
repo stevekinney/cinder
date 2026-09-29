@@ -4,7 +4,7 @@
  * ImageLightbox SSR contract (CIN-377 review — supersedes the round-17/18
  * SSR-visible-dialog approach).
  *
- * `packages/components/src/_internal/OVERLAY-POLICY.md` § "SSR rule (hard
+ * `components/cinder/src/_internal/OVERLAY-POLICY.md` § "SSR rule (hard
  * constraint)" (the canonical contract authored for CIN-374) is authoritative
  * here: every Cinder overlay's SURFACE — the floating panel, listbox, or
  * dialog — renders NOTHING on the server, regardless of its initial `open`
@@ -39,9 +39,11 @@
 import { describe, expect, test } from 'bun:test';
 import { resolve } from 'node:path';
 
-import { renderToServerHtml } from '../../../test/server-render.ts';
+import { prepareSvelteServerSource, renderSvelteOnServer } from '@lostgradient/testing';
 
 const sourcePath = resolve(import.meta.dir, 'image-lightbox.svelte');
+
+await prepareSvelteServerSource(sourcePath);
 
 const images = [
   { src: '/a.jpg', alt: 'Image A' },
@@ -50,7 +52,7 @@ const images = [
 
 describe('ImageLightbox SSR contract', () => {
   test('an initially-open lightbox (open={true}) server-renders NO visible dialog at all', async () => {
-    const html = await renderToServerHtml(sourcePath, {
+    const html = await renderSvelteOnServer(sourcePath, {
       images,
       initialIndex: 0,
       open: true,
@@ -62,7 +64,7 @@ describe('ImageLightbox SSR contract', () => {
   });
 
   test('an initially-open lightbox with a non-zero initialIndex still server-renders no dialog', async () => {
-    const html = await renderToServerHtml(sourcePath, {
+    const html = await renderSvelteOnServer(sourcePath, {
       images,
       initialIndex: 1,
       open: true,
@@ -73,7 +75,7 @@ describe('ImageLightbox SSR contract', () => {
   });
 
   test('an initially-closed lightbox (open={false}, the default) emits no dialog markup at all', async () => {
-    const html = await renderToServerHtml(sourcePath, {
+    const html = await renderSvelteOnServer(sourcePath, {
       images,
       initialIndex: 0,
       open: false,

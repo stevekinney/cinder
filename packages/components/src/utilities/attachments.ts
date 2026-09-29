@@ -55,6 +55,15 @@ function isInsideEventPath(event: Event, element: Element): boolean {
   return path.some((entry) => entry instanceof Node && element.contains(entry));
 }
 
+function isIgnoredEvent(event: Event, ignoreRefs: ClickOutsideOptions['ignoreRefs']): boolean {
+  if (!ignoreRefs) return false;
+  for (const reference of ignoreRefs) {
+    const element = reference();
+    if (element && isInsideEventPath(event, element)) return true;
+  }
+  return false;
+}
+
 /**
  * Creates an outside-interaction attachment that calls a handler when a `click`, `pointerdown`,
  * `mousedown`, or `touchstart` lands outside the attached element (and outside any `ignoreRefs`).
@@ -94,12 +103,7 @@ export function createClickOutside(options: ClickOutsideOptions): Attachment<HTM
         return;
       }
       if (isInsideEventPath(event, node)) return;
-      if (ignoreRefs) {
-        for (const ref of ignoreRefs) {
-          const element = ref();
-          if (element && isInsideEventPath(event, element)) return;
-        }
-      }
+      if (isIgnoredEvent(event, ignoreRefs)) return;
       handler();
     }
 
@@ -145,7 +149,7 @@ export function overflowFade(): Attachment<HTMLElement> {
   return (node) => {
     if (typeof ResizeObserver === 'undefined') {
       node.removeAttribute('data-cinder-overflows');
-      return;
+      return undefined;
     }
 
     const update = () => {
@@ -227,7 +231,7 @@ export function overflowShadow(axis: OverflowShadowAxis): Attachment<HTMLElement
   return (node) => {
     if (typeof ResizeObserver === 'undefined') {
       node.removeAttribute(attributeName);
-      return;
+      return undefined;
     }
 
     const update = () => {
@@ -315,7 +319,7 @@ export function overflowFadeEdges(axis: OverflowFadeEdgesAxis): Attachment<HTMLE
     if (typeof ResizeObserver === 'undefined') {
       node.removeAttribute(startAttribute);
       node.removeAttribute(endAttribute);
-      return;
+      return undefined;
     }
 
     const update = () => {

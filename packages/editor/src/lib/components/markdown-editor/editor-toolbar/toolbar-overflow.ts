@@ -22,9 +22,8 @@ export interface ToolbarOverflowGroup {
 
 export interface ComputeToolbarOverflowInput {
   /**
-   * Width available to the flexible group region: the toolbar's own
-   * content-box width minus the always-visible leading cluster and any
-   * reserved trailing actions/spacer.
+   * Width available to the priority group region: the toolbar's own
+   * content-box width minus any reserved trailing actions/spacer.
    *
    * `null` means "not yet measured" -- SSR, pre-mount, or before the first
    * `ResizeObserver` entry has landed. CSS's `flex-wrap: nowrap;
@@ -34,7 +33,7 @@ export interface ComputeToolbarOverflowInput {
    * A `number` -- including zero or negative -- is a real measurement: the
    * toolbar has been measured and genuinely has that much (or that little)
    * room. This is deliberately NOT the same case as `null`: a toolbar that
-   * really is too narrow for even the leading cluster must still compute
+   * really is too narrow for even the first priority group must still compute
    * "everything overflows," not "keep everything inline because width
    * looked falsy."
    */
@@ -42,7 +41,7 @@ export interface ComputeToolbarOverflowInput {
   /**
    * The toolbar's flex `gap`, in pixels. Charged once for every group that
    * ends up inline (the boundary before it, whether that boundary is
-   * against the leading cluster or against the previous group -- both are
+   * against the toolbar edge or against the previous group -- both are
    * one flex gap) and once more if the overflow trigger is needed.
    */
   gap: number;

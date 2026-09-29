@@ -1,0 +1,382 @@
+/* ---------------------------------------------------------------------- */
+/* Page shell (design `Weft UI.dc.html` dashboard screen)             */
+/* ---------------------------------------------------------------------- */
+
+.weft-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding-bottom: 40px;
+}
+
+.weft-dashboard__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.weft-dashboard__title {
+  margin: 0;
+  font-size: var(--cinder-text-2xl);
+  font-weight: 600;
+  letter-spacing: var(--cinder-tracking-tight, normal);
+}
+
+.weft-dashboard__subtitle {
+  margin: 3px 0 0;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text-subtle);
+}
+
+.weft-dashboard__gate-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.weft-dashboard__gate-skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.weft-dashboard__full-state {
+  max-width: 520px;
+  margin: 24px auto;
+}
+
+.weft-dashboard__snippet {
+  margin-top: 16px;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Critical-alerts band (design: chip row)                                 */
+/* ---------------------------------------------------------------------- */
+
+.weft-critical-alerts-band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.weft-critical-alerts-band__skeleton {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.weft-alert-chip-skeleton {
+  width: 190px;
+  height: 38px;
+  border-radius: var(--cinder-radius-md);
+  background: var(--cinder-surface-inset);
+}
+
+.weft-critical-alerts-band__lock,
+.weft-critical-alerts-band__partial-lock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--cinder-text-subtle);
+  font-size: var(--cinder-text-sm);
+}
+
+.weft-critical-alerts-band__partial-lock {
+  font-size: var(--cinder-text-xs);
+}
+
+.weft-alert-chip {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 13px;
+  border-radius: var(--cinder-radius-md);
+  border: 1px solid var(--cinder-color-warning-border);
+  background: var(--cinder-color-warning-bg);
+  color: var(--cinder-color-warning-fg);
+  font-size: var(--cinder-text-sm);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .weft-alert-chip:hover {
+    filter: brightness(0.97);
+  }
+}
+
+.weft-alert-chip[data-tone='danger'] {
+  border-color: var(--cinder-color-danger-border);
+  background: var(--cinder-color-danger-bg);
+  color: var(--cinder-color-danger-fg);
+}
+
+.weft-alert-chip__label {
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Aggregate-cards band + shared card chrome                               */
+/* ---------------------------------------------------------------------- */
+
+.weft-aggregate-cards-band {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.weft-aggregate-cards-band__full {
+  grid-column: 1 / -1;
+}
+
+/* `Card` receives `class="weft-dashboard-card"` directly on its own root
+ * (see `dashboard-card.svelte` in schedules/workers/reviews), so this
+ * targets that class directly rather than as a descendant — a descendant
+ * selector can never match an app-owned class applied to Card's own
+ * root, and reaching for Cinder's private root class here would be an
+ * unreviewable coupling to Cinder's internal DOM structure. */
+.weft-dashboard-card {
+  overflow: hidden;
+}
+
+.weft-dashboard-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--cinder-border-muted);
+}
+
+.weft-dashboard-card__title {
+  font-size: var(--cinder-text-sm);
+  font-weight: 600;
+}
+
+.weft-dashboard-card__view-all {
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-accent-text);
+  text-decoration: none;
+}
+
+.weft-dashboard-card__meta {
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-subtle);
+  font-family: var(--cinder-font-mono);
+}
+
+.weft-dashboard-card__error {
+  margin: 0;
+  padding: 16px;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-color-danger-fg);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Workflow-status card                                                    */
+/* ---------------------------------------------------------------------- */
+
+.weft-status-card__skeleton {
+  padding: 16px;
+}
+
+.weft-status-card__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+}
+
+.weft-status-card__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 15px 12px;
+  border-inline-end: 1px solid var(--cinder-border-muted);
+  border-bottom: 1px solid var(--cinder-border-muted);
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .weft-status-card__cell:hover {
+    background: var(--cinder-surface-hover);
+  }
+}
+
+.weft-status-card__cell-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--cinder-text-2xs);
+  color: var(--cinder-text-subtle);
+}
+
+.weft-status-card__cell-count {
+  font-size: var(--cinder-text-2xl);
+  font-weight: 600;
+  font-family: var(--cinder-font-mono);
+}
+
+.weft-status-card__cell-count[data-tone='danger'] {
+  color: var(--cinder-color-danger-fg);
+}
+
+.weft-status-card__cell-count[data-tone='warning'] {
+  color: var(--cinder-color-warning-fg);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Failure-category card                                                   */
+/* ---------------------------------------------------------------------- */
+
+.weft-failure-category-card__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 14px 16px;
+}
+
+.weft-failure-category-card__empty {
+  margin: 0;
+  padding: 16px;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text-subtle);
+}
+
+.weft-failure-category-card__list {
+  list-style: none;
+  margin: 0;
+  padding: 8px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.weft-failure-category-card__row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 6px 8px;
+  border-radius: var(--cinder-radius-md);
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .weft-failure-category-card__row:hover {
+    background: var(--cinder-surface-hover);
+  }
+}
+
+.weft-failure-category-card__label {
+  width: 96px;
+  flex: none;
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-muted);
+}
+
+.weft-failure-category-card__meter {
+  flex: 1;
+  min-width: 0;
+}
+
+.weft-failure-category-card__count {
+  width: 28px;
+  flex: none;
+  text-align: right;
+  font-size: var(--cinder-text-xs);
+  font-family: var(--cinder-font-mono);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Recent-activity feed band                                               */
+/* ---------------------------------------------------------------------- */
+
+.weft-activity-feed {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.weft-activity-feed__pending {
+  align-self: center;
+  padding: 5px 12px;
+  border: 1px solid var(--cinder-accent);
+  border-radius: var(--cinder-radius-full, 9999px);
+  background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
+  color: var(--cinder-accent-text);
+  font: inherit;
+  font-size: var(--cinder-text-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.weft-activity-feed__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.weft-activity-feed__empty {
+  margin: 0;
+  padding: 10px 0;
+  text-align: center;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text-subtle);
+}
+
+.weft-activity-feed__row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.weft-activity-feed__text {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--cinder-text-sm);
+}
+
+.weft-activity-feed__detail {
+  margin-inline-start: 6px;
+  color: var(--cinder-text-subtle);
+}
+
+.weft-activity-feed__time {
+  flex: none;
+  font-size: var(--cinder-text-2xs);
+  color: var(--cinder-text-disabled);
+  font-family: var(--cinder-font-mono);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Responsive (PROJECT-BRIEF binding rules)                                */
+/* ---------------------------------------------------------------------- */
+
+@media (max-width: 47.99rem) {
+  .weft-dashboard {
+    gap: 16px;
+  }
+
+  .weft-dashboard__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .weft-status-card__grid {
+    grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+  }
+
+  .weft-failure-category-card__label {
+    width: 76px;
+  }
+}

@@ -115,17 +115,55 @@ export function dataGridKeyToAction(
 
   if (event.key === 'Tab') {
     const direction = event.shiftKey ? -1 : 1;
-    const nextCellIndex = activeRowIndex * columnCount + activeColumnIndex + direction;
-    const lastCellIndex = rowCount * columnCount - 1;
-    if (nextCellIndex < 0 || nextCellIndex > lastCellIndex) return undefined;
+    const target = getAdjacentCellIndex(
+      activeRowIndex,
+      activeColumnIndex,
+      columnCount,
+      rowCount,
+      direction,
+    );
+    if (!target) return undefined;
 
     return {
       type: 'move-cell',
-      rowIndex: Math.floor(nextCellIndex / columnCount),
-      columnIndex: nextCellIndex % columnCount,
+      rowIndex: target.rowIndex,
+      columnIndex: target.columnIndex,
       extend: false,
     };
   }
 
   return undefined;
+}
+
+/**
+ * Row/column index of the cell `direction` positions away from
+ * `(rowIndex, columnIndex)` in row-major reading order, or `undefined` when
+ * that position falls outside the grid. Shared by Tab navigation and the
+ * editing keyboard contract's Tab-to-commit-and-move behavior.
+ */
+export function getAdjacentCellIndex(
+  rowIndex: number,
+  columnIndex: number,
+  columnCount: number,
+  rowCount: number,
+  direction: number,
+): { rowIndex: number; columnIndex: number } | undefined {
+  const nextCellIndex = rowIndex * columnCount + columnIndex + direction;
+  const lastCellIndex = rowCount * columnCount - 1;
+  if (nextCellIndex < 0 || nextCellIndex > lastCellIndex) return undefined;
+
+  return {
+    rowIndex: Math.floor(nextCellIndex / columnCount),
+    columnIndex: nextCellIndex % columnCount,
+  };
+}
+
+/**
+ * `true` for a keydown that represents a single printable character typed
+ * with no Ctrl/Meta/Alt modifier — the trigger for typing directly into an
+ * editable, focused, not-yet-editing cell to begin an edit with that
+ * character as the initial draft.
+ */
+export function isPrintableCharacterKeydown(event: KeyboardEvent): boolean {
+  return event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey;
 }

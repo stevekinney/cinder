@@ -6,7 +6,7 @@ Navigate directly between user-authored turns in a long Chat transcript with key
 
 ```svelte
 <script lang="ts">
-  import ChatNavigationRail from '@lostgradient/chat/navigation-rail';
+  import { ChatNavigationRail } from '@lostgradient/chat';
 </script>
 
 <ChatNavigationRail {messages} {viewport} scrollToMessage={chat.scrollToMessage} />

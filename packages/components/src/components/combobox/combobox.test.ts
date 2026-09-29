@@ -2,10 +2,10 @@
 import * as matchers from '@testing-library/jest-dom/matchers';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { tick } from 'svelte';
+import { flushSync, tick } from 'svelte';
 
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import { stripCinderComponentsLayer } from '../../test/css.ts';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 
 expect.extend(matchers);
 
@@ -18,7 +18,7 @@ const {
   cleanup,
 } = await import('@testing-library/svelte');
 const { default: Combobox } = await import('./combobox.svelte');
-const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
+const { pushEscapeHandler, resetEscapeStack } = await import('../../_internal/overlay.ts');
 
 // These tests render into the shared `document.body` (see `render` below). The
 // listbox opens on focus through Svelte effects, so options are not guaranteed
@@ -35,7 +35,7 @@ beforeEach(() => {
   document.body.replaceChildren();
   // Clear the shared module-level escape stack so a sibling-overlay handler
   // registered by one test can't leak into the next and skew the LIFO order.
-  _resetEscapeStack();
+  resetEscapeStack();
 });
 afterEach(() => cleanup());
 
@@ -106,7 +106,7 @@ describe('Combobox', () => {
 
   test('select via mousedown closes the listbox and sets the input value', async () => {
     const { container } = render(Combobox, { id: 'editable-fruit', options: fruits });
-    const input = container.querySelector('#editable-fruit') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#editable-fruit'), HTMLInputElement);
     await fireEvent.focus(input);
 
     const option = await findOption('Apricot');
@@ -118,7 +118,7 @@ describe('Combobox', () => {
 
   test('after selection, editing the input filters options and reopens the listbox', async () => {
     const { container } = render(Combobox, { id: 'editable-fruit', options: fruits });
-    const input = container.querySelector('#editable-fruit') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#editable-fruit'), HTMLInputElement);
     await fireEvent.focus(input);
 
     const appleOption = await findOption('Apple');
@@ -138,7 +138,7 @@ describe('Combobox', () => {
 
   test('user can select a different option after the first selection', async () => {
     const { container } = render(Combobox, { id: 'editable-fruit', options: fruits });
-    const input = container.querySelector('#editable-fruit') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#editable-fruit'), HTMLInputElement);
     await fireEvent.focus(input);
 
     const appleOption = await findOption('Apple');
@@ -161,7 +161,7 @@ describe('Combobox', () => {
 
   test('typing after selection does not reset the input to the previously-selected label', async () => {
     const { container } = render(Combobox, { id: 'editable-fruit', options: fruits });
-    const input = container.querySelector('#editable-fruit') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#editable-fruit'), HTMLInputElement);
     await fireEvent.focus(input);
 
     const appleOption = await findOption('Apple');
@@ -552,7 +552,7 @@ describe('Combobox structure', () => {
 describe('Combobox filtering', () => {
   test('opens on focus and shows all options', async () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits });
-    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    const input = requiredInstance(container.querySelector(`#fruit`), HTMLInputElement);
     await fireEvent.focus(input);
     await waitForListbox();
     const options = Array.from(container.querySelectorAll('[role="option"]'));
@@ -561,7 +561,7 @@ describe('Combobox filtering', () => {
 
   test('typing filters options by case-insensitive substring', async () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits });
-    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    const input = requiredInstance(container.querySelector(`#fruit`), HTMLInputElement);
     await fireEvent.focus(input);
     await fireEvent.input(input, { target: { value: 'an' } });
     await waitFor(() => {
@@ -572,7 +572,7 @@ describe('Combobox filtering', () => {
 
   test('portaled options preserve the root-scoped styling context', async () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits });
-    const input = container.querySelector('#fruit') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#fruit'), HTMLInputElement);
     const originalRoot = input.closest('.cinder-combobox');
     expect(originalRoot).not.toBeNull();
     await fireEvent.focus(input);
@@ -587,7 +587,7 @@ describe('Combobox filtering', () => {
 
   test('a custom instance class survives on the portaled options panel', async () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits, class: 'compact' });
-    const input = container.querySelector('#fruit') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#fruit'), HTMLInputElement);
     await fireEvent.focus(input);
     const option = await findOption('Apple');
     const scopedPanel = document.body.querySelector(
@@ -599,19 +599,24 @@ describe('Combobox filtering', () => {
     expect(option.closest('.cinder-combobox.compact')).not.toBeNull();
   });
 
-  test('typing with no matches renders the empty state', async () => {
+  test('typing with no matches renders the empty state with zero option elements (COR-499)', async () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits });
-    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    const input = requiredInstance(container.querySelector(`#fruit`), HTMLInputElement);
     input.style.setProperty('--cinder-surface', 'hotpink');
     input.style.colorScheme = 'dark';
     await fireEvent.focus(input);
     await fireEvent.input(input, { target: { value: 'zzz' } });
     await waitFor(() => {
-      expect(container.querySelector('[role="option"]:not([aria-disabled="true"])')).toBeNull();
+      // Semantic assertion, not a fake-disabled-option check: no option
+      // elements exist at all — enabled or disabled — while the result set
+      // is empty.
+      expect(container.querySelector('[role="option"]')?.outerHTML ?? null).toBeNull();
       const emptyState = container.querySelector('.cinder-combobox__empty');
       const panel = emptyState?.closest('.cinder-popover') as HTMLElement | null;
       expect(emptyState?.textContent?.trim()).toBe('No results');
-      expect(emptyState?.getAttribute('aria-selected')).toBe('false');
+      expect(emptyState?.hasAttribute('role')).toBe(false);
+      expect(emptyState?.hasAttribute('aria-selected')).toBe(false);
+      expect(emptyState?.hasAttribute('aria-disabled')).toBe(false);
       expect(emptyState?.closest('[role="listbox"]')?.id).toBe('fruit-listbox');
       // The portaled empty panel preserves the `.cinder-combobox` root-scoped
       // styling hook (AGENTS.md § Conventions), so a consumer override such as
@@ -625,29 +630,103 @@ describe('Combobox filtering', () => {
     });
   });
 
+  test('the empty result set is described by one status region outside the listbox (COR-499)', async () => {
+    const { container } = render(Combobox, { id: 'fruit', options: fruits });
+    const input = requiredInstance(container.querySelector('#fruit'), HTMLInputElement);
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'zzz' } });
+    await waitFor(() => {
+      expect(container.querySelector('.cinder-combobox__empty[data-cinder-active]')).not.toBeNull();
+    });
+
+    const describedBy = input.getAttribute('aria-describedby');
+    expect(describedBy).not.toBeNull();
+    const ids = describedBy!.split(/\s+/);
+    const statusElement = document.body.querySelector('.cinder-combobox__empty-status');
+    expect(statusElement).not.toBeNull();
+    expect(ids).toContain(statusElement!.id);
+    expect(statusElement?.getAttribute('role')).toBe('status');
+    expect(statusElement?.textContent?.trim()).toBe('No results');
+    // Exactly one status region announces "No results" — it must not also be
+    // nested inside the `role="listbox"` panel (that panel's fake option was
+    // the COR-499 defect: two elements duplicating the same announcement).
+    expect(statusElement?.closest('[role="listbox"]')).toBeNull();
+    // No aria-activedescendant while the result set is empty.
+    expect(input.hasAttribute('aria-activedescendant')).toBe(false);
+  });
+
+  test('Arrow and Enter cannot select or emit a value change while the result set is empty (COR-499)', async () => {
+    let changeCount = 0;
+    const { container } = render(Combobox, {
+      id: 'fruit',
+      options: fruits,
+      onValueChange: () => {
+        changeCount += 1;
+      },
+    });
+    const input = requiredInstance(container.querySelector('#fruit'), HTMLInputElement);
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'zzz' } });
+    await waitFor(() => {
+      expect(container.querySelector('.cinder-combobox__empty[data-cinder-active]')).not.toBeNull();
+    });
+
+    await fireEvent.keyDown(input, { key: 'ArrowDown' });
+    await fireEvent.keyDown(input, { key: 'ArrowUp' });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(changeCount).toBe(0);
+    expect(input.value).toBe('zzz');
+    expect(input.hasAttribute('aria-activedescendant')).toBe(false);
+  });
+
+  test('clearing the filter restores options, active-descendant navigation, and selection, with no stale empty description (COR-499)', async () => {
+    const { container } = render(Combobox, { id: 'fruit', options: fruits });
+    const input = requiredInstance(container.querySelector('#fruit'), HTMLInputElement);
+    await fireEvent.focus(input);
+    await fireEvent.input(input, { target: { value: 'zzz' } });
+    await waitFor(() => {
+      expect(container.querySelector('.cinder-combobox__empty[data-cinder-active]')).not.toBeNull();
+    });
+
+    // Clearing the filter re-arms the roving index to the first enabled
+    // option (handleInput's own setActiveIndex(firstEnabledFilteredIndex())),
+    // the same as typing any other filter text — no extra ArrowDown needed.
+    await fireEvent.input(input, { target: { value: '' } });
+
+    const option = await findOption('Apple');
+    await waitFor(() => {
+      expect(input.getAttribute('aria-activedescendant')).toBe(option.id);
+    });
+    const describedByAfterClear = input.getAttribute('aria-describedby') ?? '';
+    expect(describedByAfterClear.split(/\s+/)).not.toContain(`${input.id}-empty-status`);
+
+    await fireEvent.mouseDown(option);
+    expect(input.value).toBe('Apple');
+  });
+
   test('a custom instance class survives on the portaled empty panel', async () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits, class: 'compact' });
-    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    const input = requiredInstance(container.querySelector(`#fruit`), HTMLInputElement);
     const originalRoot = input.closest('.cinder-combobox.compact');
     expect(originalRoot).not.toBeNull();
     await fireEvent.focus(input);
     await fireEvent.input(input, { target: { value: 'zzz' } });
-    await waitFor(() => {
-      const emptyState = container.querySelector('.cinder-combobox__empty');
-      const scopedPanel = document.body.querySelector(
-        '.cinder-combobox.compact .cinder-combobox__empty-panel',
-      );
-      // Documents the AGENTS.md override hook: `.cinder-combobox.compact
-      // .cinder-combobox__empty` must keep matching after the empty panel is
-      // portaled, so both classes need to land on the same ancestor.
-      const scopedAncestor = emptyState?.closest('.cinder-combobox.compact');
-      expect(scopedPanel).not.toBeNull();
-      expect(scopedPanel?.contains(emptyState)).toBe(true);
-      expect(scopedAncestor).not.toBeNull();
-      expect(scopedAncestor).not.toBe(originalRoot);
-      expect(originalRoot?.contains(scopedAncestor ?? null)).toBe(false);
-      expect(scopedAncestor?.querySelector('.cinder-combobox')).toBeNull();
-    });
+    flushSync();
+    const emptyState = container.querySelector('.cinder-combobox__empty');
+    const scopedPanel = document.body.querySelector(
+      '.cinder-combobox.compact .cinder-combobox__empty-panel',
+    );
+    // Documents the AGENTS.md override hook: `.cinder-combobox.compact
+    // .cinder-combobox__empty` must keep matching after the empty panel is
+    // portaled, so both classes need to land on the same ancestor.
+    const scopedAncestor = emptyState?.closest('.cinder-combobox.compact');
+    expect(scopedPanel).not.toBeNull();
+    expect(scopedPanel?.contains(emptyState)).toBe(true);
+    expect(scopedAncestor).not.toBeNull();
+    expect(scopedAncestor).not.toBe(originalRoot);
+    expect(originalRoot?.contains(scopedAncestor ?? null)).toBe(false);
+    expect(scopedAncestor?.querySelector('.cinder-combobox')?.outerHTML ?? null).toBeNull();
   });
 
   test('custom filter callback is honored', async () => {
@@ -656,7 +735,7 @@ describe('Combobox filtering', () => {
       options: fruits,
       filter: (option: { value: string }) => option.value.startsWith('a'),
     });
-    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    const input = requiredInstance(container.querySelector(`#fruit`), HTMLInputElement);
     await fireEvent.focus(input);
     await waitFor(() => {
       const options = Array.from(container.querySelectorAll('[role="option"]'));
@@ -671,7 +750,7 @@ describe('Combobox filtering', () => {
       options: many,
       maxVisibleOptions: 50,
     });
-    const input = container.querySelector('#big') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#big'), HTMLInputElement);
     await fireEvent.focus(input);
     await waitFor(() => {
       const options = Array.from(container.querySelectorAll('[role="option"]'));
@@ -683,7 +762,7 @@ describe('Combobox filtering', () => {
 describe('Combobox keyboard', () => {
   test('ArrowDown opens the listbox and activates the first option', async () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits });
-    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    const input = requiredInstance(container.querySelector(`#fruit`), HTMLInputElement);
     input.focus();
     await fireEvent.keyDown(input, { key: 'ArrowDown' });
     await waitFor(() => {
@@ -697,7 +776,7 @@ describe('Combobox keyboard', () => {
 
   test('ArrowDown wraps from the last option to the first', async () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits });
-    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    const input = requiredInstance(container.querySelector(`#fruit`), HTMLInputElement);
     input.focus();
     // Open and move to the last index.
     await fireEvent.focus(input);
@@ -715,21 +794,20 @@ describe('Combobox keyboard', () => {
 
   test('Enter selects the active option', async () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits });
-    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    const input = requiredInstance(container.querySelector(`#fruit`), HTMLInputElement);
     input.focus();
     await fireEvent.keyDown(input, { key: 'ArrowDown' });
     await fireEvent.keyDown(input, { key: 'ArrowDown' });
     await fireEvent.keyDown(input, { key: 'Enter' });
-    await waitFor(() => {
-      expect(input.value).toBe('Apricot');
-      // Listbox closes in the same selection effect — assert together.
-      expect(container.querySelector('[role="listbox"]')).toBeNull();
-    });
+    flushSync();
+    expect(input.value).toBe('Apricot');
+    // Listbox closes in the same selection effect — assert together.
+    expect(container.querySelector('[role="listbox"]')?.outerHTML ?? null).toBeNull();
   });
 
   test('Escape closes the listbox without selecting', async () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits });
-    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    const input = requiredInstance(container.querySelector(`#fruit`), HTMLInputElement);
     input.focus();
     await fireEvent.focus(input);
     await waitFor(() => expect(container.querySelector('[role="listbox"]')).not.toBeNull());
@@ -744,7 +822,7 @@ describe('Combobox keyboard', () => {
       { value: 'banana', label: 'Banana' },
     ];
     const { container } = render(Combobox, { id: 'fruit', options: optionsWithDisabled });
-    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    const input = requiredInstance(container.querySelector(`#fruit`), HTMLInputElement);
     input.focus();
     await fireEvent.keyDown(input, { key: 'ArrowDown' });
     await waitFor(() => {
@@ -767,7 +845,7 @@ describe('Combobox keyboard', () => {
       { value: 'banana', label: 'Banana', disabled: true },
     ];
     const { container } = render(Combobox, { id: 'fruit', options: optionsWithDisabled });
-    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    const input = requiredInstance(container.querySelector(`#fruit`), HTMLInputElement);
     input.focus();
     await fireEvent.keyDown(input, { key: 'ArrowUp' });
     await waitFor(() => {
@@ -782,7 +860,7 @@ describe('Combobox keyboard', () => {
       { value: 'apricot', label: 'Apricot', disabled: true },
     ];
     const { container } = render(Combobox, { id: 'fruit', options: optionsWithDisabled });
-    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    const input = requiredInstance(container.querySelector(`#fruit`), HTMLInputElement);
     input.focus();
     await fireEvent.keyDown(input, { key: 'ArrowDown' });
     await waitFor(() => {
@@ -799,7 +877,7 @@ describe('Combobox keyboard', () => {
 describe('Combobox selection', () => {
   test('mousedown on an option selects it', async () => {
     const { container } = render(Combobox, { id: 'fruit', options: fruits });
-    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    const input = requiredInstance(container.querySelector(`#fruit`), HTMLInputElement);
     await fireEvent.focus(input);
     const apricot = await findOption('Apricot');
     await fireEvent.mouseDown(apricot);
@@ -812,7 +890,7 @@ describe('Combobox selection', () => {
       { value: 'durian', label: 'Durian', disabled: true },
     ];
     const { container } = render(Combobox, { id: 'fruit', options: disabledFruits });
-    const input = container.querySelector(`#fruit`) as HTMLInputElement;
+    const input = requiredInstance(container.querySelector(`#fruit`), HTMLInputElement);
     await fireEvent.focus(input);
     const durian = await findOption('Durian');
     expect(durian.getAttribute('aria-disabled')).toBe('true');
@@ -896,7 +974,7 @@ describe('Combobox rich option rows', () => {
 
   test('option with avatar renders an <img> with empty alt', async () => {
     const { container } = render(Combobox, { id: 'rich', options: richFruits });
-    const input = container.querySelector('#rich') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#rich'), HTMLInputElement);
     await fireEvent.focus(input);
     await waitForListbox();
     const appleOption = container.querySelector('[role="option"]');
@@ -909,7 +987,7 @@ describe('Combobox rich option rows', () => {
   test('option with empty-string avatar does not render an <img>', async () => {
     const options = [{ value: 'x', label: 'X', avatar: '' }];
     const { container } = render(Combobox, { id: 'rich', options });
-    const input = container.querySelector('#rich') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#rich'), HTMLInputElement);
     await fireEvent.focus(input);
     await waitForListbox();
     const option = container.querySelector('[role="option"]');
@@ -919,7 +997,7 @@ describe('Combobox rich option rows', () => {
   test('option with whitespace-only avatar does not render an <img>', async () => {
     const options = [{ value: 'x', label: 'X', avatar: '   ' }];
     const { container } = render(Combobox, { id: 'rich', options });
-    const input = container.querySelector('#rich') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#rich'), HTMLInputElement);
     await fireEvent.focus(input);
     await waitForListbox();
     const option = container.querySelector('[role="option"]');
@@ -928,7 +1006,7 @@ describe('Combobox rich option rows', () => {
 
   test('option with description renders the description text inside the <li>', async () => {
     const { container } = render(Combobox, { id: 'rich', options: richFruits });
-    const input = container.querySelector('#rich') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#rich'), HTMLInputElement);
     await fireEvent.focus(input);
     await waitForListbox();
     const appleOption = container.querySelector('[role="option"]');
@@ -939,7 +1017,7 @@ describe('Combobox rich option rows', () => {
 
   test('option with description carries aria-label composed from label and description', async () => {
     const { container } = render(Combobox, { id: 'rich', options: richFruits });
-    const input = container.querySelector('#rich') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#rich'), HTMLInputElement);
     await fireEvent.focus(input);
     await waitForListbox();
     const options = container.querySelectorAll('[role="option"]');
@@ -949,7 +1027,7 @@ describe('Combobox rich option rows', () => {
 
   test('plain option (no description) has no aria-label', async () => {
     const { container } = render(Combobox, { id: 'rich', options: richFruits });
-    const input = container.querySelector('#rich') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#rich'), HTMLInputElement);
     await fireEvent.focus(input);
     await waitForListbox();
     const options = container.querySelectorAll('[role="option"]');
@@ -959,7 +1037,7 @@ describe('Combobox rich option rows', () => {
 
   test('plain option renders only label, no avatar or description nodes', async () => {
     const { container } = render(Combobox, { id: 'rich', options: richFruits });
-    const input = container.querySelector('#rich') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#rich'), HTMLInputElement);
     await fireEvent.focus(input);
     await waitForListbox();
     const options = container.querySelectorAll('[role="option"]');
@@ -970,7 +1048,7 @@ describe('Combobox rich option rows', () => {
 
   test('selecting a rich option sets value and textInputValue from value/label only', async () => {
     const { container } = render(Combobox, { id: 'rich', options: richFruits });
-    const input = container.querySelector('#rich') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#rich'), HTMLInputElement);
     await fireEvent.focus(input);
     const appleOption = await findOption('Apple');
     await fireEvent.mouseDown(appleOption);
@@ -988,7 +1066,7 @@ describe('Combobox rich option rows', () => {
 
   test('default filter matches description substring (case-insensitive)', async () => {
     const { container } = render(Combobox, { id: 'rich', options: richFruits });
-    const input = container.querySelector('#rich') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#rich'), HTMLInputElement);
     await fireEvent.focus(input);
     await fireEvent.input(input, { target: { value: 'curved' } });
     await waitFor(() => {
@@ -1010,7 +1088,7 @@ describe('Combobox Escape restores committed label', () => {
 
   test('Escape restores textInputValue to the committed option label when the dropdown is open with partial text', async () => {
     const { container } = render(Combobox, { id: 'escape-test', options: escapeFruits });
-    const input = container.querySelector('#escape-test') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#escape-test'), HTMLInputElement);
 
     // Open the dropdown and select Apple
     input.focus();
@@ -1018,7 +1096,8 @@ describe('Combobox Escape restores committed label', () => {
     await waitFor(() => expect(container.querySelector('[role="listbox"]')).not.toBeNull());
     const appleOption = await findOption('Apple');
     await fireEvent.mouseDown(appleOption);
-    await waitFor(() => expect(container.querySelector('[role="listbox"]')).toBeNull());
+    flushSync();
+    expect(container.querySelector('[role="listbox"]')?.outerHTML ?? null).toBeNull();
     expect(input.value).toBe('Apple');
 
     // Type partial text to open the dropdown again
@@ -1035,7 +1114,7 @@ describe('Combobox Escape restores committed label', () => {
 
   test('Escape clears textInputValue when no option has been committed', async () => {
     const { container } = render(Combobox, { id: 'escape-empty', options: escapeFruits });
-    const input = container.querySelector('#escape-empty') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#escape-empty'), HTMLInputElement);
 
     // Type something without selecting to open the dropdown
     input.focus();
@@ -1061,7 +1140,7 @@ describe('Combobox Escape restores committed label', () => {
       value: 'banana',
       textInputValue: 'Banana',
     });
-    const input = container.querySelector('#escape-prefilled') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#escape-prefilled'), HTMLInputElement);
     await tick();
     expect(input.value).toBe('Banana');
 
@@ -1082,7 +1161,7 @@ describe('Combobox Escape restores committed label', () => {
     // mount, so its capture-phase escape-stack handler is absent. Escape must
     // still close the combobox directly rather than leaving it stuck open.
     const { container } = render(Combobox, { id: 'escape-no-popover', options: escapeFruits });
-    const input = container.querySelector('#escape-no-popover') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#escape-no-popover'), HTMLInputElement);
 
     input.focus();
     await fireEvent.focus(input);
@@ -1116,7 +1195,7 @@ describe('Combobox Escape restores committed label', () => {
 
     try {
       const { container } = render(Combobox, { id: 'escape-nested', options: escapeFruits });
-      const input = container.querySelector('#escape-nested') as HTMLInputElement;
+      const input = requiredInstance(container.querySelector('#escape-nested'), HTMLInputElement);
 
       input.focus();
       await fireEvent.focus(input);
@@ -1145,9 +1224,10 @@ describe('Combobox Escape restores committed label', () => {
       // being torn down the instant `open` flips false — the whole point of
       // decoupling `panelMounted` from the live `emptyVisible` derived. The
       // element disappears once that exit genuinely completes.
-      await waitFor(() => {
-        expect(container.querySelector('.cinder-combobox__empty[data-cinder-active]')).toBeNull();
-      });
+      flushSync();
+      expect(
+        container.querySelector('.cinder-combobox__empty[data-cinder-active]')?.outerHTML ?? null,
+      ).toBeNull();
     } finally {
       releaseParentEscape();
     }
@@ -1158,7 +1238,7 @@ describe('Combobox Escape restores committed label', () => {
     // without choosing an option) must restore the committed label, mirroring
     // Escape — otherwise the input shows stale text while `value` is unchanged.
     const { container } = render(Combobox, { id: 'blur-restore', options: escapeFruits });
-    const input = container.querySelector('#blur-restore') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#blur-restore'), HTMLInputElement);
 
     // Commit Apple.
     input.focus();
@@ -1166,7 +1246,8 @@ describe('Combobox Escape restores committed label', () => {
     await waitFor(() => expect(container.querySelector('[role="listbox"]')).not.toBeNull());
     const appleOption = await findOption('Apple');
     await fireEvent.mouseDown(appleOption);
-    await waitFor(() => expect(container.querySelector('[role="listbox"]')).toBeNull());
+    flushSync();
+    expect(container.querySelector('[role="listbox"]')?.outerHTML ?? null).toBeNull();
     expect(input.value).toBe('Apple');
 
     // Dirty the input, then blur to nowhere (relatedTarget outside the listbox).

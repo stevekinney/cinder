@@ -2,8 +2,8 @@
 import { describe, expect, mock, test } from 'bun:test';
 import { tick } from 'svelte';
 
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import { stripCinderComponentsLayer } from '../../test/css.ts';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { TableScrollContainerProps } from './table.types.ts';
 
 setupHappyDom();
@@ -28,7 +28,7 @@ const rows = [
 ];
 
 function unsafeScrollContainerProps(props: Record<string, unknown>): TableScrollContainerProps {
-  return props as unknown as TableScrollContainerProps;
+  return props;
 }
 
 describe('Table semantics', () => {
@@ -78,7 +78,7 @@ describe('Table semantics', () => {
     expect(wrapper).not.toBeNull();
     expect(wrapper?.tagName).toBe('DIV');
     expect(wrapper?.querySelector('table')).toBe(table);
-    expect(table?.parentElement).toBe(wrapper as HTMLElement);
+    expect(table?.parentElement).toBe(requiredInstance(wrapper, HTMLElement));
     expect(table?.querySelector('thead')).not.toBeNull();
     expect(table?.querySelector('tbody')).not.toBeNull();
   });
@@ -90,7 +90,7 @@ describe('Table semantics', () => {
       scrollable: true,
       caption: 'Contributors',
     });
-    const wrapper = container.querySelector('.cinder-table-scroll') as HTMLElement;
+    const wrapper = requiredInstance(container.querySelector('.cinder-table-scroll'), HTMLElement);
     expect(wrapper?.getAttribute('role')).toBe('region');
     expect(wrapper?.getAttribute('aria-label')).toBe('Contributors table scroll area');
     expect(wrapper?.getAttribute('tabindex')).toBe('0');
@@ -99,7 +99,7 @@ describe('Table semantics', () => {
 
   test('scrollable=true without a caption keeps the wrapper focusable without a duplicate region name', () => {
     const { container } = render(Wrapper, { columns, rows, scrollable: true });
-    const wrapper = container.querySelector('.cinder-table-scroll') as HTMLElement;
+    const wrapper = requiredInstance(container.querySelector('.cinder-table-scroll'), HTMLElement);
     expect(wrapper?.hasAttribute('role')).toBe(false);
     expect(wrapper?.hasAttribute('aria-label')).toBe(false);
     expect(wrapper?.hasAttribute('aria-labelledby')).toBe(false);
@@ -119,7 +119,7 @@ describe('Table semantics', () => {
         tabindex: -1,
       },
     });
-    const wrapper = container.querySelector('.cinder-table-scroll') as HTMLElement;
+    const wrapper = requiredInstance(container.querySelector('.cinder-table-scroll'), HTMLElement);
     expect(wrapper?.getAttribute('aria-label')).toBe('Scrollable contributors');
     expect(wrapper?.getAttribute('role')).toBe('group');
     expect(wrapper?.classList.contains('cinder-table-scroll')).toBe(true);
@@ -167,7 +167,8 @@ describe('Table semantics', () => {
         tabindex: '  ',
       }),
     });
-    const wrapper = () => container.querySelector('.cinder-table-scroll') as HTMLElement;
+    const wrapper = () =>
+      requiredInstance(container.querySelector('.cinder-table-scroll'), HTMLElement);
     expect(wrapper().getAttribute('tabindex')).toBe('0');
     expect(wrapper().tabIndex).toBe(0);
 
@@ -233,7 +234,7 @@ describe('Table semantics', () => {
         style: 'max-block-size: 20rem; overflow-y: auto;',
       },
     });
-    const wrapper = container.querySelector('.cinder-table-scroll') as HTMLElement;
+    const wrapper = requiredInstance(container.querySelector('.cinder-table-scroll'), HTMLElement);
     const table = container.querySelector('table');
     expect(wrapper.getAttribute('aria-label')).toBe('Scrollable sticky table');
     expect(wrapper.getAttribute('style')).toContain('max-block-size: 20rem');
@@ -308,7 +309,7 @@ describe('Table sort behavior', () => {
 
   test('clicking a sortable header sets sort to ascending for that column', async () => {
     const { container } = render(Wrapper, { columns, rows });
-    const button = container.querySelector('thead th button') as HTMLButtonElement;
+    const button = requiredInstance(container.querySelector('thead th button'), HTMLButtonElement);
     expect(button).not.toBeNull();
     await fireEvent.click(button);
     const cells = Array.from(container.querySelectorAll('thead th'));
@@ -321,7 +322,7 @@ describe('Table sort behavior', () => {
       rows,
       sort: { column: 'name', direction: 'ascending' },
     });
-    const button = container.querySelector('thead th button') as HTMLButtonElement;
+    const button = requiredInstance(container.querySelector('thead th button'), HTMLButtonElement);
     await fireEvent.click(button);
     const cells = Array.from(container.querySelectorAll('thead th'));
     expect(cells[0]?.getAttribute('aria-sort')).toBe('descending');
@@ -334,7 +335,7 @@ describe('Table sort behavior', () => {
       sort: { column: 'name', direction: 'descending' },
     });
     const buttons = Array.from(container.querySelectorAll('thead th button'));
-    await fireEvent.click(buttons[1] as HTMLButtonElement);
+    await fireEvent.click(requiredInstance(buttons[1], HTMLButtonElement));
     const cells = Array.from(container.querySelectorAll('thead th'));
     expect(cells[0]?.getAttribute('aria-sort')).toBe('none');
     expect(cells[1]?.getAttribute('aria-sort')).toBe('ascending');
@@ -415,7 +416,7 @@ describe('Table sticky-header caption measurement', () => {
     const original = globalThis.ResizeObserver;
     CapturingResizeObserver.lastCallback = null;
     CapturingResizeObserver.lastObserver = null;
-    globalThis.ResizeObserver = CapturingResizeObserver as unknown as typeof ResizeObserver;
+    globalThis.ResizeObserver = CapturingResizeObserver;
     try {
       await run();
     } finally {
@@ -434,8 +435,8 @@ describe('Table sticky-header caption measurement', () => {
       // Let the attachment's $effect run so the observer is constructed and the
       // <caption> is observed.
       await tick();
-      const table = container.querySelector('table') as HTMLTableElement;
-      const caption = container.querySelector('caption') as HTMLTableCaptionElement;
+      const table = requiredInstance(container.querySelector('table'), HTMLTableElement);
+      const caption = requiredInstance(container.querySelector('caption'), HTMLTableCaptionElement);
 
       // The attachment observed the real <caption> element.
       expect(CapturingResizeObserver.lastObserver?.observed).toContain(caption);
@@ -466,8 +467,8 @@ describe('Table sticky-header caption measurement', () => {
         caption: 'Wraps',
       });
       await tick();
-      const table = container.querySelector('table') as HTMLTableElement;
-      const caption = container.querySelector('caption') as HTMLTableCaptionElement;
+      const table = requiredInstance(container.querySelector('table'), HTMLTableElement);
+      const caption = requiredInstance(container.querySelector('caption'), HTMLTableCaptionElement);
 
       const entry = {
         target: caption,
@@ -485,7 +486,7 @@ describe('Table sticky-header caption measurement', () => {
     await withResizeObserver(async () => {
       const { container } = render(Wrapper, { columns, rows, stickyHeader: true });
       await tick();
-      const table = container.querySelector('table') as HTMLTableElement;
+      const table = requiredInstance(container.querySelector('table'), HTMLTableElement);
       // No caption → the `caption ? ... : undefined` guard omits the property.
       expect(table.style.getPropertyValue('--cinder-table-caption-height')).toBe('');
     });
@@ -602,7 +603,10 @@ describe('Table selection — row checkbox behavior', () => {
       selectedIds: new Set<string>(),
     });
     const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
-    const checkbox = bodyRows[0]?.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const checkbox = requiredInstance(
+      bodyRows[0]?.querySelector('input[type="checkbox"]'),
+      HTMLInputElement,
+    );
     expect(checkbox?.checked).toBe(false);
   });
 
@@ -614,7 +618,10 @@ describe('Table selection — row checkbox behavior', () => {
       selectedIds: new Set(['1']),
     });
     const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
-    const checkbox = bodyRows[0]?.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const checkbox = requiredInstance(
+      bodyRows[0]?.querySelector('input[type="checkbox"]'),
+      HTMLInputElement,
+    );
     expect(checkbox?.checked).toBe(true);
   });
 
@@ -630,7 +637,10 @@ describe('Table selection — row checkbox behavior', () => {
       },
     });
     const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
-    const checkbox = bodyRows[0]?.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const checkbox = requiredInstance(
+      bodyRows[0]?.querySelector('input[type="checkbox"]'),
+      HTMLInputElement,
+    );
     await fireEvent.click(checkbox);
     expect(received?.has('1')).toBe(true);
   });
@@ -647,7 +657,10 @@ describe('Table selection — row checkbox behavior', () => {
       },
     });
     const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
-    const checkbox = bodyRows[0]?.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const checkbox = requiredInstance(
+      bodyRows[0]?.querySelector('input[type="checkbox"]'),
+      HTMLInputElement,
+    );
     await fireEvent.click(checkbox);
     expect(received?.has('1')).toBe(false);
   });
@@ -670,9 +683,10 @@ describe('Table selection — row checkbox behavior', () => {
 describe('Table selection — select-all checkbox', () => {
   test('select-all checkbox has the correct aria-label', () => {
     const { container } = render(Wrapper, { columns, rows, selectable: true });
-    const selectAll = container.querySelector(
-      'thead tr input[type="checkbox"]',
-    ) as HTMLInputElement;
+    const selectAll = requiredInstance(
+      container.querySelector('thead tr input[type="checkbox"]'),
+      HTMLInputElement,
+    );
     expect(selectAll?.getAttribute('aria-label')).toBe('Select all rows');
   });
 
@@ -683,9 +697,10 @@ describe('Table selection — select-all checkbox', () => {
       selectable: true,
       selectedIds: new Set<string>(),
     });
-    const selectAll = container.querySelector(
-      'thead tr input[type="checkbox"]',
-    ) as HTMLInputElement;
+    const selectAll = requiredInstance(
+      container.querySelector('thead tr input[type="checkbox"]'),
+      HTMLInputElement,
+    );
     expect(selectAll?.checked).toBe(false);
   });
 
@@ -696,9 +711,10 @@ describe('Table selection — select-all checkbox', () => {
       selectable: true,
       selectedIds: new Set(['1', '2']),
     });
-    const selectAll = container.querySelector(
-      'thead tr input[type="checkbox"]',
-    ) as HTMLInputElement;
+    const selectAll = requiredInstance(
+      container.querySelector('thead tr input[type="checkbox"]'),
+      HTMLInputElement,
+    );
     expect(selectAll?.checked).toBe(true);
   });
 
@@ -709,9 +725,10 @@ describe('Table selection — select-all checkbox', () => {
       selectable: true,
       selectedIds: new Set(['1']),
     });
-    const selectAll = container.querySelector(
-      'thead tr input[type="checkbox"]',
-    ) as HTMLInputElement;
+    const selectAll = requiredInstance(
+      container.querySelector('thead tr input[type="checkbox"]'),
+      HTMLInputElement,
+    );
     // indeterminate is a DOM property, not an attribute — checked via the property
     expect(selectAll?.indeterminate).toBe(true);
   });
@@ -727,9 +744,10 @@ describe('Table selection — select-all checkbox', () => {
         received = next;
       },
     });
-    const selectAll = container.querySelector(
-      'thead tr input[type="checkbox"]',
-    ) as HTMLInputElement;
+    const selectAll = requiredInstance(
+      container.querySelector('thead tr input[type="checkbox"]'),
+      HTMLInputElement,
+    );
     await fireEvent.click(selectAll);
     expect(received?.has('1')).toBe(true);
     expect(received?.has('2')).toBe(true);
@@ -746,9 +764,10 @@ describe('Table selection — select-all checkbox', () => {
         received = next;
       },
     });
-    const selectAll = container.querySelector(
-      'thead tr input[type="checkbox"]',
-    ) as HTMLInputElement;
+    const selectAll = requiredInstance(
+      container.querySelector('thead tr input[type="checkbox"]'),
+      HTMLInputElement,
+    );
     await fireEvent.click(selectAll);
     expect(received?.size).toBe(0);
   });
@@ -818,7 +837,10 @@ describe('Table selection — selectionDisabled rows', () => {
       onSelectedIds: onSelectedIdsSpy,
     });
     const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
-    const checkbox = bodyRows[1]?.querySelector('td input[type="checkbox"]') as HTMLInputElement;
+    const checkbox = requiredInstance(
+      bodyRows[1]?.querySelector('td input[type="checkbox"]'),
+      HTMLInputElement,
+    );
     await fireEvent.click(checkbox);
     expect(onSelectedIdsSpy).not.toHaveBeenCalled();
   });
@@ -832,9 +854,10 @@ describe('Table selection — selectionDisabled rows', () => {
       selectedIds: new Set(['1']),
     });
     // allSelected should be true (only id='1' is selectable and it's selected)
-    const selectAll = container.querySelector(
-      'thead tr input[type="checkbox"]',
-    ) as HTMLInputElement;
+    const selectAll = requiredInstance(
+      container.querySelector('thead tr input[type="checkbox"]'),
+      HTMLInputElement,
+    );
     expect(selectAll?.checked).toBe(true);
     expect(selectAll?.indeterminate).toBe(false);
   });

@@ -6,7 +6,7 @@ Star rating control with bindable numeric value, optional half-star precision, a
 
 ```svelte
 <script lang="ts">
-  import Rating from '@lostgradient/cinder/rating';
+  import { Rating } from '@lostgradient/cinder';
   let score = $state(0);
 </script>
 
@@ -43,7 +43,6 @@ Star rating control with bindable numeric value, optional half-star precision, a
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

@@ -6,7 +6,7 @@ Segmented one-time-code input with auto-advance, paste distribution, and optiona
 
 ```svelte
 <script lang="ts">
-  import PinInput from '@lostgradient/cinder/pin-input';
+  import { PinInput } from '@lostgradient/cinder';
   let code = $state('');
 </script>
 
@@ -44,7 +44,6 @@ Segmented one-time-code input with auto-advance, paste distribution, and optiona
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

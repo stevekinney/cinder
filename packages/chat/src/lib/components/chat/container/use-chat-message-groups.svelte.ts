@@ -37,16 +37,12 @@ export type TypingItem = {
   type: 'typing';
 };
 
-export type ToolCallGroupItem = {
+export type ToolCallRunItem = {
   type: 'tool-call-group';
   messages: Message[];
 };
 
-export type ChatRenderRow =
-  | MessageWithDateItem
-  | UnreadDividerItem
-  | TypingItem
-  | ToolCallGroupItem;
+export type ChatRenderRow = MessageWithDateItem | UnreadDividerItem | TypingItem | ToolCallRunItem;
 
 // Re-export ToolCallPair type for convenience.
 export type { ToolCallPair } from '../conversation-model.ts';
@@ -73,6 +69,12 @@ function messageHasStructuredEntries(message: Message): boolean {
 export interface UseChatMessageGroupsOptions {
   /** Function that returns the current messages array */
   getMessages: () => Message[];
+  /** Live render options supplied by the transcript owner. */
+  getRenderOptions?: () => {
+    firstUnreadId?: string | null;
+    showTypingIndicator?: boolean;
+    ungroupedToolCallIds?: ReadonlySet<string>;
+  };
 }
 
 /** Return type for the message groups helper */
@@ -85,6 +87,8 @@ export interface UseChatMessageGroupsReturn {
   readonly toolCallPairsByCallId: Map<string, ToolCallPair[]>;
   /** Tool result message IDs already represented inside a paired tool call group */
   readonly pairedToolResultIds: Set<string>;
+  /** Tool calls that still require an approval action. */
+  readonly actionRequiredToolCallIds: Set<string>;
 }
 
 // ==========================================================================
@@ -172,16 +176,7 @@ export function buildChatRenderRows(
         rows.push({ type: 'unread-divider', afterMessageId: previousMessageId });
       }
       previousMessageId = item.message.id;
-      const toolCallId = item.message.toolCall?.id;
-      if (
-        item.message.role === 'tool-call' &&
-        toolCallId &&
-        !item.message.hidden &&
-        item.message.metadata?.['_deliveryStatus'] !== 'failed' &&
-        !messageHasImageContent(item.message) &&
-        !messageHasStructuredEntries(item.message) &&
-        !options?.ungroupedToolCallIds?.has(toolCallId)
-      ) {
+      if (canGroupToolCall(item.message, options?.ungroupedToolCallIds)) {
         toolCallRun.push(item.message);
         continue;
       }
@@ -198,6 +193,22 @@ export function buildChatRenderRows(
   return rows;
 }
 
+function canGroupToolCall(
+  message: Message,
+  ungroupedToolCallIds: ReadonlySet<string> | undefined,
+): boolean {
+  const toolCallId = message.toolCall?.id;
+  return Boolean(
+    message.role === 'tool-call' &&
+    toolCallId &&
+    !message.hidden &&
+    message.metadata?.['_deliveryStatus'] !== 'failed' &&
+    !messageHasImageContent(message) &&
+    !messageHasStructuredEntries(message) &&
+    !ungroupedToolCallIds?.has(toolCallId),
+  );
+}
+
 export function chatRenderRowKey(row: ChatRenderRow): string {
   switch (row.type) {
     case 'date':
@@ -210,6 +221,8 @@ export function chatRenderRowKey(row: ChatRenderRow): string {
       return 'typing';
     case 'tool-call-group':
       return `tool-group-${row.messages[0]?.id ?? 'empty'}`;
+    default:
+      throw new Error(`Unknown chat render row type: ${String(row)}`);
   }
 }
 
@@ -263,7 +276,7 @@ export function getActiveTurnMessageIds(
 export function useChatMessageGroups(
   options: UseChatMessageGroupsOptions,
 ): UseChatMessageGroupsReturn {
-  const { getMessages } = options;
+  const { getMessages, getRenderOptions } = options;
 
   // Derive tool call pairs from messages
   const toolCallPairs = $derived(pairToolCallsWithResults(getMessages()));
@@ -300,9 +313,13 @@ export function useChatMessageGroups(
     return buildMessagesWithDateSeparators(getMessages(), pairedToolResultIds);
   });
 
-  const renderRows = $derived.by(() =>
-    buildChatRenderRows(messagesWithDates, { ungroupedToolCallIds: actionRequiredToolCallIds }),
-  );
+  const renderRows = $derived.by(() => {
+    const renderOptions = getRenderOptions?.();
+    return buildChatRenderRows(messagesWithDates, {
+      ...renderOptions,
+      ungroupedToolCallIds: renderOptions?.ungroupedToolCallIds ?? actionRequiredToolCallIds,
+    });
+  });
 
   return {
     get messagesWithDates() {
@@ -316,6 +333,9 @@ export function useChatMessageGroups(
     },
     get pairedToolResultIds() {
       return pairedToolResultIds;
+    },
+    get actionRequiredToolCallIds() {
+      return actionRequiredToolCallIds;
     },
   };
 }

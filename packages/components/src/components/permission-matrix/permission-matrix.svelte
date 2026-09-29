@@ -70,7 +70,7 @@
 
   const mergedStateLabels = $derived({
     ...defaultStateLabels,
-    ...(stateLabels ?? {}),
+    ...stateLabels,
   } satisfies Record<PermissionMatrixCellState, string>);
 
   function stateLabel(state: PermissionMatrixCellState): string {

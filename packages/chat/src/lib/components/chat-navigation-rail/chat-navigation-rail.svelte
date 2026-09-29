@@ -57,8 +57,10 @@
   let previewElement = $state<HTMLElement | null>(null);
 
   function updatePreviewPosition(event: FocusEvent | PointerEvent, index: number): void {
+    const target = event.currentTarget;
+    if (!(target instanceof HTMLElement)) return;
     targetIndex = index;
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const rect = target.getBoundingClientRect();
     const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
     const previewWidth = Math.min(previewElement?.offsetWidth || 288, viewportWidth - 16);
     const flip = viewportWidth - rect.right < previewWidth + 8 && rect.left >= previewWidth + 8;
@@ -73,7 +75,7 @@
   }
 
   $effect(() => {
-    previewMessageId;
+    if (previewMessageId === undefined) return;
     const element = previewElement;
     if (!element) return;
     const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
@@ -214,14 +216,14 @@
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          const id = (entry.target as HTMLElement).dataset['messageId'];
+          const id = entry.target.getAttribute('data-message-id');
           if (!id) continue;
           if (entry.isIntersecting) visibleMessageIds.add(id);
           else visibleMessageIds.delete(id);
         }
         const currentEntry = entries.find((entry) => entry.isIntersecting);
         activeMessageId = currentEntry
-          ? (currentEntry.target as HTMLElement).dataset['messageId']
+          ? (currentEntry.target.getAttribute('data-message-id') ?? undefined)
           : [...visibleMessageIds][0];
       },
       { root: observedViewport, threshold: 0.5 },

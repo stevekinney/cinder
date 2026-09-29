@@ -7,13 +7,7 @@
  */
 
 export type JsonSchemaTypeName =
-  | 'string'
-  | 'number'
-  | 'integer'
-  | 'boolean'
-  | 'null'
-  | 'object'
-  | 'array';
+  'string' | 'number' | 'integer' | 'boolean' | 'null' | 'object' | 'array';
 
 /** Drafts the editor can validate against. */
 export type JsonSchemaKnownDraft = '2020-12' | '2019-09' | 'draft-07';

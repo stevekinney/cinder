@@ -1,14 +1,12 @@
 # Masonry
 
-Masonry renders a pure CSS waterfall layout with balanced variable-height
-columns. It uses CSS columns, so DOM and screen-reader order remain
-top-to-bottom through each column rather than left-to-right across visual rows.
+Masonry renders a pure CSS waterfall layout with balanced variable-height columns. It uses CSS columns, so DOM and screen-reader order remain top-to-bottom through each column rather than left-to-right across visual rows.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import { Masonry } from '@lostgradient/cinder/masonry';
+  import { Masonry } from '@lostgradient/cinder';
 </script>
 
 <Masonry columns="3" gap="var(--cinder-space-4)">
@@ -37,7 +35,6 @@ top-to-bottom through each column rather than left-to-right across visual rows.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

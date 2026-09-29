@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -65,7 +65,7 @@ function queryListbox(): HTMLElement | null {
  * serializing the element, and under happy-dom one failed assertion costs roughly
  * 2.2 seconds — measured, not estimated. Two failed polls put the caret tests within
  * 136ms of the 5000ms per-test timeout, which failed pull requests that had nothing
- * to do with Chat, since `packages/chat` shares the `package` job.
+ * to do with Chat, since `components/chat` shares the `package` job.
  *
  * It compounds, too. The formatting is synchronous, so it starves the macrotask the
  * component's caret sync is queued on — the condition cannot become true until the

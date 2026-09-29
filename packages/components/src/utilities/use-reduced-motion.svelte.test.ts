@@ -1,49 +1,33 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
 const { applyReducedMotionPreference, resolveReducedMotion, useReducedMotion } =
   await import('./use-reduced-motion.svelte.ts');
 
-type Listener = (event: { matches: boolean }) => void;
-
-type FakeMediaQueryList = {
-  matches: boolean;
-  media: string;
-  onchange: Listener | null;
-  addEventListener: (type: 'change', listener: Listener) => void;
-  removeEventListener: (type: 'change', listener: Listener) => void;
-  addListener: (listener: Listener) => void;
-  removeListener: (listener: Listener) => void;
-  dispatchEvent: (event: Event) => boolean;
-};
-
 function installMatchMediaMock(initialMatches: boolean) {
   const queriesPassed: string[] = [];
-
-  const list: FakeMediaQueryList = {
-    matches: initialMatches,
-    media: '',
-    onchange: null,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    addListener: () => {},
-    removeListener: () => {},
-    dispatchEvent: () => true,
+  const originalMatchMedia = window.matchMedia;
+  const list = originalMatchMedia.call(window, '');
+  let matches = initialMatches;
+  let media = '';
+  Object.defineProperties(list, {
+    matches: { get: () => matches },
+    media: { get: () => media },
+  });
+  window.matchMedia = (query: string) => {
+    queriesPassed.push(query);
+    media = query;
+    return list;
   };
 
-  const originalMatchMedia = window.matchMedia;
-  window.matchMedia = ((query: string) => {
-    queriesPassed.push(query);
-    list.media = query;
-    return list as unknown as MediaQueryList;
-  }) as typeof window.matchMedia;
-
   return {
-    list,
     queriesPassed,
+    setMatches(value: boolean) {
+      matches = value;
+    },
     restore() {
       window.matchMedia = originalMatchMedia;
     },
@@ -97,7 +81,7 @@ describe('useReducedMotion', () => {
 
     // Outside a Svelte effect context this verifies direct getter read-through,
     // not reactive effect invalidation.
-    mock.list.matches = false;
+    mock.setMatches(false);
 
     expect(motion.current).toBe(false);
   });
@@ -181,8 +165,9 @@ describe('useReducedMotion', () => {
     // (browser export condition) but there is no DOM, so `window.matchMedia` is
     // missing. The hook must not call the throwing client constructor.
     const original = window.matchMedia;
-    delete (window as { matchMedia?: typeof window.matchMedia }).matchMedia;
+    Object.defineProperty(window, 'matchMedia', { value: undefined });
     try {
+      expect(window.matchMedia).toBeUndefined();
       const motion = useReducedMotion();
       expect(motion.current).toBe(false);
     } finally {

@@ -23,7 +23,7 @@
   import { untrack } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
 
-  import Input from '@lostgradient/cinder/input';
+  import { default as Input } from '../input/index.ts';
 
   import { resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';

@@ -1,4 +1,4 @@
-// @ts-nocheck -- migrated commentary assertions use runtime-verified fixture indexing.
+import { requiredValue } from '@lostgradient/testing';
 /**
  * Tests for the comment anchor plugin.
  *
@@ -10,7 +10,7 @@
  * src/lib/components/review-editor/*.test.ts
  */
 import { describe, expect, mock, test } from 'bun:test';
-import type { AnchorPluginOptions, AnchorPluginState, AnchorState } from './anchor-decorations.js';
+import type { AnchorPluginOptions, AnchorPluginState, AnchorState } from './anchor-plugin-types.js';
 import type { Thread } from './comments/types.js';
 
 // ============================================================================
@@ -53,6 +53,7 @@ function createMockThread(
  */
 function threadToAnchorState(thread: Thread): AnchorState {
   return {
+    status: 'anchored',
     threadId: thread.id,
     from: thread.anchor.from,
     to: thread.anchor.to,
@@ -79,10 +80,10 @@ describe('anchor plugin meta-transactions', () => {
 
       // Verify threads are structured correctly for sync
       expect(threads).toHaveLength(2);
-      expect(threads[0].id).toBe('thread-1');
-      expect(threads[0].anchor.quote).toBe('hello');
-      expect(threads[1].id).toBe('thread-2');
-      expect(threads[1].anchor.quote).toBe('world');
+      expect(requiredValue(threads[0]).id).toBe('thread-1');
+      expect(requiredValue(threads[0]).anchor.quote).toBe('hello');
+      expect(requiredValue(threads[1]).id).toBe('thread-2');
+      expect(requiredValue(threads[1]).anchor.quote).toBe('world');
     });
 
     test('preserves originalQuote from thread anchor', () => {
@@ -187,6 +188,7 @@ describe('anchor state lifecycle', () => {
       // This supports cut/paste where text may reappear
 
       const collapsedAnchor: AnchorState = {
+        status: 'anchored',
         threadId: 'thread-1',
         from: 10,
         to: 10, // Collapsed: from === to

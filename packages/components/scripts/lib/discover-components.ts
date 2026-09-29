@@ -1,19 +1,14 @@
 /**
  * Shared component discovery for the cinder code generation pipeline.
  *
- * Walks `packages/components/src/components/` and returns every component
+ * Walks `components/cinder/src/components/` and returns every component
  * directory that has both a `<name>.svelte` and a `<name>.types.ts` file.
  * Skips underscore-prefixed directories (private/internal), `icons`, and
  * descends one level into `experimental/` for experimental components.
  *
  * Consumed by:
- *   - `generate-exports.ts` (writes `package.json#exports` subpaths)
- *   - `validate-consumers.ts` (derives the public-components allowlist used
- *      to assert tarball contents)
- *
- * Centralizing this here means the two scripts cannot drift: a new component
- * directory automatically participates in both the exports map and the
- * tarball expectations without further code changes.
+ *   - component metadata and example generators
+ *   - source-level component checks
  */
 
 import { existsSync } from 'node:fs';
@@ -31,10 +26,8 @@ export type ComponentDiscovery = {
   isExperimental: boolean;
   /**
    * True when the component directory contains a source CSS sidecar
-   * (`<name>.css`). Drives whether `generate-exports.ts` emits a
-   * `./<name>/styles` subpath — components with no CSS sidecar would
-   * otherwise publish a dead export pointing at a non-existent
-   * `dist/components/<name>/<name>.css`.
+   * (`<name>.css`). Retained source tooling uses this to identify components
+   * that own a sidecar stylesheet.
    */
   hasCss: boolean;
 };

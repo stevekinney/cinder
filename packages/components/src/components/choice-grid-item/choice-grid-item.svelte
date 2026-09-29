@@ -69,6 +69,10 @@
   const isDisabled = $derived(disabled || context.disabled);
   const isFocusable = $derived(context.isFocusable(registeredValue));
   const tabIndex = $derived(rovingTabIndex(isFocusable));
+  // The parent ChoiceGrid's `size` prop, propagated via context (COR-330).
+  // There is no separate `size` prop on ChoiceGridItem — the grid is the
+  // single source of truth so every item in a grid sizes consistently.
+  const size = $derived(context.size);
 
   let elementRef: HTMLElement | null = $state(null);
 
@@ -124,6 +128,7 @@
   data-cinder-selected={isSelected ? '' : undefined}
   data-cinder-disabled={isDisabled || undefined}
   data-cinder-state={feedbackState !== 'neutral' ? feedbackState : undefined}
+  data-cinder-size={size}
   onclick={handleClick}
   onkeydown={handleKeydown}
 >

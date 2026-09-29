@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -123,7 +123,7 @@ describe('VisuallyHiddenLiveRegion', () => {
     expect(button).not.toBeNull();
 
     // First announcement lands after the blank-then-set setTimeout(0).
-    await fireEvent.click(button as HTMLButtonElement);
+    await fireEvent.click(requiredInstance(button, HTMLButtonElement));
     await waitFor(() => {
       expect(region()?.textContent?.trim()).toBe('Copied.');
     });
@@ -132,7 +132,7 @@ describe('VisuallyHiddenLiveRegion', () => {
     // re-runs the effect, which blanks the region first. This intermediate blank is
     // the load-bearing assertion: if the fix is reverted, the effect never runs and
     // the content stays 'Copied.' — this assertion then fails.
-    await fireEvent.click(button as HTMLButtonElement);
+    await fireEvent.click(requiredInstance(button, HTMLButtonElement));
     await tick();
     expect(region()?.textContent?.trim()).toBe('');
 

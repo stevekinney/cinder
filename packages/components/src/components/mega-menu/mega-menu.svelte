@@ -67,7 +67,7 @@
     providedDirection === 'auto' ? navElement : (navElement?.parentElement ?? navElement),
   );
   const resolvedDirection = $derived.by(() => {
-    directionRevision;
+    void directionRevision;
     if (providedDirection === 'rtl' || providedDirection === 'ltr') {
       // An explicit direction prop takes precedence over ANY ancestor —
       // resolveTextDirection()'s ignoreElementDirectionAttribute mode still
@@ -90,7 +90,7 @@
       : resolveTextDirection(directionElement, localeContext?.direction);
   });
   const renderedDirection = $derived.by(() => {
-    directionRevision;
+    void directionRevision;
     if (
       providedDirection === 'auto' ||
       providedDirection === 'rtl' ||
@@ -274,6 +274,7 @@
     if (shouldRestoreFocus && currentItemId) {
       void tick().then(() => {
         focusElementById(triggerId(currentItemId));
+        return undefined;
       });
     }
   }
@@ -373,7 +374,7 @@
   }
 
   $effect(() => {
-    resolvedDirection;
+    void resolvedDirection;
     updateIndicator();
   });
 
@@ -401,7 +402,7 @@
   });
 
   $effect(() => {
-    directionChainRevision;
+    void directionChainRevision;
     // Only observe ancestors while a menu item is actually open —
     // `updateIndicator` itself early-returns without `openItemId`, so
     // observing (and thus scheduling recomputes) while nothing is open

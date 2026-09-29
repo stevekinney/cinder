@@ -341,8 +341,8 @@
     const element = wrapperElement;
     if (!element || !shouldVirtualizeRows || typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(() => syncScrollMetrics(element));
-    const caption = element.querySelector('caption');
-    if (caption) observer.observe(caption);
+    const captionElement = element.querySelector('caption');
+    if (captionElement) observer.observe(captionElement);
     const header = element.querySelector('thead');
     if (header) observer.observe(header);
     return () => observer.disconnect();
@@ -387,6 +387,7 @@
       );
       syncScrollMetrics(element);
       shouldStickAfterAppend = false;
+      return undefined;
     });
   });
 
@@ -495,6 +496,7 @@
         `[data-cinder-data-table-row-index="${nextIndex}"]`,
       );
       row?.focus({ preventScroll: true });
+      return undefined;
     });
   }
 

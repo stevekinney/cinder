@@ -27,14 +27,16 @@
  * failure the orphaning feature exists to avoid (cinder#1284).
  */
 
+import { setupHappyDom } from '@lostgradient/testing';
 import { Schema } from '@milkdown/kit/prose/model';
-import type { Plugin, Transaction } from '@milkdown/kit/prose/state';
+import type { Transaction } from '@milkdown/kit/prose/state';
 import { EditorState } from '@milkdown/kit/prose/state';
-import type { DecorationSet, EditorView } from '@milkdown/kit/prose/view';
+import { DecorationSet, EditorView } from '@milkdown/kit/prose/view';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
-import type { AnchorPluginState, AnchorState } from './anchor-decorations.js';
-import { anchorPluginKey, createAnchorPlugin } from './anchor-decorations.js';
+import { anchorPluginKey } from './anchor-plugin-state.js';
+import type { AnchorPluginState, AnchorState } from './anchor-plugin-types.js';
+import { createAnchorProsePlugin } from './anchor-plugin.js';
 import type { AnchorUpdate, Thread } from './comments/types.js';
 import type { FakeClock } from './test/fake-clock.js';
 import { installFakeClock } from './test/fake-clock.js';
@@ -122,70 +124,55 @@ function createSeedThread(): Thread {
 // Harness
 // ============================================================================
 
-/** The shape `$prose` returns: a Milkdown plugin that hands back the PM one. */
-type MilkdownProsePlugin = ((ctx: unknown) => () => Promise<unknown>) & {
-  plugin: () => Plugin<AnchorPluginState>;
-};
+setupHappyDom();
 
-interface PluginViewLike {
-  update?: ((view: EditorView, previousState: EditorState) => void) | undefined;
-  destroy?: (() => void) | undefined;
-}
-
-/**
- * Drive the plugin without a DOM.
- *
- * `performDeferredReanchoring` only reads `view.state` and calls
- * `view.dispatch`, and the plugin's own view ignores the argument entirely, so
- * a real `EditorView` (and the DOM it needs) buys nothing here. Applying a
- * transaction mirrors what ProseMirror does: update the state, then notify the
- * plugin view — which is what schedules the debounced re-anchoring pass.
- */
 class AnchorHarness {
-  state: EditorState;
+  readonly view: EditorView;
   readonly updates: AnchorUpdate[] = [];
   /** Transactions the plugin dispatched at us, as a runaway-loop tripwire. */
   dispatchCount = 0;
-  private readonly pluginView: PluginViewLike | undefined;
+  private readonly mount: HTMLDivElement;
 
-  private constructor(plugin: Plugin<AnchorPluginState>, updates: AnchorUpdate[]) {
-    this.state = EditorState.create({ doc: createDocument(), schema, plugins: [plugin] });
+  private constructor(plugin: ReturnType<typeof createAnchorProsePlugin>, updates: AnchorUpdate[]) {
     this.updates = updates;
-    this.pluginView = plugin.spec.view?.(this as unknown as EditorView) as
-      | PluginViewLike
-      | undefined;
+    this.mount = document.createElement('div');
+    document.body.append(this.mount);
+    let view!: EditorView;
+    view = new EditorView(this.mount, {
+      state: EditorState.create({ doc: createDocument(), schema, plugins: [plugin] }),
+      dispatchTransaction: (transaction) => {
+        this.dispatchCount += 1;
+        view.updateState(view.state.apply(transaction));
+      },
+    });
+    this.view = view;
   }
 
-  static async create(): Promise<AnchorHarness> {
+  static create(): AnchorHarness {
     const updates: AnchorUpdate[] = [];
-    const milkdownPlugin = createAnchorPlugin({
+    const plugin = createAnchorProsePlugin({
       onAnchorsUpdate: (received) => updates.push(...received),
-    }) as unknown as MilkdownProsePlugin;
-
-    // `$prose(factory)` defers to `ctx.wait(SchemaReady)` and registers the
-    // ProseMirror plugin on the editor's ctx. Our factory ignores the ctx, so a
-    // stub is enough to get the plugin instance out.
-    await milkdownPlugin({ wait: async () => undefined, update: () => undefined })();
-
-    return new AnchorHarness(milkdownPlugin.plugin(), updates);
+    });
+    return new AnchorHarness(plugin, updates);
   }
 
   dispatch(tr: Transaction): void {
-    this.dispatchCount += 1;
-    const previousState = this.state;
-    this.state = this.state.apply(tr);
-    this.pluginView?.update?.(this as unknown as EditorView, previousState);
+    this.view.dispatch(tr);
   }
 
   /** Seed the plugin the way ReviewEditor does, via a `sync` meta-transaction. */
   sync(threads: Thread[]): void {
-    this.dispatch(
-      this.state.tr.setMeta(anchorPluginKey, { type: 'sync', threads, source: 'external' }),
+    this.view.dispatch(
+      this.view.state.tr.setMeta(anchorPluginKey, { type: 'sync', threads, source: 'external' }),
     );
   }
 
+  get state(): EditorState {
+    return this.view.state;
+  }
+
   get pluginState(): AnchorPluginState {
-    const pluginState = anchorPluginKey.getState(this.state);
+    const pluginState = anchorPluginKey.getState(this.view.state);
     if (!pluginState) throw new Error('anchor plugin state missing');
     return pluginState;
   }
@@ -197,31 +184,29 @@ class AnchorHarness {
   }
 
   get decoratedRanges(): Array<{ from: number; to: number }> {
-    const plugin = this.state.plugins.find((candidate) => candidate.spec.key === anchorPluginKey);
-    const decorations = plugin?.props.decorations?.call(plugin, this.state) as
-      | DecorationSet
-      | null
-      | undefined;
-    return (decorations?.find() ?? []).map(({ from, to }) => ({ from, to }));
+    const plugin = this.view.state.plugins.find(
+      (candidate) => candidate.spec.key === anchorPluginKey,
+    );
+    if (!plugin) return [];
+    const decorationFactory = plugin?.props.decorations;
+    if (typeof decorationFactory !== 'function') return [];
+    const decorations = decorationFactory.call(plugin, this.view.state);
+    if (!(decorations instanceof DecorationSet)) return [];
+    return decorations.find().map(({ from, to }) => ({ from, to }));
   }
 
   get documentText(): string {
-    return this.state.doc.textBetween(0, this.state.doc.content.size, '\n');
+    return this.view.state.doc.textBetween(0, this.view.state.doc.content.size, '\n');
   }
 
-  /**
-   * Cross the debounce so the deferred re-anchoring pass runs.
-   *
-   * `advance` fires the pass synchronously; the awaited microtask that follows
-   * lets anything the pass scheduled as a promise settle before assertions.
-   */
   async settle(): Promise<void> {
     clock?.advance(PAST_DEBOUNCE);
     await Promise.resolve();
   }
 
   destroy(): void {
-    this.pluginView?.destroy?.();
+    this.view.destroy();
+    this.mount.remove();
   }
 }
 
@@ -232,7 +217,7 @@ class AnchorHarness {
  * test here shares, asserted rather than assumed.
  */
 async function createOrphanedHarness(): Promise<AnchorHarness> {
-  const harness = await AnchorHarness.create();
+  const harness = AnchorHarness.create();
   harness.sync([createSeedThread()]);
 
   expect(harness.anchor.status).toBe('anchored');

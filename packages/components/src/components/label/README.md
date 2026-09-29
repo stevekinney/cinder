@@ -6,7 +6,7 @@ Accessible form label that associates descriptive text with its input element.
 
 ```svelte
 <script lang="ts">
-  import Label from '@lostgradient/cinder/label';
+  import { Label } from '@lostgradient/cinder';
 </script>
 
 <Label for="my-input">Email address</Label>
@@ -31,7 +31,6 @@ Accessible form label that associates descriptive text with its input element.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

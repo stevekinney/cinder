@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
 // reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
@@ -37,7 +37,7 @@ function mockClipboard(writes: string[] = []): ClipboardLike {
 
 beforeEach(() => {
   document.body.replaceChildren();
-  originalClipboard = globalThis.navigator.clipboard as unknown as ClipboardLike | undefined;
+  originalClipboard = globalThis.navigator.clipboard;
 });
 
 afterEach(() => {
@@ -147,9 +147,10 @@ describe('SecretValueField', () => {
       const secret = 'token_should_not_appear';
       mockClipboard();
       const { container } = render(SecretValueField, { value: secret });
-      const copyBtn = container.querySelector(
-        '.cinder-secret-value-field__copy',
-      ) as HTMLButtonElement;
+      const copyBtn = requiredInstance(
+        container.querySelector('.cinder-secret-value-field__copy'),
+        HTMLButtonElement,
+      );
       await fireEvent.click(copyBtn);
       await waitFor(() => {
         expect(copyBtn.hasAttribute('data-cinder-copied')).toBe(true);
@@ -189,9 +190,10 @@ describe('SecretValueField', () => {
         label: 'API Key',
         revealAllowed: true,
       });
-      const toggle = container.querySelector(
-        '.cinder-secret-value-field__toggle',
-      ) as HTMLButtonElement;
+      const toggle = requiredInstance(
+        container.querySelector('.cinder-secret-value-field__toggle'),
+        HTMLButtonElement,
+      );
       await fireEvent.click(toggle);
       await waitFor(() => {
         // Secret is now in visible text (the whole point of reveal)
@@ -211,9 +213,10 @@ describe('SecretValueField', () => {
       const writes: string[] = [];
       mockClipboard(writes);
       const { container } = render(SecretValueField, { value: 'abc123' });
-      const copyBtn = container.querySelector(
-        '.cinder-secret-value-field__copy',
-      ) as HTMLButtonElement;
+      const copyBtn = requiredInstance(
+        container.querySelector('.cinder-secret-value-field__copy'),
+        HTMLButtonElement,
+      );
       await fireEvent.click(copyBtn);
       await waitFor(() => {
         expect(writes).toEqual(['abc123']);
@@ -224,9 +227,10 @@ describe('SecretValueField', () => {
     test('copy confirmation is announced via live region, not button text', async () => {
       mockClipboard();
       const { container } = render(SecretValueField, { value: 'abc123' });
-      const copyBtn = container.querySelector(
-        '.cinder-secret-value-field__copy',
-      ) as HTMLButtonElement;
+      const copyBtn = requiredInstance(
+        container.querySelector('.cinder-secret-value-field__copy'),
+        HTMLButtonElement,
+      );
       await fireEvent.click(copyBtn);
       await waitFor(() => {
         const liveRegion = container.querySelector('[role="status"][aria-live="polite"]');
@@ -241,9 +245,10 @@ describe('SecretValueField', () => {
         value: 'abc123',
         copiedLabel: 'API key copied',
       });
-      const copyBtn = container.querySelector(
-        '.cinder-secret-value-field__copy',
-      ) as HTMLButtonElement;
+      const copyBtn = requiredInstance(
+        container.querySelector('.cinder-secret-value-field__copy'),
+        HTMLButtonElement,
+      );
       await fireEvent.click(copyBtn);
       await waitFor(() => {
         const liveRegion = container.querySelector('[role="status"][aria-live="polite"]');
@@ -256,9 +261,10 @@ describe('SecretValueField', () => {
         value: 'example_live_abc123',
         revealAllowed: true,
       });
-      const toggle = container.querySelector(
-        '.cinder-secret-value-field__toggle',
-      ) as HTMLButtonElement;
+      const toggle = requiredInstance(
+        container.querySelector('.cinder-secret-value-field__toggle'),
+        HTMLButtonElement,
+      );
       expect(toggle.getAttribute('aria-pressed')).toBe('false');
 
       await fireEvent.click(toggle);
@@ -276,9 +282,10 @@ describe('SecretValueField', () => {
         value: 'example_live_abc123',
         revealAllowed: true,
       });
-      const toggle = container.querySelector(
-        '.cinder-secret-value-field__toggle',
-      ) as HTMLButtonElement;
+      const toggle = requiredInstance(
+        container.querySelector('.cinder-secret-value-field__toggle'),
+        HTMLButtonElement,
+      );
 
       await fireEvent.click(toggle);
       await waitFor(() => {
@@ -309,9 +316,10 @@ describe('SecretValueField', () => {
         value: 'first-secret',
         revealAllowed: true,
       });
-      const toggle = container.querySelector(
-        '.cinder-secret-value-field__toggle',
-      ) as HTMLButtonElement;
+      const toggle = requiredInstance(
+        container.querySelector('.cinder-secret-value-field__toggle'),
+        HTMLButtonElement,
+      );
 
       await fireEvent.click(toggle);
       expect(container.textContent).toContain('first-secret');
@@ -334,9 +342,10 @@ describe('SecretValueField', () => {
         revealAllowed: true,
         initiallyRevealed: false,
       });
-      const toggle = container.querySelector(
-        '.cinder-secret-value-field__toggle',
-      ) as HTMLButtonElement;
+      const toggle = requiredInstance(
+        container.querySelector('.cinder-secret-value-field__toggle'),
+        HTMLButtonElement,
+      );
 
       await fireEvent.click(toggle);
       await waitFor(() => {
@@ -440,9 +449,10 @@ describe('SecretValueField', () => {
         label: 'API Key',
         copiedLabel: 'Copied',
       });
-      const copyBtn = container.querySelector(
-        '.cinder-secret-value-field__copy',
-      ) as HTMLButtonElement;
+      const copyBtn = requiredInstance(
+        container.querySelector('.cinder-secret-value-field__copy'),
+        HTMLButtonElement,
+      );
       expect(copyBtn.getAttribute('aria-label')).toBe('Copy API Key');
       await fireEvent.click(copyBtn);
       await waitFor(() => {
@@ -469,9 +479,10 @@ describe('SecretValueField', () => {
         label: 'Webhook Secret',
         revealAllowed: true,
       });
-      const toggle = container.querySelector(
-        '.cinder-secret-value-field__toggle',
-      ) as HTMLButtonElement;
+      const toggle = requiredInstance(
+        container.querySelector('.cinder-secret-value-field__toggle'),
+        HTMLButtonElement,
+      );
       await fireEvent.click(toggle);
       await waitFor(() => {
         const valueEl = container.querySelector('.cinder-secret-value-field__value');
@@ -506,9 +517,10 @@ describe('SecretValueField', () => {
         label: 'API Key',
         revealAllowed: true,
       });
-      const toggle = container.querySelector(
-        '.cinder-secret-value-field__toggle',
-      ) as HTMLButtonElement;
+      const toggle = requiredInstance(
+        container.querySelector('.cinder-secret-value-field__toggle'),
+        HTMLButtonElement,
+      );
       expect(toggle.getAttribute('aria-label')).toBe('Reveal API Key');
 
       await fireEvent.click(toggle);
@@ -522,18 +534,20 @@ describe('SecretValueField', () => {
         value: 'abc123',
         revealAllowed: true,
       });
-      const toggle = container.querySelector(
-        '.cinder-secret-value-field__toggle',
-      ) as HTMLButtonElement;
+      const toggle = requiredInstance(
+        container.querySelector('.cinder-secret-value-field__toggle'),
+        HTMLButtonElement,
+      );
       toggle.focus();
       expect(document.activeElement).toBe(toggle);
     });
 
     test('keyboard: copy button is focusable as a button element', () => {
       const { container } = render(SecretValueField, { value: 'token123' });
-      const copyBtn = container.querySelector(
-        '.cinder-secret-value-field__copy',
-      ) as HTMLButtonElement;
+      const copyBtn = requiredInstance(
+        container.querySelector('.cinder-secret-value-field__copy'),
+        HTMLButtonElement,
+      );
       copyBtn.focus();
       expect(document.activeElement).toBe(copyBtn);
     });
@@ -583,9 +597,10 @@ describe('SecretValueField', () => {
 
     test('reveal toggle swaps the lucide eye icon for eye-off', async () => {
       const { container } = render(SecretValueField, { value: 'abc123', revealAllowed: true });
-      const toggle = container.querySelector(
-        '.cinder-secret-value-field__toggle',
-      ) as HTMLButtonElement;
+      const toggle = requiredInstance(
+        container.querySelector('.cinder-secret-value-field__toggle'),
+        HTMLButtonElement,
+      );
       await fireEvent.click(toggle);
       await waitFor(() => {
         expect(
@@ -600,9 +615,10 @@ describe('SecretValueField', () => {
     test('a successful copy swaps the lucide copy icon for check', async () => {
       mockClipboard();
       const { container } = render(SecretValueField, { value: 'abc123' });
-      const copyBtn = container.querySelector(
-        '.cinder-secret-value-field__copy',
-      ) as HTMLButtonElement;
+      const copyBtn = requiredInstance(
+        container.querySelector('.cinder-secret-value-field__copy'),
+        HTMLButtonElement,
+      );
       await fireEvent.click(copyBtn);
       await waitFor(() => {
         expect(

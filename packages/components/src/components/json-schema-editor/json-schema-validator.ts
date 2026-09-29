@@ -1,29 +1,32 @@
 /**
- * Ajv wrappers for JSON Schema meta-schema validation, compilability checks,
- * and input normalisation.
+ * CSP-safe wrappers for JSON Schema meta-schema validation, compilability
+ * checks, and input normalisation, built on the shared interpreted
+ * validation boundary in `utilities/json-schema-interpreter.ts`.
  *
  * Two distinct validation signals are exposed:
  *  - validateMetaSchema: does the document conform to the JSON Schema
- *    meta-schema for the chosen draft?
- *  - tryCompile: can Ajv compile this schema into a validator? Catches
- *    issues meta-schema validation misses (unresolved $ref, unsupported
- *    format, etc.).
+ *    meta-schema for the chosen draft? Blind to whether $refs resolve.
+ *  - tryCompile: can this schema actually be used to validate data?
+ *    Catches issues meta-schema validation misses (unresolved $ref,
+ *    unsupported format, bad regex, etc.).
  *
- * tryCompile uses a fresh Ajv instance per call so iterating on a schema
- * with a stable $id never trips the "schema already exists" cache error.
+ * Previously built on Ajv, whose `compile()` code-generates a validator
+ * with `new Function` — that fails under a Content-Security-Policy without
+ * `unsafe-eval`. json-schema-library's `compileSchema` builds a schema-node
+ * interpreter instead: it walks the schema and evaluates keywords as plain
+ * function calls, so it works under that CSP.
  *
- * Ajv (~120KB across the three draft builds) is dynamically imported on
- * first use rather than declared as a static dependency — mirrors the
- * pattern in schema-form/schema-form-validation.ts. Both exported
- * validation functions are therefore async.
+ * Both exported functions stay async: `compileInterpreted` dynamically
+ * imports json-schema-library (mirroring the previous Ajv dynamic import),
+ * so validation isn't in this component's static bundle unless it runs.
  */
 
-import type Ajv from 'ajv';
-import type { FormatsPlugin } from 'ajv-formats';
-import type Ajv2019 from 'ajv/dist/2019.js';
-import type Ajv2020 from 'ajv/dist/2020.js';
-
-import { createRetryingLoaderCache } from '../../utilities/retrying-loader-cache.ts';
+import {
+  compileInterpreted,
+  dedupeInterpreterErrors,
+  isRefResolutionSchemaError,
+  stripPointerHash,
+} from '../../utilities/json-schema-interpreter.ts';
 import type {
   JsonSchemaDraft,
   JsonSchemaKnownDraft,
@@ -75,62 +78,34 @@ function resolveDraft(draft: JsonSchemaDraft | undefined): JsonSchemaKnownDraft 
   return draft;
 }
 
-// Reuse the shared retrying cache so concurrent imports coalesce and a
-// transient rejected import is evicted for the next validation attempt.
-const loadAjv = createRetryingLoaderCache(() => import('ajv').then((module) => module.default));
-const loadAjv2019 = createRetryingLoaderCache(() =>
-  import('ajv/dist/2019.js').then((module) => module.default),
-);
-const loadAjv2020 = createRetryingLoaderCache(() =>
-  import('ajv/dist/2020.js').then((module) => module.default),
-);
-const loadAjvFormats = createRetryingLoaderCache(() =>
-  import('ajv-formats').then((module) => module.default),
-);
-
-async function registerStandardFormats(ajv: Ajv | Ajv2019 | Ajv2020) {
-  const formats: FormatsPlugin = await loadAjvFormats();
-  formats(ajv);
-  return ajv;
+/**
+ * A caller-supplied `draft` override that contradicts the schema's own
+ * explicit `$schema` declaration is a real correctness problem, not a
+ * "pick one" ambiguity — the schema was authored for a different draft.
+ * Only fires when `$schema` is present and recognised; the common override
+ * case (no `$schema` at all, caller picks a draft deliberately) never
+ * mismatches against itself.
+ */
+function explicitDraftMismatch(
+  schema: Record<string, unknown>,
+  draftOverride: JsonSchemaDraft | undefined,
+): JsonSchemaValidationError | null {
+  if (!draftOverride || draftOverride === 'unknown') return null;
+  const declared = getSchemaId(schema) ? detectDraft(schema) : undefined;
+  if (!declared || declared === 'unknown' || declared === draftOverride) return null;
+  return {
+    path: '',
+    message: `Schema declares $schema for ${declared}, which does not match the requested draft override ${draftOverride}.`,
+    keyword: 'schema-mismatch',
+  };
 }
 
-// Long-lived meta-schema validators. Safe to share — they don't compile the
-// user's schema, only validate against the meta-schema.
-let metaAjv2020: Ajv2020 | null = null;
-let metaAjv2019: Ajv2019 | null = null;
-let metaAjv07: Ajv | null = null;
-
-async function getMetaValidator(draft: JsonSchemaKnownDraft): Promise<Ajv | Ajv2020 | Ajv2019> {
-  if (draft === '2020-12') {
-    if (!metaAjv2020) {
-      const Ajv2020Class = await loadAjv2020();
-      metaAjv2020 = new Ajv2020Class({ strict: false, allErrors: true });
-    }
-    return metaAjv2020;
-  }
-  if (draft === '2019-09') {
-    if (!metaAjv2019) {
-      const Ajv2019Class = await loadAjv2019();
-      metaAjv2019 = new Ajv2019Class({ strict: false, allErrors: true });
-    }
-    return metaAjv2019;
-  }
-  if (!metaAjv07) {
-    const AjvClass = await loadAjv();
-    metaAjv07 = new AjvClass({ strict: false, allErrors: true });
-  }
-  return metaAjv07;
-}
-
-function ajvErrorsToValidationErrors(
-  errors: { instancePath?: string; message?: string; keyword?: string }[] | null | undefined,
-): JsonSchemaValidationError[] {
-  if (!errors) return [];
-  return errors.map((error) => ({
-    path: error.instancePath ?? '',
-    message: error.message ?? 'Validation error',
-    keyword: error.keyword ?? '',
-  }));
+function toValidationError(error: {
+  code: string;
+  message: string;
+  pointer: string;
+}): JsonSchemaValidationError {
+  return { path: stripPointerHash(error.pointer), message: error.message, keyword: error.code };
 }
 
 /**
@@ -149,20 +124,22 @@ export async function validateMetaSchema(
     };
   }
 
+  const mismatch = explicitDraftMismatch(schema, draft);
+  if (mismatch) return { valid: false, errors: [mismatch] };
+
   const resolved = resolveDraft(draft ?? detectDraft(schema));
   try {
-    // getMetaValidator's dynamic import can reject (e.g. the module fails
-    // to load); ajv.validateSchema can throw synchronously (a schema
-    // referencing a meta-schema URI the instance doesn't know about, e.g.
-    // cross-draft $schema references). Both are schema-validation failures
+    // compileInterpreted's dynamic import can reject (e.g. the module fails
+    // to load); json-schema-library can throw synchronously for a
+    // sufficiently malformed schema. Both are schema-validation failures
     // from the caller's perspective, not unhandled exceptions — the editor
     // should surface either as a validation error, not crash the host.
-    const ajv = await getMetaValidator(resolved);
-    const valid = ajv.validateSchema(schema);
-    return {
-      valid: Boolean(valid),
-      errors: ajvErrorsToValidationErrors(ajv.errors),
-    };
+    const compiled = await compileInterpreted(schema, resolved);
+    // Structural shape only — blind to whether $refs resolve, matching
+    // what a real JSON-Schema-meta-schema check would say. tryCompile
+    // covers ref resolution.
+    const errors = compiled.schemaErrors.filter((error) => !isRefResolutionSchemaError(error));
+    return { valid: errors.length === 0, errors: errors.map(toValidationError) };
   } catch (error) {
     return {
       valid: false,
@@ -181,8 +158,8 @@ export async function validateMetaSchema(
  * Try to compile the schema. Surfaces unresolved $refs, unsupported formats,
  * and other compile-time errors that meta-schema validation misses.
  *
- * Each call uses a fresh Ajv instance so repeated compilation of a schema
- * with a stable $id does not collide with Ajv's internal cache.
+ * Each call compiles fresh, so iterating on a schema with a stable $id
+ * never collides with a previous call's state.
  */
 export async function tryCompile(
   schema: unknown,
@@ -195,27 +172,15 @@ export async function tryCompile(
 
   const resolved = resolveDraft(draft ?? detectDraft(schema));
   try {
-    // The dynamic Ajv-class import can reject as readily as ajv.compile can
-    // throw — both are covered by this one try/catch so tryCompile always
-    // resolves to { ok } rather than letting an import failure surface as
-    // an unhandled rejection.
-    let ajv: Ajv | Ajv2020 | Ajv2019;
-    if (resolved === '2020-12') {
-      const Ajv2020Class = await loadAjv2020();
-      ajv = await registerStandardFormats(
-        new Ajv2020Class({ strict: false, addUsedSchema: false }),
-      );
-    } else if (resolved === '2019-09') {
-      const Ajv2019Class = await loadAjv2019();
-      ajv = await registerStandardFormats(
-        new Ajv2019Class({ strict: false, addUsedSchema: false }),
-      );
-    } else {
-      const AjvClass = await loadAjv();
-      ajv = await registerStandardFormats(new AjvClass({ strict: false, addUsedSchema: false }));
+    // The dynamic json-schema-library import can reject as readily as
+    // compilation can throw — both are covered by this one try/catch so
+    // tryCompile always resolves to { ok } rather than letting an import
+    // failure surface as an unhandled rejection.
+    const compiled = await compileInterpreted(schema, resolved);
+    const errors = dedupeInterpreterErrors([...compiled.schemaErrors, ...compiled.refErrors]);
+    if (errors.length > 0) {
+      return { ok: false, error: errors.map((error) => error.message).join('; ') };
     }
-
-    ajv.compile(schema);
     return { ok: true };
   } catch (error) {
     return {
@@ -353,7 +318,7 @@ export function normaliseSchemaInput(
         error: 'Top-level schema must be an object or boolean',
       };
     }
-    const schema = parsed.value as JsonSchemaValue;
+    const schema = parsed.value;
     return {
       ok: true,
       rawText: input,

@@ -51,17 +51,18 @@
      * every click, so clicking a DIFFERENT row is unaffected and still closes
      * this popover immediately.
      */
-    ignoreClickOutsideRef?: () => Element | null;
+    /** Elements whose clicks should not dismiss this popover. */
+    ignoreClickOutsideRefs?: Array<() => Element | null>;
     /** Called when the popover should close */
     onclose?: () => void;
     /** Called when thread is deleted */
     ondelete?: (threadId: string) => void;
     /** Called when a new comment is created */
-    oncommentcreate?: (threadId: string, body: string) => void;
+    onCommentCreate?: (threadId: string, body: string) => void;
     /** Called when a comment is updated */
-    oncommentupdate?: (threadId: string, commentId: string, body: string) => void;
+    onCommentUpdate?: (threadId: string, commentId: string, body: string) => void;
     /** Called when a comment is deleted */
-    oncommentdelete?: (threadId: string, commentId: string) => void;
+    onCommentDelete?: (threadId: string, commentId: string) => void;
   };
 </script>
 
@@ -69,13 +70,11 @@
   import type { Placement, VirtualElement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import { createFocusTrap } from '@lostgradient/cinder/focus-trap';
+  import { createFocusTrap, Button, FileText, Trash2, X } from '@lostgradient/cinder';
   import { createClickOutside } from '../../utilities/attachments.ts';
-  import Button from '@lostgradient/cinder/button';
   import { isDocumentAnchor } from '../../comments/index.ts';
   import CommentList from './comment-list.svelte';
   import CommentComposer from './comment-composer.svelte';
-  import { FileText, Trash2, X } from '@lostgradient/cinder/icons';
 
   let {
     id,
@@ -85,12 +84,12 @@
     position,
     class: className,
     restoreFallbackId,
-    ignoreClickOutsideRef,
+    ignoreClickOutsideRefs,
     onclose,
     ondelete,
-    oncommentcreate,
-    oncommentupdate,
-    oncommentdelete,
+    onCommentCreate,
+    onCommentUpdate,
+    onCommentDelete,
   }: ThreadPopoverProps = $props();
 
   const isReadonly = $derived(mode === 'readonly');
@@ -133,7 +132,7 @@
    * restoration prefers `restoreFallback` over the element that opened the
    * popover.
    *
-   * Without it, a consumer whose `onthreaddelete` is server-backed gets the bug
+   * Without it, a consumer whose `onThreadDelete` is server-backed gets the bug
    * back: the popover closes as soon as the request is made, the sidebar item is
    * still on screen awaiting the response, so restoration hands focus back to it
    * — and then it unmounts, dropping focus on `<body>` with the fallback never
@@ -148,15 +147,15 @@
   }
 
   function handleCommentUpdate(commentId: string, body: string) {
-    oncommentupdate?.(thread.id, commentId, body);
+    onCommentUpdate?.(thread.id, commentId, body);
   }
 
   function handleCommentDelete(commentId: string) {
-    oncommentdelete?.(thread.id, commentId);
+    onCommentDelete?.(thread.id, commentId);
   }
 
   function handleCommentCreate(body: string) {
-    oncommentcreate?.(thread.id, body);
+    onCommentCreate?.(thread.id, body);
   }
 
   /** Whether this is a document-level comment */
@@ -210,7 +209,7 @@
   })}
   {@attach createClickOutside({
     handler: () => onclose?.(),
-    ...(ignoreClickOutsideRef ? { ignoreRefs: [ignoreClickOutsideRef] } : {}),
+    ...(ignoreClickOutsideRefs ? { ignoreRefs: ignoreClickOutsideRefs } : {}),
   })}
   onkeydown={handleKeyDown}
 >
@@ -283,6 +282,11 @@
     border-radius: var(--cinder-radius-lg);
     box-shadow: var(--cinder-shadow-lg);
     overflow: hidden;
+  }
+
+  .thread-popover[data-position-ready='false'] {
+    visibility: hidden;
+    pointer-events: none;
   }
 
   .thread-popover-header {

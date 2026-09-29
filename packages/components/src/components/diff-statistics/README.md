@@ -18,13 +18,13 @@ Compact inline display of added, modified, and removed line counts for a file di
 - [`Statistic`](../statistic/README.md) — general-purpose metric tile for non-diff numeric values.
 - [`StatisticGroup`](../statistic-group/README.md) — grid container for multiple `Statistic` tiles.
 - [`SourceDiffViewer`](../source-diff-viewer/README.md) — dependency-light unified-diff rendering whose per-file counts these statistics summarize.
-- [`DiffViewer`](https://github.com/stevekinney/cinder/tree/main/packages/editor/src/lib/components/diff-viewer) — `@lostgradient/editor`'s Markdown-oriented diff review surface, the other producer of diff counts.
+- [`DiffViewer`](https://github.com/stevekinney/cinder/tree/main/components/editor/src/lib/components/diff-viewer) — `@lostgradient/editor`'s Markdown-oriented diff review surface, the other producer of diff counts.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import DiffStatistics from '@lostgradient/cinder/diff-statistics';
+  import { DiffStatistics } from '@lostgradient/cinder';
 </script>
 
 <DiffStatistics added={12} removed={4} modified={2} />
@@ -51,7 +51,6 @@ Compact inline display of added, modified, and removed line counts for a file di
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

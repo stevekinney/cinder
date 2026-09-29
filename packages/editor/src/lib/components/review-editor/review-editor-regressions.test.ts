@@ -19,6 +19,7 @@ import { parseReviewEditorFrontMatter } from './review-editor-front-matter.ts';
 const here = (file: string) => new URL(`./${file}`, import.meta.url).pathname;
 
 const implementationSource = await Bun.file(here('review-editor-impl.svelte')).text();
+const anchorManagerSource = await Bun.file(here('review-editor-anchors.svelte.ts')).text();
 const wrapperSource = await Bun.file(here('review-editor.svelte')).text();
 const controlsSource = await Bun.file(here('review-editor-controls.svelte')).text();
 const commentSidebarSource = await Bun.file(here('comment-sidebar.svelte')).text();
@@ -26,12 +27,61 @@ const liveRegionSource = await Bun.file(here('live-region.svelte')).text();
 const anchorDecorationsSource = await Bun.file(
   new URL('../../anchor-decorations.ts', import.meta.url).pathname,
 ).text();
+const anchorStateSource = await Bun.file(
+  new URL('../../anchor-plugin-state.ts', import.meta.url).pathname,
+).text();
+const anchorReanchoringSource = await Bun.file(
+  new URL('../../anchor-reanchoring.ts', import.meta.url).pathname,
+).text();
 const anchorTypesSource = await Bun.file(
   new URL('../../shared/anchor-types.ts', import.meta.url).pathname,
 ).text();
-const exampleSet = (await Bun.file(here('review-editor.examples.json')).json()) as {
+interface ExampleSet {
   examples: { id: string; code: string }[];
-};
+}
+
+function isExampleSet(value: unknown): value is ExampleSet {
+  if (!value || typeof value !== 'object' || !('examples' in value)) return false;
+  const examples = value.examples;
+  return (
+    Array.isArray(examples) &&
+    examples.every(
+      (example) =>
+        Boolean(example) &&
+        typeof example === 'object' &&
+        'id' in example &&
+        'code' in example &&
+        typeof example.id === 'string' &&
+        typeof example.code === 'string',
+    )
+  );
+}
+
+const sharedCommentsFixtureSource = await Bun.file(
+  new URL(
+    '../../../../../../scripts/browser-fixtures/src/fixtures/with-comments.svelte',
+    import.meta.url,
+  ).pathname,
+).text();
+const parsedExampleSet: unknown = await Bun.file(here('review-editor.examples.json')).json();
+if (!isExampleSet(parsedExampleSet)) throw new Error('Invalid review editor examples');
+const exampleSet = parsedExampleSet;
+
+function readStringLiteral(block: string, field: string): string {
+  const match = block.match(new RegExp(`\\b${field}: '([^']*)'`));
+  expect(match).not.toBeNull();
+  if (match?.[1] === undefined) throw new Error(`Missing ${field} string literal`);
+  const parsed: unknown = JSON.parse(`"${match[1]}"`);
+  if (typeof parsed !== 'string') throw new Error(`Invalid ${field} string literal`);
+  return parsed;
+}
+
+function readNumber(block: string, field: string): number {
+  const match = block.match(new RegExp(`\\b${field}: (\\d+)`));
+  expect(match).not.toBeNull();
+  if (match?.[1] === undefined) throw new Error(`Missing ${field} number literal`);
+  return Number(match[1]);
+}
 
 describe('seeded threads no longer highlight the whole document', () => {
   test('closes the actions menu when all visible threads disappear', () => {
@@ -52,11 +102,14 @@ describe('seeded threads no longer highlight the whole document', () => {
    * `.comment-anchor` spans, one per block, across the entire document.
    */
   test('a wholesale document replacement defers to re-anchoring instead of mapping positions', () => {
-    expect(anchorDecorationsSource).toContain('function isFullDocumentReplacement');
+    expect(anchorStateSource).toContain('function isFullDocumentReplacement');
     // The guard must run BEFORE the per-anchor mapping loop, and must return
     // the anchors untouched so their quote survives for re-anchoring.
-    const guardIndex = anchorDecorationsSource.indexOf('isFullDocumentReplacement(tr,');
-    const mappingIndex = anchorDecorationsSource.indexOf('tr.mapping.map(anchor.from');
+    const guardIndex = anchorStateSource.indexOf('isFullDocumentReplacement(tr,');
+    const mappingIndex = anchorStateSource.indexOf(
+      'for (const [threadId, anchor] of prevState.anchors)',
+      guardIndex,
+    );
     expect(guardIndex).toBeGreaterThan(-1);
     expect(mappingIndex).toBeGreaterThan(-1);
     expect(guardIndex).toBeLessThan(mappingIndex);
@@ -67,9 +120,9 @@ describe('seeded threads no longer highlight the whole document', () => {
     // documentation states — so they are frequently raw-markdown or textBetween
     // offsets instead. Verify and re-anchor rather than decorating whatever
     // happens to sit at the given range.
-    expect(anchorDecorationsSource).toContain('function anchorMatchesDocument');
-    expect(anchorDecorationsSource).toMatch(/case 'sync':[\s\S]*?anchorMatchesDocument/);
-    expect(anchorDecorationsSource).toMatch(/case 'add':[\s\S]*?anchorMatchesDocument/);
+    expect(anchorStateSource).toContain('function anchorMatchesDocument');
+    expect(anchorStateSource).toMatch(/function syncAnchors[\s\S]*?anchorMatchesDocument/);
+    expect(anchorStateSource).toMatch(/function addAnchor[\s\S]*?anchorMatchesDocument/);
   });
 
   test('a collapsed range paints nothing, so the 0/0 sentinel is invisible', () => {
@@ -99,8 +152,8 @@ describe('seeded threads no longer highlight the whole document', () => {
     // The gate is `anchorMatchesDocument(tr.before, anchor)` — did this anchor
     // describe its own text BEFORE this transaction. `tr.before` is the correct
     // document to pair with the pre-map `anchor.from`/`anchor.to`.
-    expect(anchorDecorationsSource).toMatch(
-      /didTransactionAffectAnchorRange\(tr, anchor\.from, anchor\.to\) &&\s*\n?\s*anchorMatchesDocument\(tr\.before, anchor\)/,
+    expect(anchorStateSource).toMatch(
+      /const followsEdit =\s*[\s\S]*?didTransactionAffectAnchorRange\(tr, anchor\.from, anchor\.to\)[\s\S]*?anchorMatchesDocument\(doc, anchor\)/,
     );
   });
 
@@ -110,10 +163,10 @@ describe('seeded threads no longer highlight the whole document', () => {
     // what keeps it off ordinary editing drift — the plugin maps its own copy
     // without writing back, so a consumer's `threads` legitimately goes stale,
     // but those threads are already tracked and never reach the warning.
-    expect(anchorDecorationsSource).toContain('function warnOnMisSeededAnchor');
-    expect(anchorDecorationsSource).toMatch(/if \(alreadyTracked \|\| !anchor\.quote/);
-    expect(anchorDecorationsSource).toMatch(/case 'sync':[\s\S]*?warnOnMisSeededAnchor/);
-    expect(anchorDecorationsSource).toMatch(/case 'add':[\s\S]*?warnOnMisSeededAnchor/);
+    expect(anchorStateSource).toContain('function warnOnMisSeededAnchor');
+    expect(anchorStateSource).toMatch(/if \(alreadyTracked \|\| !anchor\.quote/);
+    expect(anchorStateSource).toMatch(/function syncAnchors[\s\S]*?warnOnMisSeededAnchor/);
+    expect(anchorStateSource).toMatch(/function addAnchor[\s\S]*?warnOnMisSeededAnchor/);
   });
 
   test('the documented unplaced sentinel re-anchors without a warning', () => {
@@ -121,9 +174,9 @@ describe('seeded threads no longer highlight the whole document', () => {
     // the plugin can place it by quote against the live document. That
     // persistence path is valid and must not be diagnosed as hand-computed
     // coordinates.
-    const warningBody = anchorDecorationsSource.slice(
-      anchorDecorationsSource.indexOf('function warnOnMisSeededAnchor'),
-      anchorDecorationsSource.indexOf('/**\n * Handle meta-transactions'),
+    const warningBody = anchorStateSource.slice(
+      anchorStateSource.indexOf('function warnOnMisSeededAnchor'),
+      anchorStateSource.indexOf('export function handleMetaTransaction'),
     );
     expect(warningBody).toMatch(/anchor\.from === 0 && anchor\.to === 0/);
   });
@@ -132,12 +185,11 @@ describe('seeded threads no longer highlight the whole document', () => {
     // After a wholesale replacement the stored positions can point past the end
     // of the new document, and `textBetween` throws a RangeError on
     // out-of-range input. The bounds check lives in anchorMatchesDocument.
-    expect(anchorDecorationsSource).toMatch(
+    expect(anchorStateSource).toMatch(
       /anchor\.from < 0 \|\| anchor\.to > docSize \|\| anchor\.from >= anchor\.to/,
     );
-    expect(anchorDecorationsSource).toMatch(
-      /if \(anchorMatchesDocument\(doc, anchor\)\) \{[\s\S]*?newAnchors\.set\(threadId, anchor\)/,
-    );
+    expect(anchorReanchoringSource).toContain('if (anchorMatchesDocument(doc, anchor))');
+    expect(anchorReanchoringSource).toContain('newAnchors.set(threadId, result.anchor)');
   });
 });
 
@@ -165,17 +217,18 @@ describe('a vanished anchor orphans its thread rather than deleting it', () => {
    */
   test('the plugin no longer asks the component to delete a thread', () => {
     expect(implementationSource).not.toMatch(/onAnchorDeleted:/);
-    expect(anchorDecorationsSource).not.toMatch(/options\.onAnchorDeleted\?\.\(/);
+    expect(anchorReanchoringSource).not.toMatch(/options\.onAnchorDeleted\?\.\(/);
   });
 
   test('a not-found quote marks the anchor orphaned and keeps it tracked', () => {
-    const deferred = anchorDecorationsSource.slice(
-      anchorDecorationsSource.indexOf('function performDeferredReanchoring'),
+    const deferred = anchorReanchoringSource.slice(
+      anchorReanchoringSource.indexOf('function reanchorOne'),
     );
     expect(deferred).toMatch(/if \(!result\.found\)/);
     expect(deferred).toMatch(/status: 'orphaned'/);
     // Kept, not dropped: the anchor goes back into the map on the not-found path.
-    expect(deferred).toMatch(/if \(!result\.found\)[\s\S]*?newAnchors\.set\(threadId, orphaned\)/);
+    expect(deferred).toMatch(/if \(!result\.found\)[\s\S]*?status: 'orphaned'/);
+    expect(deferred).toMatch(/newAnchors\.set\(threadId, result\.anchor\)/);
   });
 
   test('an orphaned anchor renders no decoration', () => {
@@ -183,7 +236,7 @@ describe('a vanished anchor orphans its thread rather than deleting it', () => {
   });
 
   test('the status reaches the consumer through the bindable threads', () => {
-    expect(implementationSource).toMatch(/status: update\.status/);
+    expect(anchorManagerSource).toMatch(/status: update\.status/);
     expect(implementationSource).toContain('function announceOrphanedThreads');
   });
 
@@ -198,7 +251,7 @@ describe('the imperative surface reaches the published entry point', () => {
    * wrapper rendered the implementation without `bind:this` and re-exported
    * nothing — so `bind:this` on <ReviewEditor> yielded a component with no
    * methods, and the entire persistence round-trip (getState/setState) was
-   * unreachable from '@lostgradient/editor/review-editor'.
+   * unreachable from '@lostgradient/editor'.
    */
   test('the wrapper binds the implementation instance', () => {
     expect(wrapperSource).toMatch(/bind:this=\{implementation\}/);
@@ -221,11 +274,31 @@ describe('the imperative surface reaches the published entry point', () => {
     'deleteComment',
     'exportUnifiedDiff',
     'exportMarkdownSummary',
+    'exportAggregateReviewMarkdown',
+    'exportAggregateReviewJson',
     'reset',
     'focus',
   ])('the wrapper forwards %s', (method) => {
     expect(wrapperSource).toMatch(new RegExp(`export function ${method}\\b`));
     expect(implementationSource).toMatch(new RegExp(`export function ${method}\\b`));
+  });
+});
+
+describe('ReviewEditor diff comments: the public wrapper forwards the opt-in props', () => {
+  /**
+   * `diffReviewState`/`onDiffReviewStateChange` reach the implementation through the wrapper's
+   * existing `{...rest}` spread (COR-512 / DR-7) -- they are never destructured by name in
+   * `review-editor.svelte`, unlike an imperative method. This pins that the wrapper's spread
+   * still exists and that the implementation actually declares both props, so a future
+   * refactor that starts naming props explicitly in the wrapper cannot silently drop these two.
+   */
+  test('the wrapper still spreads unrecognized props onto the implementation', () => {
+    expect(wrapperSource).toMatch(/<ReviewEditorImplementation[\s\S]*?\{\.\.\.rest\}/);
+  });
+
+  test('the implementation declares both opt-in diff-review props', () => {
+    expect(implementationSource).toContain('diffReviewState,');
+    expect(implementationSource).toContain('onDiffReviewStateChange,');
   });
 });
 
@@ -263,7 +336,7 @@ describe('the comments toggle points at the sidebar that exists', () => {
 describe('the editor view renders one control row, not two', () => {
   /**
    * The diff view passed DiffViewer an empty toolbar snippet ("controls are in
-   * the unified bar above") and the summary view passed `showToolbar={false}`,
+   * the unified bar above") and the summary view passed `toolbarEnabled={false}`,
    * but the editor view passed neither — so it stacked MarkdownEditor's own
    * formatting toolbar under the unified bar. Two full-height bars cost ~90px
    * of chrome before any document content.
@@ -273,8 +346,8 @@ describe('the editor view renders one control row, not two', () => {
       implementationSource.indexOf('<MarkdownEditor'),
       implementationSource.indexOf('{:else if activeView === '),
     );
-    expect(editorView).toContain('showToolbar={false}');
-    expect(editorView).toContain('ontoolbarcontextchange');
+    expect(editorView).toContain('toolbarEnabled={false}');
+    expect(editorView).toContain('onToolbarContextChange');
   });
 
   test('the formatting controls are hosted inside the unified bar', () => {
@@ -305,28 +378,26 @@ describe('the shipped examples seed anchors in the documented coordinate space',
    * in sync with the playground source, and re-derives the arithmetic against a
    * real ProseMirror document.
    */
-  const readStringLiteral = (block: string, field: string): string => {
-    const match = block.match(new RegExp(`\\b${field}: '([^']*)'`));
-    expect(match).not.toBeNull();
-    // Source escapes (\n) are JSON escapes too, and no literal here uses ".
-    return JSON.parse(`"${match![1]}"`) as string;
-  };
+  const sources = [
+    ...exampleSet.examples.map((example) => ({
+      id: example.id,
+      code: example.code,
+    })),
+    {
+      id: 'shared-with-comments-fixture',
+      code: sharedCommentsFixtureSource,
+    },
+  ];
 
-  const readNumber = (block: string, field: string): number => {
-    const match = block.match(new RegExp(`\\b${field}: (\\d+)`));
-    expect(match).not.toBeNull();
-    return Number(match![1]);
-  };
-
-  for (const example of exampleSet.examples) {
-    const anchorBlocks = [...example.code.matchAll(/anchor: \{([\s\S]*?)\n {6}\},/g)].map(
+  for (const source of sources) {
+    const anchorBlocks = [...source.code.matchAll(/anchor: \{([\s\S]*?)\n {6}\},/g)].map(
       (match) => match[1]!,
     );
     const textAnchors = anchorBlocks.filter((block) => !block.includes("type: 'document'"));
     if (textAnchors.length === 0) continue;
 
-    test(`${example.id} anchors resolve to their quotes`, async () => {
-      const valueMatch = example.code.match(/let value = \$state\(`([\s\S]*?)`\)/);
+    test(`${source.id} anchors resolve to their quotes`, async () => {
+      const valueMatch = source.code.match(/let value = \$state\(`([\s\S]*?)`\)/);
       expect(valueMatch).not.toBeNull();
       const { body, bodyOffset } = parseReviewEditorFrontMatter(valueMatch![1]!);
       const { doc, destroy } = await createDocFromMarkdown(body);

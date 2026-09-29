@@ -1,6 +1,6 @@
+import { sveltePlugin, throwingRejectionOf } from '@lostgradient/testing';
 import { describe, expect, test } from 'bun:test';
 
-import { sveltePlugin } from '../scripts/svelte-plugin.ts';
 import Button from './components/button/button.svelte';
 
 describe('svelte plugin', () => {
@@ -8,8 +8,22 @@ describe('svelte plugin', () => {
     expect(typeof Button).toBe('function');
   });
 
+  test('the workspace preload allows styles in colocated component fixtures', async () => {
+    const fixturePath = `${import.meta.dir}/components/button/workspace-style.fixture.svelte`;
+    await Bun.write(
+      fixturePath,
+      '<p class="sample">Fixture</p><style>.sample { color: tomato; }</style>',
+    );
+    try {
+      const fixture = await import(fixturePath);
+      expect(typeof fixture.default).toBe('function');
+    } finally {
+      await Bun.file(fixturePath).delete();
+    }
+  });
+
   test('rejects components containing a <style> block', async () => {
-    const plugin = sveltePlugin({ generate: 'client' });
+    const plugin = sveltePlugin({ generate: 'client', allowStyleBlock: () => false });
     type LoadArguments = { path: string };
     type LoadResult = { contents: string; loader: string };
     type LoadHandler = (input: LoadArguments) => Promise<LoadResult>;
@@ -44,8 +58,8 @@ describe('svelte plugin', () => {
     );
 
     try {
-      await expect(registeredLoadHandler({ path: fixturePath })).rejects.toThrow(
-        /<style> block in .* not allowed/,
+      expect(await throwingRejectionOf(registeredLoadHandler({ path: fixturePath }))).toThrow(
+        /<style> block/,
       );
     } finally {
       await Bun.file(fixturePath).delete();
@@ -53,7 +67,10 @@ describe('svelte plugin', () => {
   });
 
   test('allows style blocks for domain-suite implementation files', async () => {
-    const plugin = sveltePlugin({ generate: 'client' });
+    const plugin = sveltePlugin({
+      generate: 'client',
+      allowStyleBlock: (path) => path.includes('/components/diff-viewer/'),
+    });
     type LoadArguments = { path: string };
     type LoadResult = { contents: string; loader: string };
     type LoadHandler = (input: LoadArguments) => Promise<LoadResult>;

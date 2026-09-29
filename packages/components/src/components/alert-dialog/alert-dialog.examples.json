@@ -1,7 +1,7 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "alert-dialog",
-  "import": "@lostgradient/cinder/alert-dialog",
+  "import": "@lostgradient/cinder",
   "examples": [
     {
       "id": "basic",

@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import type { ConversationHistory, Message, MessageRole } from './conversation-model.ts';
 
 setupHappyDom();
@@ -12,7 +12,7 @@ class TestResizeObserver {
   disconnect(): void {}
 }
 const originalResizeObserver = globalThis.ResizeObserver;
-globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
+globalThis.ResizeObserver = TestResizeObserver;
 
 class TestIntersectionObserver {
   observe(): void {}

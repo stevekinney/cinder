@@ -26,6 +26,7 @@
   import type { DropdownItemProps } from './dropdown-item.types.ts';
 
   import { classNames } from '../../utilities/class-names.ts';
+  import { rowDividerAttachment } from '../../utilities/row-divider.ts';
   import { getDropdownContext } from '../dropdown/dropdown.context.ts';
 
   let {
@@ -130,6 +131,7 @@
 -->
 {#if isLink}
   <a
+    {@attach rowDividerAttachment}
     {...anchorAttributes}
     {href}
     role={itemRole}
@@ -148,6 +150,7 @@
   </a>
 {:else}
   <button
+    {@attach rowDividerAttachment}
     {...buttonAttributes}
     type={buttonType}
     role={itemRole}

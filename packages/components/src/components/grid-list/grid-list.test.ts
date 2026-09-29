@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -45,7 +45,7 @@ describe('GridList', () => {
     const { container } = render(GridList, {
       props: { minColumnWidth: '20rem', children: textSnippet('') },
     });
-    const list = container.querySelector('ul.cinder-grid-list') as HTMLElement;
+    const list = requiredInstance(container.querySelector('ul.cinder-grid-list'), HTMLElement);
     expect(list?.style.getPropertyValue('--cinder-grid-min-item-width')).toBe('20rem');
   });
 
@@ -53,7 +53,7 @@ describe('GridList', () => {
     const { container } = render(GridList, {
       props: { children: textSnippet('') },
     });
-    const list = container.querySelector('ul.cinder-grid-list') as HTMLElement;
+    const list = requiredInstance(container.querySelector('ul.cinder-grid-list'), HTMLElement);
     expect(list?.style.getPropertyValue('--cinder-grid-min-item-width')).toBe('16rem');
   });
 
@@ -61,7 +61,7 @@ describe('GridList', () => {
     const { container } = render(GridList, {
       props: { minColumnWidth: '', children: textSnippet('') },
     });
-    const list = container.querySelector('ul.cinder-grid-list') as HTMLElement;
+    const list = requiredInstance(container.querySelector('ul.cinder-grid-list'), HTMLElement);
     expect(list?.style.getPropertyValue('--cinder-grid-min-item-width')).toBe('16rem');
   });
 

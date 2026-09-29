@@ -67,18 +67,21 @@
 
     const pendingValue = draftValue;
     let cancelled = false;
-    void import('@lostgradient/cinder/json-editor/enhancement')
+    const syncHighlightScroll = async (): Promise<void> => {
+      await tick();
+      if (!cancelled && highlightNode && textareaNode) {
+        highlightNode.scrollTop = textareaNode.scrollTop;
+        highlightNode.scrollLeft = textareaNode.scrollLeft;
+      }
+    };
+    void import('./json-editor-enhancement.ts')
       .then(({ enhanceJson }) => {
-        if (cancelled) return;
+        if (cancelled) return undefined;
         const result = enhanceJson(pendingValue, parseIsValid);
         highlightedHtml = result.html;
         lintPosition = result.lint?.position ?? null;
-        void tick().then(() => {
-          if (!cancelled && highlightNode && textareaNode) {
-            highlightNode.scrollTop = textareaNode.scrollTop;
-            highlightNode.scrollLeft = textareaNode.scrollLeft;
-          }
-        });
+        void syncHighlightScroll();
+        return undefined;
       })
       .catch(() => {
         if (!cancelled) {
@@ -186,8 +189,7 @@
       }}
       {@attach (element) => {
         if (autofocus) element.focus();
-      }}
-    ></textarea>
+      }}></textarea>
   </div>
 {/snippet}
 

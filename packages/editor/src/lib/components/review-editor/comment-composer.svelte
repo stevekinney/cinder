@@ -58,7 +58,7 @@
    */
 
   import { classNames } from '../../utilities/class-names.ts';
-  import Button from '@lostgradient/cinder/button';
+  import { Button } from '@lostgradient/cinder';
 
   let {
     id,
@@ -176,8 +176,7 @@
       aria-invalid={error ? 'true' : undefined}
       aria-describedby={error ? errorId : undefined}
       aria-busy={loading ? 'true' : undefined}
-      {...rest}
-    ></textarea>
+      {...rest}></textarea>
 
     <div class="comment-composer-inline-submit">
       <!--
@@ -248,8 +247,8 @@
 
   .comment-composer-inline-submit {
     position: absolute;
-    right: var(--cinder-space-2);
-    bottom: var(--cinder-space-2);
+    right: var(--cinder-space-3);
+    bottom: var(--cinder-space-3);
     opacity: 0;
     pointer-events: none;
     transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
@@ -261,11 +260,12 @@
   }
 
   .comment-composer-textarea {
+    display: block;
     width: 100%;
     min-height: 4.5rem;
     padding: var(--cinder-space-2);
-    /* Extra bottom padding to accommodate inline submit button */
-    padding-bottom: calc(var(--cinder-space-2) + 1.5rem + var(--cinder-space-2));
+    padding-inline-end: calc(5rem + var(--cinder-space-3));
+    padding-block-end: calc(var(--cinder-space-3) + 1.5rem + var(--cinder-space-3));
     font-family: inherit;
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-normal);

@@ -42,12 +42,7 @@ function sanitizeUrl(
   if (!value) return null;
 
   // Allow hash and relative paths (including bare relative like "foo/bar").
-  if (
-    value.startsWith('#') ||
-    value.startsWith('/') ||
-    value.startsWith('./') ||
-    value.startsWith('../')
-  ) {
+  if (isRelativeUrl(value)) {
     return value;
   }
 
@@ -67,17 +62,30 @@ function sanitizeUrl(
   }
 
   // Optionally allow data: URLs for <img src="data:..."> only.
-  if (
-    protocol === 'data' &&
-    options.allowDataUrlImages &&
-    attributeName === 'src' &&
-    element.tagName.toLowerCase() === 'img'
-  ) {
+  if (isAllowedDataImage(protocol, options, element, attributeName)) {
     return value;
   }
 
   // Block everything else (javascript:, vbscript:, file:, data: by default, etc.).
   return null;
+}
+
+function isRelativeUrl(value: string): boolean {
+  return ['#', '/', './', '../'].some((prefix) => value.startsWith(prefix));
+}
+
+function isAllowedDataImage(
+  protocol: string,
+  options: Required<SanitizeHtmlOptions>,
+  element: Element,
+  attributeName: string,
+): boolean {
+  return (
+    protocol === 'data' &&
+    options.allowDataUrlImages &&
+    attributeName === 'src' &&
+    element.tagName.toLowerCase() === 'img'
+  );
 }
 
 /**
@@ -115,38 +123,25 @@ export function sanitizeHtml(html: string, options: SanitizeHtmlOptions = {}): s
     // Copy attributes first since we'll mutate.
     const attributes = Array.from(element.attributes);
 
-    for (const attribute of attributes) {
-      const name = attribute.name.toLowerCase();
-
-      // Remove event handlers (onclick, onload, …)
-      if (name.startsWith('on')) {
-        element.removeAttribute(attribute.name);
-        continue;
-      }
-
-      // Remove inline styles to avoid CSS-based tricks.
-      if (name === 'style') {
-        element.removeAttribute(attribute.name);
-        continue;
-      }
-
-      // Strip srcset completely (multiple URLs; easiest safe handling is removing).
-      if (name === 'srcset') {
-        element.removeAttribute(attribute.name);
-        continue;
-      }
-
-      // Sanitize common URL-bearing attributes.
-      if (name === 'href' || name === 'src' || name === 'xlink:href' || name === 'formaction') {
-        const sanitized = sanitizeUrl(attribute.value, resolvedOptions, element, name);
-        if (sanitized === null) {
-          element.removeAttribute(attribute.name);
-        } else {
-          element.setAttribute(attribute.name, sanitized);
-        }
-      }
-    }
+    for (const attribute of attributes) sanitizeAttribute(element, attribute, resolvedOptions);
   }
 
   return document.body.innerHTML;
+}
+
+function sanitizeAttribute(
+  element: Element,
+  attribute: Attr,
+  options: Required<SanitizeHtmlOptions>,
+): void {
+  const name = attribute.name.toLowerCase();
+  if (name.startsWith('on') || name === 'style' || name === 'srcset') {
+    element.removeAttribute(attribute.name);
+    return;
+  }
+
+  if (!['href', 'src', 'xlink:href', 'formaction'].includes(name)) return;
+  const sanitized = sanitizeUrl(attribute.value, options, element, name);
+  if (sanitized === null) element.removeAttribute(attribute.name);
+  else element.setAttribute(attribute.name, sanitized);
 }

@@ -20,6 +20,17 @@ import { sanitize } from 'hast-util-sanitize';
 import { clearRenderCache, renderMarkdown, renderMarkdownWithMath } from './render.js';
 import { createSanitizeSchema } from './sanitize-schema.js';
 
+function sanitizeProperties(properties: Element['properties']): Element['properties'] | undefined {
+  const tree: Root = {
+    type: 'root',
+    children: [{ type: 'element', tagName: 'div', properties, children: [] }],
+  };
+  const cleaned = sanitize(tree, createSanitizeSchema());
+  if (cleaned.type !== 'root') throw new Error('Expected sanitized root');
+  const element = cleaned.children[0];
+  return element?.type === 'element' ? element.properties : undefined;
+}
+
 describe('GitHub callouts through the full render pipeline', () => {
   it('survives sanitization with its variant, role, and label intact', () => {
     clearRenderCache();
@@ -111,17 +122,6 @@ describe('GitHub callouts through the full render pipeline', () => {
 });
 
 describe('sanitize schema: div attribute allowlist', () => {
-  /** Sanitize a single-element hast tree and return the surviving properties. */
-  function sanitizeProperties(properties: Element['properties']): Element['properties'] {
-    const tree: Root = {
-      type: 'root',
-      children: [{ type: 'element', tagName: 'div', properties, children: [] }],
-    };
-    const cleaned = sanitize(tree, createSanitizeSchema()) as Root;
-    const element = cleaned.children[0];
-    return element?.type === 'element' ? element.properties : undefined;
-  }
-
   it('keeps the callout attributes', () => {
     const properties = sanitizeProperties({
       className: ['cinder-callout'],
@@ -154,8 +154,9 @@ describe('sanitize schema: div attribute allowlist', () => {
       type: 'root',
       children: [{ type: 'element', tagName: 'p', properties: { role: 'note' }, children: [] }],
     };
-    const cleaned = sanitize(tree, createSanitizeSchema()) as Root;
-    const element = cleaned.children[0];
+    const cleaned = sanitize(tree, createSanitizeSchema());
+    if (cleaned.type !== 'root') throw new Error('Expected sanitized root');
+    const element = cleaned.children[0]!;
     expect(element?.type === 'element' ? element.properties['role'] : undefined).toBeUndefined();
   });
 });

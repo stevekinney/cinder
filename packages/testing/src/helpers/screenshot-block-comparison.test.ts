@@ -7,10 +7,8 @@
  * Playwright's `toHaveScreenshot`, which delegates to `pixelmatch` under the
  * `threshold`/`maxDiffPixels` tolerance declared in `SNAPSHOT_DIFF_OPTIONS`.
  *
- * Authentic per-component baselines must be authored on native amd64 inside the
- * canonical `cinder-playwright` Docker image (host/QEMU pixels are flaky — see
- * docs/visual-regression/baselines.md), so they are produced by the CI
- * `update-baselines` dispatch, NOT here. This suite instead pins the gate's
+ * Authentic per-component baselines are authored by the application-owned
+ * browser workflow, NOT here. This suite instead pins the gate's
  * comparison behaviour against a small, committed, deterministically-generated
  * baseline fixture so the "passes on match / catches a change" contract is
  * demonstrated and runs green on a clean checkout, mirroring the same
@@ -31,11 +29,6 @@ import { blockBaselineGuard, SNAPSHOT_DIFF_OPTIONS } from './screenshot.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const BASELINE_FIXTURE = join(here, '__fixtures__', 'block-baseline-fixture.png');
-const DOCKER_ENVIRONMENT: NodeJS.ProcessEnv = {
-  CINDER_PLAYWRIGHT_VERSION: '1.60.0',
-  PLAYWRIGHT_DOCKER: '1',
-};
-
 /** The block-mode tolerance, sourced from production config (no duplicated literals). */
 const THRESHOLD = SNAPSHOT_DIFF_OPTIONS.threshold ?? 0.1;
 const MAX_DIFF_PIXELS = SNAPSHOT_DIFF_OPTIONS.maxDiffPixels ?? 0;
@@ -116,14 +109,12 @@ describe('block-mode comparison contract — committed baseline', () => {
 });
 
 describe('block-mode guard against the committed baseline path', () => {
-  it('does NOT fire the guard when the baseline exists inside Docker', () => {
-    // Real existsSync against the committed fixture — the same wiring
-    // captureBlockMode uses (existsSync(snapshotPath(key))).
-    expect(
-      blockBaselineGuard(BASELINE_FIXTURE, existsSync(BASELINE_FIXTURE), 'none', false, {
-        ...DOCKER_ENVIRONMENT,
-      }),
-    ).toEqual({ ok: true });
+  it('does NOT fire the guard when the baseline exists', () => {
+    // Real existsSync against the committed fixture — the same existence
+    // predicate captureBlockMode applies to Playwright's resolved path.
+    expect(blockBaselineGuard(BASELINE_FIXTURE, existsSync(BASELINE_FIXTURE), 'none')).toEqual({
+      ok: true,
+    });
   });
 
   it('fires the actionable guard for an absent baseline path while validating', () => {

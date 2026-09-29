@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
 
+import { throwingRejectionOf } from '@lostgradient/testing';
 import {
   serializeChatAttachment,
   serializeChatAttachments,
@@ -42,7 +43,7 @@ describe('chat attachment serialization', () => {
       kind: 'code',
     });
 
-    await expect(serializeChatAttachment(attachment)).resolves.toEqual({
+    expect(await serializeChatAttachment(attachment)).toEqual({
       name: 'hello.txt',
       mimeType: 'application/x-typescript',
       kind: 'code',
@@ -54,8 +55,8 @@ describe('chat attachment serialization', () => {
     const firstBytes = new TextEncoder().encode('first');
     const secondBytes = new TextEncoder().encode('second');
 
-    await expect(
-      serializeChatAttachments([
+    expect(
+      await serializeChatAttachments([
         createAttachment(firstBytes, {
           name: 'first.txt',
           type: 'application/pdf',
@@ -63,7 +64,7 @@ describe('chat attachment serialization', () => {
         }),
         createAttachment(secondBytes, { name: 'second.png', type: 'image/png', kind: 'image' }),
       ]),
-    ).resolves.toEqual([
+    ).toEqual([
       {
         name: 'first.txt',
         mimeType: 'application/pdf',
@@ -108,15 +109,15 @@ describe('chat attachment serialization', () => {
     try {
       const bytes = new TextEncoder().encode('server-side fallback');
 
-      await expect(
-        serializeChatAttachment(
+      expect(
+        await serializeChatAttachment(
           createAttachment(bytes, {
             name: 'fallback.bin',
             type: 'application/octet-stream',
             kind: 'document',
           }),
         ),
-      ).resolves.toEqual({
+      ).toEqual({
         name: 'fallback.bin',
         mimeType: 'application/octet-stream',
         kind: 'document',
@@ -143,15 +144,17 @@ describe('chat attachment serialization', () => {
     });
 
     try {
-      await expect(
-        serializeChatAttachment(
-          createAttachment(new TextEncoder().encode('no encoder'), {
-            name: 'unsupported.bin',
-            type: 'application/octet-stream',
-            kind: 'document',
-          }),
+      expect(
+        await throwingRejectionOf(
+          serializeChatAttachment(
+            createAttachment(new TextEncoder().encode('no encoder'), {
+              name: 'unsupported.bin',
+              type: 'application/octet-stream',
+              kind: 'document',
+            }),
+          ),
         ),
-      ).rejects.toThrow('serializeChatAttachment requires btoa or Buffer for base64 encoding.');
+      ).toThrow('serializeChatAttachment requires btoa or Buffer for base64 encoding.');
     } finally {
       Object.defineProperty(globalThis, 'btoa', {
         configurable: true,

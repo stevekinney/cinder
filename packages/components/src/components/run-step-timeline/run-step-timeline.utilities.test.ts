@@ -244,3 +244,39 @@ describe('safeStepLinkHref', () => {
     expect(safeStepLinkHref('http://')).toBeUndefined();
   });
 });
+
+describe('exhaustiveness guards', () => {
+  // Every status/outcome mapper here switches over a closed union and is
+  // exhaustively tested above via ALL_STATUSES / won-lost-settled, so the
+  // `default: return assertNever(...)` arm is only reachable by a caller
+  // that bypasses the type system (e.g. untyped JS interop) — these guard
+  // against exactly that, matching the convention in
+  // src/_internal/collection.test.ts's `navigationIntent` exhaustiveness test.
+  test('statusDotStatus throws for a status outside the known union', () => {
+    expect(() => statusDotStatus('sideways' as never)).toThrow(
+      'Unexpected exhaustive value: sideways',
+    );
+  });
+
+  test('statusLabel throws for a status outside the known union', () => {
+    expect(() => statusLabel('sideways' as never)).toThrow('Unexpected exhaustive value: sideways');
+  });
+
+  test('badgeVariant throws for a status outside the known union', () => {
+    expect(() => badgeVariant('sideways' as never)).toThrow(
+      'Unexpected exhaustive value: sideways',
+    );
+  });
+
+  test('laneOutcomeLabel throws for an outcome outside the known union', () => {
+    expect(() => laneOutcomeLabel('sideways' as never)).toThrow(
+      'Unexpected exhaustive value: sideways',
+    );
+  });
+
+  test('laneOutcomeBadgeVariant throws for an outcome outside the known union', () => {
+    expect(() => laneOutcomeBadgeVariant('sideways' as never)).toThrow(
+      'Unexpected exhaustive value: sideways',
+    );
+  });
+});

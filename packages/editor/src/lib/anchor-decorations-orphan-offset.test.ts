@@ -15,20 +15,21 @@
  * recovered anchor attaches to the FIRST occurrence of its quote rather than
  * the one the comment was written against.
  *
- * These tests drive the real plugin against a real `EditorState` with a
- * controllable clock in place of the 300ms debounce. No DOM required: the
- * plugin view touches only `view.state` and `view.dispatch`.
+ * These tests drive the real plugin against a real `EditorView` with a
+ * controllable clock in place of the 300ms debounce.
  */
 
+import { setupHappyDom } from '@lostgradient/testing';
 import type { Node as ProseMirrorNode } from '@milkdown/kit/prose/model';
 import { Schema } from '@milkdown/kit/prose/model';
-import type { Plugin, Transaction } from '@milkdown/kit/prose/state';
+import type { Transaction } from '@milkdown/kit/prose/state';
 import { EditorState } from '@milkdown/kit/prose/state';
-import type { EditorView } from '@milkdown/kit/prose/view';
+import { EditorView } from '@milkdown/kit/prose/view';
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import type { AnchorPluginState, AnchorState } from './anchor-decorations.js';
-import { anchorPluginKey, createAnchorPlugin } from './anchor-decorations.js';
+import { anchorPluginKey } from './anchor-plugin-state.js';
+import type { AnchorPluginState, AnchorState } from './anchor-plugin-types.js';
+import { createAnchorProsePlugin } from './anchor-plugin.js';
 import type { AnchorUpdate, Thread } from './comments/types.js';
 import type { FakeClock } from './test/fake-clock.js';
 import { installFakeClock } from './test/fake-clock.js';
@@ -150,13 +151,7 @@ function restoredOrphanThread(lastKnownOffset: number): Thread {
 // Harness
 // ============================================================================
 
-type MilkdownProsePlugin = {
-  (ctx: {
-    wait: (timer: unknown) => Promise<void>;
-    update: (slice: unknown, updater: (plugins: Plugin[]) => Plugin[]) => void;
-  }): () => Promise<unknown>;
-  plugin: () => Plugin;
-};
+setupHappyDom();
 
 interface Harness {
   readonly state: EditorState;
@@ -171,44 +166,31 @@ interface Harness {
 
 async function createHarness(doc: ProseMirrorNode): Promise<Harness> {
   const updates: AnchorUpdate[] = [];
-  const milkdownPlugin = createAnchorPlugin({
+  const prosePlugin = createAnchorProsePlugin({
     onAnchorsUpdate: (received) => updates.push(...received),
-  }) as unknown as MilkdownProsePlugin;
-
-  await milkdownPlugin({ wait: async () => {}, update: () => {} })();
-  const prosePlugin = milkdownPlugin.plugin();
-
-  let state = EditorState.create({ schema, doc, plugins: [prosePlugin] });
-  let pluginView: {
-    update?: (view: EditorView, previous: EditorState) => void;
-    destroy?: () => void;
-  } = {};
-
-  const view = {
-    get state() {
-      return state;
+  });
+  const mount = document.createElement('div');
+  document.body.append(mount);
+  let view!: EditorView;
+  view = new EditorView(mount, {
+    state: EditorState.create({ schema, doc, plugins: [prosePlugin] }),
+    dispatchTransaction(transaction) {
+      view.updateState(view.state.apply(transaction));
     },
-    dispatch(transaction: Transaction) {
-      const previous = state;
-      state = state.apply(transaction);
-      pluginView.update?.(view as unknown as EditorView, previous);
-    },
-  };
-
-  pluginView = prosePlugin.spec.view?.(view as unknown as EditorView) ?? {};
+  });
 
   function pluginState(): AnchorPluginState {
-    const current = anchorPluginKey.getState(state);
+    const current = anchorPluginKey.getState(view.state);
     if (!current) throw new Error('anchor plugin state missing');
     return current;
   }
 
   return {
     get state() {
-      return state;
+      return view.state;
     },
     get documentText() {
-      return documentTextOf(state.doc);
+      return documentTextOf(view.state.doc);
     },
     updates,
     dispatch(transaction) {
@@ -216,7 +198,7 @@ async function createHarness(doc: ProseMirrorNode): Promise<Harness> {
     },
     syncThreads(threads) {
       view.dispatch(
-        state.tr.setMeta(anchorPluginKey, { type: 'sync', threads, source: 'external' }),
+        view.state.tr.setMeta(anchorPluginKey, { type: 'sync', threads, source: 'external' }),
       );
     },
     pluginState,
@@ -226,7 +208,8 @@ async function createHarness(doc: ProseMirrorNode): Promise<Harness> {
       return anchor;
     },
     destroy() {
-      pluginView.destroy?.();
+      view.destroy();
+      mount.remove();
     },
   };
 }

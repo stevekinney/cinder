@@ -1,6 +1,6 @@
 # Drawer — Accessibility Notes
 
-See also: [`_internal/OVERLAY-POLICY.md`](../_internal/OVERLAY-POLICY.md)
+See also: [`_internal/OVERLAY-POLICY.md`](../../_internal/OVERLAY-POLICY.md)
 
 ## Role and ARIA attributes
 
@@ -64,7 +64,7 @@ Open and close transitions are gated by `@media (prefers-reduced-motion: no-pref
 
 ## SSR — drawer is a client-only overlay
 
-Drawer renders empty markup during server-side rendering regardless of the `open` prop value. This is the [OVERLAY-POLICY](../_internal/OVERLAY-POLICY.md)-mandated contract for all Cinder overlays. An initially-open drawer paints one frame after client hydration.
+Drawer renders empty markup during server-side rendering regardless of the `open` prop value. This is the [OVERLAY-POLICY](../../_internal/OVERLAY-POLICY.md)-mandated contract for all Cinder overlays. An initially-open drawer paints one frame after client hydration.
 
 If first-paint overlay content is required (e.g., a server-rendered page that should open a drawer immediately), render the panel content inline (outside the drawer) during SSR and migrate to the drawer component once hydrated.
 

@@ -58,6 +58,16 @@ describe('nextIndex', () => {
     expect(nextIndex(0, 0, 'next')).toBe(0);
     expect(nextIndex(5, 0, 'last')).toBe(5);
   });
+
+  test('throws for an intent outside the known union', () => {
+    // `intent` is exhaustively typed, so this is only reachable by a caller
+    // that bypasses the type system (e.g. untyped JS interop) — the
+    // defensive `default` branch guards against exactly that.
+    expect(() => nextIndex(0, 3, 'sideways' as never)).toThrow(TypeError);
+    expect(() => nextIndex(0, 3, 'sideways' as never)).toThrow(
+      'Unsupported navigation intent: sideways',
+    );
+  });
 });
 
 describe('createSingleSelection', () => {

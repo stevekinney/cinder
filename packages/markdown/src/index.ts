@@ -1,8 +1,11 @@
-// The rendering namespace is intentionally NOT re-exported from the root.
-// Importing the bare `@lostgradient/markdown` would otherwise drag the entire
-// shiki + unified + remark + rehype + katex graph into a consumer's
-// bundle even when they only need diff or pipeline utilities. Consumers
-// that want the rendering pipeline must import the explicit subpath:
-//   import { renderMarkdown } from '@lostgradient/markdown/rendering';
-export * as diff from './diff/index.js';
-export * as pipeline from './pipeline/index.js';
+export * from './diff/index.js';
+export * from './pipeline/index.js';
+export * from './rendering/index.js';
+export {
+  initializeWorkerHighlighter,
+  renderMarkdownAsync,
+  terminateMarkdownWorker,
+} from './rendering/render-async.js';
+export * from './templates/index.js';
+export * from './utilities/safe-url.js';
+export * from './utilities/sort-keys.js';

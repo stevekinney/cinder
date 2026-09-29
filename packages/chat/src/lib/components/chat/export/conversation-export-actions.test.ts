@@ -2,19 +2,19 @@
  * Regression test for CIN-505: `ConversationExportActions`' polite copy-status
  * announcer must be visually hidden, not rendered as ordinary visible text.
  *
- * Same root cause as `tool-call-group.test.ts`: the announcer previously
+ * Same root cause as the tool activity announcer regression: the announcer previously
  * carried the bare `sr-only` class, which has no CSS rule reaching this
  * component. The fix switches the class to `cinder-sr-only`, the design
  * system's utility, which every `@lostgradient/chat` consumer already
- * receives via the required `@lostgradient/cinder/styles` import (see
- * `packages/chat/README.md`).
+ * receives via the required `@lostgradient/cinder` import (see
+ * `components/chat/README.md`).
  */
 
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
+import { setupHappyDom } from '@lostgradient/testing';
 import { injectStyles } from '../../../test/css.ts';
-import { setupHappyDom } from '../../../test/happy-dom.ts';
 import { createConversationHistory } from '../builders.ts';
 
 setupHappyDom();
@@ -23,7 +23,7 @@ const { render, cleanup } = await import('@testing-library/svelte');
 const { default: ConversationExportActions } = await import('./conversation-export-actions.svelte');
 
 const cinderSrOnlyCss = await Bun.file(
-  new URL('../../../../../../components/src/styles/utilities.css', import.meta.url),
+  new URL('../../../../../../cinder/src/styles/utilities.css', import.meta.url),
 ).text();
 
 afterEach(() => {

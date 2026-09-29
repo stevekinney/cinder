@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import type { MediaControlsProps } from './media-controls.types.ts';
 
 setupHappyDom();
@@ -76,7 +76,7 @@ describe('MediaControls', () => {
   // so this suite cannot assert `button.tabIndex !== -1` directly.
   test('button is not natively disabled but reports aria-disabled and stays focusable when disabled=true', () => {
     const { getByRole } = render(MediaControls, { disabled: true });
-    const button = getByRole('button') as HTMLButtonElement;
+    const button = requiredInstance(getByRole('button'), HTMLButtonElement);
     expect(button.disabled).toBe(false);
     expect(button.hasAttribute('disabled')).toBe(false);
     expect(button.hasAttribute('tabindex')).toBe(false);
@@ -85,7 +85,7 @@ describe('MediaControls', () => {
 
   test('button is not natively disabled but reports aria-disabled and stays focusable when loading=true', () => {
     const { getByRole } = render(MediaControls, { loading: true });
-    const button = getByRole('button') as HTMLButtonElement;
+    const button = requiredInstance(getByRole('button'), HTMLButtonElement);
     expect(button.disabled).toBe(false);
     expect(button.hasAttribute('disabled')).toBe(false);
     expect(button.hasAttribute('tabindex')).toBe(false);
@@ -95,7 +95,7 @@ describe('MediaControls', () => {
 
   test('button is not natively disabled but reports aria-disabled and stays focusable when unavailable=true', () => {
     const { getByRole } = render(MediaControls, { unavailable: true });
-    const button = getByRole('button') as HTMLButtonElement;
+    const button = requiredInstance(getByRole('button'), HTMLButtonElement);
     expect(button.disabled).toBe(false);
     expect(button.hasAttribute('disabled')).toBe(false);
     expect(button.hasAttribute('tabindex')).toBe(false);

@@ -14,8 +14,8 @@
 
 <script lang="ts">
   import { onDestroy, type Component } from 'svelte';
-  import ConfirmDialog from '@lostgradient/cinder/confirm-dialog';
-  import Modal from '@lostgradient/cinder/modal';
+  import { default as ConfirmDialog } from '../confirm-dialog/index.ts';
+  import { default as Modal } from '../modal/index.ts';
   import {
     setModalContext,
     type ModalEntry,
@@ -41,10 +41,7 @@
       const id = typeof typedProps.id === 'string' ? typedProps.id : `cinder-modal-${++sequence}`;
       const duplicate = entries.find((entry) => entry.id === id && !entry.settled);
       if (duplicate?.promise) return duplicate.promise;
-      let resolver: (value: unknown) => void = () => {};
-      const promise = new Promise<unknown>((resolve) => {
-        resolver = resolve;
-      });
+      const { promise, resolve } = Promise.withResolvers<unknown>();
       entries = [
         ...entries,
         {
@@ -53,7 +50,7 @@
           component: component as ModalComponent,
           props: { ...typedProps },
           title: options.title,
-          resolve: resolver,
+          resolve,
           promise,
         },
       ];

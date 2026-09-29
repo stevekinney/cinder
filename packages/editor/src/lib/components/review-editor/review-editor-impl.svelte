@@ -5,7 +5,6 @@
     PersistedThread,
     ThreadCreateEvent,
     ReviewState,
-    AnchorUpdate,
   } from '../../comments/index.ts';
   import type { ReviewEditorProps, ReviewFormData } from './review-editor.types.ts';
 
@@ -23,28 +22,19 @@
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import { createFocusRegionNavigator, type FocusRegion } from './focus-navigation.ts';
   import { createChangeTracker } from '../../utilities/change-tracker.svelte.ts';
-  import { stringifyOrNull } from '../../utilities/stringify.ts';
   import MarkdownEditor from '../markdown-editor/markdown-editor.svelte';
-  import { contentEquals } from '@lostgradient/markdown/pipeline';
   import { computeReviewEditorDiffStats } from './review-editor-diff-stats.ts';
-  import { textOffsetToProseMirrorPosition } from '../../editor/index.ts';
-  import {
-    createAnchorPlugin,
-    anchorPluginKey,
-    selectAnchorRange,
-    resolveAnchorSelectionRange,
-  } from '../../anchor-decorations.ts';
+  import { selectAnchorRange, resolveAnchorSelectionRange } from '../../anchor-decorations.ts';
   import { nextCommentThread, orderedTextThreads } from './comment-navigation.ts';
   import {
-    reanchorQuote,
-    ANCHOR_CONTEXT_LENGTH,
     generateId,
     extractMentions,
     createDocumentAnchor,
-    isDocumentAnchor,
     getVisibleComments,
     toPersistedThreads,
   } from '../../comments/index.ts';
+  import type { AnchorUpdate } from '../../comments/index.ts';
+  import { createAnchorManager } from './review-editor-anchors.svelte.ts';
   import { buildAnchorFromSelection } from '../../anchoring.ts';
   import ThreadPopover from './thread-popover.svelte';
   import LiveRegion from './live-region.svelte';
@@ -56,10 +46,7 @@
   import type { ToolbarContext } from '../markdown-editor/markdown-editor.types.ts';
   import {
     bodyAnchorToDocumentAnchor,
-    bodyAnchorUpdateToDocumentAnchorUpdate,
     combineFrontMatterAndBody,
-    documentAnchorToBodyAnchor,
-    documentPersistedAnchorToBodyAnchor,
     documentPositionToBodyPosition,
     parseReviewEditorFrontMatter,
     replaceFrontMatterData,
@@ -75,19 +62,43 @@
     type SelectionAnchorPosition,
   } from './review-editor-selection-geometry.ts';
   import DiffViewer from '../diff-viewer/diff-viewer.svelte';
-  import SelectionPopover from '@lostgradient/cinder/selection-popover';
+  import type {
+    DiffViewerAnnotationSelection,
+    DiffViewerRef,
+  } from '../diff-viewer/diff-viewer.types.ts';
+  import { Button, Callout, SelectionPopover } from '@lostgradient/cinder';
+  import { createReviewEditorExportActions } from './review-editor-exports.ts';
   import {
-    generateMarkdownSummary,
-    generateUnifiedDiff,
-    generateCommentsExport,
+    exportDiffReviewJson,
+    exportDiffReviewMarkdown,
+    type DiffReviewExportOptions,
     type MarkdownSummaryOptions,
     type MarkdownSummaryResult,
     type UnifiedDiffOptions,
     type UnifiedDiffResult,
   } from '../../export/index.ts';
+  import type {
+    DiffReviewAction,
+    DiffReviewAnchor,
+    DiffReviewComment,
+    DiffReviewDraft,
+    DiffReviewError,
+    DiffReviewResult,
+    DiffReviewState,
+  } from '../../diff-review-state/index.ts';
+  import { restoreDiffReviewState } from '../../diff-review-state/index.ts';
+  import { dispatchDiffReviewAction } from '../../utilities/diff-review-dispatch.ts';
+  import { formatDiffReviewCommentLocation } from '../diff-review-comments/diff-review-comment-location.ts';
+  import DiffReviewDraftsInventory from '../diff-review/diff-review-drafts-inventory.svelte';
+  import {
+    buildReviewEditorDiffReviewTarget,
+    diffReviewStatesEqual,
+    projectReviewEditorDocumentThreads,
+  } from './review-editor-diff-review.ts';
 
   // Shared reduced-motion preference (OVERLAY-POLICY: use the shared hook, not inline matchMedia).
   const reducedMotion = useReducedMotion();
+  const frontMatterParseWarning = 'Front matter could not be parsed; showing as plain text.';
 
   let {
     id,
@@ -99,13 +110,15 @@
     placeholder = 'Start writing...',
     name,
     class: className,
-    onchange,
-    onthreadcreate,
-    onthreaddelete,
-    oncommentcreate,
-    oncommentupdate,
-    oncommentdelete,
+    onValueChange,
+    onThreadCreate,
+    onThreadDelete,
+    onCommentCreate,
+    onCommentUpdate,
+    onCommentDelete,
     snapshotMode = false,
+    diffReviewState,
+    onDiffReviewStateChange,
   }: ReviewEditorProps = $props();
 
   // Blur any focused element inside this component on mount when snapshotMode
@@ -134,12 +147,15 @@
 
   // Reference to LiveRegion for screen reader announcements (DEP-47)
   let liveRegionRef: LiveRegion | undefined = $state();
+  let malformedFrontMatterDismissed = $state(false);
+  let lastMalformedFrontMatterId = $state('');
+  let lastMalformedFrontMatterAnnouncementKey = $state('');
 
   // Track when editor view is ready (for effects that need to wait for async editor creation)
   let editorViewReady = $state(false);
 
   // `editorViewReady` is a latch set true by `handleSelectionChange`/the
-  // `MarkdownEditor` `onready` callback below, but nothing symmetrically
+  // `MarkdownEditor` `onReady` callback below, but nothing symmetrically
   // cleared it when the editor view unmounted (cinder#1301): switching to the
   // Diff or Summary tab destroys the `MarkdownEditor` instance behind the
   // `{#if activeView === 'editor'}` branch, `editorRef` unbinds back to
@@ -184,16 +200,32 @@
   // Internal active thread tracking (not exposed as bindable prop)
   let activeThreadId = $state<string | null>(null);
 
+  // Selecting a successor after deletion must update the sidebar's active row
+  // without scheduling a popover, and that intent has to survive controlled
+  // thread-array refreshes that retrigger the deep-linking effect below. This is
+  // intentionally non-reactive: activeThreadId/threads changes already rerun the
+  // effect, and explicit open/navigation handlers clear this marker before they
+  // schedule a popover.
+  let threadSelectedWithoutPopoverId: ThreadId | null = null;
+
   // Comment sidebar toggle state
   let sidebarOpen = $state(false);
 
   const currentDocument = $derived(parseReviewEditorFrontMatter(value));
   const editorValue = $derived(currentDocument.body);
+  const hasMalformedFrontMatter = $derived(
+    currentDocument.fencePresent && !currentDocument.hasFrontMatter,
+  );
   const viewPanelIds = $derived({
     editor: `${id}-editor-panel`,
     diff: `${id}-diff-panel`,
     summary: `${id}-summary-panel`,
   });
+  const sidebarRemoveControlRefs = $derived(
+    threads.map(
+      (thread) => () => document.getElementById(`${id}-sidebar-thread-remove-${thread.id}`),
+    ),
+  );
 
   // =========================================================================
   // View Switching State (DEP-47)
@@ -233,11 +265,262 @@
    * The heading is useful for clipboard exports but redundant in the UI preview
    * since the view tab already indicates this is a summary.
    */
-  const summaryContent = $derived.by(() => {
-    const result = exportMarkdownSummary();
-    // Strip the "# Review Summary\n" heading from the beginning
-    return result.markdown.replace(/^# Review Summary\n+/, '');
+  const reviewEditorExports = createReviewEditorExportActions({
+    getState: () => getState(),
+    getValue: () => value,
+    getOriginal: () => original,
+    getThreads: () => threads,
+    getName: () => name,
   });
+  const summaryContent = $derived(reviewEditorExports.getSummaryContent());
+  const formData = $derived(reviewEditorExports.getFormData());
+
+  // =========================================================================
+  // Diff-review integration (COR-512 / DR-7)
+  //
+  // Opt-in and controlled: absent `diffReviewState` means every branch below
+  // is inert and the diff tab renders exactly as it did before this feature
+  // existed (regression coverage: `review-editor-diff-comments.test.ts`).
+  // Enabling reconciles the host's supplied state against ReviewEditor's own
+  // bound `original`/`value`, expressed as the one `markdown` target a
+  // single-target host has, through `restoreDiffReviewState` -- the same
+  // atomic validate-then-reconcile path a remount already uses, so an
+  // invalid supplied state and a live content change share one code path
+  // rather than two independently-maintained ones.
+  // =========================================================================
+
+  /** The last diff-review state that passed validation. Survives an invalid supplied update
+   * (contract: "keeps the last valid state") and survives the prop going away entirely
+   * (contract: "never erases the host-owned state") -- only a later, validated `diffReviewState`
+   * ever replaces it. */
+  let lastValidDiffReviewState = $state<DiffReviewState | undefined>(undefined);
+  /** Set when the currently supplied `diffReviewState` fails validation; cleared on the next
+   * validated input. Never blocks document editing -- nothing here touches `value`/`original`. */
+  let diffReviewIntegrationError = $state<DiffReviewError | undefined>(undefined);
+  let diffReviewAnnotationSelection = $state<DiffViewerAnnotationSelection | null>(null);
+  let activeDiffDraftId = $state<string | null>(null);
+  let diffViewerRef = $state<DiffViewerRef | undefined>(undefined);
+  /** Set by `handleDiffDraftOpen`; the effect below focuses the composer once it is in the DOM
+   * (COR-511 review follow-up, mirrors `diff-review.svelte`'s identical fix). */
+  let diffComposerFocusRequested = $state(false);
+  let diffComposerTextareaElement = $state<HTMLTextAreaElement | undefined>(undefined);
+
+  const diffReviewEnabled = $derived(diffReviewState !== undefined);
+  /** The state the diff tab and comment list render from. Only ever a validated value -- an
+   * invalid supplied update leaves this exactly where it was. */
+  const effectiveDiffReviewState = $derived(
+    diffReviewEnabled ? lastValidDiffReviewState : undefined,
+  );
+
+  $effect(() => {
+    if (diffReviewState === undefined) return;
+    const target = buildReviewEditorDiffReviewTarget(id, original, value);
+    const result = restoreDiffReviewState(diffReviewState, [target]);
+    if (!result.ok) {
+      diffReviewIntegrationError = result.error;
+      return;
+    }
+    diffReviewIntegrationError = undefined;
+    lastValidDiffReviewState = result.value;
+    // `restoreDiffReviewState` always allocates fresh `comments`/`drafts` arrays even when
+    // nothing changed (`applySetTargets` maps both unconditionally), so only a value comparison
+    // -- never reference equality -- can tell "genuinely changed" from "reconciled to the same
+    // thing", and only the former may notify the host (otherwise accepting the host's own
+    // echoed-back state here would re-emit forever).
+    if (!diffReviewStatesEqual(result.value, diffReviewState)) {
+      onDiffReviewStateChange?.(result.value);
+    }
+  });
+
+  /** Dispatches a mutating diff-review action against the last valid state, forwarding
+   * `isReadonly` so a read-only host gets the same `readonly` rejection every other diff-review
+   * control already returns for its mutating actions. */
+  function dispatchDiffReviewChange(action: DiffReviewAction): DiffReviewResult<DiffReviewState> {
+    if (!lastValidDiffReviewState) {
+      return {
+        ok: false,
+        error: { code: 'invalid-record', path: '', message: 'Diff review is not enabled.' },
+      };
+    }
+    return dispatchDiffReviewAction(
+      lastValidDiffReviewState,
+      action,
+      (next) => {
+        lastValidDiffReviewState = next;
+        onDiffReviewStateChange?.(next);
+      },
+      { readonly: isReadonly },
+    );
+  }
+
+  const activeDiffDraft = $derived(
+    effectiveDiffReviewState?.drafts.find((draft) => draft.draftId === activeDiffDraftId) ?? null,
+  );
+
+  /** Mirrors `DiffReview`'s own `handleSelectionChange` (COR-509 / DR-6): a cleared selection
+   * only closes the composer panel (an already-created draft stays in state, recoverable from
+   * the `Unsaved drafts` inventory below -- see `handleDiffDraftOpen`), and a committed
+   * selection opens a new draft at that anchor. */
+  function handleDiffAnnotationSelectionChange(
+    selection: DiffViewerAnnotationSelection | null,
+  ): void {
+    diffReviewAnnotationSelection = selection;
+    if (selection === null) {
+      activeDiffDraftId = null;
+      return;
+    }
+    const anchor: DiffReviewAnchor = {
+      kind: 'range',
+      fileOccurrence: selection.fileOccurrence,
+      hunkOccurrence: selection.hunkOccurrence,
+      side: selection.side,
+      startLine: selection.startLine,
+      endLine: selection.endLine,
+      coordinateSpace: selection.coordinateSpace,
+      selectedText: selection.selectedText,
+      contextBefore: selection.contextBefore,
+      contextAfter: selection.contextAfter,
+    };
+    const draftId = crypto.randomUUID();
+    const outcome = dispatchDiffReviewChange({
+      type: 'create-draft',
+      draftId,
+      targetId: id,
+      anchor,
+      oldPath: null,
+      newPath: null,
+    });
+    if (outcome.ok) activeDiffDraftId = draftId;
+  }
+
+  function updateDiffComposerBody(body: string): void {
+    if (!activeDiffDraftId) return;
+    dispatchDiffReviewChange({ type: 'update-draft', draftId: activeDiffDraftId, body });
+  }
+
+  function closeDiffComposer(): void {
+    activeDiffDraftId = null;
+    diffReviewAnnotationSelection = null;
+  }
+
+  function saveDiffComposer(): void {
+    if (!activeDiffDraftId) return;
+    const outcome = dispatchDiffReviewChange({ type: 'save-draft', draftId: activeDiffDraftId });
+    if (outcome.ok) closeDiffComposer();
+  }
+
+  /**
+   * Unsaved-drafts inventory (contract, "Drafts, modes, and ReviewEditor": "Cancel preserves an
+   * existing draft; only the explicitly confirmed discard action deletes nonempty text," and
+   * "All nonempty drafts ... appear in a persistent `Unsaved drafts` inventory with location,
+   * Open, Save, and Discard actions"). Cancelling the inline composer (`closeDiffComposer`) never
+   * deletes a nonempty draft -- without this, that draft would have no surviving UI path back
+   * into view, and every export scope stays `drafts-pending`-blocked with no visible way to
+   * clear it. `ReviewEditor` is a single-target, single-file host, so "Open" reduces to opening
+   * the diff tab and re-selecting that draft as the active composer; there is no file/target
+   * filter to clear.
+   *
+   * Contract: "Open clears only the necessary filters and focuses its composer" (COR-511 review
+   * follow-up -- `activeView = 'diff'` above already satisfies the filter-clearing half for this
+   * single-target host; this request flag drives the effect below that focuses the reopened
+   * composer's `<textarea>` once it exists in the DOM, in both editable and read-only modes).
+   */
+  function handleDiffDraftOpen(draft: DiffReviewDraft): void {
+    activeView = 'diff';
+    activeDiffDraftId = draft.draftId;
+    diffComposerFocusRequested = true;
+  }
+
+  // Focuses the diff composer once `handleDiffDraftOpen` has requested it and the composer
+  // textarea is actually in the DOM (it renders inside `{#if activeDiffDraft}` on the diff tab,
+  // so on a first open -- which also has to switch `activeView` -- the element does not exist yet
+  // in the same tick).
+  $effect(() => {
+    if (!diffComposerFocusRequested || !diffComposerTextareaElement) return;
+    diffComposerTextareaElement.focus();
+    diffComposerFocusRequested = false;
+  });
+
+  function handleDiffDraftSave(draftId: string): void {
+    const outcome = dispatchDiffReviewChange({ type: 'save-draft', draftId });
+    if (outcome.ok && draftId === activeDiffDraftId) closeDiffComposer();
+  }
+
+  function handleDiffDraftDiscard(draftId: string): void {
+    const outcome = dispatchDiffReviewChange({ type: 'discard-draft', draftId });
+    if (outcome.ok && draftId === activeDiffDraftId) closeDiffComposer();
+  }
+
+  /**
+   * Only ever called for a CURRENT diff comment (contract, "Viewer selection and navigation" /
+   * `DiffReviewComments`' identical `onNavigate` note): opens the diff tab, then focuses the
+   * anchor through `DiffViewer`'s own public `focusAnchor`, which self-adjusts the bound
+   * `diffViewMode` to expose the anchor's side. A file anchor has no line to focus -- opening
+   * the tab is the whole of "exposes its side" for one. An outdated/removed comment never
+   * reaches here; the merged comment list focuses its own captured detail in place instead.
+   */
+  function navigateToDiffComment(comment: DiffReviewComment): void {
+    activeView = 'diff';
+    announce('Switched to diff view');
+    if (comment.anchor.kind !== 'range') return;
+    const anchor = comment.anchor;
+    void tick().then(() => {
+      diffViewerRef?.focusAnchor({ side: anchor.side, startLine: anchor.startLine });
+      return undefined;
+    });
+  }
+
+  function handleDiffCommentAction(action: DiffReviewAction): void {
+    dispatchDiffReviewChange(action);
+  }
+
+  /**
+   * The aggregate export gate (contract: "Disabled integration returns `invalid-record`").
+   * Distinct from `getDiffReviewExportGate` (which only ever runs once diff review IS enabled,
+   * for the drafts-pending/empty-state UI) -- this is the "not enabled at all" branch that
+   * precedes it.
+   */
+  function requireDiffReviewStateForExport(): DiffReviewResult<DiffReviewState> {
+    if (!diffReviewEnabled || !lastValidDiffReviewState) {
+      return {
+        ok: false,
+        error: {
+          code: 'invalid-record',
+          path: '',
+          message:
+            'Diff review is not enabled, or its supplied state is invalid -- there is nothing to export.',
+        },
+      };
+    }
+    return { ok: true, value: lastValidDiffReviewState };
+  }
+
+  /**
+   * Exports every saved diff comment plus every existing document thread/reply, each exactly
+   * once, through DR-5's real exporters -- not a reimplementation. `threads` projects through
+   * `projectReviewEditorDocumentThreads` into DR-5's existing-document (`document`/
+   * `document-text`) variant; diff comments need no projection, since they are already a real
+   * `DiffReviewState`. Distinct from `exportMarkdownSummary`/`exportUnifiedDiff`/`getFormData`,
+   * whose scope this does not change.
+   */
+  export function exportAggregateReviewMarkdown(
+    options: DiffReviewExportOptions = {},
+  ): DiffReviewResult<string> {
+    const state = requireDiffReviewStateForExport();
+    if (!state.ok) return state;
+    const documentThreads = projectReviewEditorDocumentThreads(id, threads);
+    return exportDiffReviewMarkdown(state.value, { ...options, documentThreads });
+  }
+
+  /** JSON counterpart of {@link exportAggregateReviewMarkdown}; see its doc for scope. */
+  export function exportAggregateReviewJson(
+    options: DiffReviewExportOptions = {},
+  ): DiffReviewResult<string> {
+    const state = requireDiffReviewStateForExport();
+    if (!state.ok) return state;
+    const documentThreads = projectReviewEditorDocumentThreads(id, threads);
+    return exportDiffReviewJson(state.value, { ...options, documentThreads });
+  }
 
   // =========================================================================
   // Selection Popover State (DEP-47)
@@ -255,25 +538,17 @@
 
   /** Whether the selection popover is in expanded form state (user clicked to add comment) */
   let selectionPopoverExpanded = $state(false);
-  let dismissedSelection:
-    | {
-        anchorNode: Node | null;
-        anchorOffset: number;
-        focusNode: Node | null;
-        focusOffset: number;
-      }
-    | undefined;
-
   /**
-   * The ProseMirror range whose comment was just submitted. Submitting hands
-   * focus back to the editor, and ProseMirror re-writes its stored (still
-   * non-collapsed) selection into the DOM on focus; the resulting
-   * `selectionchange` would otherwise re-open the popover over the text that
-   * was just commented on. It is cleared once the user has pressed a key or a
-   * pointer inside the editor AND the editor's own selection has settled —
-   * see {@link consumedSelectionReleaseArm}.
+   * The ProseMirror range whose selection popover was just dismissed, either
+   * by submitting a comment or by Escape. Both paths hand focus back to the
+   * editor, and ProseMirror may re-write its stored (still non-collapsed)
+   * selection into the DOM on focus; the resulting `selectionchange` would
+   * otherwise re-open the popover over the dismissed text. It is cleared once
+   * the user has pressed a key or a pointer inside the editor AND the editor's
+   * own selection has settled — see {@link consumedSelectionReleaseArm}.
    */
   let consumedSelection: { from: number; to: number } | null = null;
+  let pointerGesturePending = false;
 
   /**
    * What the user has since done inside the editor that could start a new
@@ -373,6 +648,44 @@
     liveRegionRef?.announce(message, priority);
   }
 
+  $effect(() => {
+    if (id !== lastMalformedFrontMatterId) {
+      malformedFrontMatterDismissed = false;
+      lastMalformedFrontMatterAnnouncementKey = '';
+      lastMalformedFrontMatterId = id;
+    }
+  });
+
+  $effect(() => {
+    if (!hasMalformedFrontMatter) {
+      malformedFrontMatterDismissed = false;
+      lastMalformedFrontMatterAnnouncementKey = '';
+      return;
+    }
+
+    const announcementKey = `${id}:${value}`;
+    if (announcementKey === lastMalformedFrontMatterAnnouncementKey) return;
+    lastMalformedFrontMatterAnnouncementKey = announcementKey;
+
+    void tick().then(() => {
+      if (!hasMalformedFrontMatter || lastMalformedFrontMatterAnnouncementKey !== announcementKey) {
+        return undefined;
+      }
+
+      announce(frontMatterParseWarning);
+      return undefined;
+    });
+  });
+
+  async function focusMalformedFrontMatterSource(): Promise<void> {
+    await tick();
+    const textarea = document.getElementById(id);
+    if (!(textarea instanceof HTMLTextAreaElement)) return;
+
+    textarea.focus();
+    textarea.setSelectionRange(0, 0);
+  }
+
   // Get the popover thread
   const popoverThread = $derived.by(() => {
     if (!popoverThreadId) return null;
@@ -390,6 +703,9 @@
   // Clear internal active thread if it no longer exists
   $effect(() => {
     if (activeThreadId && !threads.some((t) => t.id === activeThreadId)) {
+      if (threadSelectedWithoutPopoverId === activeThreadId) {
+        threadSelectedWithoutPopoverId = null;
+      }
       activeThreadId = null;
     }
   });
@@ -399,6 +715,8 @@
     let positionTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
     if (activeThreadId && popoverThreadId !== activeThreadId) {
+      if (threadSelectedWithoutPopoverId === activeThreadId) return;
+
       const thread = threads.find((t) => t.id === activeThreadId);
       if (thread) {
         const threadIdToOpen = activeThreadId;
@@ -539,97 +857,6 @@
   // Anchor Plugin Integration (DEP-39)
   // =========================================================================
 
-  // Track last synced state to prevent thrashing
-  let lastSyncedFingerprint: string | null = null;
-
-  // Pending state for deferred re-anchoring (setState flow)
-  let pendingState: ReviewState | null = $state(null);
-
-  /**
-   * Create fingerprint including all mutable anchor fields.
-   * This prevents sync thrashing when quote/prefix/suffix change.
-   */
-  function createSyncFingerprint(threadsToSync: Thread[]): string {
-    return threadsToSync
-      .map((t) => {
-        const a = t.anchor;
-        // Include lastKnownOffset to propagate disambiguation updates, and
-        // status because it is mutable plugin state now: a consumer (or a
-        // collaborative update) that changes ONLY `anchor.status` must still
-        // reach the plugin, or an externally-orphaned thread keeps its
-        // decoration and a recovered one stays undecorated until the next edit.
-        return `${t.id}:${a.from}:${a.to}:${a.quote}:${a.prefix}:${a.suffix}:${a.lastKnownOffset ?? ''}:${a.status}`;
-      })
-      .join('|');
-  }
-
-  function createPluginSyncFingerprint(threadsToSync: Thread[]): string {
-    return `${currentDocument.bodyOffset}|${createSyncFingerprint(threadsToSync)}`;
-  }
-
-  /**
-   * Handle anchor position updates from the plugin.
-   * Called when the plugin detects position changes.
-   */
-  function handleAnchorsUpdate(updates: AnchorUpdate[]): void {
-    // Update published threads
-    threads = threads.map((thread) => {
-      const update = updates.find((u) => u.threadId === thread.id);
-      if (update) {
-        const documentUpdate = bodyAnchorUpdateToDocumentAnchorUpdate(
-          update,
-          currentDocument.bodyOffset,
-        );
-        return {
-          ...thread,
-          anchor: {
-            ...thread.anchor,
-            from: documentUpdate.from,
-            to: documentUpdate.to,
-            quote: documentUpdate.quote,
-            prefix: documentUpdate.prefix,
-            suffix: documentUpdate.suffix,
-            lastKnownOffset: documentUpdate.lastKnownOffset,
-            status: update.status,
-          },
-        };
-      }
-      return thread;
-    });
-
-    announceOrphanedThreads(updates);
-
-    // Update fingerprint to skip re-sync
-    lastSyncedFingerprint = createPluginSyncFingerprint(threads);
-  }
-
-  /**
-   * Announce a thread whose anchored text has left the document.
-   *
-   * It is NOT deleted. Deletion and cut-and-paste are indistinguishable at the
-   * moment the text disappears, and re-anchoring runs 300ms later — quicker than
-   * a person cutting a paragraph and pasting it back. Deleting here destroyed a
-   * comment during an ordinary edit with no undo (cinder#1284). The anchor is
-   * marked `orphaned` instead, keeps its place in `threads`, and re-anchors if
-   * the text returns.
-   */
-  function announceOrphanedThreads(updates: AnchorUpdate[]): void {
-    const orphaned = updates.filter((update) => update.status === 'orphaned');
-    if (orphaned.length === 0) return;
-    announce(
-      orphaned.length === 1
-        ? 'The text a comment was anchored to is no longer in the document. The comment is kept.'
-        : `The text ${orphaned.length} comments were anchored to is no longer in the document. Those comments are kept.`,
-    );
-  }
-
-  // Create anchor plugin in instance script (per-instance, before mount)
-  // This runs once per ReviewEditor instance during initialization
-  const anchorPlugin = createAnchorPlugin({
-    onAnchorsUpdate: handleAnchorsUpdate,
-    onAnchorClick: handleAnchorClick,
-  });
-
   /**
    * Handle click on an anchor decoration.
    * Opens the thread popover at the click location.
@@ -649,6 +876,7 @@
     selectionPopoverExpanded = false;
 
     // Set active thread and open popover
+    threadSelectedWithoutPopoverId = null;
     activeThreadId = threadId;
 
     // Find the thread to show the popover
@@ -660,154 +888,32 @@
     }
   }
 
-  /**
-   * Sync threads to the anchor plugin via meta-transaction.
-   */
-  function syncThreadsToPlugin(threadsToSync: Thread[]): void {
-    const view = editorRef?.getView();
-    if (!view) return;
-
-    const fingerprint = createPluginSyncFingerprint(threadsToSync);
-
-    // Skip if already synced
-    if (fingerprint === lastSyncedFingerprint) return;
-    lastSyncedFingerprint = fingerprint;
-
-    view.dispatch(
-      view.state.tr.setMeta(anchorPluginKey, {
-        type: 'sync',
-        threads: threadsToSync.map((thread) => ({
-          ...thread,
-          anchor: documentAnchorToBodyAnchor(thread.anchor, currentDocument.bodyOffset),
-        })),
-        source: 'external',
-      }),
+  function announceOrphanedThreads(updates: AnchorUpdate[]): void {
+    const orphaned = updates.filter((update) => update.status === 'orphaned');
+    if (orphaned.length === 0) return;
+    announce(
+      orphaned.length === 1
+        ? 'The text a comment was anchored to is no longer in the document. The comment is kept.'
+        : `The text ${orphaned.length} comments were anchored to is no longer in the document. Those comments are kept.`,
     );
   }
 
-  /**
-   * Attempt re-anchoring for pending state.
-   * Called when setState is invoked and when editor content changes.
-   *
-   * Threads whose anchor text cannot be found are removed (auto-delete behavior).
-   */
-  function attemptReanchoring(): void {
-    if (!pendingState) return;
-
-    const view = editorRef?.getView();
-    if (!view) return;
-
-    // Compare markdown using contentEquals (handles normalization)
-    const currentMarkdown = editorRef?.getMarkdown() ?? '';
-    const pendingDocument = parseReviewEditorFrontMatter(pendingState.content);
-    const expectedMarkdown = pendingDocument.body;
-
-    if (!contentEquals(currentMarkdown, expectedMarkdown)) {
-      // Content not synced yet - will retry when editor updates
-      return;
-    }
-
-    const state = pendingState;
-    pendingState = null;
-
-    const { doc } = view.state;
-    const documentText = doc.textBetween(0, doc.content.size, '\n');
-
-    // Re-anchor threads, filtering out those that can't be found
-    const reanchoredThreads: Thread[] = [];
-
-    for (const persistedThread of state.threads) {
-      // Document-level anchors have no quote to search for, so reanchorQuote
-      // would always report "not found" and silently delete them. They have no
-      // position to restore either - they stay at 0/0.
-      if (isDocumentAnchor(persistedThread.anchor)) {
-        reanchoredThreads.push({
-          ...persistedThread,
-          anchor: { ...persistedThread.anchor, from: 0, to: 0 },
-        });
-        continue;
-      }
-
-      const bodyPersistedAnchor = documentPersistedAnchorToBodyAnchor(
-        persistedThread.anchor,
-        pendingDocument.bodyOffset,
-      );
-      const result = reanchorQuote(documentText, bodyPersistedAnchor);
-
-      // Quote not in this document. KEEP the thread, orphaned — the same
-      // contract the live editing path follows (cinder#1284). Restoring a saved
-      // review against a document whose text has since changed must not
-      // silently destroy comments; the thread renders no decoration, shows in
-      // the sidebar as missing its text, and re-anchors if the text returns.
-      // Removing it is the consumer's decision, so `onthreaddelete` does not
-      // fire here. (Document-level anchors never reach this branch — they are
-      // handled by the `isDocumentAnchor` guard above.)
-      if (!result.found) {
-        reanchoredThreads.push({
-          ...persistedThread,
-          // Collapsed: a persisted anchor carries no positions, and an orphaned
-          // one has nowhere to point until its quote comes back. `from >= to`
-          // is also what the decoration pass skips on, so it renders nothing
-          // even before the status is consulted.
-          anchor: { ...persistedThread.anchor, from: 0, to: 0, status: 'orphaned' },
-        });
-        continue;
-      }
-
-      const from = textOffsetToProseMirrorPosition(doc, result.from);
-      const to = textOffsetToProseMirrorPosition(doc, result.to);
-
-      if (from !== null && to !== null) {
-        // Extract the matched quote and context from the current document
-        // This prevents the plugin from detecting false drift on subsequent transactions
-        const matchedQuote = documentText.slice(result.from, result.to);
-        const newPrefix = documentText.slice(
-          Math.max(0, result.from - ANCHOR_CONTEXT_LENGTH),
-          result.from,
-        );
-        const newSuffix = documentText.slice(
-          result.to,
-          Math.min(documentText.length, result.to + ANCHOR_CONTEXT_LENGTH),
-        );
-
-        reanchoredThreads.push({
-          ...persistedThread,
-          anchor: {
-            ...persistedThread.anchor,
-            from: from + pendingDocument.bodyOffset,
-            to: to + pendingDocument.bodyOffset,
-            quote: matchedQuote,
-            prefix: newPrefix,
-            suffix: newSuffix,
-            status: 'anchored',
-            lastKnownOffset: result.from + pendingDocument.bodyOffset,
-          },
-        });
-      }
-    }
-
-    threads = reanchoredThreads;
-
-    // Sync threads to plugin
-    syncThreadsToPlugin(threads);
-  }
-
-  // Retry re-anchoring when editor content changes (handles async content sync)
-  // We read `value` to create a dependency so this effect re-runs when content changes.
-  // This is critical for setState flow where pendingState exists but content isn't synced yet.
-  $effect(() => {
-    void value; // Create dependency on value
-    if (pendingState && editorRef?.getView()) {
-      attemptReanchoring();
-    }
+  const anchorManager = createAnchorManager({
+    getThreads: () => threads,
+    setThreads: (nextThreads) => (threads = nextThreads),
+    getEditorView: () => editorRef?.getView() ?? undefined,
+    getMarkdown: () => editorRef?.getMarkdown() ?? value,
+    getValue: () => value,
+    onAnchorClick: handleAnchorClick,
+    onOrphanedThreads: announceOrphanedThreads,
   });
+  const anchorPlugin = anchorManager.plugin;
 
-  // Sync threads to plugin when they change externally
-  // Runs for empty arrays too - needed to clear stale decorations when all threads removed
+  // The view is created asynchronously. Sync after readiness and whenever the
+  // caller changes threads, including an empty array that clears decorations.
   $effect(() => {
-    // Only sync if editor is ready and we don't have pending state
-    if (editorRef?.getView() && !pendingState) {
-      syncThreadsToPlugin(threads);
+    if (editorViewReady && !anchorManager.pendingState) {
+      anchorManager.syncThreadsToPlugin(threads);
     }
   });
 
@@ -865,15 +971,6 @@
       }
 
       const browserSelection = window.getSelection();
-      if (dismissedSelection) {
-        const isDismissedSelection =
-          browserSelection?.anchorNode === dismissedSelection.anchorNode &&
-          browserSelection.anchorOffset === dismissedSelection.anchorOffset &&
-          browserSelection.focusNode === dismissedSelection.focusNode &&
-          browserSelection.focusOffset === dismissedSelection.focusOffset;
-        if (isDismissedSelection) return;
-        dismissedSelection = undefined;
-      }
 
       // Only process in edit mode
       if (mode !== 'edit') {
@@ -987,6 +1084,19 @@
     // Input inside the editor ARMS the release; see
     // {@link consumedSelectionReleaseArm} for why it does not perform it.
     function armConsumedSelectionRelease(event: Event) {
+      const editorDom = editorRef?.getView()?.dom;
+      if (!editorDom || !(event.target instanceof Node) || !editorDom.contains(event.target))
+        return;
+
+      if (event.type !== 'keydown' && showSelectionPopover) {
+        // Outside-click dismissal runs later in this same event dispatch. Do not
+        // let a pointer gesture that did not close the popover arm a later Escape.
+        pointerGesturePending = true;
+        queueMicrotask(() => {
+          pointerGesturePending = false;
+        });
+      }
+
       if (!consumedSelection) return;
       // A modifier held on its own arms nothing. It starts no selection, and
       // arming on it would let the transient caret ProseMirror reports during
@@ -994,9 +1104,6 @@
       // exists for. `Shift` is the one that matters: it is how a keyboard
       // selection begins, so it arrives before any selection exists.
       if (event instanceof KeyboardEvent && MODIFIER_KEYS.has(event.key)) return;
-      const editorDom = editorRef?.getView()?.dom;
-      if (!editorDom || !(event.target instanceof Node) || !editorDom.contains(event.target))
-        return;
       // Select-all is released outright rather than armed. It cannot be
       // confused with ProseMirror's restore — that is not a keystroke — and
       // when the comment covered the whole document the range it selects is
@@ -1052,7 +1159,7 @@
   // Handle content changes
   function handleChange(newValue: string) {
     value = newValue;
-    onchange?.(newValue);
+    onValueChange?.(newValue);
   }
 
   function handleEditorBodyChange(newBody: string) {
@@ -1198,7 +1305,10 @@
    * Handle thread selection from the comment sidebar.
    * Scrolls to the thread and opens its popover.
    */
-  function handleSidebarThreadSelect(threadId: string): void {
+  function handleSidebarThreadSelect(
+    threadId: string,
+    options: { openPopover?: boolean } = {},
+  ): void {
     // Re-selecting a thread whose popover is ALREADY open is a no-op.
     // Deliberately checks BOTH activeThreadId and popoverThreadId, not just
     // activeThreadId: guarding on activeThreadId alone would also block a
@@ -1228,6 +1338,13 @@
 
     const thread = threads.find((t) => t.id === threadId);
     if (!thread) return;
+
+    if (options.openPopover === false) {
+      selectSidebarThreadWithoutPopover(threadId);
+      return;
+    }
+
+    threadSelectedWithoutPopoverId = null;
 
     // Cancel any timer from a PREVIOUS sidebar selection still in flight.
     // Without this, choosing a second thread within POSITION_DELAY_MS of the
@@ -1277,6 +1394,21 @@
     }, POSITION_DELAY_MS);
   }
 
+  function selectSidebarThreadWithoutPopover(threadId: string): void {
+    const thread = threads.find((t) => t.id === threadId);
+    if (!thread) return;
+
+    if (selectTimeoutId !== null) {
+      clearTimeout(selectTimeoutId);
+      selectTimeoutId = null;
+    }
+
+    threadSelectedWithoutPopoverId = threadId;
+    activeThreadId = threadId;
+    popoverThreadId = null;
+    popoverPosition = null;
+  }
+
   /**
    * Resolve the sidebar row for the currently active thread, scoped to this
    * editor instance's own sidebar (`{id}-sidebar`) so a page with more than
@@ -1298,7 +1430,9 @@
     return (
       document
         .getElementById(`${id}-sidebar`)
-        ?.querySelector<HTMLElement>('.thread-item[data-active]') ?? null
+        ?.querySelector<HTMLElement>(
+          `#${CSS.escape(`${id}-sidebar-thread-open-${activeThreadId}`)}`,
+        ) ?? null
     );
   }
 
@@ -1426,10 +1560,10 @@
     if (state.original !== undefined) {
       original = state.original;
     }
-    pendingState = { ...state, content: nextValue };
+    anchorManager.setPendingState({ ...state, content: nextValue });
 
     // Attempt re-anchoring immediately if editor is ready
-    attemptReanchoring();
+    anchorManager.attemptReanchoring();
   }
 
   /** Get direct access to ProseMirror view (advanced use) */
@@ -1454,7 +1588,7 @@
   export function exportMarkdownSummary(
     options: MarkdownSummaryOptions | undefined = undefined,
   ): MarkdownSummaryResult {
-    return generateMarkdownSummary(getState(), options);
+    return reviewEditorExports.exportMarkdownSummary(options);
   }
 
   /**
@@ -1464,7 +1598,7 @@
   export function exportUnifiedDiff(
     options: UnifiedDiffOptions | undefined = undefined,
   ): UnifiedDiffResult {
-    return generateUnifiedDiff(getState(), options);
+    return reviewEditorExports.exportUnifiedDiff(options);
   }
 
   // =========================================================================
@@ -1473,56 +1607,32 @@
 
   /** Get plain markdown content for clipboard export */
   function handleExportContent(): string {
-    return value;
+    return reviewEditorExports.handleExportContent();
   }
 
   /** Get LLM-optimized summary for clipboard export */
   function handleExportSummary(): string {
-    return exportMarkdownSummary().markdown;
+    return reviewEditorExports.handleExportSummary();
   }
 
   /** Get JSON state for clipboard export */
   function handleExportJSON(): string {
-    const json = stringifyOrNull(getState());
-    // Return error message if serialization fails (circular refs, BigInt, etc.)
-    // This prevents copying invalid JSON like "[object Object]" to clipboard
-    if (json === null) {
-      return '{"error": "Failed to serialize editor state"}';
-    }
-    return json;
+    return reviewEditorExports.handleExportJSON();
   }
 
   /** Get unified diff for clipboard export */
   function handleExportDiff(): string {
-    return exportUnifiedDiff().diff;
+    return reviewEditorExports.handleExportDiff();
   }
 
   /** Get comments export for clipboard export */
   function handleExportComments(): string {
-    return generateCommentsExport(getState()).markdown;
+    return reviewEditorExports.handleExportComments();
   }
 
   // =========================================================================
   // Form Participation (FormData integration)
   // =========================================================================
-
-  /**
-   * Derive field name with optional prefix.
-   * Used for hidden inputs when participating in a parent form.
-   */
-  function getFieldName(field: string): string {
-    return name ? `${name}-${field}` : field;
-  }
-
-  /**
-   * Derived values for hidden inputs (computed reactively).
-   * These power both the hidden form inputs and the getFormData() method.
-   */
-  const formOriginal = $derived(original);
-  const formCurrent = $derived(value);
-  const formComments = $derived(JSON.stringify(threads));
-  const formDiff = $derived(exportUnifiedDiff().diff);
-  const formSummary = $derived(exportMarkdownSummary().markdown);
 
   /**
    * Get form data as a structured object.
@@ -1538,13 +1648,7 @@
    * ```
    */
   export function getFormData(): ReviewFormData {
-    return {
-      original: formOriginal,
-      current: formCurrent,
-      comments: formComments,
-      diff: formDiff,
-      summary: formSummary,
-    };
+    return reviewEditorExports.getFormData();
   }
 
   /**
@@ -1554,11 +1658,11 @@
   export function reset(): void {
     // Revert content
     value = original;
-    onchange?.(original);
+    onValueChange?.(original);
 
     // Clear all threads
     for (const thread of threads) {
-      onthreaddelete?.({ threadId: thread.id });
+      onThreadDelete?.({ threadId: thread.id });
     }
 
     // Clear UI state
@@ -1649,7 +1753,7 @@
       authorId: currentUserId,
       mentions: mentions.length > 0 ? mentions : undefined,
     };
-    onthreadcreate?.(event);
+    onThreadCreate?.(event);
 
     // Clear state. Remember the range so the selection ProseMirror restores on
     // refocus does not re-open the popover over the text just commented on.
@@ -1687,15 +1791,12 @@
       clearTimeout(selectionTimeoutId);
       selectionTimeoutId = null;
     }
-    const selection = window.getSelection();
-    dismissedSelection = selection
-      ? {
-          anchorNode: selection.anchorNode,
-          anchorOffset: selection.anchorOffset,
-          focusNode: selection.focusNode,
-          focusOffset: selection.focusOffset,
-        }
-      : undefined;
+    const view = editorRef?.getView();
+    consumedSelection = view
+      ? { from: view.state.selection.from, to: view.state.selection.to }
+      : null;
+    consumedSelectionReleaseArm = pointerGesturePending ? 'pointer' : null;
+    pointerGesturePending = false;
     selectionPopoverPosition = null;
     capturedSelectionForPopover = null;
     selectionPopoverExpanded = false;
@@ -1756,7 +1857,7 @@
       authorId,
       mentions: mentions.length > 0 ? mentions : undefined,
     };
-    onthreadcreate?.(event);
+    onThreadCreate?.(event);
 
     announce('Comment added');
     return requestId;
@@ -1793,7 +1894,7 @@
       authorId,
       mentions: mentions.length > 0 ? mentions : undefined,
     };
-    onthreadcreate?.(event);
+    onThreadCreate?.(event);
 
     announce('Document comment added');
     return requestId;
@@ -1815,7 +1916,7 @@
     const thread = threads.find((t) => t.id === threadId);
     if (!thread) return;
 
-    onthreaddelete?.({ threadId });
+    onThreadDelete?.({ threadId });
   }
 
   /**
@@ -1825,7 +1926,7 @@
    * - Editor is in readonly mode (mode === 'readonly')
    * - No threads exist
    *
-   * Fires onthreaddelete for each thread.
+   * Fires onThreadDelete for each thread.
    */
   export function clearAllThreads(): void {
     if (mode === 'readonly') return;
@@ -1833,7 +1934,7 @@
 
     // Fire delete event for each thread
     for (const thread of threads) {
-      onthreaddelete?.({ threadId: thread.id });
+      onThreadDelete?.({ threadId: thread.id });
     }
 
     // Clear any active selection state
@@ -1869,7 +1970,7 @@
     const mentions = extractMentions(body);
     const requestId = generateId();
 
-    oncommentcreate?.({
+    onCommentCreate?.({
       requestId,
       threadId,
       body,
@@ -1901,7 +2002,7 @@
 
     const mentions = extractMentions(body);
 
-    oncommentupdate?.({
+    onCommentUpdate?.({
       threadId,
       commentId,
       body,
@@ -1929,7 +2030,7 @@
     const comment = thread?.comments.find((c) => c.id === commentId);
     if (!comment || (soft && comment.deletedAt)) return;
 
-    oncommentdelete?.({ threadId, commentId, soft });
+    onCommentDelete?.({ threadId, commentId, soft });
     announce('Comment deleted');
   }
 
@@ -1984,7 +2085,7 @@
       const requestId = generateId();
 
       // Fire the create event
-      onthreadcreate?.({
+      onThreadCreate?.({
         requestId,
         anchor,
         body,
@@ -2163,20 +2264,77 @@
   class={classNames('review-editor-container', className)}
   data-mode={mode}
   data-view={activeView}
-  data-ready={editorViewReady && !pendingState ? true : undefined}
+  data-ready={editorViewReady && !anchorManager.pendingState ? true : undefined}
   data-snapshot-mode={snapshotMode || undefined}
   onkeydown={handleContainerKeyDown}
 >
   <!-- Screen reader announcements (DEP-47) -->
   <LiveRegion bind:this={liveRegionRef} />
 
+  <!-- Diff review integration error (COR-512 / DR-7): a condition of the supplied
+       `diffReviewState` prop, not of which tab is open -- visible regardless of `activeView`
+       so an invalid update is never hidden behind a tab the person hasn't opened. Document
+       editing is never affected: nothing here touches `value`/`original`/`threads`. -->
+  {#if diffReviewIntegrationError}
+    <Callout
+      semantic="note"
+      variant="danger"
+      title="Diff review data couldn't be applied"
+      class="review-editor-diff-review-error"
+    >
+      <p>
+        {diffReviewIntegrationError.message} ({diffReviewIntegrationError.code} at
+        {diffReviewIntegrationError.path || '/'}). Showing the last valid diff review state;
+        document editing is unaffected.
+      </p>
+    </Callout>
+  {/if}
+
+  <!-- Unsaved diff-review drafts inventory (COR-512 / DR-7): "persistent" per the contract, so
+       it renders regardless of `activeView`, not only while the diff tab happens to be open --
+       otherwise a draft cancelled from the composer (which never deletes nonempty text) would be
+       invisible again the moment the person left the diff tab, with `drafts-pending` silently
+       blocking every export scope and no visible way back to it. `handleDiffDraftOpen` switches
+       to the diff tab itself when the person chooses "Open". Excludes `activeDiffDraftId`: that
+       one already has its own dedicated composer panel open (immediately, on `create-draft`,
+       before any text is typed) -- listing it here too would duplicate it under a second,
+       ambiguous "Save" control for the exact same draft. -->
+  {#if effectiveDiffReviewState}
+    {@const hiddenDrafts = effectiveDiffReviewState.drafts.filter(
+      (draft) => draft.draftId !== activeDiffDraftId,
+    )}
+    <DiffReviewDraftsInventory
+      drafts={hiddenDrafts}
+      readonly={isReadonly}
+      onopen={handleDiffDraftOpen}
+      onsave={handleDiffDraftSave}
+      ondiscard={handleDiffDraftDiscard}
+    />
+  {/if}
+
   <!-- Hidden form inputs for FormData participation -->
   {#if name}
-    <input type="hidden" name={getFieldName('original')} value={formOriginal} />
-    <input type="hidden" name={getFieldName('current')} value={formCurrent} />
-    <input type="hidden" name={getFieldName('comments')} value={formComments} />
-    <input type="hidden" name={getFieldName('diff')} value={formDiff} />
-    <input type="hidden" name={getFieldName('summary')} value={formSummary} />
+    <input
+      type="hidden"
+      name={reviewEditorExports.getFieldName('original')}
+      value={formData.original}
+    />
+    <input
+      type="hidden"
+      name={reviewEditorExports.getFieldName('current')}
+      value={formData.current}
+    />
+    <input
+      type="hidden"
+      name={reviewEditorExports.getFieldName('comments')}
+      value={formData.comments}
+    />
+    <input type="hidden" name={reviewEditorExports.getFieldName('diff')} value={formData.diff} />
+    <input
+      type="hidden"
+      name={reviewEditorExports.getFieldName('summary')}
+      value={formData.summary}
+    />
   {/if}
 
   <!-- Unified controls bar - consistent across all views -->
@@ -2242,7 +2400,7 @@
     readonly={isReadonly}
     onRevertAll={() => {
       value = original;
-      onchange?.(original);
+      onValueChange?.(original);
       announce('All changes reverted');
     }}
     {commentCount}
@@ -2263,6 +2421,22 @@
         role="tabpanel"
         aria-label="Editor view"
       >
+        {#if hasMalformedFrontMatter && !malformedFrontMatterDismissed}
+          <Callout
+            semantic="note"
+            variant="warning"
+            title="Front matter warning"
+            class="review-editor-front-matter-warning"
+          >
+            <p>{frontMatterParseWarning}</p>
+            <div class="review-editor-front-matter-warning__actions">
+              <Button onclick={focusMalformedFrontMatterSource}>Edit as plain text</Button>
+              <Button variant="ghost" onclick={() => (malformedFrontMatterDismissed = true)}>
+                Dismiss front matter warning
+              </Button>
+            </div>
+          </Callout>
+        {/if}
         {#if currentDocument.hasFrontMatter}
           <FrontMatterFields
             id={`${id}-front-matter`}
@@ -2272,25 +2446,44 @@
             onchange={handleFrontMatterChange}
           />
         {/if}
-        <MarkdownEditor
-          {id}
-          bind:this={editorRef}
-          value={editorValue}
-          mode="wysiwyg"
-          readonly={isReadonly}
-          {placeholder}
-          plugins={[anchorPlugin]}
-          {snapshotMode}
-          showToolbar={false}
-          ontoolbarcontextchange={(context) => (editorToolbarContext = context)}
-          onchange={handleEditorBodyChange}
-          onready={() => {
-            if (!editorViewReady) {
-              editorViewReady = true;
-            }
-          }}
-          onselectionchange={handleSelectionChange}
-        />
+        {#if hasMalformedFrontMatter}
+          <MarkdownEditor
+            {id}
+            bind:this={editorRef}
+            {value}
+            mode="source"
+            readonly={isReadonly}
+            {placeholder}
+            {snapshotMode}
+            toolbarEnabled={false}
+            onValueChange={handleChange}
+            onReady={() => {
+              if (!editorViewReady) {
+                editorViewReady = true;
+              }
+            }}
+          />
+        {:else}
+          <MarkdownEditor
+            {id}
+            bind:this={editorRef}
+            value={editorValue}
+            mode="wysiwyg"
+            readonly={isReadonly}
+            {placeholder}
+            plugins={[anchorPlugin]}
+            {snapshotMode}
+            toolbarEnabled={false}
+            onToolbarContextChange={(context) => (editorToolbarContext = context)}
+            onValueChange={handleEditorBodyChange}
+            onReady={() => {
+              if (!editorViewReady) {
+                editorViewReady = true;
+              }
+            }}
+            onSelectionChange={handleSelectionChange}
+          />
+        {/if}
       </div>
     {:else if activeView === 'diff'}
       <!-- Diff view content -->
@@ -2300,11 +2493,69 @@
         role="tabpanel"
         aria-label="Diff view"
       >
-        <DiffViewer {original} current={value} bind:viewMode={diffViewMode} readonly={isReadonly}>
+        <DiffViewer
+          {original}
+          current={value}
+          bind:viewMode={diffViewMode}
+          readonly={isReadonly}
+          bind:ref={diffViewerRef}
+          {...diffReviewEnabled && effectiveDiffReviewState && !isReadonly
+            ? {
+                annotationSelection: diffReviewAnnotationSelection,
+                onAnnotationSelectionChange: handleDiffAnnotationSelectionChange,
+              }
+            : {}}
+        >
           {#snippet toolbar()}
             <!-- Empty toolbar - controls are in the unified bar above -->
           {/snippet}
         </DiffViewer>
+        {#if activeDiffDraft}
+          <div
+            class="review-editor-diff-composer"
+            role="group"
+            aria-label={`New diff comment on ${formatDiffReviewCommentLocation(activeDiffDraft)}`}
+          >
+            <p class="review-editor-diff-composer-location">
+              {formatDiffReviewCommentLocation(activeDiffDraft)}
+            </p>
+            {#if isReadonly}
+              <!-- Reaching a nonempty draft's composer while read-only is now possible through
+                   the drafts inventory's "Open" action (COR-512 / DR-7 follow-up), which the
+                   shared `DiffReviewDraftsInventory` leaf always shows regardless of `readonly`
+                   (only its own Save/Discard are hidden). Before this, `activeDiffDraftId` could
+                   only be set from `onAnnotationSelectionChange`, which is never wired when
+                   read-only -- so this branch was previously unreachable there. A disabled Save
+                   plus visible explanatory text, per contract ("Use native disabled buttons/
+                   inputs with nearby visible explanatory text"). The textarea itself uses native
+                   `readonly`, not `disabled` (COR-511 review): a `disabled` textarea can never
+                   receive focus in a real browser, which would silently break "Open ... focuses
+                   its composer" -- stated with no read-only exception -- for exactly this case.
+                   `readonly` blocks editing identically while keeping the element focusable and
+                   its text selectable/copyable. -->
+              <p class="review-editor-diff-composer-readonly-note">
+                Enable editing to change or save this draft.
+              </p>
+            {/if}
+            <textarea
+              aria-label="Diff comment"
+              value={activeDiffDraft.body}
+              readonly={isReadonly}
+              bind:this={diffComposerTextareaElement}
+              oninput={(event) => updateDiffComposerBody(event.currentTarget.value)}></textarea>
+            <div class="review-editor-diff-composer-actions">
+              <Button
+                onclick={saveDiffComposer}
+                disabled={isReadonly || activeDiffDraft.body.trim().length === 0}
+              >
+                Save
+              </Button>
+              <Button variant="ghost" onclick={closeDiffComposer}
+                >{isReadonly ? 'Close' : 'Cancel'}</Button
+              >
+            </div>
+          </div>
+        {/if}
       </div>
     {:else}
       <!-- Summary view (auto-generated, readonly preview) -->
@@ -2320,7 +2571,7 @@
             value={summaryContent}
             mode="wysiwyg"
             readonly
-            showToolbar={false}
+            toolbarEnabled={false}
             placeholder=""
           />
         {:else}
@@ -2343,8 +2594,12 @@
       {activeThreadId}
       readonly={isReadonly}
       onthreadselect={handleSidebarThreadSelect}
+      onThreadDelete={deleteThread}
       onclearall={clearAllThreads}
       onadddocumentcomment={handleAddDocumentComment}
+      diffReviewState={effectiveDiffReviewState}
+      onDiffCommentNavigate={navigateToDiffComment}
+      onDiffCommentAction={handleDiffCommentAction}
     />
   {/if}
 
@@ -2357,12 +2612,12 @@
       {mode}
       position={popoverPosition}
       restoreFallbackId={`${id}-sidebar-toggle`}
-      ignoreClickOutsideRef={activeSidebarRowElement}
+      ignoreClickOutsideRefs={[activeSidebarRowElement, ...sidebarRemoveControlRefs]}
       onclose={handlePopoverClose}
       ondelete={handlePopoverDelete}
-      oncommentcreate={handlePopoverCommentCreate}
-      oncommentupdate={handlePopoverCommentUpdate}
-      oncommentdelete={handlePopoverCommentDelete}
+      onCommentCreate={handlePopoverCommentCreate}
+      onCommentUpdate={handlePopoverCommentUpdate}
+      onCommentDelete={handlePopoverCommentDelete}
     />
   {/if}
 
@@ -2399,6 +2654,33 @@
 
   .review-editor-view-panel {
     min-width: 0;
+  }
+
+  .review-editor-diff-composer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2, 0.5rem);
+    padding: var(--cinder-space-3, 0.75rem);
+    margin-block-start: var(--cinder-space-2, 0.5rem);
+    border: 1px solid var(--cinder-border, #ccc);
+    border-radius: var(--cinder-radius-md, 6px);
+  }
+
+  .review-editor-diff-composer-location {
+    margin: 0;
+    font-size: var(--cinder-text-xs, 0.75rem);
+    color: var(--cinder-text-muted, #666);
+  }
+
+  .review-editor-diff-composer-actions {
+    display: flex;
+    gap: var(--cinder-space-2, 0.5rem);
+  }
+
+  .review-editor-diff-composer-readonly-note {
+    margin: 0;
+    font-size: var(--cinder-text-xs, 0.75rem);
+    color: var(--cinder-text-muted, #666);
   }
 
   /*

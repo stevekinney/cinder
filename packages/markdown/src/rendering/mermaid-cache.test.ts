@@ -4,28 +4,29 @@
  * DEP-95: Mermaid diagram support.
  */
 
+import { throwingRejectionOf } from '@lostgradient/testing';
 import { beforeEach, describe, expect, it } from 'bun:test';
 import {
   clearMermaidCache,
-  getCacheKey,
-  getCachedSvg,
+  getMermaidCachedSvg,
+  getMermaidCacheKey,
   getMermaidCacheSize,
-  setCachedSvg,
+  setMermaidCachedSvg,
   withMermaidLock,
-} from './mermaid-cache';
+} from '../index.js';
 
 describe('mermaid-cache', () => {
   beforeEach(() => {
     clearMermaidCache();
   });
 
-  describe('getCacheKey', () => {
+  describe('getMermaidCacheKey', () => {
     it('generates deterministic keys for same input', () => {
       const code = 'flowchart TD\n    A --> B';
       const theme = 'default';
 
-      const key1 = getCacheKey(code, theme);
-      const key2 = getCacheKey(code, theme);
+      const key1 = getMermaidCacheKey(code, theme);
+      const key2 = getMermaidCacheKey(code, theme);
 
       expect(key1).toBe(key2);
     });
@@ -33,8 +34,8 @@ describe('mermaid-cache', () => {
     it('generates different keys for different themes', () => {
       const code = 'flowchart TD\n    A --> B';
 
-      const lightKey = getCacheKey(code, 'default');
-      const darkKey = getCacheKey(code, 'dark');
+      const lightKey = getMermaidCacheKey(code, 'default');
+      const darkKey = getMermaidCacheKey(code, 'dark');
 
       expect(lightKey).not.toBe(darkKey);
     });
@@ -42,8 +43,8 @@ describe('mermaid-cache', () => {
     it('generates different keys for different code', () => {
       const theme = 'default';
 
-      const key1 = getCacheKey('flowchart TD\n    A --> B', theme);
-      const key2 = getCacheKey('flowchart TD\n    C --> D', theme);
+      const key1 = getMermaidCacheKey('flowchart TD\n    A --> B', theme);
+      const key2 = getMermaidCacheKey('flowchart TD\n    C --> D', theme);
 
       expect(key1).not.toBe(key2);
     });
@@ -51,17 +52,17 @@ describe('mermaid-cache', () => {
     it('includes theme prefix in key', () => {
       const code = 'flowchart TD\n    A --> B';
 
-      const defaultKey = getCacheKey(code, 'default');
-      const darkKey = getCacheKey(code, 'dark');
+      const defaultKey = getMermaidCacheKey(code, 'default');
+      const darkKey = getMermaidCacheKey(code, 'dark');
 
       expect(defaultKey).toMatch(/^default:/);
       expect(darkKey).toMatch(/^dark:/);
     });
   });
 
-  describe('getCachedSvg / setCachedSvg', () => {
+  describe('getMermaidCachedSvg / setMermaidCachedSvg', () => {
     it('returns undefined for uncached key', () => {
-      const result = getCachedSvg('nonexistent:key');
+      const result = getMermaidCachedSvg('nonexistent:key');
       expect(result).toBeUndefined();
     });
 
@@ -69,42 +70,42 @@ describe('mermaid-cache', () => {
       const key = 'default:abc123';
       const svg = '<svg>diagram</svg>';
 
-      setCachedSvg(key, svg);
-      const result = getCachedSvg(key);
+      setMermaidCachedSvg(key, svg);
+      const result = getMermaidCachedSvg(key);
 
       expect(result).toBe(svg);
     });
 
     it('maintains LRU order on get', () => {
       // Set up cache with 3 items
-      setCachedSvg('key1', 'svg1');
-      setCachedSvg('key2', 'svg2');
-      setCachedSvg('key3', 'svg3');
+      setMermaidCachedSvg('key1', 'svg1');
+      setMermaidCachedSvg('key2', 'svg2');
+      setMermaidCachedSvg('key3', 'svg3');
 
       // Access key1 (moves it to end)
-      getCachedSvg('key1');
+      getMermaidCachedSvg('key1');
 
       expect(getMermaidCacheSize()).toBe(3);
 
       // All items should still be accessible
-      expect(getCachedSvg('key1')).toBe('svg1');
-      expect(getCachedSvg('key2')).toBe('svg2');
-      expect(getCachedSvg('key3')).toBe('svg3');
+      expect(getMermaidCachedSvg('key1')).toBe('svg1');
+      expect(getMermaidCachedSvg('key2')).toBe('svg2');
+      expect(getMermaidCachedSvg('key3')).toBe('svg3');
     });
   });
 
   describe('clearMermaidCache', () => {
     it('clears all cached entries', () => {
-      setCachedSvg('key1', 'svg1');
-      setCachedSvg('key2', 'svg2');
+      setMermaidCachedSvg('key1', 'svg1');
+      setMermaidCachedSvg('key2', 'svg2');
 
       expect(getMermaidCacheSize()).toBe(2);
 
       clearMermaidCache();
 
       expect(getMermaidCacheSize()).toBe(0);
-      expect(getCachedSvg('key1')).toBeUndefined();
-      expect(getCachedSvg('key2')).toBeUndefined();
+      expect(getMermaidCachedSvg('key1')).toBeUndefined();
+      expect(getMermaidCachedSvg('key2')).toBeUndefined();
     });
   });
 
@@ -114,10 +115,10 @@ describe('mermaid-cache', () => {
     });
 
     it('returns correct count after adds', () => {
-      setCachedSvg('key1', 'svg1');
+      setMermaidCachedSvg('key1', 'svg1');
       expect(getMermaidCacheSize()).toBe(1);
 
-      setCachedSvg('key2', 'svg2');
+      setMermaidCachedSvg('key2', 'svg2');
       expect(getMermaidCacheSize()).toBe(2);
     });
   });
@@ -129,30 +130,30 @@ describe('mermaid-cache', () => {
 
       // Add items up to capacity
       for (let i = 0; i < 100; i++) {
-        setCachedSvg(`key${i}`, `svg${i}`);
+        setMermaidCachedSvg(`key${i}`, `svg${i}`);
       }
 
       expect(getMermaidCacheSize()).toBe(100);
 
       // Add one more - should evict key0
-      setCachedSvg('key100', 'svg100');
+      setMermaidCachedSvg('key100', 'svg100');
 
       expect(getMermaidCacheSize()).toBe(100);
-      expect(getCachedSvg('key0')).toBeUndefined();
-      expect(getCachedSvg('key100')).toBe('svg100');
+      expect(getMermaidCachedSvg('key0')).toBeUndefined();
+      expect(getMermaidCachedSvg('key100')).toBe('svg100');
     });
 
     it('does not evict when updating an existing key', () => {
       for (let i = 0; i < 100; i++) {
-        setCachedSvg(`key${i}`, `svg${i}`);
+        setMermaidCachedSvg(`key${i}`, `svg${i}`);
       }
 
       // Overwrite an existing key — should not evict anything
-      setCachedSvg('key50', 'updated-svg50');
+      setMermaidCachedSvg('key50', 'updated-svg50');
 
       expect(getMermaidCacheSize()).toBe(100);
-      expect(getCachedSvg('key0')).toBe('svg0');
-      expect(getCachedSvg('key50')).toBe('updated-svg50');
+      expect(getMermaidCachedSvg('key0')).toBe('svg0');
+      expect(getMermaidCachedSvg('key50')).toBe('updated-svg50');
     });
   });
 
@@ -182,11 +183,13 @@ describe('mermaid-cache', () => {
 
     it('releases lock even when function throws', async () => {
       // First call throws
-      await expect(
-        withMermaidLock(async () => {
-          throw new Error('test error');
-        }),
-      ).rejects.toThrow('test error');
+      expect(
+        await throwingRejectionOf(
+          withMermaidLock(async () => {
+            throw new Error('test error');
+          }),
+        ),
+      ).toThrow('test error');
 
       // Second call should still execute (lock was released)
       const result = await withMermaidLock(async () => 'success');

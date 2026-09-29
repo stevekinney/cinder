@@ -1,4 +1,3 @@
-// @ts-nocheck -- migrated commentary assertions use runtime-verified fixture indexing.
 /**
  * Unit tests for editor anchoring utilities.
  *

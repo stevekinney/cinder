@@ -12,36 +12,35 @@ import type { Snippet } from 'svelte';
 
 import type { AlertProps } from './alert.types.ts';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const noopChildren = null as any as Snippet;
+declare const noopChildren: Snippet;
 
 // role is owned by the component (role="alert") and must not be overridable.
 // @ts-expect-error - role is excluded from AlertProps
-const _roleRejected: AlertProps = { children: noopChildren, role: 'status' };
+const roleRejected: AlertProps = { children: noopChildren, role: 'status' };
 
 // role="alert" implies aria-live="assertive"; a consumer must not downgrade it.
 // @ts-expect-error - aria-live is excluded from AlertProps
-const _ariaLiveRejected: AlertProps = { children: noopChildren, 'aria-live': 'polite' };
+const ariaLiveRejected: AlertProps = { children: noopChildren, 'aria-live': 'polite' };
 
 // role="alert" implies aria-atomic="true"; overriding to false would fragment
 // the assertive announcement, so the attribute is off the surface.
 // @ts-expect-error - aria-atomic is excluded from AlertProps
-const _ariaAtomicRejected: AlertProps = { children: noopChildren, 'aria-atomic': 'false' };
+const ariaAtomicRejected: AlertProps = { children: noopChildren, 'aria-atomic': 'false' };
 
 // prettier-ignore
 // @ts-expect-error - aria-relevant is excluded from AlertProps
-const _ariaRelevantRejected: AlertProps = { children: noopChildren, 'aria-relevant': 'additions' };
+const ariaRelevantRejected: AlertProps = { children: noopChildren, 'aria-relevant': 'additions' };
 
 // aria-label remains valid — consumers may name the alert.
-const _ariaLabelAccepted: AlertProps = { children: noopChildren, 'aria-label': 'Save failed' };
+const ariaLabelAccepted: AlertProps = { children: noopChildren, 'aria-label': 'Save failed' };
 
 // aria-busy remains valid — it is a status flag, not a live-region presentation
 // attribute, and is left on the surface (matching the runtime scrub set).
-const _ariaBusyAccepted: AlertProps = { children: noopChildren, 'aria-busy': true };
+const ariaBusyAccepted: AlertProps = { children: noopChildren, 'aria-busy': true };
 
-void _roleRejected;
-void _ariaLiveRejected;
-void _ariaAtomicRejected;
-void _ariaRelevantRejected;
-void _ariaLabelAccepted;
-void _ariaBusyAccepted;
+void roleRejected;
+void ariaLiveRejected;
+void ariaAtomicRejected;
+void ariaRelevantRejected;
+void ariaLabelAccepted;
+void ariaBusyAccepted;

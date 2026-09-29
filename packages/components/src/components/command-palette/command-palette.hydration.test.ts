@@ -28,8 +28,7 @@
 import { describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
-import { prepareHydrationSource, renderThenHydrate } from '../../test/hydrate.ts';
+import { prepareSvelteServerSource, renderThenHydrate, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -71,8 +70,10 @@ if (typeof HTMLDialogElement !== 'undefined') {
 
 const { render } = await import('@testing-library/svelte');
 const { default: CommandPalette } = await import('./command-palette.svelte');
-const sourcePath = new URL('./command-palette.svelte', import.meta.url).pathname;
-await prepareHydrationSource(sourcePath);
+const { default: CommandPaletteHydrationFixture } =
+  await import('./_command-palette-hydration-test.svelte');
+const sourcePath = new URL('./_command-palette-hydration-test.svelte', import.meta.url).pathname;
+await prepareSvelteServerSource(sourcePath);
 
 const emptyItems = createRawSnippet(() => ({
   render: () => `<span></span>`,
@@ -81,9 +82,8 @@ const emptyItems = createRawSnippet(() => ({
 
 describe('CommandPalette hydration', () => {
   test('a closed palette SSRs to empty markup and mounts without hydration warnings', async () => {
-    const result = await renderThenHydrate(CommandPalette, sourcePath, {
+    const result = await renderThenHydrate(CommandPaletteHydrationFixture, sourcePath, {
       open: false,
-      items: emptyItems,
     });
 
     try {
@@ -94,14 +94,13 @@ describe('CommandPalette hydration', () => {
       );
       expect(hydrationWarnings).toEqual([]);
     } finally {
-      result.cleanup();
+      await result.cleanup();
     }
   });
 
   test('an initially-open palette still SSRs to empty markup (the CIN-426 regression), then mounts the real dialog on the client', async () => {
-    const result = await renderThenHydrate(CommandPalette, sourcePath, {
+    const result = await renderThenHydrate(CommandPaletteHydrationFixture, sourcePath, {
       open: true,
-      items: emptyItems,
     });
 
     try {
@@ -129,7 +128,7 @@ describe('CommandPalette hydration', () => {
       expect(dialog?.hasAttribute('open')).toBe(true);
       expect(result.container.querySelector('[role="listbox"]')).not.toBeNull();
     } finally {
-      result.cleanup();
+      await result.cleanup();
     }
   });
 

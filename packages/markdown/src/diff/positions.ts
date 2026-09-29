@@ -136,20 +136,39 @@ export function enrichChangesWithPositions(
   const originalMap = buildPositionMap(originalAst);
   const currentMap = buildPositionMap(currentAst);
 
-  return changes.map((change) => {
-    // Use current position for insertions/replacements, original for deletions
-    const offset = change.currentRange?.start ?? change.originalRange?.start ?? 0;
-    const map = change.currentRange ? currentMap : originalMap;
-    const sourceText = change.currentRange ? currentText : originalText;
-    const posInfo = offsetToPosition(offset, map, sourceText);
+  return changes.map((change) =>
+    enrichChange(change, originalMap, currentMap, originalText, currentText),
+  );
+}
 
-    return {
-      ...change,
-      sourcePosition: posInfo?.position ?? null,
-      blockIndex: posInfo?.blockIndex ?? 0,
-      blockType: posInfo?.blockType ?? 'unknown',
-    };
-  });
+function enrichChange(
+  change: Change,
+  originalMap: PositionEntry[],
+  currentMap: PositionEntry[],
+  originalText?: string,
+  currentText?: string,
+): Change {
+  const location = getChangeLocation(change, originalMap, currentMap, originalText, currentText);
+  const posInfo = offsetToPosition(location.offset, location.map, location.sourceText);
+  return {
+    ...change,
+    sourcePosition: posInfo?.position ?? null,
+    blockIndex: posInfo?.blockIndex ?? 0,
+    blockType: posInfo?.blockType ?? 'unknown',
+  };
+}
+
+function getChangeLocation(
+  change: Change,
+  originalMap: PositionEntry[],
+  currentMap: PositionEntry[],
+  originalText?: string,
+  currentText?: string,
+): { offset: number; map: PositionEntry[]; sourceText?: string | undefined } {
+  if (change.currentRange) {
+    return { offset: change.currentRange.start, map: currentMap, sourceText: currentText };
+  }
+  return { offset: change.originalRange?.start ?? 0, map: originalMap, sourceText: originalText };
 }
 
 /**

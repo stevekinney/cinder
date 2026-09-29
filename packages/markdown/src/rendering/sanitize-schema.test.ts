@@ -45,15 +45,15 @@ describe('createSanitizeSchema', () => {
 
   it('allows href and title attributes on anchors', () => {
     const schema = createSanitizeSchema();
-    expect(schema.attributes?.a).toContain('href');
-    expect(schema.attributes?.a).toContain('title');
+    expect(schema.attributes?.['a']).toContain('href');
+    expect(schema.attributes?.['a']).toContain('title');
   });
 
   it('allows src, alt, and title attributes on images', () => {
     const schema = createSanitizeSchema();
-    expect(schema.attributes?.img).toContain('src');
-    expect(schema.attributes?.img).toContain('alt');
-    expect(schema.attributes?.img).toContain('title');
+    expect(schema.attributes?.['img']).toContain('src');
+    expect(schema.attributes?.['img']).toContain('alt');
+    expect(schema.attributes?.['img']).toContain('title');
   });
 
   it('allows className on all elements via wildcard', () => {
@@ -63,30 +63,30 @@ describe('createSanitizeSchema', () => {
 
   it('sets href protocols to http, https, mailto, tel', () => {
     const schema = createSanitizeSchema();
-    expect(schema.protocols?.href).toEqual(['http', 'https', 'mailto', 'tel']);
+    expect(schema.protocols?.['href']).toEqual(['http', 'https', 'mailto', 'tel']);
   });
 
   it('excludes data from image protocols by default', () => {
     const schema = createSanitizeSchema();
-    expect(schema.protocols?.src).not.toContain('data');
+    expect(schema.protocols?.['src']).not.toContain('data');
   });
 
   it('includes data in image protocols when allowDataImages is true', () => {
     const schema = createSanitizeSchema({ allowDataImages: true });
-    expect(schema.protocols?.src).toContain('data');
-    expect(schema.protocols?.src).toContain('http');
-    expect(schema.protocols?.src).toContain('https');
+    expect(schema.protocols?.['src']).toContain('data');
+    expect(schema.protocols?.['src']).toContain('http');
+    expect(schema.protocols?.['src']).toContain('https');
   });
 
   it('still excludes data in image protocols when allowDataImages is false', () => {
     const schema = createSanitizeSchema({ allowDataImages: false });
-    expect(schema.protocols?.src).not.toContain('data');
+    expect(schema.protocols?.['src']).not.toContain('data');
   });
 });
 
 describe('sanitizeSchema (default export)', () => {
   it('is a pre-built schema without data images', () => {
-    expect(sanitizeSchema.protocols?.src).not.toContain('data');
+    expect(sanitizeSchema.protocols?.['src']).not.toContain('data');
     expect(sanitizeSchema.tagNames).not.toContain('script');
   });
 });

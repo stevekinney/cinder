@@ -11,8 +11,7 @@
 </ul>
 ```
 
-> [!TIP] Composing with DataList
-> `DataList` renders a `<ul role="list">`, so it is a valid parent for `StackedListItem`. Prefer it over a hand-rolled `<ul>` when you want a styled empty state and a list-level `density` that each row inherits:
+> [!TIP] Composing with DataList `DataList` renders a `<ul role="list">`, so it is a valid parent for `StackedListItem`. Prefer it over a hand-rolled `<ul>` when you want a styled empty state and a list-level `density` that each row inherits:
 >
 > ```svelte
 > <DataList items={records} density="condensed">

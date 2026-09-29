@@ -19,11 +19,12 @@
   import type { ComboboxOption, ComboboxProps } from './combobox.types.ts';
   import { untrack } from 'svelte';
 
-  import { resolveFieldControl } from '../../_internal/field-control.ts';
+  import { composeDescribedBy, resolveFieldControl } from '../../_internal/field-control.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import FormFieldFrame from '../../_internal/form-field-frame.svelte';
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { rowDividerAttachment } from '../../utilities/row-divider.ts';
   import { createCommandListState } from '../_internal/create-command-list-state.svelte.ts';
   import Popover from '../popover/popover.svelte';
 
@@ -186,6 +187,14 @@
 
   const listboxVisible = $derived(open && filteredOptions.length > 0);
   const emptyVisible = $derived(open && filteredOptions.length === 0);
+  // COR-499: the status paragraph that names the empty result set — rendered
+  // outside the listbox (see comboboxControl below), never as a fake
+  // role="option" child, matching CommandMenu's empty-state pattern
+  // (command-menu.svelte's `emptyStateId`/`showEmptyState`). Composed into the
+  // input's own aria-describedby, since Popover's role="listbox" panel has no
+  // aria-describedby prop to carry the same association CommandMenu puts
+  // directly on its <ul role="listbox">.
+  const emptyStatusId = $derived(`${id}-empty-status`);
 
   /**
    * Whether the composed Popover instance should stay MOUNTED (CIN-376
@@ -509,7 +518,7 @@
       aria-activedescendant={activeOptionId}
       aria-invalid={field.ariaInvalid}
       aria-required={resolvedRequired || undefined}
-      aria-describedby={describedBy}
+      aria-describedby={composeDescribedBy(describedBy, emptyVisible ? emptyStatusId : undefined)}
       oninput={handleInput}
       onfocus={handleFocus}
       onblur={handleBlur}
@@ -546,6 +555,7 @@
       <ul bind:this={listboxElement} role="presentation" class="cinder-combobox__listbox">
         {#each filteredOptions as option, index (option.value)}
           <li
+            {@attach rowDividerAttachment}
             id="{id}-option-{index}"
             role="option"
             class="cinder-_option-row cinder-combobox__option"
@@ -603,21 +613,25 @@
         panelMounted = false;
       }}
     >
-      <div
-        class="cinder-combobox__empty"
-        role="option"
-        aria-disabled="true"
-        aria-selected="false"
-        data-cinder-active
-      >
-        No results
-      </div>
+      <!--
+        COR-499: plain, non-interactive visible copy — no role="option" (this
+        is not a selectable/fake option), no aria-disabled, no aria-selected.
+        Zero role="option" elements exist anywhere while the result set is
+        empty; the associated status description lives outside this listbox,
+        in `.cinder-combobox__empty-status` below.
+      -->
+      <div class="cinder-combobox__empty" data-cinder-active>No results</div>
     </Popover>
   {/if}
 
-  <!-- Keep the live region mounted while the visible empty-state surface uses
-       the same portal and Floating UI path as the options panel. -->
-  <div class="cinder-combobox__empty-status" role="status">
+  <!-- The one status description for the empty result set, kept outside the
+       listbox (never a descendant of the `role="listbox"` Popover panels
+       above) and referenced from the input's aria-describedby — the same
+       describedby-based association CommandMenu uses from its own
+       `role="listbox"` element (command-menu.svelte's `emptyStateId`). Always
+       mounted, like FormFieldFrame's error region, so aria-live is registered
+       before text is injected. -->
+  <div id={emptyStatusId} class="cinder-combobox__empty-status" role="status">
     {emptyVisible ? 'No results' : ''}
   </div>
 {/snippet}

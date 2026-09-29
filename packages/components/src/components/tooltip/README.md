@@ -6,7 +6,7 @@ Hover-and-focus triggered hint for terse controls, anchored to a focusable child
 
 ```svelte
 <script lang="ts">
-  import Tooltip from '@lostgradient/cinder/tooltip';
+  import { Tooltip } from '@lostgradient/cinder';
 </script>
 
 <Tooltip text="Refresh data" describe={false}>
@@ -34,7 +34,6 @@ Hover-and-focus triggered hint for terse controls, anchored to a focusable child
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

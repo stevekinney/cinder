@@ -13,7 +13,7 @@ import { resolve } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import { importWithoutDomGlobals } from '../../../test/import-without-dom-globals.ts';
 
 setupHappyDom();

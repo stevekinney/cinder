@@ -95,13 +95,7 @@ function isRelativePath(url: string): boolean {
  */
 function extractProtocol(url: string): string | null {
   // Normalize: trim whitespace, remove control characters, normalize case
-  // oxlint-disable-next-line no-control-regex
-  // eslint-disable-next-line no-control-regex -- intentional: stripping ASCII control characters from URLs
-  const controlCharsRegex = /[\x00-\x1f\x7f]/g;
-  const normalized = url
-    .trim()
-    // Remove ASCII control characters (0x00-0x1F, 0x7F)
-    .replace(controlCharsRegex, '')
+  const normalized = stripControlCharacters(url.trim())
     // Remove zero-width characters and other Unicode tricks
     .replace(/[\u200b-\u200d\ufeff\u00ad]/g, '')
     // Normalize case for protocol detection
@@ -124,13 +118,7 @@ function extractProtocol(url: string): string | null {
  */
 function isSafeDataImageUrl(url: string): boolean {
   // Normalize and check for data: prefix
-  // oxlint-disable-next-line no-control-regex
-  // eslint-disable-next-line no-control-regex -- intentional: stripping ASCII control characters from URLs
-  const controlCharsRegex = /[\x00-\x1f\x7f]/g;
-  const normalized = url
-    .trim()
-    .replace(controlCharsRegex, '')
-    .replace(/[\u200b-\u200d\ufeff\u00ad]/g, '');
+  const normalized = stripControlCharacters(url.trim()).replace(/[\u200b-\u200d\ufeff\u00ad]/g, '');
 
   if (!normalized.toLowerCase().startsWith('data:')) {
     return false;
@@ -182,49 +170,15 @@ function isSafeDataImageUrl(url: string): boolean {
  * ```
  */
 export function isSafeUrl(url: string, options: SafeUrlOptions = {}): boolean {
-  const { allowDataImages = false } = options;
-
-  // Empty or whitespace-only URLs are not safe
-  if (!url || !url.trim()) {
-    return false;
-  }
-
-  // Check for relative paths first (always safe)
-  if (isRelativePath(url)) {
-    return true;
-  }
-
-  // Extract protocol
+  if (!url || !url.trim() || isRelativePath(url)) return isRelativePath(url);
   const protocol = extractProtocol(url);
+  return protocol !== null && isSafeProtocol(protocol, url, options.allowDataImages ?? false);
+}
 
-  // No protocol detected - could be a bare hostname or invalid
-  // Treat as unsafe to be conservative
-  if (!protocol) {
-    // Special case: URLs like "example.com" without protocol
-    // These are ambiguous and should be prefixed with https:// by the caller
-    return false;
-  }
-
-  // Check if protocol is explicitly safe
-  if (SAFE_PROTOCOLS.has(protocol)) {
-    return true;
-  }
-
-  // Check if protocol is explicitly blocked
-  if (BLOCKED_PROTOCOLS.has(protocol)) {
-    return false;
-  }
-
-  // Handle data: URLs specially
-  if (protocol === 'data:') {
-    if (allowDataImages && isSafeDataImageUrl(url)) {
-      return true;
-    }
-    return false;
-  }
-
-  // Unknown protocol - block by default
-  return false;
+function isSafeProtocol(protocol: string, url: string, allowDataImages: boolean): boolean {
+  if (SAFE_PROTOCOLS.has(protocol)) return true;
+  if (BLOCKED_PROTOCOLS.has(protocol)) return false;
+  return protocol === 'data:' && allowDataImages && isSafeDataImageUrl(url);
 }
 
 /**
@@ -272,4 +226,13 @@ export function sanitizeUrlWithFallback(
   options: SafeUrlOptions = {},
 ): string {
   return isSafeUrl(url, options) ? url : fallback;
+}
+
+function stripControlCharacters(value: string): string {
+  return Array.from(value)
+    .filter((character) => {
+      const code = character.charCodeAt(0);
+      return code > 0x1f && code !== 0x7f;
+    })
+    .join('');
 }

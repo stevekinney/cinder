@@ -10,6 +10,7 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        description: 'Descendant application surface that opens modals through `useModal()`.',
       },
     ],
   },

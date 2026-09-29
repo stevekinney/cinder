@@ -379,7 +379,7 @@
         {
           "color": {
             "colorSpace": "oklch",
-            "components": [1, 0, 0],
+            "components": [0, 0, 0],
             "alpha": 0.09
           },
           "offsetX": {
@@ -402,7 +402,7 @@
         {
           "color": {
             "colorSpace": "oklch",
-            "components": [1, 0, 0],
+            "components": [0, 0, 0],
             "alpha": 0.05
           },
           "offsetX": {
@@ -429,7 +429,7 @@
         {
           "color": {
             "colorSpace": "oklch",
-            "components": [1, 0, 0],
+            "components": [0, 0, 0],
             "alpha": 0.09
           },
           "offsetX": {
@@ -452,7 +452,7 @@
         {
           "color": {
             "colorSpace": "oklch",
-            "components": [1, 0, 0],
+            "components": [0, 0, 0],
             "alpha": 0.06
           },
           "offsetX": {
@@ -479,7 +479,7 @@
         {
           "color": {
             "colorSpace": "oklch",
-            "components": [1, 0, 0],
+            "components": [0, 0, 0],
             "alpha": 0.11
           },
           "offsetX": {
@@ -502,7 +502,7 @@
         {
           "color": {
             "colorSpace": "oklch",
-            "components": [1, 0, 0],
+            "components": [0, 0, 0],
             "alpha": 0.07
           },
           "offsetX": {

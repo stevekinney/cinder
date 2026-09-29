@@ -1,14 +1,13 @@
 # AccessGate
 
-Authorization presentation gate for controls and sections that stay visible when
-the current user is missing an application scope or permission.
+Authorization presentation gate for controls and sections that stay visible when the current user is missing an application scope or permission.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import { AccessGate } from '@lostgradient/cinder/access-gate';
-  import { Button } from '@lostgradient/cinder/button';
+  import { AccessGate } from '@lostgradient/cinder';
+  import { Button } from '@lostgradient/cinder';
 </script>
 
 <AccessGate granted={false} reason="Requires scope: workflows:cancel">
@@ -43,7 +42,6 @@ the current user is missing an application scope or permission.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

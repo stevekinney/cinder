@@ -18,13 +18,13 @@
     isRelevant,
     createModalSlot,
     type GuidanceApi,
+    type GuidanceClaim,
   } from '../../_internal/guidance-context.ts';
   import type { GuidanceRegionProps } from './guidance-region.types.ts';
-  import type { GuidanceClaim } from '../../_internal/guidance-context.ts';
   import type { ModalApi } from '../../_internal/modal-context.ts';
   import { useModal } from '../../utilities/use-modal.ts';
-  import Button from '@lostgradient/cinder/button';
-  import Popover from '@lostgradient/cinder/popover';
+  import { default as Button } from '../button/index.ts';
+  import { default as Popover } from '../popover/index.ts';
   const regionId = $props.id();
   let {
     claims: initialClaims = [],
@@ -101,8 +101,8 @@
           ? anchorResolver(claim.anchor)
           : null;
       if (anchor?.isConnected) anchor.focus();
-      for (const claim of initialClaims) {
-        const key = `${storageKey}:${claim.id}`;
+      for (const initialClaim of initialClaims) {
+        const key = `${storageKey}:${initialClaim.id}`;
         if (storage?.remove) storage.remove(key);
         else storage?.set(key, false);
       }
@@ -113,8 +113,8 @@
       openedModalId = null;
       modalClaimGeneration += 1;
       if (modalApi) {
-        for (const claim of initialClaims) {
-          if (claim.kind === 'modal') modalApi.dismiss(modalEntryId(claim.id));
+        for (const initialClaim of initialClaims) {
+          if (initialClaim.kind === 'modal') modalApi.dismiss(modalEntryId(initialClaim.id));
         }
       }
       modalSlot.reset();
@@ -161,6 +161,7 @@
         api.dismiss(claim.id);
         openedModalId = null;
         modalSlot.reset();
+        return undefined;
       });
   });
 

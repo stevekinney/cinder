@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
 // reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
@@ -10,13 +10,13 @@ setupHappyDom();
 
 const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: Backdrop } = await import('./backdrop.svelte');
-const { _resetEscapeStack, _resetScrollLock } = await import('../../_internal/overlay.ts');
+const { resetEscapeStack, resetScrollLock } = await import('../../_internal/overlay.ts');
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
 afterEach(() => {
   cleanup();
   document.body.replaceChildren();
-  _resetEscapeStack();
+  resetEscapeStack();
 });
 
 describe('Backdrop', () => {
@@ -77,7 +77,7 @@ describe('Backdrop', () => {
     const { container } = render(Backdrop, {
       props: { open: true, onclick: () => (clicked = true) },
     });
-    const backdrop = container.querySelector('.cinder-backdrop') as HTMLElement;
+    const backdrop = requiredInstance(container.querySelector('.cinder-backdrop'), HTMLElement);
     expect(backdrop).not.toBeNull();
     await fireEvent.click(backdrop);
     expect(clicked).toBe(true);
@@ -96,7 +96,7 @@ describe('Backdrop', () => {
 
   test('Escape does not dispatch a click path without onclick', async () => {
     const { container } = render(Backdrop, { props: { open: true } });
-    const backdrop = container.querySelector('.cinder-backdrop') as HTMLElement;
+    const backdrop = requiredInstance(container.querySelector('.cinder-backdrop'), HTMLElement);
     let clicked = false;
     backdrop.addEventListener('click', () => (clicked = true));
 
@@ -123,7 +123,7 @@ describe('Backdrop', () => {
 // so a leak in one test can't mask a regression in another.
 describe('Backdrop body-scroll lock', () => {
   test('locks body scroll while open and restores it when closed', async () => {
-    _resetScrollLock();
+    resetScrollLock();
     expect(document.body.style.overflow).toBe('');
 
     const { rerender } = render(Backdrop, { props: { open: true } });
@@ -137,13 +137,13 @@ describe('Backdrop body-scroll lock', () => {
   });
 
   test('does not lock body scroll when scrollLocked=false', () => {
-    _resetScrollLock();
+    resetScrollLock();
     render(Backdrop, { props: { open: true, scrollLocked: false } });
     expect(document.body.style.overflow).toBe('');
   });
 
   test('releases the lock when scrollLocked is toggled false while open', async () => {
-    _resetScrollLock();
+    resetScrollLock();
     const { rerender } = render(Backdrop, { props: { open: true, scrollLocked: true } });
     expect(document.body.style.overflow).toBe('hidden');
 
@@ -152,11 +152,11 @@ describe('Backdrop body-scroll lock', () => {
 
     await rerender({ open: true, scrollLocked: true });
     expect(document.body.style.overflow).toBe('hidden');
-    _resetScrollLock();
+    resetScrollLock();
   });
 
   test('releases the lock when the component is destroyed while open', () => {
-    _resetScrollLock();
+    resetScrollLock();
     const { unmount } = render(Backdrop, { props: { open: true } });
     expect(document.body.style.overflow).toBe('hidden');
 
@@ -171,7 +171,7 @@ describe('Backdrop body-scroll lock', () => {
     // before the outro completes. A stale outro callback must NOT release the lock
     // while the scrim is open and visible. The onoutroend guard (`if (!open)`)
     // ensures only a genuine close clears the tracked element.
-    _resetScrollLock();
+    resetScrollLock();
     const { rerender } = render(Backdrop, { props: { open: true } });
     expect(document.body.style.overflow).toBe('hidden');
 

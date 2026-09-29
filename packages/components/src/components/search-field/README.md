@@ -6,7 +6,7 @@ Dedicated text input with a clear button and search icon for filtering or queryi
 
 ```svelte
 <script lang="ts">
-  import SearchField from '@lostgradient/cinder/search-field';
+  import { SearchField } from '@lostgradient/cinder';
 </script>
 
 <SearchField />
@@ -37,7 +37,6 @@ Dedicated text input with a clear button and search icon for filtering or queryi
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

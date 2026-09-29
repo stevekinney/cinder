@@ -111,6 +111,60 @@
       "default": "./dist/components/diff-viewer/diff-viewer.variables.js"
     },
     "./diff-viewer/examples": "./dist/components/diff-viewer/diff-viewer.examples.json",
+    "./diff-review": {
+      "types": "./dist/components/diff-review/index.d.ts",
+      "browser": "./src/lib/components/diff-review/index.ts",
+      "svelte": "./src/lib/components/diff-review/index.ts",
+      "node": "./dist/server/components/diff-review/index.js",
+      "import": "./src/lib/components/diff-review/index.ts",
+      "default": "./dist/components/diff-review/index.js"
+    },
+    "./diff-review/schema": {
+      "types": "./dist/components/diff-review/diff-review.schema.d.ts",
+      "browser": "./src/lib/components/diff-review/diff-review.schema.ts",
+      "svelte": "./src/lib/components/diff-review/diff-review.schema.ts",
+      "import": "./src/lib/components/diff-review/diff-review.schema.ts",
+      "default": "./dist/components/diff-review/diff-review.schema.js"
+    },
+    "./diff-review/variables": {
+      "types": "./dist/components/diff-review/diff-review.variables.d.ts",
+      "browser": "./src/lib/components/diff-review/diff-review.variables.ts",
+      "svelte": "./src/lib/components/diff-review/diff-review.variables.ts",
+      "import": "./src/lib/components/diff-review/diff-review.variables.ts",
+      "default": "./dist/components/diff-review/diff-review.variables.js"
+    },
+    "./diff-review/styles": {
+      "types": "./dist/components/diff-review/diff-review.css.d.ts",
+      "default": "./dist/components/diff-review/diff-review.css"
+    },
+    "./diff-review/examples": "./dist/components/diff-review/diff-review.examples.json",
+    "./diff-review-comments": {
+      "types": "./dist/components/diff-review-comments/index.d.ts",
+      "browser": "./src/lib/components/diff-review-comments/index.ts",
+      "svelte": "./src/lib/components/diff-review-comments/index.ts",
+      "node": "./dist/server/components/diff-review-comments/index.js",
+      "import": "./src/lib/components/diff-review-comments/index.ts",
+      "default": "./dist/components/diff-review-comments/index.js"
+    },
+    "./diff-review-comments/schema": {
+      "types": "./dist/components/diff-review-comments/diff-review-comments.schema.d.ts",
+      "browser": "./src/lib/components/diff-review-comments/diff-review-comments.schema.ts",
+      "svelte": "./src/lib/components/diff-review-comments/diff-review-comments.schema.ts",
+      "import": "./src/lib/components/diff-review-comments/diff-review-comments.schema.ts",
+      "default": "./dist/components/diff-review-comments/diff-review-comments.schema.js"
+    },
+    "./diff-review-comments/variables": {
+      "types": "./dist/components/diff-review-comments/diff-review-comments.variables.d.ts",
+      "browser": "./src/lib/components/diff-review-comments/diff-review-comments.variables.ts",
+      "svelte": "./src/lib/components/diff-review-comments/diff-review-comments.variables.ts",
+      "import": "./src/lib/components/diff-review-comments/diff-review-comments.variables.ts",
+      "default": "./dist/components/diff-review-comments/diff-review-comments.variables.js"
+    },
+    "./diff-review-comments/styles": {
+      "types": "./dist/components/diff-review-comments/diff-review-comments.css.d.ts",
+      "default": "./dist/components/diff-review-comments/diff-review-comments.css"
+    },
+    "./diff-review-comments/examples": "./dist/components/diff-review-comments/diff-review-comments.examples.json",
     "./anchor-decorations": {
       "types": "./dist/anchor-decorations.d.ts",
       "bun": "./src/lib/anchor-decorations.ts",
@@ -142,6 +196,14 @@
       "svelte": "./src/lib/comments/types.ts",
       "import": "./dist/comments/types.js",
       "default": "./dist/comments/types.js"
+    },
+    "./diff-review-state": {
+      "types": "./dist/diff-review-state/index.d.ts",
+      "bun": "./src/lib/diff-review-state/index.ts",
+      "browser": "./src/lib/diff-review-state/index.ts",
+      "svelte": "./src/lib/diff-review-state/index.ts",
+      "import": "./dist/diff-review-state/index.js",
+      "default": "./dist/diff-review-state/index.js"
     },
     "./export": {
       "types": "./dist/export/index.d.ts",
@@ -208,16 +270,6 @@
       "default": "./dist/editor/test-utilities.js"
     }
   },
-  "files": [
-    "dist",
-    "!dist/**/*.test.*",
-    "!dist/**/*.fixture.*",
-    "!dist/**/*-fixture.*",
-    "!dist/**/*-fixtures.*",
-    "!dist/**/fixtures.*",
-    "!dist/**/test/**",
-    "components.json"
-  ],
   "scripts": {
     "build": "bun run scripts/build.ts",
     "clean": "rm -rf dist coverage node_modules/.cache lostgradient-editor-*.tgz",
@@ -252,7 +304,11 @@
     "prosemirror-view": "catalog:"
   },
   "devDependencies": {
+    "@lostgradient/bun-plugin-svelte": "^0.0.1",
+    "@lostgradient/testing": "workspace:*",
+    "@lostgradient/typescript": "workspace:*",
     "@milkdown/ctx": "^7.17.3",
+    "@playwright/test": "catalog:",
     "@sveltejs/package": "^2.5.8",
     "@testing-library/svelte": "^5.2.7",
     "@types/bun": "^1.3.11",
@@ -284,5 +340,15 @@
   "publishConfig": {
     "access": "public",
     "provenance": true
-  }
+  },
+  "files": [
+    "dist",
+    "!dist/**/*.test.*",
+    "!dist/**/*.fixture.*",
+    "!dist/**/*-fixture.*",
+    "!dist/**/*-fixtures.*",
+    "!dist/session/fixtures.*",
+    "!dist/**/test/**",
+    "components.json"
+  ]
 }

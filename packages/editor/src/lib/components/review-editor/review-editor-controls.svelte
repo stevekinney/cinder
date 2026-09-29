@@ -60,19 +60,21 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
-  import Badge from '@lostgradient/cinder/badge';
-  import Button from '@lostgradient/cinder/button';
-  import Segment from '@lostgradient/cinder/segment';
-  import SegmentedControl from '@lostgradient/cinder/segmented-control';
-  import DiffStatistics from '@lostgradient/cinder/diff-statistics';
-  import Toolbar from '@lostgradient/cinder/toolbar';
   import {
+    Badge,
+    Button,
+    Segment,
+    SegmentedControl,
+    DiffStatistics,
+    Toolbar,
     FileText,
     GitBranch,
     MessageSquare,
+    MoreHorizontal,
     Pencil,
+    Popover,
     RotateCcw,
-  } from '@lostgradient/cinder/icons';
+  } from '@lostgradient/cinder';
 
   let {
     id,
@@ -127,6 +129,25 @@
   });
 </script>
 
+{#snippet diffViewModeControl(controlId: string)}
+  <Toolbar aria-label="Diff view controls" class="controls-diff-toolbar">
+    <SegmentedControl
+      id={controlId}
+      selectionMode="single"
+      size="sm"
+      density="toolbar"
+      detached
+      label="Diff view mode"
+      labelVisible={false}
+      bind:value={diffViewMode}
+    >
+      <Segment value="unified">Unified</Segment>
+      <Segment value="final">Final</Segment>
+      <Segment value="original">Original</Segment>
+    </SegmentedControl>
+  </Toolbar>
+{/snippet}
+
 <!--
   `group`, not `toolbar`: this bar is a container of control groups rather than
   a flat set of toolbar widgets. It holds a `tablist` (never a valid child of
@@ -141,55 +162,61 @@
   aria-label="Review editor controls"
 >
   <div class="controls-leading">
-    <SegmentedControl
-      id="{id}-view-mode"
-      label="Review editor view"
-      labelVisible={false}
-      variant="tablist"
-      size="sm"
-      density="toolbar"
-      value={activeView}
-      onValueChange={handleViewChange}
-    >
-      <!--
-        `controls` is only passed for the ACTIVE segment (cinder#1303). The view
-        area below renders exactly one panel at a time via an `{#if}` chain — the
-        other two views' panels are not in the document at all, not merely
-        hidden — so an inactive tab's `aria-controls` would point at an id that
-        does not exist. A dangling id reference is worse than an absent one: it
-        fails "every IDREF resolves" (axe's aria-valid-attr-value, and any
-        screen reader that follows the tab-to-panel relationship), where
-        omitting `controls` on the inactive tabs is simply a tab that doesn't
-        (yet) claim to control anything.
-      -->
-      <Segment value="editor" controls={activeView === 'editor' ? viewPanelIds?.editor : undefined}>
-        {#snippet leading()}<Pencil class="cinder-icon-xs" />{/snippet}
-        Editor
-      </Segment>
-      {#if showDiffTabs}
+    {#if showDiffTabs}
+      <SegmentedControl
+        id="{id}-view-mode"
+        label="Review editor view"
+        labelVisible={false}
+        variant="tablist"
+        size="sm"
+        density="toolbar"
+        value={activeView}
+        onValueChange={handleViewChange}
+        class="controls-view-mode"
+      >
+        <!--
+          `controls` is only passed for the ACTIVE segment (cinder#1303). The view
+          area below renders exactly one panel at a time via an `{#if}` chain — the
+          other two views' panels are not in the document at all, not merely
+          hidden — so an inactive tab's `aria-controls` would point at an id that
+          does not exist. A dangling id reference is worse than an absent one: it
+          fails "every IDREF resolves" (axe's aria-valid-attr-value, and any
+          screen reader that follows the tab-to-panel relationship), where
+          omitting `controls` on the inactive tabs is simply a tab that doesn't
+          (yet) claim to control anything.
+        -->
+        <Segment
+          value="editor"
+          controls={activeView === 'editor' ? viewPanelIds?.editor : undefined}
+        >
+          {#snippet leading()}<Pencil class="cinder-icon-xs" />{/snippet}
+          <span class="controls-view-mode-label">Editor</span>
+        </Segment>
         <Segment value="diff" controls={activeView === 'diff' ? viewPanelIds?.diff : undefined}>
           {#snippet leading()}<GitBranch class="cinder-icon-xs" />{/snippet}
-          Diff
+          <span class="controls-view-mode-label">Diff</span>
         </Segment>
         <Segment
           value="summary"
           controls={activeView === 'summary' ? viewPanelIds?.summary : undefined}
         >
           {#snippet leading()}<FileText class="cinder-icon-xs" />{/snippet}
-          Summary
+          <span class="controls-view-mode-label">Summary</span>
         </Segment>
-      {/if}
-    </SegmentedControl>
+      </SegmentedControl>
+    {/if}
 
     {#if diffStats && (diffStats.added > 0 || diffStats.removed > 0 || diffStats.modified > 0)}
-      <DiffStatistics
-        variant="compact"
-        density="toolbar"
-        added={diffStats.added}
-        removed={diffStats.removed}
-        modified={diffStats.modified}
-        zeroVisible={false}
-      />
+      <div class="controls-diff-statistics">
+        <DiffStatistics
+          variant="compact"
+          density="toolbar"
+          added={diffStats.added}
+          removed={diffStats.removed}
+          modified={diffStats.modified}
+          zeroVisible={false}
+        />
+      </div>
     {/if}
 
     {#if formatting}
@@ -208,24 +235,12 @@
         already carry a roving tabindex (only the active one is tabbable), so
         `<Toolbar>` sees a single focusable item here and defers arrow-key
         handling to the radiogroup's own handler — matching how
-        `@lostgradient/cinder/toolbar`'s own "Toolbar with groups" example
+        `@lostgradient/cinder`'s own "Toolbar with groups" example
         wraps a SegmentedControl.
       -->
-      <Toolbar aria-label="Diff view controls">
-        <SegmentedControl
-          id="{id}-diff-view-mode"
-          selectionMode="single"
-          size="sm"
-          density="toolbar"
-          label="Diff view mode"
-          labelVisible={false}
-          bind:value={diffViewMode}
-        >
-          <Segment value="unified">Unified</Segment>
-          <Segment value="final">Final</Segment>
-          <Segment value="original">Original</Segment>
-        </SegmentedControl>
-      </Toolbar>
+      <div class="controls-diff-mode controls-diff-mode-inline">
+        {@render diffViewModeControl(`${id}-diff-view-mode`)}
+      </div>
     {/if}
   </div>
 
@@ -248,6 +263,21 @@
     from a fresh reproduction rather than this note.
   -->
   <div class="controls-trailing">
+    {#if activeView === 'diff'}
+      <div class="controls-diff-mode-overflow">
+        <Popover label="Diff view options" placement="bottom-end" focusManagement="panel">
+          {#snippet trigger()}
+            <Button variant="ghost" size="sm" aria-label="Diff view options" iconOnly>
+              <MoreHorizontal class="cinder-icon-sm" />
+            </Button>
+          {/snippet}
+          <div class="controls-diff-mode-popover">
+            {@render diffViewModeControl(`${id}-diff-view-mode-overflow`)}
+          </div>
+        </Popover>
+      </div>
+    {/if}
+
     {#if activeView === 'diff' && hasContentChanges && !readonly}
       <Button
         variant="ghost"
@@ -307,8 +337,8 @@
     min-height: 2.5rem;
     flex-wrap: nowrap;
     min-width: 0;
-    overflow-x: auto;
-    scrollbar-width: thin;
+    overflow: hidden;
+    container-type: inline-size;
   }
 
   .controls-leading {
@@ -316,7 +346,8 @@
     align-items: center;
     gap: var(--cinder-space-2);
     flex-wrap: nowrap;
-    flex: 0 0 auto;
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .controls-trailing {
@@ -328,14 +359,13 @@
   }
 
   /* The hosted formatting toolbar sheds its standalone chrome — it is a group
-     inside this bar now, not a bar of its own. */
+     inside this bar now, not a bar of its own. Its flexible slot gives the
+     nested priority-plus toolbar a real width budget at narrow sizes. */
   .controls-formatting {
     display: flex;
     align-items: center;
-    /* Hold intrinsic width: the parent row is `flex-wrap: nowrap` with an
-       auto-scrolling overflow, so a shrinkable child collapses to 0 instead
-       of pushing the row into its scroll region. */
-    flex: 0 0 auto;
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .controls-formatting :global(.editor-toolbar) {
@@ -344,8 +374,40 @@
     background: none;
     padding: 0;
     min-block-size: auto;
+    min-width: 0;
+    inline-size: 100%;
+    max-inline-size: 100%;
+    flex: 1 1 0;
+    overflow: hidden;
+  }
+
+  .controls-diff-statistics {
+    display: flex;
+    align-items: center;
     flex: 0 0 auto;
-    overflow: visible;
+  }
+
+  .controls-diff-mode {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .controls-diff-mode :global(.controls-diff-toolbar) {
+    gap: var(--cinder-space-1);
+    flex-wrap: nowrap;
+  }
+
+  .controls-diff-mode :global(.cinder-segmented-control) {
+    min-block-size: var(--cinder-control-height-sm);
+  }
+
+  .controls-diff-mode-overflow {
+    display: none;
+  }
+
+  .controls-diff-mode-popover {
+    padding: var(--cinder-space-1);
   }
 
   .controls-separator {
@@ -368,5 +430,44 @@
   /* Comments toggle button with badge — locally scoped via the wrapper. */
   .comments-toggle-wrapper :global(.cinder-button) {
     gap: var(--cinder-space-1);
+  }
+
+  @container (max-width: 24rem) {
+    .controls-view-mode-label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .controls-diff-statistics {
+      display: none;
+    }
+  }
+
+  @container (max-width: 34rem) {
+    .controls-formatting {
+      flex: 0 0 auto;
+    }
+
+    .controls-formatting :global(.editor-toolbar) {
+      inline-size: var(--cinder-control-height-sm);
+      max-inline-size: var(--cinder-control-height-sm);
+      flex: 0 0 auto;
+    }
+
+    .controls-diff-mode-inline {
+      display: none;
+    }
+
+    .controls-diff-mode-overflow {
+      display: flex;
+      align-items: center;
+    }
   }
 </style>

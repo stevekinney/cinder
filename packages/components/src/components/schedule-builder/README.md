@@ -8,8 +8,8 @@ A recurrence-definition control. Users author a schedule via friendly presets (e
 
 ```svelte
 <script lang="ts">
-  import ScheduleBuilder from '@lostgradient/cinder/schedule-builder';
-  import type { ScheduleFire, ScheduleValue } from '@lostgradient/cinder/schedule-builder';
+  import { ScheduleBuilder } from '@lostgradient/cinder';
+  import type { ScheduleFire, ScheduleValue } from '@lostgradient/cinder';
 
   let value = $state<ScheduleValue>({ mode: 'interval', every: 15, unit: 'minutes' });
 
@@ -73,7 +73,6 @@ Regardless of mode, three things are always visible: a plain-English summary lin
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

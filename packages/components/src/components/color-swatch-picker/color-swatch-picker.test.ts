@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -125,9 +125,12 @@ describe('ColorSwatchPicker selection', () => {
         changed = c;
       },
     });
-    const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
     // Focus the first option
-    const firstOption = toArray(container.querySelectorAll('[role="option"]'))[0] as HTMLElement;
+    const firstOption = requiredInstance(
+      toArray(container.querySelectorAll('[role="option"]'))[0],
+      HTMLElement,
+    );
     await fireEvent.focus(firstOption);
     await fireEvent.keyDown(listbox, { key: 'Enter' });
     expect(changed).toBe('#ff0000');
@@ -142,7 +145,7 @@ describe('ColorSwatchPicker selection', () => {
         changed = c;
       },
     });
-    const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
     await fireEvent.keyDown(listbox, { key: ' ' });
     expect(changed).toBe('#ff0000');
   });
@@ -156,7 +159,10 @@ describe('ColorSwatchPicker selection', () => {
         changed = c;
       },
     });
-    const thirdOption = toArray(container.querySelectorAll('[role="option"]'))[2] as HTMLElement;
+    const thirdOption = requiredInstance(
+      toArray(container.querySelectorAll('[role="option"]'))[2],
+      HTMLElement,
+    );
     await fireEvent.click(thirdOption);
     expect(changed).toBe('#0000ff');
   });
@@ -164,7 +170,7 @@ describe('ColorSwatchPicker selection', () => {
   test('uncontrolled: selecting updates aria-selected without prop', async () => {
     const { container } = render(ColorSwatchPicker, { colors: palette, label: 'Colors' });
     const options = toArray(container.querySelectorAll('[role="option"]'));
-    await fireEvent.click(options[2] as HTMLElement);
+    await fireEvent.click(requiredInstance(options[2], HTMLElement));
     expect(options[2].getAttribute('aria-selected')).toBe('true');
     expect(options[0].getAttribute('aria-selected')).toBe('false');
   });
@@ -177,7 +183,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
       label: 'Colors',
       layout: 'grid',
     });
-    const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
     const options = toArray(container.querySelectorAll('[role="option"]'));
 
     // First option should start with tabindex=0
@@ -196,7 +202,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
       layout: 'grid',
       value: '#00ff00',
     });
-    const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
     const options = toArray(container.querySelectorAll('[role="option"]'));
 
     // Second option selected initially
@@ -212,7 +218,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
       label: 'Colors',
       layout: 'grid',
     });
-    const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
     const options = toArray(container.querySelectorAll('[role="option"]'));
 
     await fireEvent.keyDown(listbox, { key: 'ArrowDown' });
@@ -226,7 +232,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
       label: 'Colors',
       layout: 'stack',
     });
-    const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
     const options = toArray(container.querySelectorAll('[role="option"]'));
 
     await fireEvent.keyDown(listbox, { key: 'ArrowDown' });
@@ -241,7 +247,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
       layout: 'stack',
       value: '#00ff00',
     });
-    const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
     const options = toArray(container.querySelectorAll('[role="option"]'));
 
     await fireEvent.keyDown(listbox, { key: 'ArrowUp' });
@@ -255,7 +261,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
       label: 'Colors',
       layout: 'stack',
     });
-    const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
     const options = toArray(container.querySelectorAll('[role="option"]'));
 
     await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
@@ -271,7 +277,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
       label: 'Colors',
       value: '#0000ff',
     });
-    const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
     const options = toArray(container.querySelectorAll('[role="option"]'));
 
     expect(options[2].getAttribute('tabindex')).toBe('0');
@@ -286,7 +292,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
       label: 'Colors',
       value: '#ff00ff',
     });
-    const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
     const options = toArray(container.querySelectorAll('[role="option"]'));
 
     await fireEvent.keyDown(listbox, { key: 'Home' });
@@ -299,7 +305,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
       colors: palette,
       label: 'Colors',
     });
-    const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
     const options = toArray(container.querySelectorAll('[role="option"]'));
 
     await fireEvent.keyDown(listbox, { key: 'End' });
@@ -314,7 +320,7 @@ describe('ColorSwatchPicker keyboard navigation', () => {
       label: 'Colors',
       value: '#00ff00',
     });
-    const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
     const options = toArray(container.querySelectorAll('[role="option"]'));
 
     // index 1 → ArrowRight → should skip index 3 (disabled Yellow)
@@ -345,7 +351,10 @@ describe('ColorSwatchPicker disabled handling', () => {
         changed = c;
       },
     });
-    const disabledOption = toArray(container.querySelectorAll('[role="option"]'))[3] as HTMLElement;
+    const disabledOption = requiredInstance(
+      toArray(container.querySelectorAll('[role="option"]'))[3],
+      HTMLElement,
+    );
     await fireEvent.click(disabledOption);
     expect(changed).toBe('');
   });
@@ -389,7 +398,7 @@ describe('ColorSwatchPicker disabled handling', () => {
       label: 'Colors',
       disabled: true,
     });
-    const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
     const options = toArray(container.querySelectorAll('[role="option"]'));
     const initialTabbable = Array.from(options).findIndex(
       (o) => o.getAttribute('tabindex') === '0',
@@ -410,7 +419,7 @@ describe('ColorSwatchPicker disabled handling', () => {
         changed = true;
       },
     });
-    const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
     await fireEvent.keyDown(listbox, { key: 'Enter' });
     await fireEvent.keyDown(listbox, { key: ' ' });
     expect(changed).toBe(false);
@@ -426,7 +435,10 @@ describe('ColorSwatchPicker disabled handling', () => {
         changed = true;
       },
     });
-    const option = toArray(container.querySelectorAll('[role="option"]'))[0] as HTMLElement;
+    const option = requiredInstance(
+      toArray(container.querySelectorAll('[role="option"]'))[0],
+      HTMLElement,
+    );
     await fireEvent.click(option);
     expect(changed).toBe(false);
   });
@@ -467,7 +479,7 @@ describe('ColorSwatchPicker empty palette', () => {
 
   test('keyboard handlers are no-ops on empty palette', async () => {
     const { container } = render(ColorSwatchPicker, { colors: [], label: 'Colors' });
-    const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
     // Should not throw
     await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
     await fireEvent.keyDown(listbox, { key: 'Home' });
@@ -550,7 +562,7 @@ describe('ColorSwatchPicker navigate-then-select', () => {
         changed = c;
       },
     });
-    const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
     const options = toArray(container.querySelectorAll('[role="option"]'));
     await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
     expect(document.activeElement).toBe(options[1]);
@@ -568,12 +580,141 @@ describe('ColorSwatchPicker navigate-then-select', () => {
         changed = c;
       },
     });
-    const listbox = container.querySelector('[role="listbox"]') as HTMLElement;
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
     const options = toArray(container.querySelectorAll('[role="option"]'));
     await fireEvent.keyDown(listbox, { key: 'ArrowDown' });
     expect(document.activeElement).toBe(options[1]);
     await fireEvent.keyDown(listbox, { key: ' ' });
     expect(changed).toBe('#00ff00');
+  });
+});
+
+describe('ColorSwatchPicker focus preservation on palette refresh', () => {
+  test('an equivalent fresh array keeps the user-focused color focused, not the selected one', async () => {
+    let changed = '';
+    const { container, rerender } = render(ColorSwatchPicker, {
+      colors: palette,
+      label: 'Colors',
+      value: '#ff0000',
+      onValueChange: (c: string) => {
+        changed = c;
+      },
+    });
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
+    let options = toArray(container.querySelectorAll('[role="option"]'));
+
+    // Selected is Red (index 0). Arrow-navigate focus to Blue (index 2) without selecting it.
+    await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
+    await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(options[2]);
+    expect(options[2].getAttribute('tabindex')).toBe('0');
+
+    // Pass a brand-new array instance with the same swatch values (equivalent fresh array).
+    const freshPalette = palette.map((swatch) => ({ ...swatch }));
+    await rerender({ colors: freshPalette, label: 'Colors', value: '#ff0000' });
+
+    options = toArray(container.querySelectorAll('[role="option"]'));
+    expect(options[2].getAttribute('tabindex')).toBe('0');
+    expect(options[0].getAttribute('tabindex')).toBe('-1');
+
+    await fireEvent.keyDown(listbox, { key: 'Enter' });
+    expect(changed).toBe('#0000ff');
+  });
+
+  test('reordering the palette keeps the same logical color focused', async () => {
+    // Select Red so an accidental "first enabled" or "selected" fallback would land on
+    // Red (index 0), not Blue — this makes the assertion prove identity tracking rather
+    // than coincide with a fallback rule.
+    const { container, rerender } = render(ColorSwatchPicker, {
+      colors: palette,
+      label: 'Colors',
+      value: '#ff0000',
+    });
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
+    let options = toArray(container.querySelectorAll('[role="option"]'));
+
+    // Focus Blue (index 2) without selecting it.
+    await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
+    await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(options[2]);
+
+    // Reorder so Blue moves to the end, well away from both the selected color and
+    // "first enabled" fallback position.
+    const reordered = [palette[0]!, palette[1]!, palette[3]!, palette[4]!, palette[2]!];
+    await rerender({ colors: reordered, label: 'Colors', value: '#ff0000' });
+
+    options = toArray(container.querySelectorAll('[role="option"]'));
+    // Blue is now at index 4 and should still carry the roving tab stop.
+    expect(options[4].getAttribute('aria-label')).toContain('#0000ff');
+    expect(options[4].getAttribute('tabindex')).toBe('0');
+    expect(options[0].getAttribute('tabindex')).toBe('-1');
+  });
+
+  test('removing the focused color falls back to the selected enabled color', async () => {
+    const { container, rerender } = render(ColorSwatchPicker, {
+      colors: palette,
+      label: 'Colors',
+      value: '#ff00ff',
+    });
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
+    let options = toArray(container.querySelectorAll('[role="option"]'));
+
+    // Magenta (index 4) is selected initially, so the roving tab stop starts there.
+    // Three ArrowRight presses wrap 4 -> 0 -> 1 -> 2, landing on Blue without selecting it.
+    await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
+    await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
+    await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(options[2]);
+
+    const withoutBlue = palette.filter((swatch) => swatch.color !== '#0000ff');
+    await rerender({ colors: withoutBlue, label: 'Colors', value: '#ff00ff' });
+
+    options = toArray(container.querySelectorAll('[role="option"]'));
+    const tabbable = options.filter((o) => o.getAttribute('tabindex') === '0');
+    expect(tabbable).toHaveLength(1);
+    expect(tabbable[0]?.getAttribute('aria-selected')).toBe('true');
+  });
+
+  test('disabling the focused color falls back to the selected enabled color', async () => {
+    const { container, rerender } = render(ColorSwatchPicker, {
+      colors: palette,
+      label: 'Colors',
+      value: '#ff00ff',
+    });
+    const listbox = requiredInstance(container.querySelector('[role="listbox"]'), HTMLElement);
+    let options = toArray(container.querySelectorAll('[role="option"]'));
+
+    // Magenta (index 4) is selected initially, so the roving tab stop starts there.
+    // Three ArrowRight presses wrap 4 -> 0 -> 1 -> 2, landing on Blue without selecting it.
+    await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
+    await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
+    await fireEvent.keyDown(listbox, { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(options[2]);
+
+    const blueDisabled = palette.map((swatch) =>
+      swatch.color === '#0000ff' ? { ...swatch, disabled: true } : swatch,
+    );
+    await rerender({ colors: blueDisabled, label: 'Colors', value: '#ff00ff' });
+
+    options = toArray(container.querySelectorAll('[role="option"]'));
+    const tabbable = options.filter((o) => o.getAttribute('tabindex') === '0');
+    expect(tabbable).toHaveLength(1);
+    expect(tabbable[0]?.getAttribute('aria-selected')).toBe('true');
+  });
+
+  test('a palette refresh alone never calls onValueChange', async () => {
+    let changed = false;
+    const { rerender } = render(ColorSwatchPicker, {
+      colors: palette,
+      label: 'Colors',
+      value: '#ff0000',
+      onValueChange: () => {
+        changed = true;
+      },
+    });
+    const freshPalette = palette.map((swatch) => ({ ...swatch }));
+    await rerender({ colors: freshPalette, label: 'Colors', value: '#ff0000' });
+    expect(changed).toBe(false);
   });
 });
 

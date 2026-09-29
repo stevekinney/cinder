@@ -109,7 +109,7 @@
    * Programmatically retry a failed message — the same guarded dispatch as the
    * UI Retry button (#1235). A call for a message id whose retry is still in
    * flight is ignored, so the adapter's `retryMessage` command (or the
-   * `onretry` callback) never double-fires for the same id regardless of entry
+   * `onRetry` callback) never double-fires for the same id regardless of entry
    * point. No-op until mounted.
    */
   export function retryMessage(messageId: string): void {

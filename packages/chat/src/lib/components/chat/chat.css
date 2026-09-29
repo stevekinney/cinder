@@ -14,13 +14,8 @@
  * `inherits: true`, lets an ancestor override flow into Chat like any other
  * inherited custom property.
  *
- * It also has to live in this sidecar rather than chat.svelte's scoped
- * <style>: the component-artifact generator reads the built CSS sidecars
- * (scripts/build.ts) and includes `@property --cinder-*` registrations, so
- * this is what puts the token into `chat.variables.json`, the generated
- * README, and MCP tooling. Every consuming rule still carries a `, 48rem`
- * fallback, so a consumer who does not import `@lostgradient/chat/styles`
- * gets the same measure.
+ * The package root imports this stylesheet so every consumer receives the
+ * registration. Consuming rules also carry a `48rem` fallback.
  *
  * The syntax is the universal `*` rather than `<length-percentage>` on
  * purpose: a typed registration's `initial-value` must be computationally

@@ -6,7 +6,7 @@ Responsive SVG line chart for comparing one or more numeric series over an order
 
 ```svelte
 <script lang="ts">
-  import LineChart from '@lostgradient/cinder/line-chart';
+  import { LineChart } from '@lostgradient/cinder';
 </script>
 
 <LineChart label="Loading revenue" loading series={[]} />
@@ -62,7 +62,6 @@ Set `tooltip={true}` for the default focus-aware visual tooltip, or pass a `Snip
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

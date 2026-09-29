@@ -1,64 +1,88 @@
 /**
- * Type-equality tests proving the per-directory migration did not drift the
- * public-facing Button prop surface. These are compile-time-only — Bun runs
- * them via `bun test`, but the assertions are purely TypeScript `Equals<>`
- * checks.
+ * Type-equality tests proving the public-facing Button prop surface accepts and rejects the
+ * same inputs as the recorded snapshot below. These are compile-time-only — Bun runs them via
+ * `bun test`, but the assertions are purely TypeScript `Equals<>`-style checks.
  *
- * If either assertion fails, the migrated `ButtonProps` no longer matches the
- * pre-migration snapshot recorded below.
+ * COR-239 update: the snapshot below was updated to `ButtonProps`'s post-COR-239 shape (see
+ * button.types.ts) — a discriminated union with two or more arms each referencing a full
+ * svelte/elements attribute interface hit TS2590 ("Expression produces a union type that is
+ * too complex to represent") once a consumer type-checked the published declaration under
+ * `skipLibCheck: false`. This is an intentional, verified-behavior-preserving restructuring
+ * (see `scripts/consumer-strict-types.ts`, which exhaustively checks real prop combinations
+ * including every one this file's `Assignable` helper is too coarse to pin down precisely on a
+ * deep discriminated union — see its own caveat below). Future refactors must still explicitly
+ * update both the migrated type AND this snapshot.
  */
 
 import { expect, test } from 'bun:test';
 import type { ComponentProps, Snippet } from 'svelte';
-import type { HTMLAnchorAttributes, HTMLButtonAttributes } from 'svelte/elements';
+import type { HTMLAnchorAttributes, HTMLAttributes, HTMLButtonAttributes } from 'svelte/elements';
 
+import type {
+  AllKeys,
+  DataAttributes,
+  PadUnion,
+  WithoutDataAttributes,
+} from '../../_internal/union-props.ts';
 import Button from './button.svelte';
 import type { ButtonProps } from './button.types.ts';
 
-// --- Snapshot of the pre-migration ButtonProps shape ---------------------------------
-// Copied verbatim from the original module-script types in `src/components/button.svelte`
-// at the start of the migration. This anchors the public surface so future
-// refactors must explicitly update both the migrated type AND this snapshot.
+// --- Snapshot of the post-COR-239 ButtonProps shape -----------------------------------
+// Mirrors button.types.ts's structure (including its `SharedHtmlAttributes` +
+// `DataAttributes` + `PadUnion<...>` split and the exclusion of `aria-label`/
+// `aria-labelledby`/`leadingIcon`/`trailingIcon` from padding) as an INDEPENDENT copy, so a
+// future accidental change to the real type is still caught here.
 
 type _SnapshotVariant =
-  | 'primary'
-  | 'secondary'
-  | 'soft'
-  | 'danger'
-  | 'soft-danger'
-  | 'ghost'
-  | 'ghost-danger';
+  'primary' | 'secondary' | 'soft' | 'danger' | 'soft-danger' | 'ghost' | 'ghost-danger';
 
 type _SnapshotSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
-type _SharedBase = {
-  variant?: _SnapshotVariant;
-  size?: _SnapshotSize;
-  fullWidth?: boolean;
-  loading?: boolean;
-  leadingIcon?: Snippet;
-  trailingIcon?: Snippet;
-  class?: string;
-};
+type _SnapshotSharedHtmlAttributes = WithoutDataAttributes<
+  Omit<HTMLAttributes<HTMLButtonElement | HTMLAnchorElement>, 'class'>
+>;
 
-type _WithLabel = { label: string; children?: Snippet; iconOnly?: false };
-type _WithChildren = { label?: string; children: Snippet; iconOnly?: false };
-type _IconOnlyAccessibleName =
-  | { label: string; 'aria-label'?: string; 'aria-labelledby'?: string }
-  | { label?: string; 'aria-label': string; 'aria-labelledby'?: string }
-  | { label?: string; 'aria-label'?: string; 'aria-labelledby': string };
-type _IconOnlyVisual =
-  | { children: Snippet; leadingIcon?: Snippet; trailingIcon?: Snippet }
-  | { children?: Snippet; leadingIcon: Snippet; trailingIcon?: Snippet }
-  | { children?: Snippet; leadingIcon?: Snippet; trailingIcon: Snippet };
-type _WithIconOnly = { iconOnly: true } & _IconOnlyAccessibleName & _IconOnlyVisual;
+type _ButtonOnlyExtra = Omit<
+  HTMLButtonAttributes,
+  keyof HTMLAttributes<HTMLButtonElement> | 'class'
+> & { href?: undefined };
+type _LinkButtonExtra = Omit<
+  HTMLAnchorAttributes,
+  keyof HTMLAttributes<HTMLAnchorElement> | 'class'
+> & { href: string };
 
-type _SharedProps = _SharedBase & (_WithLabel | _WithChildren | _WithIconOnly);
+type _ButtonDiscriminant = (_ButtonOnlyExtra | _LinkButtonExtra) &
+  (
+    | { label: string; children?: Snippet; iconOnly?: false }
+    | { label?: string; children: Snippet; iconOnly?: false }
+    | ({ iconOnly: true } & (
+        | { label: string; 'aria-label'?: string; 'aria-labelledby'?: string }
+        | { label?: string; 'aria-label': string; 'aria-labelledby'?: string }
+        | { label?: string; 'aria-label'?: string; 'aria-labelledby': string }
+      ) &
+        (
+          | { children: Snippet; leadingIcon?: Snippet; trailingIcon?: Snippet }
+          | { children?: Snippet; leadingIcon: Snippet; trailingIcon?: Snippet }
+          | { children?: Snippet; leadingIcon?: Snippet; trailingIcon: Snippet }
+        ))
+  );
 
-type _ButtonOnlySnap = _SharedProps & Omit<HTMLButtonAttributes, 'class'> & { href?: undefined };
-type _LinkSnap = _SharedProps & Omit<HTMLAnchorAttributes, 'class'> & { href: string };
+type _ButtonPaddedKeys = Exclude<
+  AllKeys<_ButtonDiscriminant>,
+  'aria-label' | 'aria-labelledby' | 'leadingIcon' | 'trailingIcon'
+>;
 
-type SnapshotButtonProps = _ButtonOnlySnap | _LinkSnap;
+type SnapshotButtonProps = _SnapshotSharedHtmlAttributes &
+  DataAttributes &
+  PadUnion<_ButtonDiscriminant, _ButtonPaddedKeys> & {
+    variant?: _SnapshotVariant;
+    size?: _SnapshotSize;
+    fullWidth?: boolean;
+    loading?: boolean;
+    leadingIcon?: Snippet;
+    trailingIcon?: Snippet;
+    class?: string;
+  };
 
 // --- Bidirectional-assignability helper ----------------------------------------------
 // True `Equals<A, B>` on deep discriminated unions is famously fragile under

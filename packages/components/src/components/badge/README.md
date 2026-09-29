@@ -8,7 +8,7 @@ Use Badge for attached counts, statuses, and compact annotations; use `Chip mode
 
 ```svelte
 <script lang="ts">
-  import Badge from '@lostgradient/cinder/badge';
+  import { Badge } from '@lostgradient/cinder';
 </script>
 
 <Badge variant="success">Published</Badge>
@@ -35,7 +35,6 @@ Use Badge for attached counts, statuses, and compact annotations; use `Chip mode
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

@@ -1,5 +1,5 @@
+import { setupHappyDom } from '@lostgradient/testing';
 import { expect, test } from 'bun:test';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 const { render } = await import('@testing-library/svelte');
 const { default: PolicyLock } = await import('./policy-lock.svelte');

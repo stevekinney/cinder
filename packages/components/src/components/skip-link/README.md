@@ -8,7 +8,7 @@ Place it as the first focusable element in your layout and point `target` at the
 
 ```svelte
 <script lang="ts">
-  import SkipLink from '@lostgradient/cinder/skip-link';
+  import { SkipLink } from '@lostgradient/cinder';
 </script>
 
 <SkipLink target="main-content">Skip to main content</SkipLink>
@@ -39,7 +39,6 @@ The default label is "Skip to main content"; pass children to override it. SkipL
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

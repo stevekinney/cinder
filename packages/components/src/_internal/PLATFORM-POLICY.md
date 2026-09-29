@@ -1,37 +1,16 @@
 # Cinder Platform Feature Policy
 
-**Container width, not viewport width. Native top-layer over hand-rolled
-geometry.** Those are the two rules every component author must internalize (the
-[full statements](#the-two-rules-every-component-author-must-internalize) are
-below). This document is the classification system that backs them: it decides
-which modern CSS and HTML feature carries correctness, which is progressive
-enhancement, and which Cinder avoids for now — so components and their `.a11y.md`
-files don't each re-litigate browser support.
+**Container width, not viewport width. Native top-layer over hand-rolled geometry.** Those are the two rules every component author must internalize (the [full statements](#the-two-rules-every-component-author-must-internalize) are below). This document is the classification system that backs them: it decides which modern CSS and HTML feature carries correctness, which is progressive enhancement, and which Cinder avoids for now — so components and their `.a11y.md` files don't each re-litigate browser support.
 
-It is the umbrella over three companion policies, which remain authoritative for
-their domain: [`OVERLAY-POLICY.md`](./OVERLAY-POLICY.md) (`<dialog>`, Popover API,
-CSS Anchor Positioning, `inert`, top-layer, focus, escape, scroll-lock),
-[`RESPONSIVE-POLICY.md`](./RESPONSIVE-POLICY.md) (container vs. viewport queries),
-[`NATIVE-FORM-POLICY.md`](./NATIVE-FORM-POLICY.md) (`field-sizing`, `accent-color`,
-dialog forms, native validation pseudo-classes), and
-[`../../../../docs/focus-ring-policy.md`](../../../../docs/focus-ring-policy.md)
-(the focus-ring token recipe and forced-colors fallback).
+It is the umbrella over three companion policies, which remain authoritative for their domain: [`OVERLAY-POLICY.md`](./OVERLAY-POLICY.md) (`<dialog>`, Popover API, CSS Anchor Positioning, `inert`, top-layer, focus, escape, scroll-lock), [`RESPONSIVE-POLICY.md`](./RESPONSIVE-POLICY.md) (container vs. viewport queries), [`NATIVE-FORM-POLICY.md`](./NATIVE-FORM-POLICY.md) (`field-sizing`, `accent-color`, dialog forms, native validation pseudo-classes), and [`../../documentation/focus-ring-policy.md`](../../documentation/focus-ring-policy.md) (the focus-ring token recipe and forced-colors fallback).
 
 ## Support tiers
 
-Every modern feature Cinder uses falls into exactly one tier. The tier decides
-whether the feature may carry correctness or only enhancement.
+Every modern feature Cinder uses falls into exactly one tier. The tier decides whether the feature may carry correctness or only enhancement.
 
-- **Tier 1 — Use directly.** Baseline. Cinder relies on it for correct behavior
-  with no `@supports` guard and no JavaScript fallback. A browser without it is
-  outside Cinder's support window.
-- **Tier 2 — Progressive enhancement.** May improve presentation or ergonomics,
-  but a guarded fallback must keep the component correct and usable. Guard with
-  `@supports` (CSS) or runtime feature detection (JS). Never the sole path to a
-  required state.
-- **Tier 3 — Avoid for core.** Not yet dependable enough across Cinder's support
-  window to own behavior. Allowed only as a non-essential, fully-optional layer
-  that degrades to nothing.
+- **Tier 1 — Use directly.** Baseline. Cinder relies on it for correct behavior with no `@supports` guard and no JavaScript fallback. A browser without it is outside Cinder's support window.
+- **Tier 2 — Progressive enhancement.** May improve presentation or ergonomics, but a guarded fallback must keep the component correct and usable. Guard with `@supports` (CSS) or runtime feature detection (JS). Never the sole path to a required state.
+- **Tier 3 — Avoid for core.** Not yet dependable enough across Cinder's support window to own behavior. Allowed only as a non-essential, fully-optional layer that degrades to nothing.
 
 ## Feature classification
 
@@ -59,54 +38,24 @@ whether the feature may carry correctness or only enhancement.
 | `@scope`                                                              | 3          | Not adopted. `@layer` + class scoping covers our needs; revisit when support broadens.                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | —                       |
 | Scroll-driven animations (`animation-timeline: scroll()`)             | 3          | Presentation-only edge fades (`_scroll-fade.css`). Never the sole signal that content is scrollable; the `overflowFade` attribute path is authoritative and must keep working with zero scroll-timeline support.                                                                                                                                                                                                                                                                                                                                               | —                       |
 
-`light-dark()` and `color-mix()` are deliberately absent from the table: they are
-theming primitives owned by the token system (`tokens-base.css` / `docs/theming.md`),
-not component-level feature decisions. A component must never `@supports`-detect or
-call them directly — it consumes `--cinder-*` tokens and lets the token layer decide
-how those resolve per theme.
+`light-dark()` and `color-mix()` are deliberately absent from the table: they are theming primitives owned by the token system (`tokens-base.css` / `documentation/theming.md`), not component-level feature decisions. A component must never `@supports`-detect or call them directly — it consumes `--cinder-*` tokens and lets the token layer decide how those resolve per theme.
 
 ## The two rules every component author must internalize
 
-1. **Container width, not viewport width.** If a component changes because _its
-   own_ box is narrow, it must use a container query, not a viewport media query.
-   Viewport queries are only for things the viewport genuinely owns. The
-   documented exception is Sidebar's mobile Drawer switch (see
-   `RESPONSIVE-POLICY.md`).
-2. **Native top-layer over hand-rolled geometry.** Prefer `<dialog>` and the
-   Popover API + Anchor Positioning over manual document listeners and Floating
-   UI where the native primitive fits — but always behind the Tier-2 guards in
-   `OVERLAY-POLICY.md`. Virtual anchors (pointer, caret, text selection) stay on
-   the shared anchored-overlay helper with a Floating UI virtual element; CSS
-   Anchor Positioning is intentionally not used for those.
+1. **Container width, not viewport width.** If a component changes because _its own_ box is narrow, it must use a container query, not a viewport media query. Viewport queries are only for things the viewport genuinely owns. The documented exception is Sidebar's mobile Drawer switch (see `RESPONSIVE-POLICY.md`).
+2. **Native top-layer over hand-rolled geometry.** Prefer `<dialog>` and the Popover API + Anchor Positioning over manual document listeners and Floating UI where the native primitive fits — but always behind the Tier-2 guards in `OVERLAY-POLICY.md`. Virtual anchors (pointer, caret, text selection) stay on the shared anchored-overlay helper with a Floating UI virtual element; CSS Anchor Positioning is intentionally not used for those.
 
 ## Enforcement
 
-`bun run --filter=@lostgradient/cinder platform:audit` reports current usage of every
-classified feature and flags hard-coded viewport breakpoints in component CSS so
-a reviewer can confirm each is viewport-owned (allowed) rather than a
-container-constraint in disguise (a Tier-1 violation). The audit is a **report**,
-not a hard gate: deliberate adoption is the goal, so the command surfaces usage
-for human judgment rather than banning features outright. It runs in the
-`validate` path so the inventory stays visible as the library grows.
+`bun run --filter=@lostgradient/cinder platform:audit` reports current usage of every classified feature and flags hard-coded viewport breakpoints in component CSS so a reviewer can confirm each is viewport-owned (allowed) rather than a container-constraint in disguise (a Tier-1 violation). The audit is a **report**, not a hard gate: deliberate adoption is the goal, so the command surfaces usage for human judgment rather than banning features outright. It runs in the `validate` path so the inventory stays visible as the library grows.
 
-When a new modern feature enters the codebase, add a row to the classification
-table above (with its tier and rule) in the same change. A feature with no row is
-unclassified and will be flagged in review.
+When a new modern feature enters the codebase, add a row to the classification table above (with its tier and rule) in the same change. A feature with no row is unclassified and will be flagged in review.
 
 ## Field-control wiring
 
-Every form control that wraps a native form element (`<input>`, `<select>`,
-`<textarea>`, or a custom element that participates in form submission) **MUST**
-call `resolveFieldControl` from `src/_internal/field-control.ts` to resolve its
-`id`, `aria-describedby`, `aria-invalid`, `required`, and `disabled` attributes.
-Manually _re-deriving_ the base wiring (e.g. hand-rolling `describeId`/`errorId` +
-`composeDescribedBy` to reconstruct what `resolveFieldControl` already returns) is not
-permitted in new or modified form controls. Layering an _additional_ component-owned id
-on top of `field.describedBy` IS allowed — e.g. tag-input's component-generated inline
-validation error: `composeDescribedBy(field.describedBy, inlineErrorId)`.
+Every form control that wraps a native form element (`<input>`, `<select>`, `<textarea>`, or a custom element that participates in form submission) **MUST** call `resolveFieldControl` from `src/_internal/field-control.ts` to resolve its `id`, `aria-describedby`, `aria-invalid`, `required`, and `disabled` attributes. Manually _re-deriving_ the base wiring (e.g. hand-rolling `describeId`/`errorId` + `composeDescribedBy` to reconstruct what `resolveFieldControl` already returns) is not permitted in new or modified form controls. Layering an _additional_ component-owned id on top of `field.describedBy` IS allowed — e.g. tag-input's component-generated inline validation error: `composeDescribedBy(field.describedBy, inlineErrorId)`.
 
-`autocomplete.svelte` and `checkbox.svelte` are the canonical examples (they call
-`resolveFieldControl`). The reference call shape is:
+`autocomplete.svelte` and `checkbox.svelte` are the canonical examples (they call `resolveFieldControl`). The reference call shape is:
 
 ```ts
 import { resolveFieldControl } from '../../_internal/field-control.ts';
@@ -132,56 +81,25 @@ const field = $derived(
 );
 ```
 
-Then use `field.id`, `field.describedBy`, `field.ariaInvalid`, `field.required`,
-`field.disabled`, `field.ownDescriptionId`, and `field.ownErrorId` in the template.
+Then use `field.id`, `field.describedBy`, `field.ariaInvalid`, `field.required`, `field.disabled`, `field.ownDescriptionId`, and `field.ownErrorId` in the template.
 
-**Why:** Centralizing this logic means ARIA wiring is audited and fixed in one
-place. Ad-hoc re-derivation diverges silently when `resolveFieldControl` gains
-new capabilities (e.g. deduplication, namespace collision handling) and cannot
-participate in FormField context composition without additional work.
+**Why:** Centralizing this logic means ARIA wiring is audited and fixed in one place. Ad-hoc re-derivation diverges silently when `resolveFieldControl` gains new capabilities (e.g. deduplication, namespace collision handling) and cannot participate in FormField context composition without additional work.
 
-**Enforcement:** `src/_internal/field-control.ts` is the sole implementation
-point. Code review must flag any new component that imports the low-level
-helpers (`describeId`, `errorId`, `composeDescribedBy`, `ariaInvalid`)
-individually and assembles the ID chain by hand.
+**Enforcement:** `src/_internal/field-control.ts` is the sole implementation point. Code review must flag any new component that imports the low-level helpers (`describeId`, `errorId`, `composeDescribedBy`, `ariaInvalid`) individually and assembles the ID chain by hand.
 
 ## Development-only diagnostics
 
-Component contract-misuse warnings — a missing required prop, an `id` that does
-not match the wrapping `FormField`, a duplicate key, an unresolved portal target,
-a deprecated import path — are diagnostics for the **developer building the app**,
-never for the end user. They must route through `devWarn(...)` from
-`utilities/dev-warn.ts`, which gates on `DEV` from `esm-env` and is dead-code-
-eliminated from production bundles. A bare `console.warn` in component source
-ships the warning string (and internal naming) to end users and is forbidden.
+Component contract-misuse warnings — a missing required prop, an `id` that does not match the wrapping `FormField`, a duplicate key, an unresolved portal target, a deprecated import path — are diagnostics for the **developer building the app**, never for the end user. They must route through `devWarn(...)` from `utilities/dev-warn.ts`, which gates on `DEV` from `esm-env` and is dead-code- eliminated from production bundles. A bare `console.warn` in component source ships the warning string (and internal naming) to end users and is forbidden.
 
-- **Rule:** no bare `console.warn` in `src/components/**` (`.svelte` or `.ts`).
-  Use `devWarn(message, ...args)` instead. `devWarn` self-gates on `DEV`, so do
-  **not** wrap it in `if (DEV) { … }` or add a `!DEV` early-return around it.
-- **Don't keep a `$effect` alive solely to warn.** A reactive effect whose only
-  job is to log re-subscribes on every state change for no runtime benefit. Warn
-  from a plain guard at the point of misuse (e.g. right after the `$props()`
-  destructure for a "missing required prop" check) unless the condition is
-  genuinely reactive and a test asserts the warning fires on a specific change.
-- **Enforcement:** `bun run check:no-bare-console-warn` (a scanned grep with an
-  explicit allow-list, in the `lint` chain and CI) fails on any bare
-  `console.warn` in component source. oxlint cannot express this rule because
-  Svelte files are in its `ignorePatterns`.
+- **Rule:** no bare `console.warn` in `src/components/**` (`.svelte` or `.ts`). Use `devWarn(message, ...args)` instead. `devWarn` self-gates on `DEV`, so do **not** wrap it in `if (DEV) { … }` or add a `!DEV` early-return around it.
+- **Don't keep a `$effect` alive solely to warn.** A reactive effect whose only job is to log re-subscribes on every state change for no runtime benefit. Warn from a plain guard at the point of misuse (e.g. right after the `$props()` destructure for a "missing required prop" check) unless the condition is genuinely reactive and a test asserts the warning fires on a specific change.
+- **Enforcement:** `bun run check:no-bare-console-warn` (a scanned grep with an explicit allow-list, in the `lint` chain and CI) fails on any bare `console.warn` in component source. oxlint cannot express this rule because Svelte files are in its `ignorePatterns`.
 
 ## Live regions
 
-Transient status that a screen reader should hear (a copy confirmation, a
-"loading suggestions" / "no results" hint, an end-of-list announcement) is
-delivered through an **ARIA live region**. Cinder standardizes this so components
-don't each re-derive the role/`aria-live`/`aria-atomic` triple and the
-re-announcement timing.
+Transient status that a screen reader should hear (a copy confirmation, a "loading suggestions" / "no results" hint, an end-of-list announcement) is delivered through an **ARIA live region**. Cinder standardizes this so components don't each re-derive the role/`aria-live`/`aria-atomic` triple and the re-announcement timing.
 
-**Use the shared `VisuallyHiddenLiveRegion`** (`src/components/_visually-hidden-live-region.svelte`)
-for any **transient string** announcement. It renders a visually-hidden
-`role="status"` (`aria-live="polite"`) or `role="alert"` (`aria-live="assertive"`)
-region — both `aria-atomic="true"` so the whole message is read on every change —
-and owns the blank-then-set timing that makes a _repeated identical_ message
-re-announce (an AT only fires on a content change). Feed it a reactive `message`:
+**Use the shared `VisuallyHiddenLiveRegion`** (`src/components/_visually-hidden-live-region.svelte`) for any **transient string** announcement. It renders a visually-hidden `role="status"` (`aria-live="polite"`) or `role="alert"` (`aria-live="assertive"`) region — both `aria-atomic="true"` so the whole message is read on every change — and owns the blank-then-set timing that makes a _repeated identical_ message re-announce (an AT only fires on a content change). Feed it a reactive `message`:
 
 ```svelte
 <script lang="ts">
@@ -197,24 +115,9 @@ re-announce (an AT only fires on a content change). Feed it a reactive `message`
 
 Rules:
 
-- **Never put `aria-live` on an interactive control** (a `<button>`, an option).
-  The AT then announces the control's accessible name both on focus and as a live
-  change — a double-announce — and the live-region semantics fight the control
-  role. Put the region on a separate, non-interactive element. (This was the
-  copy-button bug: `aria-live` on the button itself.)
-- **Always `aria-atomic="true"`** on a status/alert region whose full text should
-  be read on each change. The shared component sets it; inline regions must too.
-- **`polite` vs `assertive`:** `role="status"`/polite for non-urgent updates (the
-  default — copy confirmations, load-more end-of-list, loading hints);
-  `role="alert"`/assertive only for genuinely interrupting messages.
-- **Portaled status must announce from outside the portal.** A `role="status"`
-  freshly mounted inside a popover/portal is not reliably announced by NVDA/JAWS.
-  Keep an always-present `VisuallyHiddenLiveRegion` in the component's own subtree
-  (see Autocomplete's loading/empty status).
+- **Never put `aria-live` on an interactive control** (a `<button>`, an option). The AT then announces the control's accessible name both on focus and as a live change — a double-announce — and the live-region semantics fight the control role. Put the region on a separate, non-interactive element. (This was the copy-button bug: `aria-live` on the button itself.)
+- **Always `aria-atomic="true"`** on a status/alert region whose full text should be read on each change. The shared component sets it; inline regions must too.
+- **`polite` vs `assertive`:** `role="status"`/polite for non-urgent updates (the default — copy confirmations, load-more end-of-list, loading hints); `role="alert"`/assertive only for genuinely interrupting messages.
+- **Portaled status must announce from outside the portal.** A `role="status"` freshly mounted inside a popover/portal is not reliably announced by NVDA/JAWS. Keep an always-present `VisuallyHiddenLiveRegion` in the component's own subtree (see Autocomplete's loading/empty status).
 
-**Not every status element is a `VisuallyHiddenLiveRegion`.** When the visible
-content _is_ the live region — a persistent status pill whose own text changes
-(StatusDot with `connectionState`), or a Toast region whose channels contain the visible
-toasts — keep the inline `role="status"`/`role="alert"` + `aria-atomic` on that
-element. The shared component is for _hidden, transient string_ announcements, not
-for making visible content a live region.
+**Not every status element is a `VisuallyHiddenLiveRegion`.** When the visible content _is_ the live region — a persistent status pill whose own text changes (StatusDot with `connectionState`), or a Toast region whose channels contain the visible toasts — keep the inline `role="status"`/`role="alert"` + `aria-atomic` on that element. The shared component is for _hidden, transient string_ announcements, not for making visible content a live region.

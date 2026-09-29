@@ -355,8 +355,15 @@
     return `block-size: ${virtualizer.totalSize}px; position: relative; inline-size: 100%;`;
   }
 
-  function virtualizedRowStyle(start: number, size: number): string {
-    return `position: absolute; inset-inline: 0; transform: translateY(${start}px); block-size: ${size}px;`;
+  // No `block-size` here: the measured element cannot carry an imposed main-axis
+  // size, or `virtualizer.measureElement`'s ResizeObserver/getBoundingClientRect
+  // read just reports back the value this function imposed on the last render,
+  // and a row taller than `virtualizationEstimatedRowHeight` is silently clipped
+  // rather than accommodated (see VirtualList's `resolveRowStyle` for the same
+  // shape under `dynamicSize`). Positioned by offset only; its own content
+  // establishes the height.
+  function virtualizedRowStyle(start: number): string {
+    return `position: absolute; inset-inline: 0; transform: translateY(${start}px);`;
   }
 
   function virtualizedItemExpanded(item: FlattenedTreeDataItem): boolean {
@@ -1145,7 +1152,7 @@
         data-cinder-disabled={item.disabled ? '' : undefined}
         data-cinder-focused={effectiveFocusedId === item.id ? '' : undefined}
         data-cinder-virtual-index={virtualItem.index}
-        style={virtualizedRowStyle(virtualItem.start, virtualItem.size)}
+        style={virtualizedRowStyle(virtualItem.start)}
         onclick={(event) => handleVirtualizedItemClick(item, event)}
         onkeydown={(event) => handleVirtualizedItemKeydown(item, event)}
       >

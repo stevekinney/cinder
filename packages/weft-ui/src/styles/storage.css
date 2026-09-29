@@ -1,0 +1,213 @@
+/* ── Route shell ─────────────────────────────────────────── */
+
+.weft-storage-route {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-4);
+  padding: var(--cinder-space-4) var(--cinder-space-6) var(--cinder-space-8);
+}
+
+.weft-storage-title {
+  margin: 0;
+  font-size: var(--cinder-text-xl);
+  font-weight: 600;
+}
+
+.weft-storage-reserved-banner {
+  max-width: 720px;
+}
+
+.weft-storage-inline-code {
+  font-family: var(--cinder-font-mono);
+  font-size: 0.9em;
+}
+
+/* ── KV browser two-column layout ───────────────────────────
+ * Named grid areas (not DOM order) so each operation panel can render its
+ * own `.weft-storage-form` + `.weft-storage-results` pair independently of
+ * where the op-picker sits in the tree. */
+
+.weft-storage-panel-layout {
+  display: grid;
+  /* `minmax(0, 1fr)`, not bare `1fr` — a grid track's implicit min-width is
+   * `auto` (grow to fit content), so an unbounded-width results column
+   * would let a long, unbroken storage key push the whole grid (and the
+   * page) wider than the viewport instead of clipping inside its own
+   * `.weft-storage-results` scroll container. Confirmed against the real
+   * dev harness: a scan returning long `async-act:`/`attr:` keys caused
+   * page-level horizontal scroll before this fix. */
+  grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  grid-template-areas: 'picker results' 'form results';
+  gap: var(--cinder-space-4);
+  align-items: start;
+}
+
+.weft-storage-op-picker {
+  grid-area: picker;
+}
+
+.weft-storage-form {
+  grid-area: form;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-3);
+  padding: var(--cinder-space-4);
+  background: var(--cinder-surface);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-lg);
+}
+
+.weft-storage-results {
+  grid-area: results;
+  min-width: 0;
+  min-height: 12rem;
+  /* Defensive backstop, independent of the `minmax(0, 1fr)` grid-track fix
+   * above: `Table`'s own `.cinder-table-scroll` wrapper (`scrollable` prop)
+   * sets `overflow-x: auto` + `overscroll-behavior-inline: contain`, which
+   * should already stop a wide `<table>` from affecting page-level scroll —
+   * but this app-local `overflow-x: hidden` guarantees it regardless of
+   * that inner mechanism, matching PROJECT-BRIEF's "no page-level
+   * horizontal scroll, ever" rule with a belt-and-suspenders containment
+   * this track fully controls. */
+  overflow-x: hidden;
+}
+
+/* Plain descendant selectors, not Svelte's `:global()` — this file is a
+ * standalone stylesheet (imported once at the app entry), not a component's
+ * scoped `\3c style>` block, so `:global()` is meaningless CSS syntax here
+ * (confirmed via a production build: it ships verbatim as an invalid
+ * pseudo-class and the whole rule is dropped by the browser). */
+.weft-storage-monospace-input input,
+.weft-storage-monospace-input textarea {
+  font-family: var(--cinder-font-mono);
+}
+
+.weft-storage-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-2);
+}
+
+.weft-storage-error {
+  margin: 0;
+  color: var(--cinder-danger);
+  font-size: var(--cinder-text-sm);
+}
+
+.weft-storage-empty-value,
+.weft-storage-binary-value {
+  margin: 0;
+  padding: var(--cinder-space-4);
+  color: var(--cinder-text-subtle);
+  font-size: var(--cinder-text-sm);
+  background: var(--cinder-surface-inset);
+  border-radius: var(--cinder-radius-md);
+}
+
+/* ── Scan results ────────────────────────────────────────── */
+
+.weft-storage-results-header {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-2-5);
+  margin-bottom: var(--cinder-space-3);
+  font-size: var(--cinder-text-sm);
+  font-weight: 600;
+}
+
+.weft-storage-results-meta {
+  font-family: var(--cinder-font-mono);
+  font-size: var(--cinder-text-xs);
+  font-weight: 400;
+  color: var(--cinder-text-subtle);
+}
+
+.weft-storage-key-cell {
+  font-family: var(--cinder-font-mono);
+  color: var(--cinder-accent-text);
+  /* No wrap/break: real keys (`async-act:v1:…`) run well past any
+   * reasonable column width. `Table`'s own `scrollable` container is what
+   * absorbs that overflow (`.weft-storage-panel-layout`'s `minmax(0, 1fr)`
+   * track keeps the table itself from stretching the page) — breaking the
+   * key mid-identifier would be worse than letting it scroll. */
+  white-space: nowrap;
+}
+
+.weft-storage-value-cell {
+  font-family: var(--cinder-font-mono);
+  color: var(--cinder-text-muted);
+  max-inline-size: 32rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weft-storage-load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--cinder-space-3);
+}
+
+/* ── Batch rows ──────────────────────────────────────────── */
+
+.weft-storage-batch-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-3);
+}
+
+.weft-storage-batch-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--cinder-space-2);
+  padding: var(--cinder-space-2-5);
+  border: 1px solid var(--cinder-border-muted);
+  border-radius: var(--cinder-radius-md);
+}
+
+.weft-storage-batch-row > * {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.weft-storage-row-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-inline-size: 40px;
+  min-block-size: 40px;
+  padding: 0;
+  color: var(--cinder-text-subtle);
+  background: transparent;
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .weft-storage-row-remove:hover {
+    color: var(--cinder-danger);
+    border-color: var(--cinder-danger);
+  }
+}
+
+/* ── Capabilities tab ────────────────────────────────────── */
+
+.weft-storage-capabilities {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-4);
+  max-width: 560px;
+}
+
+/* ── Responsive: two-panel layouts stack below 900px ────────── */
+
+@media (max-width: 899px) {
+  .weft-storage-panel-layout {
+    grid-template-columns: 1fr;
+    grid-template-areas: 'picker' 'form' 'results';
+  }
+}

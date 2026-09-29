@@ -15,10 +15,14 @@ const schema = {
       {
         name: 'children',
         reason: 'function-or-snippet',
+        description:
+          'Form controls. Receives `{ submitting }` so descendants can disable themselves while `onSubmit` is pending.',
       },
       {
         name: 'onSubmit',
         reason: 'function-or-snippet',
+        description:
+          'May return a promise; while pending, the child snippet receives `{ submitting: true }` and duplicate submits are ignored until it settles.',
       },
     ],
   },

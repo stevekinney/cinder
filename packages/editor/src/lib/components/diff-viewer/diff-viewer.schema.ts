@@ -36,20 +36,48 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
+        name: 'annotationSelection',
+        reason: 'unknown-shape',
+        description:
+          'Controlled current annotation selection. Distinct from ordinary diff\nnavigation and view-mode state: setting or clearing it never affects\nwhich lines are shown.',
+      },
+      {
+        name: 'fileAnnotation',
+        reason: 'function-or-snippet',
+        description:
+          'Rendered once alongside the front-matter section, whenever the document\nhas front matter. Front matter offers file-level comments only (its\nchanges aren’t cleanly attributable to one selectable line), so this\nsnippet receives the changed field names as context rather than a line\nanchor. Unlike `lineAnnotation`, it renders regardless of whether\n`onAnnotationSelectionChange` is supplied.',
+      },
+      {
         name: 'hunks',
         reason: 'unknown-shape',
         description:
           'Bindable: reactive access to computed hunks.\nParent components can bind to this to reactively access hunk data.',
       },
       {
-        name: 'onrevertall',
+        name: 'lineAnnotation',
+        reason: 'function-or-snippet',
+        description:
+          'Rendered next to each commentable row’s add-comment control. Like that\ncontrol, it only appears when `onAnnotationSelectionChange` is also\nsupplied -- pass both to render per-line annotation markers.',
+      },
+      {
+        name: 'onAnnotationSelectionChange',
+        reason: 'function-or-snippet',
+        description: 'Called when the user commits, extends, or clears an annotation\nselection.',
+      },
+      {
+        name: 'onRevertAll',
         reason: 'function-or-snippet',
         description: 'Called when user wants to revert all changes',
       },
       {
-        name: 'onreverthunk',
+        name: 'onRevertHunk',
         reason: 'function-or-snippet',
         description: 'Called when user wants to revert a specific hunk',
+      },
+      {
+        name: 'ref',
+        reason: 'unknown-shape',
+        description: 'Programmatic handle for `focusAnchor`.',
       },
       {
         name: 'toolbar',

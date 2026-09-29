@@ -162,6 +162,15 @@ export interface FrontMatterSerializeOptions {
    * @default false
    */
   preserveEmptyFrontMatter?: boolean;
+
+  /**
+   * Whether generated top-level YAML keys should be sorted alphabetically.
+   * Disable this for edit flows that need to preserve the parsed front-matter
+   * mapping's insertion order while still regenerating changed front matter.
+   * Nested object keys keep the serializer's existing sorted behavior.
+   * @default true
+   */
+  sortKeys?: boolean;
 }
 
 /**

@@ -74,6 +74,10 @@ export function nextIndex(
       return (current + 1) % length;
     case 'previous':
       return (current - 1 + length) % length;
+    default: {
+      const unsupportedIntent: never = intent;
+      throw new TypeError(`Unsupported navigation intent: ${String(unsupportedIntent)}`);
+    }
   }
 }
 

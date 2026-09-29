@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render } from '@testing-library/svelte';
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import FrontMatterFields from './front-matter-fields.svelte';
 
 setupHappyDom();
@@ -28,14 +28,20 @@ describe('FrontMatterFields raw-YAML editing', () => {
     expect(textarea.getAttribute('data-cinder-variant')).toBe('code');
   });
 
-  test('renders a complex-value field textarea with variant="code"', () => {
+  test('renders a complex-value field with JsonEditor', () => {
     const onchange = mock((_data: Record<string, unknown> | null) => {});
     render(FrontMatterFields, {
-      props: { id: 'fm', data: { tags: ['a', 'b'] }, raw: 'tags:\n  - a\n  - b', onchange },
+      props: {
+        id: 'fm',
+        data: { metadata: { owner: 'platform' } },
+        raw: 'metadata:\n  owner: platform',
+        onchange,
+      },
     });
 
     const textarea = queryTextarea();
-    expect(textarea.getAttribute('data-cinder-variant')).toBe('code');
+    expect(document.body.querySelector('.cinder-json-editor')).not.toBeNull();
+    expect(textarea.value).toContain('"owner": "platform"');
   });
 
   test('rejects non-object-shaped YAML instead of silently discarding it (cinder#1325 follow-up)', async () => {
@@ -121,5 +127,137 @@ describe('FrontMatterFields raw-YAML editing', () => {
     // passed as the second argument so the parent can preserve it.
     expect(document.body.textContent).not.toContain('mapping');
     expect(onchange).toHaveBeenCalledWith(null, '# DONE');
+  });
+
+  test('renders typed controls for scalar, tag, and structured values', () => {
+    const onchange = mock((_data: Record<string, unknown> | null) => {});
+    render(FrontMatterFields, {
+      props: {
+        id: 'fm',
+        data: {
+          title: 'Launch notes',
+          priority: 2,
+          published: false,
+          tags: ['alpha', 'alpha', 'beta'],
+          metadata: { owner: 'platform' },
+          optional: null,
+        },
+        raw: [
+          'title: Launch notes',
+          'priority: 2',
+          'published: false',
+          'tags:',
+          '  - alpha',
+          '  - alpha',
+          '  - beta',
+          'metadata:',
+          '  owner: platform',
+          'optional:',
+        ].join('\n'),
+        onchange,
+      },
+    });
+
+    expect(document.body.querySelector('.cinder-number-input')).not.toBeNull();
+    expect(document.body.querySelector('.cinder-tag-input')).not.toBeNull();
+    expect(document.body.querySelector('.cinder-json-editor')).not.toBeNull();
+    expect(document.body.textContent).toContain('alpha');
+    expect(document.body.textContent).toContain('beta');
+  });
+
+  test('tag edits preserve duplicate strings and call onchange with a string array', async () => {
+    const onchange = mock((_data: Record<string, unknown> | null) => {});
+    render(FrontMatterFields, {
+      props: {
+        id: 'fm',
+        data: { tags: ['alpha', 'alpha', 'beta'], title: 'Launch notes' },
+        raw: 'tags:\n  - alpha\n  - alpha\n  - beta\ntitle: Launch notes',
+        onchange,
+      },
+    });
+
+    const input = document.body.querySelector('#fm-tags');
+    if (!(input instanceof HTMLInputElement)) throw new Error('Expected tag input.');
+    await fireEvent.input(input, { target: { value: 'gamma' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(onchange).toHaveBeenCalledWith({
+      tags: ['alpha', 'alpha', 'beta', 'gamma'],
+      title: 'Launch notes',
+    });
+  });
+
+  test('structured JSON drafts stay local until they parse', async () => {
+    const onchange = mock((_data: Record<string, unknown> | null) => {});
+    render(FrontMatterFields, {
+      props: {
+        id: 'fm',
+        data: { title: 'Launch notes', metadata: { owner: 'platform' } },
+        raw: 'title: Launch notes\nmetadata:\n  owner: platform',
+        onchange,
+      },
+    });
+
+    const textarea = queryTextarea();
+    await fireEvent.input(textarea, { target: { value: '{"owner":' } });
+
+    expect(onchange).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain('Enter valid JSON');
+
+    await fireEvent.input(textarea, { target: { value: '{"owner":"docs","count":3}' } });
+
+    expect(onchange).toHaveBeenCalledWith({
+      title: 'Launch notes',
+      metadata: { owner: 'docs', count: 3 },
+    });
+  });
+
+  test('null fields start empty and become strings on the first nonempty edit', async () => {
+    const onchange = mock((_data: Record<string, unknown> | null) => {});
+    render(FrontMatterFields, {
+      props: {
+        id: 'fm',
+        data: { optional: null },
+        raw: 'optional:',
+        onchange,
+      },
+    });
+
+    const input = document.body.querySelector('#fm-optional');
+    if (!(input instanceof HTMLInputElement)) throw new Error('Expected optional input.');
+    expect(input.value).toBe('');
+
+    await fireEvent.input(input, { target: { value: '' } });
+    expect(onchange).not.toHaveBeenCalled();
+
+    await fireEvent.input(input, { target: { value: 'ready' } });
+
+    expect(onchange).toHaveBeenCalledWith({ optional: 'ready' });
+  });
+
+  test('readonly structured values stay selectable without disabled controls', () => {
+    const onchange = mock((_data: Record<string, unknown> | null) => {});
+    render(FrontMatterFields, {
+      props: {
+        id: 'fm',
+        data: {
+          title: 'Launch notes',
+          priority: 2,
+          published: false,
+          tags: ['alpha', 'beta'],
+          metadata: { owner: 'platform' },
+        },
+        raw: 'title: Launch notes',
+        readonly: true,
+        onchange,
+      },
+    });
+
+    expect(document.body.textContent).toContain('Launch notes');
+    expect(document.body.textContent).toContain('2');
+    expect(document.body.textContent).toContain('false');
+    expect(document.body.querySelector('.cinder-tag-input')).not.toBeNull();
+    expect(document.body.querySelector('.cinder-payload-inspector')).not.toBeNull();
+    expect(document.body.querySelector('input:disabled, textarea:disabled')).toBeNull();
   });
 });

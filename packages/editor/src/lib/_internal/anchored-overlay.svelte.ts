@@ -83,6 +83,22 @@ function reportAnchoredOverlaySetupError(error: unknown): void {
   }, 0);
 }
 
+function readPlacementOptions(options: AnchoredOverlayOptions) {
+  return {
+    placement: options.placement?.() ?? DEFAULT_PLACEMENT,
+    offset: options.offset?.() ?? DEFAULT_OFFSET,
+    shiftPadding: options.shiftPadding?.() ?? DEFAULT_SHIFT_PADDING,
+    shiftCrossAxis: options.shiftCrossAxis?.() ?? false,
+  };
+}
+
+function readArrowOptions(options: AnchoredOverlayOptions) {
+  const arrowPadding = options.arrowPadding?.() ?? DEFAULT_ARROW_PADDING;
+  const arrow = options.arrow?.();
+  const showArrow = options.showArrow?.() ?? Boolean(arrow);
+  return { arrowPadding, arrow, showArrow };
+}
+
 export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
   let positionReady = $state(false);
   let positionStyle = $state('');
@@ -95,7 +111,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
       positionStyle = '';
       arrowStyle = '';
       resolvedPlacement = options.placement?.() ?? DEFAULT_PLACEMENT;
-      return;
+      return undefined;
     }
 
     const anchor = options.anchor();
@@ -104,16 +120,11 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
       positionReady = false;
       positionStyle = '';
       arrowStyle = '';
-      return;
+      return undefined;
     }
 
-    const placement = options.placement?.() ?? DEFAULT_PLACEMENT;
-    const offset = options.offset?.() ?? DEFAULT_OFFSET;
-    const shiftPadding = options.shiftPadding?.() ?? DEFAULT_SHIFT_PADDING;
-    const shiftCrossAxis = options.shiftCrossAxis?.() ?? false;
-    const arrowPadding = options.arrowPadding?.() ?? DEFAULT_ARROW_PADDING;
-    const arrow = options.arrow?.();
-    const showArrow = options.showArrow?.() ?? Boolean(arrow);
+    const { placement, offset, shiftPadding, shiftCrossAxis } = readPlacementOptions(options);
+    const { arrowPadding, arrow, showArrow } = readArrowOptions(options);
     const widthMode = options.widthMode?.() ?? 'content';
     let cancelled = false;
     let generation = 0;

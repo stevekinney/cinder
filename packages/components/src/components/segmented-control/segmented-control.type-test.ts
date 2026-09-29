@@ -13,7 +13,7 @@ import type { SegmentedControlProps } from './segmented-control.types.ts';
 
 declare const children: Snippet;
 
-const _singleValid: SegmentedControlProps<'a' | 'b'> = {
+const singleValid: SegmentedControlProps<'a' | 'b'> = {
   id: 'test',
   label: 'Test',
   selectionMode: 'single',
@@ -21,14 +21,14 @@ const _singleValid: SegmentedControlProps<'a' | 'b'> = {
   children,
 };
 
-const _singleDefault: SegmentedControlProps<'a' | 'b'> = {
+const singleDefault: SegmentedControlProps<'a' | 'b'> = {
   id: 'test',
   label: 'Test',
   value: 'a',
   children,
 };
 
-const _navigationValid: SegmentedControlProps<'a' | 'b'> = {
+const navigationValid: SegmentedControlProps<'a' | 'b'> = {
   id: 'test',
   label: 'Test',
   variant: 'navigation',
@@ -37,7 +37,7 @@ const _navigationValid: SegmentedControlProps<'a' | 'b'> = {
 
 declare const validSet: SvelteSet<'a' | 'b'>;
 
-const _multipleValid: SegmentedControlProps<'a' | 'b'> = {
+const multipleValid: SegmentedControlProps<'a' | 'b'> = {
   id: 'test',
   label: 'Test',
   selectionMode: 'multiple',
@@ -47,7 +47,7 @@ const _multipleValid: SegmentedControlProps<'a' | 'b'> = {
 
 declare const plainSet: Set<'a' | 'b'>;
 
-const _multiplePlainSet: SegmentedControlProps<'a' | 'b'> = {
+const multiplePlainSet: SegmentedControlProps<'a' | 'b'> = {
   id: 'test',
   label: 'Test',
   selectionMode: 'multiple',
@@ -57,7 +57,7 @@ const _multiplePlainSet: SegmentedControlProps<'a' | 'b'> = {
 };
 
 // @ts-expect-error - navigation is only valid for single-selection controls
-const _multipleNavigation: SegmentedControlProps<'a' | 'b'> = {
+const multipleNavigation: SegmentedControlProps<'a' | 'b'> = {
   id: 'test',
   label: 'Test',
   selectionMode: 'multiple',
@@ -66,9 +66,9 @@ const _multipleNavigation: SegmentedControlProps<'a' | 'b'> = {
   children,
 };
 
-void _singleValid;
-void _singleDefault;
-void _navigationValid;
-void _multipleValid;
-void _multiplePlainSet;
-void _multipleNavigation;
+void singleValid;
+void singleDefault;
+void navigationValid;
+void multipleValid;
+void multiplePlainSet;
+void multipleNavigation;

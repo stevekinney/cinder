@@ -1,9 +1,9 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { createRawSnippet, tick } from 'svelte';
+import { createRawSnippet, flushSync, tick } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -24,7 +24,7 @@ let deferredResolvers: Resolver[] = [];
 const computePositionSpy = mock(async () => {
   if (deferComputePosition) {
     return new Promise((resolve) => {
-      deferredResolvers.push(resolve as Resolver);
+      deferredResolvers.push(resolve);
     });
   }
   return computePositionResult;
@@ -57,7 +57,7 @@ const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/s
 const { default: Popover } = await import('./popover.svelte');
 const { default: BindableFixture } =
   await import('../../test/fixtures/popover-bindable-fixture.svelte');
-const { _resetEscapeStack } = await import('../../_internal/overlay.ts');
+const { resetEscapeStack } = await import('../../_internal/overlay.ts');
 
 const triggerSnippet = createRawSnippet(() => ({
   render: () => `<button type="button">Open</button>`,
@@ -105,6 +105,26 @@ const KNOWN_POPOVER_WARNINGS = [
 ];
 let warnSpy: ReturnType<typeof spyOn<typeof console, 'warn'>>;
 
+/**
+ * Advances Svelte's scheduler until `predicate` holds, bounded by *turns* rather than wall clock.
+ *
+ * `waitFor` polls on a real timer, so a condition this component settles in microtasks — the
+ * mocked `computePosition` resolving, `positionReady` flipping, the focus `$effect` running — is
+ * nonetheless waited for against a millisecond budget. That makes the test's cost scale with
+ * machine load: under a parallel `bun run validate` these focus assertions were observed taking
+ * 5.6 seconds and timing out at 10.4 seconds, for work that is genuinely a handful of microtasks.
+ *
+ * Counting scheduler turns removes the wall clock from the loop entirely, so the same assertion
+ * costs the same on an idle machine and a saturated one.
+ */
+async function settle(predicate: () => boolean, turns = 50): Promise<void> {
+  for (let turn = 0; turn < turns; turn += 1) {
+    if (predicate()) return;
+    await tick();
+  }
+  await tick();
+}
+
 beforeEach(() => {
   // Bun module mocks are process-global. Re-register this fixture before each
   // test so another floating-surface test file cannot replace the exports
@@ -138,7 +158,7 @@ afterEach(() => {
   flipSpy.mockClear();
   shiftSpy.mockClear();
   offsetSpy.mockClear();
-  _resetEscapeStack();
+  resetEscapeStack();
 
   const unexpected = warnSpy.mock.calls
     .map((args) => args.map(String).join(' '))
@@ -367,7 +387,8 @@ describe('Popover — portal and arrow', () => {
     const dialog = document.createElement('dialog');
     dialog.setAttribute('open', '');
     const nativeMatches = dialog.matches.bind(dialog);
-    dialog.matches = (selector: string) => selector === ':modal' || nativeMatches(selector);
+    dialog.matches = ((selector: string) =>
+      selector === ':modal' || nativeMatches(selector)) as Element['matches'];
     const triggerButton = document.createElement('button');
     triggerButton.type = 'button';
     dialog.append(triggerButton);
@@ -633,26 +654,30 @@ describe('Popover — focus management', () => {
     render(Popover, {
       props: { open: true, trigger: triggerSnippet, children: focusableSnippet() },
     });
-    await waitFor(() => {
+    await settle(() => {
       const inside = queryPopoverPanel()?.querySelector('button') ?? null;
-      expect(inside).not.toBeNull();
-      expect(document.activeElement).toBe(inside);
+      return inside !== null && document.activeElement === inside;
     });
+
+    const inside = queryPopoverPanel()?.querySelector('button') ?? null;
+    expect(inside).not.toBeNull();
+    expect(document.activeElement).toBe(inside);
   });
 
   test('initial focus falls back to panel root when no focusable child', async () => {
     render(Popover, {
       props: { open: true, trigger: triggerSnippet, children: textSnippet('plain') },
     });
-    await waitFor(() => {
-      expect(queryPopoverPanel()).not.toBeNull();
-    });
+    await settle(() => queryPopoverPanel() !== null);
+
     const panel = queryPopoverPanel()!;
     expect(panel.getAttribute('tabindex')).toBe('-1');
-    await waitFor(() => {
-      expect(document.activeElement).toBe(panel);
-    });
-  }, 30_000);
+
+    await settle(() => document.activeElement === panel);
+    // The 30-second budget this test used to carry is gone with the polling that needed it: the
+    // focus move is a `$effect` with no timer in it, so it settles in scheduler turns or not at all.
+    expect(document.activeElement).toBe(panel);
+  });
 
   test('focus does not move while positionReady=false (computePosition pending)', async () => {
     deferComputePosition = true;
@@ -1025,7 +1050,7 @@ describe('Popover — floating-ui wiring', () => {
     // instead of resolving on the next microtask — this is the only way to
     // observe the intermediate "closing but still mounted" DOM state.
     const originalGetComputedStyle = window.getComputedStyle.bind(window);
-    window.getComputedStyle = ((target: Element) => {
+    window.getComputedStyle = (target: Element) => {
       if (target instanceof HTMLElement && target.classList.contains('cinder-popover')) {
         return {
           transitionProperty: 'opacity',
@@ -1034,15 +1059,14 @@ describe('Popover — floating-ui wiring', () => {
         } as CSSStyleDeclaration;
       }
       return originalGetComputedStyle(target);
-    }) as typeof window.getComputedStyle;
+    };
 
     try {
       const { rerender } = render(Popover, {
         props: { open: true, trigger: triggerSnippet, children: textSnippet('content') },
       });
-      await waitFor(() => {
-        expect(queryPopoverPanel()).not.toBeNull();
-      });
+      await settle(() => queryPopoverPanel() !== null);
+      expect(queryPopoverPanel()).not.toBeNull();
 
       await rerender({ open: false, trigger: triggerSnippet, children: textSnippet('content') });
 
@@ -1063,7 +1087,10 @@ describe('Popover — floating-ui wiring', () => {
       Object.defineProperty(event, 'propertyName', { value: 'opacity' });
       panel?.dispatchEvent(event);
 
-      await waitFor(() => expect(queryPopoverPanel()).toBeNull());
+      // The `transitionend` above is dispatched synchronously, so the unmount is a scheduler
+      // turn away — not something to poll a clock for.
+      await settle(() => queryPopoverPanel() === null);
+      expect(queryPopoverPanel()).toBeNull();
     } finally {
       window.getComputedStyle = originalGetComputedStyle;
     }
@@ -1077,7 +1104,7 @@ describe('Popover — floating-ui wiring', () => {
     // would unmount the panel immediately, before its exit transition could
     // ever play.
     const originalGetComputedStyle = window.getComputedStyle.bind(window);
-    window.getComputedStyle = ((target: Element) => {
+    window.getComputedStyle = (target: Element) => {
       if (target instanceof HTMLElement && target.classList.contains('cinder-popover')) {
         return {
           transitionProperty: 'opacity',
@@ -1086,7 +1113,7 @@ describe('Popover — floating-ui wiring', () => {
         } as CSSStyleDeclaration;
       }
       return originalGetComputedStyle(target);
-    }) as typeof window.getComputedStyle;
+    };
 
     const triggerEl = document.createElement('button');
     attachScratch(triggerEl);
@@ -1124,7 +1151,10 @@ describe('Popover — floating-ui wiring', () => {
       Object.defineProperty(event, 'propertyName', { value: 'opacity' });
       panel?.dispatchEvent(event);
 
-      await waitFor(() => expect(queryPopoverPanel()).toBeNull());
+      // The `transitionend` above is dispatched synchronously, so the unmount is a scheduler
+      // turn away — not something to poll a clock for.
+      await settle(() => queryPopoverPanel() === null);
+      expect(queryPopoverPanel()).toBeNull();
     } finally {
       window.getComputedStyle = originalGetComputedStyle;
     }
@@ -1138,7 +1168,7 @@ describe('Popover — floating-ui wiring', () => {
     // portal scope falls through to `document.body`, and the enclosing
     // modal then paints above the still-exiting Popover.
     const originalGetComputedStyle = window.getComputedStyle.bind(window);
-    window.getComputedStyle = ((target: Element) => {
+    window.getComputedStyle = (target: Element) => {
       if (target instanceof HTMLElement && target.classList.contains('cinder-popover')) {
         return {
           transitionProperty: 'opacity',
@@ -1147,12 +1177,13 @@ describe('Popover — floating-ui wiring', () => {
         } as CSSStyleDeclaration;
       }
       return originalGetComputedStyle(target);
-    }) as typeof window.getComputedStyle;
+    };
 
     const dialog = document.createElement('dialog');
     dialog.setAttribute('open', '');
     const nativeMatches = dialog.matches.bind(dialog);
-    dialog.matches = (selector: string) => selector === ':modal' || nativeMatches(selector);
+    dialog.matches = ((selector: string) =>
+      selector === ':modal' || nativeMatches(selector)) as Element['matches'];
     const triggerButton = document.createElement('button');
     triggerButton.type = 'button';
     dialog.append(triggerButton);
@@ -1277,7 +1308,8 @@ describe('Popover — floating-ui wiring', () => {
     triggerButton.remove();
     openValue = false;
     await rerender({ open: false, triggerRef: triggerButton, children: textSnippet('content') });
-    await waitFor(() => expect(queryPopoverPanel()).toBeNull());
+    flushSync();
+    expect(queryPopoverPanel()?.outerHTML ?? null).toBeNull();
 
     // Reopen without ever supplying a fresh trigger.
     openValue = true;
@@ -1326,7 +1358,8 @@ describe('Popover — floating-ui wiring', () => {
     // Close and let the exit fully complete (onClosed fires).
     openValue = false;
     await rerender({ open: false, triggerRef: triggerButton, children: textSnippet('content') });
-    await waitFor(() => expect(queryPopoverPanel()).toBeNull());
+    flushSync();
+    expect(queryPopoverPanel()?.outerHTML ?? null).toBeNull();
 
     // Second session: computePosition never resolves before the close.
     deferComputePosition = true;
@@ -1361,7 +1394,7 @@ describe('Popover — floating-ui wiring', () => {
     // reset to an empty string, so a locally-themed-subtree Popover lost its
     // tokens/typography/direction/color-scheme for the duration of the fade.
     const originalGetComputedStyle = window.getComputedStyle.bind(window);
-    window.getComputedStyle = ((target: Element) => {
+    window.getComputedStyle = (target: Element) => {
       if (target instanceof HTMLElement && target.classList.contains('cinder-popover')) {
         return {
           transitionProperty: 'opacity',
@@ -1370,7 +1403,7 @@ describe('Popover — floating-ui wiring', () => {
         } as CSSStyleDeclaration;
       }
       return originalGetComputedStyle(target);
-    }) as typeof window.getComputedStyle;
+    };
 
     const triggerButton = document.createElement('button');
     triggerButton.type = 'button';
@@ -1441,7 +1474,7 @@ describe('Popover — floating-ui wiring', () => {
     // way to observe the intermediate "closing but still mounted/positioned"
     // state before `await rerender` itself yields the microtask queue.
     const originalGetComputedStyle = window.getComputedStyle.bind(window);
-    window.getComputedStyle = ((target: Element) => {
+    window.getComputedStyle = (target: Element) => {
       if (target instanceof HTMLElement && target.classList.contains('cinder-popover')) {
         return {
           transitionProperty: 'opacity',
@@ -1450,7 +1483,7 @@ describe('Popover — floating-ui wiring', () => {
         } as CSSStyleDeclaration;
       }
       return originalGetComputedStyle(target);
-    }) as typeof window.getComputedStyle;
+    };
 
     try {
       const { rerender } = render(Popover, {
@@ -1511,7 +1544,8 @@ describe('Popover — floating-ui wiring', () => {
     // Close normally (trigger still connected) and let the exit complete.
     openValue = false;
     await rerender({ open: false, triggerRef: triggerButton, children: textSnippet('content') });
-    await waitFor(() => expect(queryPopoverPanel()).toBeNull());
+    flushSync();
+    expect(queryPopoverPanel()?.outerHTML ?? null).toBeNull();
 
     // NOW remove the trigger, while the Popover is already fully closed —
     // no open/closing session is active.

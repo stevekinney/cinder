@@ -1,13 +1,12 @@
 # ApprovalCard
 
-Presentational human-in-the-loop approval surface for reviewing a tool operation
-before the host application executes it.
+Presentational human-in-the-loop approval surface for reviewing a tool operation before the host application executes it.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import ApprovalCard from '@lostgradient/cinder/approval-card';
+  import { ApprovalCard } from '@lostgradient/cinder';
 </script>
 
 <ApprovalCard
@@ -30,57 +29,32 @@ before the host application executes it.
 />
 ```
 
-`ApprovalCard` is fully controlled. It does not execute commands, apply patches,
-persist policy decisions, or read environment values. The component only renders
-the supplied context and invokes callback props for host-owned actions.
+`ApprovalCard` is fully controlled. It does not execute commands, apply patches, persist policy decisions, or read environment values. The component only renders the supplied context and invokes callback props for host-owned actions.
 
 ## Resolution callback
 
-`onResolve` is the single decision contract. It fires for every action —
-Approve, Approve with edits, Deny, and Dismiss — with the complete
-`ApprovalResolution` payload: the selected `decision`, parsed `editedArgs` for
-edited approvals, optional `reason` text, and the `remember` checkbox state.
-Action buttons render only while the request is actionable and `onResolve` is
-wired; a card without the callback is purely presentational.
+`onResolve` is the single decision contract. It fires for every action — Approve, Approve with edits, Deny, and Dismiss — with the complete `ApprovalResolution` payload: the selected `decision`, parsed `editedArgs` for edited approvals, optional `reason` text, and the `remember` checkbox state. Action buttons render only while the request is actionable and `onResolve` is wired; a card without the callback is purely presentational.
 
-`decision: 'deny'` means the approver actively refused the operation.
-`decision: 'cancel'` (the Dismiss button) means the prompt was dismissed
-without a decision.
+`decision: 'deny'` means the approver actively refused the operation. `decision: 'cancel'` (the Dismiss button) means the prompt was dismissed without a decision.
 
 ## Operation rendering
 
-- `tool.name` renders in monospace inside the title, distinguishing the
-  identifier from the surrounding sentence.
-- `tool.risk` renders as a stacked-bar signal icon (bar count scales with
-  risk, so it doesn't rely on color alone) with a tooltip carrying the risk
-  label; the icon itself is the accessible name via `aria-label`.
-- `operation.kind: 'command'` renders the command as a syntax-highlighted
-  shell `CodeBlock`.
-- `operation.kind: 'patch'` renders the supplied unified patch as a
-  syntax-highlighted diff.
-- `operation.filesTouched` renders one row per unique path, each with a copy
-  button. Duplicate paths are collapsed.
-- `operation.argsPreview` renders through `PayloadInspector`; oversized
-  previews are replaced with a bounded truncation notice before rendering.
-- `env` renders variable names only, as plain text. Values are not accepted
-  and are stripped if a caller accidentally passes `NAME=value`.
-- Sandbox context, environment names, and the policy version / idempotency
-  key / snapshot id all live in a single collapsed "Details" disclosure so
-  supporting context stays out of the approver's way until they ask for it.
-  The action buttons are the last element of a pending card.
+- `tool.name` renders in monospace inside the title, distinguishing the identifier from the surrounding sentence.
+- `tool.risk` renders as a stacked-bar signal icon (bar count scales with risk, so it doesn't rely on color alone) with a tooltip carrying the risk label; the icon itself is the accessible name via `aria-label`.
+- `operation.kind: 'command'` renders the command as a syntax-highlighted shell `CodeBlock`.
+- `operation.kind: 'patch'` renders the supplied unified patch as a syntax-highlighted diff.
+- `operation.filesTouched` renders one row per unique path, each with a copy button. Duplicate paths are collapsed.
+- `operation.argsPreview` renders through `PayloadInspector`; oversized previews are replaced with a bounded truncation notice before rendering.
+- `env` renders variable names only, as plain text. Values are not accepted and are stripped if a caller accidentally passes `NAME=value`.
+- Sandbox context, environment names, and the policy version / idempotency key / snapshot id all live in a single collapsed "Details" disclosure so supporting context stays out of the approver's way until they ask for it. The action buttons are the last element of a pending card.
 
 ## Approval states
 
-Pending requests render action buttons. Non-pending requests render a
-read-only, state-tinted summary. When `expiresAt` passes while `state` is
-still `pending`, the effective state becomes `expired`, actions disappear, and
-no callback fires automatically.
+Pending requests render action buttons. Non-pending requests render a read-only, state-tinted summary. When `expiresAt` passes while `state` is still `pending`, the effective state becomes `expired`, actions disappear, and no callback fires automatically.
 
 ## Heading levels
 
-The card title defaults to an `h3` with section headings one level deeper.
-Pass `headingLevel` to fit the card into the host page's document outline,
-matching the `Card` convention.
+The card title defaults to an `h3` with section headings one level deeper. Pass `headingLevel` to fit the card into the host page's document outline, matching the `Card` convention.
 
 ## Props
 
@@ -109,7 +83,6 @@ matching the `Card` convention.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

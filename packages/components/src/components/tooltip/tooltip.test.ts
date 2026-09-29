@@ -1,15 +1,21 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, jest, mock, test } from 'bun:test';
 import { join } from 'node:path';
-import { createRawSnippet, tick } from 'svelte';
+import { createRawSnippet, flushSync, tick } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
-import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
-import { renderToServerHtml } from '../../test/server-render.ts';
+import {
+  expectNoLeakedTimers,
+  prepareSvelteServerSource,
+  renderSvelteOnServer,
+  requiredInstance,
+  setupHappyDom,
+  trackTimers,
+} from '@lostgradient/testing';
 
 setupHappyDom();
 
 const TOOLTIP_SOURCE = join(import.meta.dir, 'tooltip.svelte');
+await prepareSvelteServerSource(TOOLTIP_SOURCE);
 
 type Resolver = (value: unknown) => void;
 
@@ -28,7 +34,7 @@ const computePositionSpy = mock(async () => {
   }
   if (deferComputePosition) {
     return new Promise((resolve) => {
-      deferredResolvers.push(resolve as Resolver);
+      deferredResolvers.push(resolve);
     });
   }
   return computePositionResult;
@@ -55,7 +61,7 @@ mock.module('@floating-ui/dom', () => ({
 
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: Tooltip } = await import('./tooltip.svelte');
-const { _resetEscapeStack, pushEscapeHandler } = await import('../../_internal/overlay.ts');
+const { resetEscapeStack, pushEscapeHandler } = await import('../../_internal/overlay.ts');
 
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
@@ -145,9 +151,11 @@ beforeEach(() => {
   timers = trackTimers();
 });
 
-afterEach(() => {
+afterEach(async () => {
   cleanup();
-  _resetEscapeStack();
+  resetEscapeStack();
+  // Svelte releases its delegated event reference on the next task.
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
   const leaked = timers.active();
   timers.release();
   computePositionSpy.mockClear();
@@ -202,12 +210,14 @@ describe('Tooltip', () => {
         children: triggerSnippet,
       },
     });
-    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-tooltip-wrapper'),
+      HTMLElement,
+    );
 
     await triggerDelayedTooltipShow(wrapper);
-    await waitFor(() => {
-      expect(queryTooltip()?.parentElement).toBe(document.body);
-    });
+    flushSync();
+    expect(queryTooltip()?.parentElement).toBe(document.body);
   });
 
   test('server output omits the tooltip panel (OVERLAY-POLICY SSR hard constraint)', async () => {
@@ -219,7 +229,7 @@ describe('Tooltip', () => {
     // Complying is safe: `aria-describedby` is wired from an attachment
     // (wrapping) and an `$effect` (detached), both client-only, so the server
     // emits neither the reference nor its target and nothing dangles.
-    const html = await renderToServerHtml(TOOLTIP_SOURCE, { text: 'Server tooltip text' });
+    const html = await renderSvelteOnServer(TOOLTIP_SOURCE, { text: 'Server tooltip text' });
 
     expect(html).not.toContain('role="tooltip"');
     expect(html).not.toContain('Server tooltip text');
@@ -296,14 +306,69 @@ describe('Tooltip', () => {
     // The show delay is the same 100ms as the wrapping mode, so drive it the
     // same way — the listeners are what is new here, not the timing.
     await triggerDelayedTooltipShow(trigger);
-    await waitFor(() => {
-      expect(queryTooltip()?.parentElement).toBe(document.body);
-    });
+    flushSync();
+    expect(queryTooltip()?.parentElement).toBe(document.body);
 
     await fireEvent.mouseLeave(trigger);
     await tick();
     expect(container.querySelector('[role="tooltip"]')?.getAttribute('aria-hidden')).toBe('true');
 
+    trigger.remove();
+  });
+
+  test('a pending show is cleared, not left to fire later, when triggerRef is swapped away before it resolves (COR-1219)', async () => {
+    // Neither `handleFocusOut` nor a native DOM event runs here — the trigger
+    // is swapped by reference, not removed or blurred, which is exactly why
+    // the effect's OWN cleanup (not an event handler) has to cancel a still-
+    // pending show. Without it the original 100ms timer fires regardless and
+    // shows a tooltip anchored to whichever element the ref points to by then.
+    const first = document.createElement('button');
+    const second = document.createElement('button');
+    document.body.append(first, second);
+
+    const view = render(Tooltip, { props: { text: 'Tooltip content', triggerRef: first } });
+    jest.useFakeTimers();
+    try {
+      await fireEvent.mouseEnter(first);
+      // `data-cinder-visible` mirrors `visible` directly (via
+      // `exitState.renderPanel`), independent of floating-ui positioning —
+      // the pending show hasn't resolved yet, so it isn't present.
+      expect(queryTooltip()?.hasAttribute('data-cinder-visible')).toBe(false);
+
+      await view.rerender({ text: 'Tooltip content', triggerRef: second });
+      jest.advanceTimersByTime(100);
+      await tick();
+
+      expect(queryTooltip()?.hasAttribute('data-cinder-visible')).toBe(false);
+    } finally {
+      jest.useRealTimers();
+    }
+
+    view.unmount();
+    first.remove();
+    second.remove();
+  });
+
+  test('a pending focus show is cleared rather than reopening detached content when the trigger is cleared before it resolves (COR-1219)', async () => {
+    const trigger = document.createElement('button');
+    document.body.append(trigger);
+
+    const view = render(Tooltip, { props: { text: 'Tooltip content', triggerRef: trigger } });
+    jest.useFakeTimers();
+    try {
+      await fireEvent.focusIn(trigger);
+      expect(queryTooltip()?.hasAttribute('data-cinder-visible')).toBe(false);
+
+      await view.rerender({ text: 'Tooltip content', triggerRef: null });
+      jest.advanceTimersByTime(100);
+      await tick();
+
+      expect(queryTooltip()?.hasAttribute('data-cinder-visible')).toBe(false);
+    } finally {
+      jest.useRealTimers();
+    }
+
+    view.unmount();
     trigger.remove();
   });
 
@@ -328,7 +393,10 @@ describe('Tooltip', () => {
     const { container, unmount } = render(Tooltip, {
       props: { text: 'Wrapped description', children: triggerSnippet },
     });
-    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-tooltip-wrapper'),
+      HTMLElement,
+    );
     const trigger = container.querySelector<HTMLElement>('button');
     const describedById = trigger?.getAttribute('aria-describedby');
     expect(describedById).toBeTruthy();
@@ -410,7 +478,10 @@ describe('Tooltip', () => {
         children: triggerSnippet,
       },
     });
-    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-tooltip-wrapper'),
+      HTMLElement,
+    );
     await fireEvent.focusIn(wrapper);
 
     await waitFor(() => {
@@ -436,7 +507,10 @@ describe('Tooltip', () => {
           children: triggerSnippet,
         },
       });
-      const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+      const wrapper = requiredInstance(
+        container.querySelector('.cinder-tooltip-wrapper'),
+        HTMLElement,
+      );
       await triggerDelayedTooltipShow(wrapper);
       await waitFor(() => expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('false'));
 
@@ -471,8 +545,11 @@ describe('Tooltip', () => {
         children: triggerSnippet,
       },
     });
-    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
-    const trigger = container.querySelector('button') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-tooltip-wrapper'),
+      HTMLElement,
+    );
+    const trigger = requiredInstance(container.querySelector('button'), HTMLElement);
     await fireEvent.mouseEnter(wrapper);
 
     await waitFor(() => {
@@ -483,7 +560,7 @@ describe('Tooltip', () => {
     expect(anchor).toBe(trigger);
     const portaledTooltip = queryTooltip();
     expect(portaledTooltip).not.toBeNull();
-    expect(tooltip).toBe(portaledTooltip as HTMLElement);
+    expect(tooltip).toBe(requiredInstance(portaledTooltip, HTMLElement));
   });
 
   test('wrapping (non-detached) branch renders data-cinder-visible while shown (CIN-376)', async () => {
@@ -499,7 +576,10 @@ describe('Tooltip', () => {
         children: triggerSnippet,
       },
     });
-    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-tooltip-wrapper'),
+      HTMLElement,
+    );
     await fireEvent.mouseEnter(wrapper);
 
     await waitFor(() => {
@@ -519,7 +599,10 @@ describe('Tooltip', () => {
         children: disabledTabindexTriggerSnippet,
       },
     });
-    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-tooltip-wrapper'),
+      HTMLElement,
+    );
     await fireEvent.mouseEnter(wrapper);
 
     await waitFor(() => {
@@ -537,7 +620,10 @@ describe('Tooltip', () => {
         children: triggerSnippet,
       },
     });
-    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-tooltip-wrapper'),
+      HTMLElement,
+    );
 
     await fireEvent.focusIn(wrapper);
     await waitFor(() => {
@@ -589,7 +675,10 @@ describe('Tooltip', () => {
         children: triggerSnippet,
       },
     });
-    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-tooltip-wrapper'),
+      HTMLElement,
+    );
 
     await fireEvent.mouseEnter(wrapper);
     await waitFor(() => {
@@ -609,7 +698,10 @@ describe('Tooltip', () => {
         children: triggerSnippet,
       },
     });
-    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-tooltip-wrapper'),
+      HTMLElement,
+    );
 
     await fireEvent.focusIn(wrapper);
     await waitFor(() => {
@@ -629,7 +721,10 @@ describe('Tooltip', () => {
         children: triggerSnippet,
       },
     });
-    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-tooltip-wrapper'),
+      HTMLElement,
+    );
 
     await fireEvent.mouseEnter(wrapper);
     await waitFor(() => {
@@ -657,7 +752,10 @@ describe('Tooltip', () => {
         children: triggerSnippet,
       },
     });
-    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-tooltip-wrapper'),
+      HTMLElement,
+    );
 
     try {
       jest.useFakeTimers();
@@ -686,7 +784,10 @@ describe('Tooltip', () => {
         children: triggerSnippet,
       },
     });
-    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-tooltip-wrapper'),
+      HTMLElement,
+    );
 
     expect(queryTooltip()?.getAttribute('aria-hidden')).toBe('true');
     await fireEvent.keyDown(wrapper, { key: 'Escape' });
@@ -707,7 +808,10 @@ describe('Tooltip', () => {
         })),
       },
     });
-    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-tooltip-wrapper'),
+      HTMLElement,
+    );
 
     await triggerDelayedTooltipShow(wrapper);
     await waitFor(() => {
@@ -726,7 +830,10 @@ describe('Tooltip', () => {
         children: triggerSnippet,
       },
     });
-    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-tooltip-wrapper'),
+      HTMLElement,
+    );
 
     await fireEvent.mouseEnter(wrapper);
     await waitFor(() => {
@@ -760,7 +867,10 @@ describe('Tooltip', () => {
         children: triggerSnippet,
       },
     });
-    const wrapper = container.querySelector('.cinder-tooltip-wrapper') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-tooltip-wrapper'),
+      HTMLElement,
+    );
 
     await triggerDelayedTooltipShow(wrapper);
     await waitFor(() => {

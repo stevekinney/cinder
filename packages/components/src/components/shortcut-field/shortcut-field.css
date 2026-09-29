@@ -1,8 +1,13 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @import '../kbd/kbd.css';
+@import '../form-field/form-field.css';
 
 @layer cinder.components {
-  .cinder-shortcut-field {
+  /* The outer element is now FormFieldFrame's `.cinder-form-field` root
+   * (column layout: label above control). The textbox + Clear row keeps its
+   * original horizontal layout on `.cinder-shortcut-field__row`, the
+   * `controlClass` FormFieldFrame wraps the control snippet in. */
+  .cinder-shortcut-field__row {
     display: flex;
     gap: var(--cinder-space-2);
     align-items: center;

@@ -1,15 +1,14 @@
 # FileUpload
 
-Accessible file picker and drag-and-drop surface that validates dropped files,
-announces results, and can render consumer-driven upload progress rows.
+Accessible file picker and drag-and-drop surface that validates dropped files, announces results, and can render consumer-driven upload progress rows.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import FileUpload from '@lostgradient/cinder/file-upload';
-  import type { FileUploadEntry } from '@lostgradient/cinder/file-upload';
-  import FormField from '@lostgradient/cinder/form-field';
+  import { FileUpload } from '@lostgradient/cinder';
+  import type { FileUploadEntry } from '@lostgradient/cinder';
+  import { FormField } from '@lostgradient/cinder';
 
   let entries = $state<FileUploadEntry[]>([]);
   let uploadQueue = $state<File[]>([]);
@@ -31,9 +30,7 @@ announces results, and can render consumer-driven upload progress rows.
 </FormField>
 ```
 
-Use `browseLabel` when the picker action needs more specific text, such as
-directory or import flows. Native input attributes still pass through to the
-real file input, so directory selection can use `webkitdirectory`:
+Use `browseLabel` when the picker action needs more specific text, such as directory or import flows. Native input attributes still pass through to the real file input, so directory selection can use `webkitdirectory`:
 
 ```svelte
 <FileUpload id="history" browseLabel="Choose directory" multiple webkitdirectory />
@@ -41,25 +38,15 @@ real file input, so directory selection can use `webkitdirectory`:
 
 ## Upload queue and retry
 
-`FileUpload` owns local validation, not network upload. Each picker selection or
-drop is validated as one batch before callbacks run:
+`FileUpload` owns local validation, not network upload. Each picker selection or drop is validated as one batch before callbacks run:
 
 - `onFilesAccepted` receives the accepted native `File[]` so you can enqueue uploads.
 - `onReject` receives rejected files with `too-large`, `wrong-type`, or `too-many` reasons.
 - `onFilesChange` receives the full locally resolved queue. Accepted rows start as `pending`; rejected rows start as `error` with a visible message and `rejectionReason`.
 
-The default file list includes a remove button for every row. In uncontrolled
-use, removing a row immediately updates the local queue and frees a `maxFiles`
-slot. In controlled use, removal reports the next queue through
-`onFilesChange`; update `files` with that value to reflect the change.
-Resetting an associated native form clears the uncontrolled queue and reports
-an empty list through `onFilesChange`.
+The default file list includes a remove button for every row. In uncontrolled use, removing a row immediately updates the local queue and frees a `maxFiles` slot. In controlled use, removal reports the next queue through `onFilesChange`; update `files` with that value to reflect the change. Resetting an associated native form clears the uncontrolled queue and reports an empty list through `onFilesChange`.
 
-Pass the controlled `files` prop to show your uploader's current `pending`,
-`uploading`, `ready`, or `error` state. Set `progress` from 0–100 while an
-entry uploads. When you provide `onFileRetry`, failed rows render a retry button and
-return the complete entry to your upload queue handler. The component never
-starts, cancels, or retries a network request by itself.
+Pass the controlled `files` prop to show your uploader's current `pending`, `uploading`, `ready`, or `error` state. Set `progress` from 0–100 while an entry uploads. When you provide `onFileRetry`, failed rows render a retry button and return the complete entry to your upload queue handler. The component never starts, cancels, or retries a network request by itself.
 
 ## Props
 
@@ -99,4 +86,5 @@ starts, cancels, or retries a network request by itself.
 - `--cinder-file-upload-border-color`
 - `--cinder-file-upload-progress-background`
 - `--cinder-file-upload-progress-fill`
+
 <!-- generated:variables:end -->

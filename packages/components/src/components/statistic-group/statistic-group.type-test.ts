@@ -13,8 +13,8 @@ import type { Component } from 'svelte';
 import Statistic from '../statistic/statistic.svelte';
 import { StatisticGroup } from './index.ts';
 
-const _stat: typeof Statistic = StatisticGroup.Statistic;
+const stat: typeof Statistic = StatisticGroup.Statistic;
 
 StatisticGroup satisfies Component<never>;
 
-void _stat;
+void stat;

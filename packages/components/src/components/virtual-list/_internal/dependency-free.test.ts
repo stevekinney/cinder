@@ -24,13 +24,15 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
+  collectScanTargets,
+  loadDeclaredDependencyNames,
+} from '../../../../scripts/check-virtual-list-dependency-free-graph.ts';
+import {
   FORBIDDEN_SPECIFIER,
   classifySpecifier,
-  collectScanTargets,
   findDependencyViolations,
-  loadDeclaredDependencyNames,
   packageNameFromSpecifier,
-} from '../../../../scripts/check-virtual-list-dependency-free.ts';
+} from '../../../../scripts/check-virtual-list-dependency-free-policy.ts';
 
 const testDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolve(testDirectory, '..', '..', '..', '..');
@@ -125,7 +127,7 @@ describe('virtual-list dependency-free guard — classifySpecifier', () => {
   });
 
   test('allows a declared scoped dependency reached through a deep subpath', () => {
-    expect(classifySpecifier('@lostgradient/markdown/dist/foo.js', declared)).toBeUndefined();
+    expect(classifySpecifier('@lostgradient/markdown', declared)).toBeUndefined();
   });
 
   test('rejects an undeclared bare specifier, naming it in the reason', () => {

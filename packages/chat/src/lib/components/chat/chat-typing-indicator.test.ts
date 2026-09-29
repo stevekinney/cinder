@@ -20,12 +20,13 @@
 import { afterAll, afterEach, beforeEach, describe, expect, jest, test } from 'bun:test';
 import { flushSync, mount, unmount } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import type { ChatAdapter, ChatPushHandlers } from './adapter/chat-adapter.ts';
 import type { TypingParticipant } from './chat.types.ts';
 import {
   deriveAnnouncedLabel,
   deriveTypingLabel,
+  normalizeTypingParticipants,
 } from './container/use-chat-typing-indicator.svelte.ts';
 import type { ConversationHistory } from './conversation-model.ts';
 
@@ -38,7 +39,7 @@ class TestResizeObserver {
   disconnect(): void {}
 }
 const originalResizeObserver = globalThis.ResizeObserver;
-globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
+globalThis.ResizeObserver = TestResizeObserver;
 
 class TestIntersectionObserver {
   observe(): void {}
@@ -166,6 +167,34 @@ describe('deriveTypingLabel — pure label function', () => {
   test('10 participants → "Several people are typing…"', () => {
     const participants = Array.from({ length: 10 }, (_, index) => participant(`P${index}`));
     expect(deriveTypingLabel(participants)).toBe('Several people are typing…');
+  });
+});
+
+describe('normalizeTypingParticipants — adapter snapshots', () => {
+  test('empty snapshots clear adapter participants', () => {
+    expect(normalizeTypingParticipants([])).toEqual([]);
+  });
+
+  test('removed ids disappear because each snapshot is complete', () => {
+    expect(normalizeTypingParticipants([{ id: 'alice', name: 'Alice' }])).toEqual([
+      { id: 'alice', name: 'Alice' },
+    ]);
+    expect(normalizeTypingParticipants([{ id: 'bob', name: 'Bob' }])).toEqual([
+      { id: 'bob', name: 'Bob' },
+    ]);
+  });
+
+  test('duplicate ids are last-write-wins in final input order', () => {
+    expect(
+      normalizeTypingParticipants([
+        { id: 'alice', name: 'Alice' },
+        { id: 'bob', name: 'Bob' },
+        { id: 'alice', name: 'Avery' },
+      ]),
+    ).toEqual([
+      { id: 'bob', name: 'Bob' },
+      { id: 'alice', name: 'Avery' },
+    ]);
   });
 });
 
@@ -356,9 +385,9 @@ describe('Chat — typingParticipants prop', () => {
     const timeline = container.querySelector<HTMLElement>('.chat-timeline');
     let scrollCount = 0;
     if (timeline) {
-      timeline.scrollTo = (() => {
+      timeline.scrollTo = () => {
         scrollCount += 1;
-      }) as HTMLElement['scrollTo'];
+      };
     }
 
     // The participant typing region is always in DOM — it never causes a mount scroll.
@@ -504,13 +533,13 @@ describe('useChatTypingIndicator — debounce timer paths via adapter push', () 
     const { container, instance, capturedHandlers } = mountChatWithAdapter();
 
     // Trigger adapter typing change.
-    capturedHandlers().onTypingChange(true);
+    capturedHandlers().onTypingChange([{ id: 'adapter-alice', name: 'Alice' }]);
     flushSync();
 
     // The VISIBLE label updates immediately (no debounce on the typing text itself).
-    // The adapter synthetic participant has name 'Someone', producing "Someone is typing…".
+    // The adapter participant snapshot drives the visible label immediately.
     const visibleLabel = container.querySelector('.chat-participant-typing-label');
-    expect(visibleLabel?.textContent).toBe('Someone is typing…');
+    expect(visibleLabel?.textContent).toBe('Alice is typing…');
 
     // The announced aria-live text is still empty — the 400ms debounce has not fired.
     const announcer = getTypingAnnouncer(container);
@@ -522,7 +551,7 @@ describe('useChatTypingIndicator — debounce timer paths via adapter push', () 
   test('typing announcer updates after 400ms debounce fires', () => {
     const { container, instance, capturedHandlers } = mountChatWithAdapter();
 
-    capturedHandlers().onTypingChange(true);
+    capturedHandlers().onTypingChange([{ id: 'adapter-alice', name: 'Alice' }]);
     flushSync();
 
     // Advance past the 400ms debounce.
@@ -530,7 +559,7 @@ describe('useChatTypingIndicator — debounce timer paths via adapter push', () 
     flushSync();
 
     const announcer = getTypingAnnouncer(container);
-    expect(announcer?.textContent?.trim()).toBe('Someone is typing');
+    expect(announcer?.textContent?.trim()).toBe('Alice is typing');
 
     unmount(instance);
   });
@@ -538,17 +567,17 @@ describe('useChatTypingIndicator — debounce timer paths via adapter push', () 
   test('typing announcer clears immediately when typing stops (no tick needed)', () => {
     const { container, instance, capturedHandlers } = mountChatWithAdapter();
 
-    capturedHandlers().onTypingChange(true);
+    capturedHandlers().onTypingChange([{ id: 'adapter-alice', name: 'Alice' }]);
     flushSync();
     jest.advanceTimersByTime(400);
     flushSync();
 
     // Confirm it's populated.
     const announcer = getTypingAnnouncer(container);
-    expect(announcer?.textContent?.trim()).toBe('Someone is typing');
+    expect(announcer?.textContent?.trim()).toBe('Alice is typing');
 
     // Stop typing — should clear immediately without waiting for a debounce.
-    capturedHandlers().onTypingChange(false);
+    capturedHandlers().onTypingChange([]);
     flushSync();
 
     expect(announcer?.textContent?.trim()).toBe('');
@@ -560,7 +589,7 @@ describe('useChatTypingIndicator — debounce timer paths via adapter push', () 
     const { container, instance, capturedHandlers } = mountChatWithAdapter();
 
     // Start typing.
-    capturedHandlers().onTypingChange(true);
+    capturedHandlers().onTypingChange([{ id: 'adapter-alice', name: 'Alice' }]);
     flushSync();
 
     // Advance 200ms — debounce not yet fired.
@@ -571,9 +600,9 @@ describe('useChatTypingIndicator — debounce timer paths via adapter push', () 
     expect(announcer?.textContent?.trim()).toBe('');
 
     // Stop and immediately restart — should cancel and restart the timer.
-    capturedHandlers().onTypingChange(false);
+    capturedHandlers().onTypingChange([]);
     flushSync();
-    capturedHandlers().onTypingChange(true);
+    capturedHandlers().onTypingChange([{ id: 'adapter-alice', name: 'Alice' }]);
     flushSync();
 
     // Advance 400ms for the restarted timer.
@@ -581,7 +610,7 @@ describe('useChatTypingIndicator — debounce timer paths via adapter push', () 
     flushSync();
 
     // The announcement fires for the final "typing" state.
-    expect(announcer?.textContent?.trim()).toBe('Someone is typing');
+    expect(announcer?.textContent?.trim()).toBe('Alice is typing');
 
     unmount(instance);
   });
@@ -673,13 +702,13 @@ describe('useChatTypingIndicator — conversation change clears adapter typing',
     // The adapter subscription must have fired and captured handlers.
     expect(handlers).toBeDefined();
 
-    // Act: push adapter typing-start — the synthetic 'Someone is typing…' label appears.
-    handlers!.onTypingChange(true);
+    // Act: push adapter typing snapshot — the participant label appears.
+    handlers!.onTypingChange([{ id: 'adapter-alice', name: 'Alice' }]);
     flushSync();
 
     // Assert: visible typing label is shown.
     const label = target.querySelector('.chat-participant-typing-label');
-    expect(label?.textContent).toBe('Someone is typing…');
+    expect(label?.textContent).toBe('Alice is typing…');
 
     // Act: swap to a different conversation id — the conversation-change $effect runs
     // typingIndicatorState.reset(), clearing adapterIsTyping and announcedLabel.

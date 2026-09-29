@@ -1,29 +1,9 @@
-/**
- * Tests for tool-approval-part.svelte (C3).
- *
- * Covers:
- *   1. Pending state — renders a labelled role="group" with tool name, action
- *      message, Approve and Reject buttons (inline item, not a modal alertdialog).
- *   2. Approved state — renders approved chip with no buttons.
- *   3. Denied state — renders denied chip with no buttons.
- *   4. Approve button fires the onapprove callback.
- *   5. Reject button fires the ondeny callback.
- *   6. Escape key fires the ondeny callback when pending.
- *   7. Double-resolution guard — once approved, subsequent Escape/Reject is
- *      NOT re-fired (guarded by the parent, but the Escape handler in the
- *      component also guards isPending).
- *   8. Buttons are disabled when no callbacks are provided.
- *   9. Accessibility — role="group", tabindex="-1", no autofocus,
- *      aria-labelledby, aria-describedby.
- *  10. Collapsible args are rendered when action.schema is present.
- */
-
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { flushSync } from 'svelte';
 
-import { setupHappyDom } from '../../../../test/happy-dom.ts';
-import type { JSONValue } from '../../conversation-model.ts';
+import type { ApprovalCardProps, ApprovalResolution } from '@lostgradient/cinder';
+import { setupHappyDom } from '@lostgradient/testing';
 import type { ToolApprovalMessagePart } from '../../utilities/types.ts';
 
 setupHappyDom();
@@ -42,303 +22,173 @@ function pendingPart(overrides?: Partial<ToolApprovalMessagePart>): ToolApproval
     key: 'm:tool-approval:call-1',
     toolCallId: 'call-1',
     toolName: 'deploy_to_production',
-    action: approvalAction('Deploy to production?'),
-    approved: undefined,
+    action: {
+      type: 'approval',
+      message: 'Deploy to production?',
+      risk: 'high',
+      operation: {
+        kind: 'command',
+        command: 'deploy_to_production --environment production',
+        filesTouched: ['applications/chat-room/deployments/production.json'],
+        argsPreview: { environment: 'production', replicas: 3 },
+      },
+      sandbox: {
+        provider: 'Corvidae',
+        name: 'production-release',
+        workingDir: '/workspace/corvidae',
+      },
+      env: ['DEPLOY_TOKEN'],
+      snapshotId: 'snapshot-1',
+      expiresAt: '2999-01-01T00:00:00.000Z',
+      editableArgs: true,
+      policyVersion: 'test-policy',
+      idempotencyKey: 'test-approval',
+    },
+    state: 'pending',
+    resolutionInFlight: false,
     ...overrides,
   };
 }
 
-function approvalAction(message?: string, argsPreview?: JSONValue) {
-  return {
-    type: 'approval' as const,
-    ...(message === undefined ? {} : { message }),
-    risk: 'low' as const,
-    operation: {
-      kind: 'command' as const,
-      command: 'test-command',
-      ...(argsPreview === undefined ? {} : { argsPreview }),
-    },
-    policyVersion: 'test-policy',
-    idempotencyKey: 'tool-approval-test',
-  };
-}
-
-describe('ToolApprovalPart — pending state', () => {
-  test('renders as role="group" (inline item, not a focus-stealing alertdialog)', () => {
-    const { container } = render(ToolApprovalPart, { props: { part: pendingPart() } });
-    const dialog = container.querySelector('[data-cinder-tool-approval]');
-    expect(dialog).not.toBeNull();
-    expect(dialog?.getAttribute('role')).toBe('group');
-    // Must NOT claim alertdialog — that role implies modal/interruption semantics
-    // and would let historical/virtualized pending rows steal focus on render.
-    expect(container.querySelector('[role="alertdialog"]')).toBeNull();
-  });
-
-  test('container is programmatically focusable (tabindex=-1) for reliable Escape', () => {
-    const { container } = render(ToolApprovalPart, { props: { part: pendingPart() } });
-    const dialog = container.querySelector('[data-cinder-tool-approval]');
-    expect(dialog?.getAttribute('tabindex')).toBe('-1');
-  });
-
-  test('Approve button is not autofocused (no focus theft on render)', () => {
-    const { container } = render(ToolApprovalPart, {
-      props: { part: pendingPart(), onapprove: mock(() => {}) },
-    });
-    const approve = container.querySelector('.chat-tool-approval-btn-approve');
-    expect(approve?.hasAttribute('autofocus')).toBe(false);
-  });
-
-  test('renders aria-labelledby pointing to the title element', () => {
-    const { container } = render(ToolApprovalPart, { props: { part: pendingPart() } });
-    const dialog = container.querySelector('[data-cinder-tool-approval]');
-    const labelId = dialog?.getAttribute('aria-labelledby');
-    expect(labelId).toBeTruthy();
-    const labelElement = labelId ? container.querySelector(`#${labelId}`) : null;
-    expect(labelElement).not.toBeNull();
-    expect(labelElement?.textContent).toContain('deploy_to_production');
-  });
-
-  test('renders aria-describedby pointing to the message element', () => {
-    const { container } = render(ToolApprovalPart, { props: { part: pendingPart() } });
-    const dialog = container.querySelector('[data-cinder-tool-approval]');
-    const descId = dialog?.getAttribute('aria-describedby');
-    expect(descId).toBeTruthy();
-    const descElement = descId ? container.querySelector(`#${descId}`) : null;
-    expect(descElement).not.toBeNull();
-    expect(descElement?.textContent).toContain('Deploy to production?');
-  });
-
-  test('renders the tool name in a code element', () => {
-    const { container } = render(ToolApprovalPart, { props: { part: pendingPart() } });
-    const code = container.querySelector('code');
-    expect(code?.textContent).toContain('deploy_to_production');
-  });
-
-  test('renders Approve and Reject buttons when callbacks are provided', () => {
-    const { container } = render(ToolApprovalPart, {
-      props: { part: pendingPart(), onapprove: mock(() => {}), ondeny: mock(() => {}) },
-    });
-    const buttons = container.querySelectorAll('button');
-    const labels = Array.from(buttons).map((button) => button.textContent?.trim());
-    expect(labels).toContain('Approve');
-    expect(labels).toContain('Reject');
-  });
-
-  test('buttons are disabled when no callbacks provided', () => {
-    const { container } = render(ToolApprovalPart, { props: { part: pendingPart() } });
-    const buttons = container.querySelectorAll('button');
-    expect(buttons.length).toBe(2);
-    for (const button of buttons) {
-      expect(button.disabled).toBe(true);
-    }
-  });
-
-  test('has data-cinder-status="pending"', () => {
-    const { container } = render(ToolApprovalPart, { props: { part: pendingPart() } });
-    const dialog = container.querySelector('[data-cinder-tool-approval]');
-    expect(dialog?.getAttribute('data-cinder-status')).toBe('pending');
-  });
-
-  test('shows action message with fallback when none provided', () => {
+describe('ToolApprovalPart', () => {
+  test('maps approval operation directly to the shared Cinder card operation contract', () => {
     const part = pendingPart();
-    // No message set in action — use default fallback
-    part.action = approvalAction();
-    const { container } = render(ToolApprovalPart, { props: { part } });
-    expect(container.textContent).toContain('requires your approval');
-  });
-});
+    const operation: ApprovalCardProps['operation'] = part.action.operation;
 
-describe('ToolApprovalPart — Approve button', () => {
-  test('clicking Approve fires the onapprove callback with the toolCallId', () => {
-    const onapprove = mock((id: string) => id);
-    const { container } = render(ToolApprovalPart, {
-      props: { part: pendingPart(), onapprove, ondeny: mock(() => {}) },
-    });
-    const approveButton = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent?.trim() === 'Approve',
-    );
-    expect(approveButton).not.toBeNull();
-    approveButton && fireEvent.click(approveButton);
+    expect(operation).toBe(part.action.operation);
+  });
+  test('renders the shared Cinder approval card with mapped approval metadata', async () => {
+    const { container, getByRole } = render(ToolApprovalPart, { props: { part: pendingPart() } });
+    const card = container.querySelector('.cinder-approval-card');
+
+    expect(card).not.toBeNull();
+    expect(card?.getAttribute('data-cinder-tool-approval')).toBe('true');
+    expect(card?.getAttribute('data-cinder-state')).toBe('pending');
+    expect(card?.getAttribute('data-cinder-risk')).toBe('high');
+    expect(container.textContent).toContain('deploy_to_production');
+    expect(container.textContent).toContain('deploy_to_production --environment production');
+
+    await fireEvent.click(getByRole('button', { name: 'Details' }));
     flushSync();
-    expect(onapprove).toHaveBeenCalledTimes(1);
-    expect(onapprove).toHaveBeenCalledWith('call-1');
+
+    expect(container.textContent).toContain('DEPLOY_TOKEN');
+    expect(container.textContent).toContain('test-policy');
+    expect(container.textContent).toContain('test-approval');
   });
 
-  test('clicking Approve does NOT fire ondeny', () => {
-    const onapprove = mock(() => {});
-    const ondeny = mock(() => {});
-    const { container } = render(ToolApprovalPart, {
-      props: { part: pendingPart(), onapprove, ondeny },
-    });
-    const approveButton = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent?.trim() === 'Approve',
-    );
-    approveButton && fireEvent.click(approveButton);
-    flushSync();
-    expect(ondeny).toHaveBeenCalledTimes(0);
-  });
-});
-
-describe('ToolApprovalPart — Reject button', () => {
-  test('clicking Reject fires the ondeny callback with the toolCallId', () => {
-    const ondeny = mock((id: string) => id);
-    const { container } = render(ToolApprovalPart, {
-      props: { part: pendingPart(), onapprove: mock(() => {}), ondeny },
-    });
-    const denyButton = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent?.trim() === 'Reject',
-    );
-    expect(denyButton).not.toBeNull();
-    denyButton && fireEvent.click(denyButton);
-    flushSync();
-    expect(ondeny).toHaveBeenCalledTimes(1);
-    expect(ondeny).toHaveBeenCalledWith('call-1');
-  });
-
-  test('clicking Reject does NOT fire onapprove', () => {
-    const onapprove = mock(() => {});
-    const ondeny = mock(() => {});
-    const { container } = render(ToolApprovalPart, {
-      props: { part: pendingPart(), onapprove, ondeny },
-    });
-    const denyButton = Array.from(container.querySelectorAll('button')).find(
-      (button) => button.textContent?.trim() === 'Reject',
-    );
-    denyButton && fireEvent.click(denyButton);
-    flushSync();
-    expect(onapprove).toHaveBeenCalledTimes(0);
-  });
-});
-
-describe('ToolApprovalPart — Escape key', () => {
-  test('pressing Escape fires ondeny when pending', () => {
-    const ondeny = mock((id: string) => id);
-    const { container } = render(ToolApprovalPart, {
-      props: { part: pendingPart(), onapprove: mock(() => {}), ondeny },
-    });
-    const dialog = container.querySelector('[data-cinder-tool-approval]');
-    dialog && fireEvent.keyDown(dialog, { key: 'Escape' });
-    flushSync();
-    expect(ondeny).toHaveBeenCalledTimes(1);
-    expect(ondeny).toHaveBeenCalledWith('call-1');
-  });
-
-  test('pressing Escape does NOT fire ondeny when already approved', () => {
-    const ondeny = mock(() => {});
-    const { container } = render(ToolApprovalPart, {
+  test('approve forwards the exact approval resolution payload', async () => {
+    const resolutions: { toolCallId: string; resolution: ApprovalResolution }[] = [];
+    const { getByRole } = render(ToolApprovalPart, {
       props: {
-        part: pendingPart({ approved: true }),
-        onapprove: mock(() => {}),
-        ondeny,
-      },
-    });
-    const dialog = container.querySelector('[data-cinder-tool-approval]');
-    dialog && fireEvent.keyDown(dialog, { key: 'Escape' });
-    flushSync();
-    expect(ondeny).toHaveBeenCalledTimes(0);
-  });
-
-  test('pressing Escape does NOT fire ondeny when already denied', () => {
-    const ondeny = mock(() => {});
-    const { container } = render(ToolApprovalPart, {
-      props: {
-        part: pendingPart({ approved: false }),
-        onapprove: mock(() => {}),
-        ondeny,
-      },
-    });
-    const dialog = container.querySelector('[data-cinder-tool-approval]');
-    dialog && fireEvent.keyDown(dialog, { key: 'Escape' });
-    flushSync();
-    expect(ondeny).toHaveBeenCalledTimes(0);
-  });
-});
-
-describe('ToolApprovalPart — resolved states', () => {
-  test('approved state: has data-cinder-status="approved" and no buttons', () => {
-    const { container } = render(ToolApprovalPart, {
-      props: { part: pendingPart({ approved: true }) },
-    });
-    const dialog = container.querySelector('[data-cinder-tool-approval]');
-    expect(dialog?.getAttribute('data-cinder-status')).toBe('approved');
-    // No action buttons when resolved
-    expect(container.querySelector('.chat-tool-approval-actions')).toBeNull();
-  });
-
-  test('approved state: title contains "Approved"', () => {
-    const { container } = render(ToolApprovalPart, {
-      props: { part: pendingPart({ approved: true }) },
-    });
-    const title = container.querySelector('[id*="tool-approval-label"]');
-    expect(title?.textContent).toContain('Approved');
-  });
-
-  test('approve button pairs the solid success fill with the success contrast token', async () => {
-    const source = await Bun.file(new URL('./tool-approval-part.svelte', import.meta.url)).text();
-
-    expect(source).toContain('background: var(--cinder-status-success-solid)');
-    expect(source).toContain(
-      'color: var(--cinder-status-success-contrast, var(--cinder-text-default))',
-    );
-    expect(source).not.toContain(
-      'background: var(--cinder-status-success-background, var(--cinder-surface-raised))',
-    );
-    expect(source).not.toContain('--cinder-color-success-contrast');
-  });
-
-  test('denied state: has data-cinder-status="denied" and no buttons', () => {
-    const { container } = render(ToolApprovalPart, {
-      props: { part: pendingPart({ approved: false }) },
-    });
-    const dialog = container.querySelector('[data-cinder-tool-approval]');
-    expect(dialog?.getAttribute('data-cinder-status')).toBe('denied');
-    expect(container.querySelector('.chat-tool-approval-actions')).toBeNull();
-  });
-
-  test('denied state: title contains "Denied"', () => {
-    const { container } = render(ToolApprovalPart, {
-      props: { part: pendingPart({ approved: false }) },
-    });
-    const title = container.querySelector('[id*="tool-approval-label"]');
-    expect(title?.textContent).toContain('Denied');
-  });
-});
-
-describe('ToolApprovalPart — collapsible args', () => {
-  test('renders input action schema when the Parameters disclosure opens', async () => {
-    const part = pendingPart({
-      action: {
-        type: 'input',
-        message: 'Choose a deployment target.',
-        schema: {
-          type: 'object',
-          properties: { target: { type: 'string' } },
-          required: ['target'],
+        part: pendingPart(),
+        onApprovalResolve: (toolCallId, resolution) => {
+          resolutions.push({ toolCallId, resolution });
         },
       },
     });
-    const { container, getByRole } = render(ToolApprovalPart, { props: { part } });
-    const trigger = getByRole('button', { name: 'Expand Parameters' });
-    await fireEvent.click(trigger);
-    expect(container.querySelector('pre')?.textContent).toContain('target');
+
+    await fireEvent.click(getByRole('button', { name: 'Approve' }));
+    flushSync();
+
+    expect(resolutions).toEqual([
+      { toolCallId: 'call-1', resolution: { decision: 'approve', remember: false } },
+    ]);
   });
 
-  test('renders the shared collapsible frame when action.operation.argsPreview is present', async () => {
-    const part = pendingPart({
-      action: approvalAction('Proceed?', { env: 'production' }),
+  test('deny preserves reason and remember in the resolution payload', async () => {
+    const resolutions: { toolCallId: string; resolution: ApprovalResolution }[] = [];
+    const { getByRole, getByLabelText } = render(ToolApprovalPart, {
+      props: {
+        part: pendingPart(),
+        onApprovalResolve: (toolCallId, resolution) => {
+          resolutions.push({ toolCallId, resolution });
+        },
+      },
     });
-    const { container } = render(ToolApprovalPart, { props: { part } });
-    const trigger = Array.from(container.querySelectorAll('button')).find((button) =>
-      button.textContent?.includes('Parameters'),
-    );
-    expect(trigger).not.toBeNull();
-    trigger && (await fireEvent.click(trigger));
-    const pre = container.querySelector('pre');
-    expect(pre?.textContent).toContain('production');
+
+    await fireEvent.input(getByLabelText('Reason'), { target: { value: 'Too risky.' } });
+    await fireEvent.click(getByLabelText("Don't ask again for operations like this"));
+    await fireEvent.click(getByRole('button', { name: 'Deny' }));
+    flushSync();
+
+    expect(resolutions).toEqual([
+      {
+        toolCallId: 'call-1',
+        resolution: { decision: 'deny', reason: 'Too risky.', remember: true },
+      },
+    ]);
   });
 
-  test('does not render a parameters disclosure when action.schema is absent', () => {
-    const { container } = render(ToolApprovalPart, { props: { part: pendingPart() } });
-    expect(container.textContent).not.toContain('Parameters');
+  test('omits approval actions when no resolution callback is available', () => {
+    const { queryByRole } = render(ToolApprovalPart, { props: { part: pendingPart() } });
+
+    expect(queryByRole('group', { name: 'Approval actions' })).toBeNull();
+    expect(queryByRole('button', { name: 'Approve' })).toBeNull();
+    expect(queryByRole('button', { name: 'Deny' })).toBeNull();
+  });
+
+  test('does not steal focus and keeps the card programmatically focusable with an accessible heading', () => {
+    const before = document.createElement('button');
+    before.type = 'button';
+    before.textContent = 'Before approval';
+    document.body.append(before);
+    before.focus();
+
+    const { container, getByRole } = render(ToolApprovalPart, {
+      props: { part: pendingPart(), onApprovalResolve: () => undefined },
+    });
+
+    expect(document.activeElement).toBe(before);
+    const heading = container.querySelector('h4.cinder-approval-card__title');
+    if (!(heading instanceof HTMLElement)) throw new Error('Missing approval card heading');
+    expect(heading.textContent).toContain('deploy_to_production');
+    const card = getByRole('article', { name: 'Approval required for deploy_to_production' });
+    expect(card.getAttribute('aria-labelledby')).toBe(heading.id);
+
+    card.focus();
+    expect(document.activeElement).toBe(card);
+  });
+
+  test('Escape forwards cancel with remember false while pending', async () => {
+    const onApprovalResolve = mock(() => undefined);
+    const { container } = render(ToolApprovalPart, {
+      props: { part: pendingPart(), onApprovalResolve },
+    });
+
+    const card = container.querySelector('[data-cinder-tool-approval]');
+    card && (await fireEvent.keyDown(card, { key: 'Escape' }));
+    flushSync();
+
+    expect(onApprovalResolve).toHaveBeenCalledWith('call-1', {
+      decision: 'cancel',
+      remember: false,
+    });
+  });
+
+  test('does not forward resolutions for in-flight or terminal cards', async () => {
+    const onApprovalResolve = mock(() => undefined);
+    const inFlight = render(ToolApprovalPart, {
+      props: { part: pendingPart({ resolutionInFlight: true }), onApprovalResolve },
+    });
+    expect(inFlight.queryByRole('button', { name: 'Approve' })).toBeNull();
+    inFlight.unmount();
+
+    const terminal = render(ToolApprovalPart, {
+      props: { part: pendingPart({ state: 'approved' }), onApprovalResolve },
+    });
+    expect(terminal.queryByRole('button', { name: 'Approve' })).toBeNull();
+    const card = terminal.container.querySelector('[data-cinder-tool-approval]');
+    card && (await fireEvent.keyDown(card, { key: 'Escape' }));
+    flushSync();
+
+    expect(onApprovalResolve).toHaveBeenCalledTimes(0);
+  });
+
+  test('keeps presentation in Cinder instead of local approval styles', async () => {
+    const source = await Bun.file(new URL('./tool-approval-part.svelte', import.meta.url)).text();
+
+    expect(source).toContain('ApprovalCard');
+    expect(source).not.toContain('<style>');
+    expect(source).not.toContain('.chat-tool-approval');
   });
 });

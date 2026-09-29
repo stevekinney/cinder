@@ -59,10 +59,19 @@
      the compound `.cinder-radio-row.cinder-form-field` selector guarantees
      that regardless of stylesheet load order. FormFieldFrame's fixed render
      order is label, control, description; `order` restores the original
-     control-first visual layout. */
+     control-first visual layout. `flex-direction: row` is explicit here for
+     the same reason: `display: inline-flex` alone does not reset the main
+     axis, so without it the row still inherits FormFieldFrame's column
+     direction and the control renders above the label instead of beside it
+     (COR-452). A described row's `.cinder-radio-row--has-description` rule
+     below switches `display` to `grid`, which makes `flex-direction`
+     inapplicable there — this rule keeps winning on `display` for a described
+     row only because it is declared later at equal specificity, so this
+     addition does not touch that override. */
   .cinder-radio-row,
   .cinder-radio-row.cinder-form-field {
     display: inline-flex;
+    flex-direction: row;
     align-items: center;
     gap: var(--cinder-space-2);
     inline-size: auto;

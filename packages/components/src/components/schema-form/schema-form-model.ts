@@ -3,14 +3,7 @@ export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue
 export type JsonSchemaObject = Record<string, unknown>;
 
 export type SchemaFormFieldKind =
-  | 'string'
-  | 'number'
-  | 'integer'
-  | 'boolean'
-  | 'enum'
-  | 'array'
-  | 'object'
-  | 'json';
+  'string' | 'number' | 'integer' | 'boolean' | 'enum' | 'array' | 'object' | 'json';
 
 export type SchemaFormOption = {
   label: string;

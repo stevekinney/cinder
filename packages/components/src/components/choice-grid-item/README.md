@@ -4,11 +4,7 @@ Selectable answer tile used inside a ChoiceGrid; carries selected, disabled, cor
 
 ## Usage
 
-`ChoiceGridItem` is a compose-only leaf of [`ChoiceGrid`](../choice-grid/README.md).
-The idiomatic API is `ChoiceGrid.Item`, reached through the parent
-namespace — see the [ChoiceGrid README](../choice-grid/README.md#usage) for the
-composed snippet. The flat `@lostgradient/cinder/choice-grid-item` subpath remains exported for
-à-la-carte builds that import the leaf directly.
+`ChoiceGridItem` is a compose-only leaf of [`ChoiceGrid`](../choice-grid/README.md). The idiomatic API is `ChoiceGrid.Item`, reached through the parent namespace — see the [ChoiceGrid README](../choice-grid/README.md#usage) for the composed snippet. The flat `@lostgradient/cinder` subpath remains exported for à-la-carte builds that import the leaf directly.
 
 ## Props
 
@@ -29,7 +25,6 @@ composed snippet. The flat `@lostgradient/cinder/choice-grid-item` subpath remai
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

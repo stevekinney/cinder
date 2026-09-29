@@ -18,10 +18,10 @@
  *      `@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;`
  *      (see {@link LAYER_ORDER_PRELUDE}). The build injects
  *      `import '@lostgradient/cinder/<name>/styles'` into every browser component entry, so a
- *      sidecar can now load BEFORE `@lostgradient/cinder/styles`; the prelude guarantees the
+ *      sidecar can now load BEFORE `@lostgradient/cinder`; the prelude guarantees the
  *      layer order is declared up front rather than inferred from insertion
  *      order (which would silently invert the cascade). Re-declaring the same
- *      order after `@lostgradient/cinder/styles` already ran is a spec no-op.
+ *      order after `@lostgradient/cinder` already ran is a spec no-op.
  *   5. The ONLY at-rules permitted outside the wrapper are the leading prelude,
  *      leading sibling-leaf `@import '../<leaf>/<leaf>.css'` statements, and
  *      private `../_internal/<name>.css` imports from one-level component
@@ -69,7 +69,7 @@ export const COMPONENT_LAYER_NAME = 'cinder.components';
  * of `src/styles/index.css` so `@layer` order is established before any
  * component CSS loads — and now ALSO prepended to every component sidecar so a
  * direct `@lostgradient/cinder/<name>/styles` import (or the build's injected
- * `import '@lostgradient/cinder/<name>/styles'`) that lands BEFORE `@lostgradient/cinder/styles` cannot
+ * `import '@lostgradient/cinder/<name>/styles'`) that lands BEFORE `@lostgradient/cinder` cannot
  * invert the cascade. Re-declaring the same order is a spec no-op when the base
  * already ran, and establishes the correct order when the sidecar loads first.
  */
@@ -370,10 +370,10 @@ export function checkComponentCssSource(
   }
 
   // The `@layer` order-declaration prelude must be the FIRST non-comment node,
-  // so that a sidecar loaded BEFORE `@lostgradient/cinder/styles` still establishes the
+  // so that a sidecar loaded BEFORE `@lostgradient/cinder` still establishes the
   // correct cascade-layer order instead of letting the layers be created in
   // insertion order (which silently inverts cascade priority). Re-declaring the
-  // same order after `@lostgradient/cinder/styles` already ran is a spec no-op. CSS requires
+  // same order after `@lostgradient/cinder` already ran is a spec no-op. CSS requires
   // `@layer` statements (and `@import`) to precede style rules, and permits a
   // `@layer` name-list statement before `@import`, so prelude → imports → block
   // is valid ordering.
@@ -383,7 +383,7 @@ export function checkComponentCssSource(
       file,
       line: target.source?.start?.line ?? 1,
       column: target.source?.start?.column ?? 1,
-      message: `Component CSS sidecar must begin with the cascade-layer order prelude \`${LAYER_ORDER_PRELUDE}\` as its first line, so a sidecar loaded before \`@lostgradient/cinder/styles\` does not invert the cascade. Run \`bun run components:generate\` (or the sidecar-prelude rewrite) to add it.`,
+      message: `Component CSS sidecar must begin with the cascade-layer order prelude \`${LAYER_ORDER_PRELUDE}\` as its first line, so a sidecar loaded before \`@lostgradient/cinder\` does not invert the cascade. Run \`bun run components:generate\` (or the sidecar-prelude rewrite) to add it.`,
     });
   } else if (!isLayerOrderPreludeNode(topLevel[0]!)) {
     const target = topLevel[0]!;

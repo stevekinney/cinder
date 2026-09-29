@@ -1,417 +1,278 @@
 /**
  * Template placeholder domain logic for saved-prompt/template authoring.
  *
- * Pure functions for JSON Schema candidate extraction, {{path}} token parsing,
- * validation against known paths, and deterministic template resolution.
+ * Headless functions for `{{path}}` token parsing, validation against a
+ * declared catalog, and deterministic JSON substitution. Catalog extraction,
+ * the token grammar, the Markdown-aware scanner and the strict-mode error
+ * live in their own modules and are re-exported here as part of this
+ * module's public surface.
  *
- * DEP-582: No ProseMirror or DOM dependencies.
- * DEP-625: For secure markdown rendering with sanitization, use renderTemplate from template-render.ts
+ * This module imports no rendering code. `renderTemplate`, which renders the
+ * filled source to sanitized HTML, lives only in `template-render.ts`.
+ *
+ * @module
  */
 
-import { renderMarkdown } from '../rendering/index.js';
-import { RESERVED_SEGMENTS } from './placeholder-security.js';
+import { normalizePlaceholderDefinitions } from './placeholder-catalog.js';
+import {
+  classifyPath,
+  isPlainObject,
+  readOwn,
+  sortPlaceholderDiagnostics,
+} from './placeholder-definition-data.js';
+import { parseMarkdownPlaceholderTokens } from './placeholder-source-scanner.js';
+import { PlaceholderTemplateError } from './placeholder-template-error.js';
+import {
+  encodeLiteralReplacement,
+  formatPlaceholderValue,
+  lookupPlaceholderValue,
+  matchesPlaceholderTypes,
+} from './placeholder-value-format.js';
 import type {
+  JsonObject,
   PlaceholderCandidate,
+  PlaceholderDiagnostic,
+  PlaceholderResolutionOptions,
   PlaceholderResolutionResult,
   PlaceholderToken,
-  PlaceholderValidationIssue,
-  PlaceholderValidationResult,
-  PlaceholderValueKind,
+  PlaceholderUnresolvedMode,
+  PlaceholderValueMode,
 } from './types.js';
 
-/** Valid placeholder path pattern: dot-separated identifiers starting with letter or underscore */
-const PATH_REGEX = /^[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$/;
+export { normalizePlaceholderDefinitions } from './placeholder-catalog.js';
+export { sortPlaceholderDiagnostics } from './placeholder-definition-data.js';
+export { buildPlaceholderCandidatesFromJsonSchema } from './placeholder-schema-catalog.js';
+export { parseMarkdownPlaceholderTokens } from './placeholder-source-scanner.js';
+export { PlaceholderTemplateError } from './placeholder-template-error.js';
+export { parsePlaceholderTokens, unescapePlaceholderBody } from './placeholder-token-scanner.js';
 
-/** Valid single path segment: one identifier (no dots) */
-const SEGMENT_REGEX = /^[A-Za-z_][A-Za-z0-9_]*$/;
+/** The codes a single token can produce, in precedence order. */
+type TokenDiagnosticCode =
+  | 'malformed_token'
+  | 'invalid_path_format'
+  | 'blocked_path'
+  | 'unknown_placeholder'
+  | 'missing_value'
+  | 'invalid_value'
+  | 'type_mismatch';
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
+/** Token diagnostic messages. Messages describe the problem, never a value. */
+const TOKEN_MESSAGES: Readonly<Record<TokenDiagnosticCode, string>> = {
+  malformed_token:
+    'Placeholder token is unclosed, nested, uses triple braces, or is split by Markdown formatting.',
+  invalid_path_format: 'Placeholder path must be dot-separated ASCII identifiers.',
+  blocked_path: 'Placeholder path contains a reserved segment.',
+  unknown_placeholder: 'Placeholder path is not declared in the placeholder definitions.',
+  missing_value: 'No value was supplied for this placeholder.',
+  invalid_value: 'The value supplied for this placeholder is not plain JSON data.',
+  type_mismatch: 'The value supplied for this placeholder does not match its declared types.',
+};
+
+function tokenIssue(token: PlaceholderToken, code: TokenDiagnosticCode): PlaceholderDiagnostic {
+  return {
+    code,
+    message: TOKEN_MESSAGES[code],
+    ...(token.kind === 'placeholder' ? { path: token.path } : {}),
+    location: { kind: 'token', startOffset: token.startOffset, endOffset: token.endOffset },
+  };
+}
+
+/** The first syntax or catalog check a token fails, or `undefined` when it names a declared path. */
+function catalogProblem(
+  token: PlaceholderToken,
+  declared: ReadonlyMap<string, PlaceholderCandidate>,
+): TokenDiagnosticCode | undefined {
+  if (token.kind === 'malformed') return 'malformed_token';
+  const pathProblem = classifyPath(token.path);
+  if (pathProblem !== undefined) return pathProblem;
+  return declared.has(token.path) ? undefined : 'unknown_placeholder';
+}
+
+function candidateMap(
+  candidates: readonly PlaceholderCandidate[],
+): ReadonlyMap<string, PlaceholderCandidate> {
+  return new Map(candidates.map((candidate) => [candidate.path, candidate]));
 }
 
 /**
- * Validate a single path segment against security rules.
+ * Validate parsed tokens against declared candidates.
  *
- * DEP-625: Central security validation to prevent prototype pollution.
- * - Blocks empty segments (e.g., from "user..name")
- * - Enforces identifier rules (must match SEGMENT_REGEX)
- * - Blocks reserved segments (case-insensitive)
- * - Blocks segments starting with '__' (dunder properties)
+ * Each token gets at most one diagnostic, the first that applies in this
+ * order: `malformed_token`, `invalid_path_format`, `blocked_path`,
+ * `unknown_placeholder`. Value checks (`missing_value`, `invalid_value`,
+ * `type_mismatch`) need supplied values and belong to
+ * {@link resolveTemplatePlaceholders}. Diagnostics carry the token's source
+ * range in a `token` location and are ordered by start offset, then code.
  *
- * Returns true if the segment is blocked (invalid), false if allowed.
- *
- * @internal - Shared by template-placeholders.ts and preview-composer.ts
- */
-export function isBlockedSegment(segment: string): boolean {
-  // Block empty segments (e.g., from "user..name")
-  if (segment === '') {
-    return true;
-  }
-
-  // Enforce identifier rules (must match SEGMENT_REGEX)
-  if (!SEGMENT_REGEX.test(segment)) {
-    return true;
-  }
-
-  // Block reserved segments (case-insensitive)
-  if (RESERVED_SEGMENTS.has(segment.toLowerCase())) {
-    return true;
-  }
-
-  // Block segments starting with '__' (dunder properties)
-  // Note: SEGMENT_REGEX allows '__' prefixes (e.g., '__proto__', '__custom__')
-  // since '_' is a valid identifier character. This check is the only guard
-  // against arbitrary '__'-prefixed segments not in RESERVED_SEGMENTS.
-  if (segment.startsWith('__')) {
-    return true;
-  }
-
-  return false;
-}
-
-/**
- * Map a JSON Schema `type` value to a PlaceholderValueKind.
- * Returns 'unknown' for missing or unsupported type values.
- */
-function mapSchemaTypeToValueKind(type: unknown): PlaceholderValueKind {
-  switch (type) {
-    case 'string':
-      return 'string';
-    case 'number':
-    case 'integer':
-      return 'number';
-    case 'boolean':
-      return 'boolean';
-    case 'array':
-      return 'array';
-    case 'object':
-      return 'object';
-    default:
-      return 'unknown';
-  }
-}
-
-/**
- * Traverse a nested object by dot-separated path segments.
- * Returns undefined if any segment is missing or a non-object intermediate is encountered.
- *
- * DEP-625: Hardened against prototype pollution attacks.
- * - Validates all segments before resolution using isBlockedSegment()
- * - Uses Object.hasOwn() to prevent prototype chain traversal
- *
- * This function enforces the same identifier rules as PATH_REGEX/SEGMENT_REGEX
- * to ensure resolution behavior matches validation/candidate generation.
- */
-function getNestedValue(values: Record<string, unknown>, path: string): unknown {
-  const segments = path.split('.');
-
-  // Validate all segments before resolution (DEP-625)
-  for (const segment of segments) {
-    if (isBlockedSegment(segment)) {
-      return undefined;
-    }
-  }
-
-  // Traverse the path using validated segments
-  let current: unknown = values;
-
-  for (const segment of segments) {
-    if (!isRecord(current)) {
-      return undefined;
-    }
-    // Use Object.hasOwn to avoid traversing the prototype chain. Without this
-    // guard, paths like "constructor" or "toString" resolve to inherited
-    // functions, which JSON.stringify coerces to the literal text "undefined"
-    // instead of the expected empty string.
-    if (!Object.hasOwn(current, segment)) {
-      return undefined;
-    }
-    current = current[segment];
-  }
-
-  return current;
-}
-
-/**
- * Format a value for placeholder replacement using strict coercion rules.
- *
- * - undefined/null → ''
- * - function/symbol → '' (JSON.stringify returns undefined for these types,
- *   which string concatenation coerces to the literal text "undefined")
- * - string → unchanged
- * - number/boolean/bigint → String(value)
- * - array → map items then join(', ')
- * - object → JSON.stringify(value)
- */
-function formatValueForReplacement(value: unknown): string {
-  if (value === undefined || value === null) {
-    return '';
-  }
-
-  // JSON.stringify returns undefined (not a string) for function and symbol
-  // values. String concatenation then coerces that to the literal text
-  // "undefined" rather than the expected empty string.
-  if (typeof value === 'function' || typeof value === 'symbol') {
-    return '';
-  }
-
-  if (typeof value === 'string') {
-    return value;
-  }
-
-  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
-    return String(value);
-  }
-
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => {
-        if (item === null || item === undefined) {
-          return '';
-        }
-        // Mirror the top-level function/symbol guard: JSON.stringify returns
-        // undefined for these types, and String() produces function source code
-        // or "Symbol(...)" — both inconsistent with the documented '' contract.
-        if (typeof item === 'function' || typeof item === 'symbol') {
-          return '';
-        }
-        if (typeof item === 'object') {
-          return JSON.stringify(item);
-        }
-        return String(item);
-      })
-      .join(', ');
-  }
-
-  return JSON.stringify(value);
-}
-
-/**
- * Extract placeholder candidates from a JSON Schema by recursively walking `properties`.
- *
- * For each property:
- * 1. Build the dot-separated path (e.g., "input.x").
- * 2. Determine valueKind from the type field.
- * 3. Extract description (string or undefined).
- * 4. Emit a candidate for the current path.
- * 5. If the property has nested properties, recurse (regardless of explicit type: 'object').
- * 6. Silently ignore $ref, allOf, anyOf, oneOf, if/then/else, patternProperties, additionalProperties.
- *
- * Returns candidates sorted lexicographically by path.
- */
-export function buildPlaceholderCandidatesFromJsonSchema(
-  schema: Record<string, unknown>,
-): PlaceholderCandidate[] {
-  const candidates: PlaceholderCandidate[] = [];
-
-  function walk(properties: Record<string, unknown>, prefix: string): void {
-    for (const key of Object.keys(properties)) {
-      // Skip keys that are not valid identifier segments — paths containing
-      // non-identifier characters (e.g. "first-name", "first.name") cannot
-      // be emitted as candidates because validatePlaceholderTokens would
-      // reject them as invalid_path_format and resolveTemplatePlaceholders
-      // would mis-resolve them by splitting on dots.
-      if (!SEGMENT_REGEX.test(key)) {
-        continue;
-      }
-
-      const property = properties[key];
-
-      if (!isRecord(property)) {
-        continue;
-      }
-
-      const path = prefix ? `${prefix}.${key}` : key;
-      const valueKind = mapSchemaTypeToValueKind(property['type']);
-      const description =
-        typeof property['description'] === 'string' ? property['description'] : undefined;
-
-      candidates.push({ path, description, valueKind });
-
-      // Recurse into nested properties regardless of explicit type: 'object'
-      if (isRecord(property['properties'])) {
-        walk(property['properties'], path);
-      }
-    }
-  }
-
-  if (isRecord(schema['properties'])) {
-    walk(schema['properties'], '');
-  }
-
-  return candidates.toSorted((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
-}
-
-/**
- * Parse all {{...}} tokens from the given text with source offsets.
- *
- * Scans for {{ delimiters and extracts tokens with:
- * - raw: full text including delimiters
- * - path: trimmed body between delimiters
- * - startOffset/endOffset: source positions
- * - closed: whether the token has a closing }}
- *
- * Never throws for any input.
- */
-export function parsePlaceholderTokens(text: string): PlaceholderToken[] {
-  const tokens: PlaceholderToken[] = [];
-  let position = 0;
-
-  while (position < text.length) {
-    const openIndex = text.indexOf('{{', position);
-
-    if (openIndex === -1) {
-      break;
-    }
-
-    const closeIndex = text.indexOf('}}', openIndex + 2);
-
-    if (closeIndex !== -1) {
-      const raw = text.slice(openIndex, closeIndex + 2);
-      const path = raw.slice(2, -2).trim();
-      tokens.push({
-        raw,
-        path,
-        startOffset: openIndex,
-        endOffset: closeIndex + 2,
-        closed: true,
-      });
-      position = closeIndex + 2;
-    } else {
-      const raw = text.slice(openIndex);
-      const path = raw.slice(2).trim();
-      tokens.push({
-        raw,
-        path,
-        startOffset: openIndex,
-        endOffset: text.length,
-        closed: false,
-      });
-      break;
-    }
-  }
-
-  return tokens;
-}
-
-/**
- * Validate parsed tokens against a set of known placeholder candidates.
- *
- * Classifies each token as valid or invalid:
- * - Unclosed tokens → malformed_token
- * - Invalid path format → invalid_path_format
- * - Path not in candidate set → unknown_placeholder
- * - Otherwise → valid
+ * @param tokens - Tokens from {@link parsePlaceholderTokens} or {@link parseMarkdownPlaceholderTokens}.
+ * @param candidates - The declared catalog, normally `normalizePlaceholderDefinitions(...).candidates`.
+ * @returns Ordered token diagnostics; empty when every token names a declared path.
  */
 export function validatePlaceholderTokens(
-  tokens: PlaceholderToken[],
-  candidates: PlaceholderCandidate[],
-): PlaceholderValidationResult {
-  const candidatePaths = new Set(candidates.map((candidate) => candidate.path));
-  const validTokens: PlaceholderToken[] = [];
-  const invalidTokens: PlaceholderToken[] = [];
-  const issues: PlaceholderValidationIssue[] = [];
-
+  tokens: readonly PlaceholderToken[],
+  candidates: readonly PlaceholderCandidate[],
+): readonly PlaceholderDiagnostic[] {
+  const declared = candidateMap(candidates);
+  const issues: PlaceholderDiagnostic[] = [];
   for (const token of tokens) {
-    if (!token.closed) {
-      invalidTokens.push(token);
-      issues.push({ token, reason: 'malformed_token' });
-    } else if (!PATH_REGEX.test(token.path)) {
-      invalidTokens.push(token);
-      issues.push({ token, reason: 'invalid_path_format' });
-    } else if (!candidatePaths.has(token.path)) {
-      invalidTokens.push(token);
-      issues.push({ token, reason: 'unknown_placeholder' });
-    } else {
-      validTokens.push(token);
-    }
+    const problem = catalogProblem(token, declared);
+    if (problem !== undefined) issues.push(tokenIssue(token, problem));
   }
+  return sortPlaceholderDiagnostics(issues);
+}
 
-  return { validTokens, invalidTokens, issues };
+interface ReadOptions {
+  readonly definitions: unknown;
+  readonly valueMode: PlaceholderValueMode;
+  readonly unresolved: PlaceholderUnresolvedMode;
+  readonly issues: readonly PlaceholderDiagnostic[];
+}
+
+/** Stands in for an accessor option so it fails validation without being invoked. */
+const ACCESSOR_OPTION = Symbol('accessor option');
+
+function readOption(options: unknown, key: string): unknown {
+  if (!isPlainObject(options)) return undefined;
+  const read = readOwn(options, key);
+  if (read.status === 'accessor') return ACCESSOR_OPTION;
+  return read.status === 'data' ? read.value : undefined;
+}
+
+/** An absent or explicitly `undefined` option takes its default; `null` stays invalid. */
+function optionOrDefault(value: unknown, fallback: string): unknown {
+  return value === undefined ? fallback : value;
+}
+
+function optionIssue(property: string, message: string): PlaceholderDiagnostic {
+  return { code: 'invalid_option', message, location: { kind: 'configuration', property } };
+}
+
+/** Read and check the options object; invalid mode strings are reported, not guessed. */
+function readResolutionOptions(options: unknown): ReadOptions {
+  const issues: PlaceholderDiagnostic[] = [];
+  const valueMode = optionOrDefault(readOption(options, 'valueMode'), 'text');
+  const unresolved = optionOrDefault(readOption(options, 'unresolved'), 'preserve');
+  if (valueMode !== 'text' && valueMode !== 'markdown') {
+    issues.push(optionIssue('valueMode', 'Option "valueMode" must be "text" or "markdown".'));
+  }
+  if (unresolved !== 'preserve' && unresolved !== 'error') {
+    issues.push(optionIssue('unresolved', 'Option "unresolved" must be "preserve" or "error".'));
+  }
+  return {
+    definitions: readOption(options, 'definitions'),
+    valueMode: valueMode === 'markdown' ? 'markdown' : 'text',
+    unresolved: unresolved === 'error' ? 'error' : 'preserve',
+    issues,
+  };
+}
+
+type TokenResolution =
+  | { readonly status: 'issue'; readonly code: TokenDiagnosticCode }
+  | { readonly status: 'replaced'; readonly text: string };
+
+/** Resolve one token to replacement text, or to its single primary issue. */
+function resolveToken(
+  token: PlaceholderToken,
+  values: object,
+  declared: ReadonlyMap<string, PlaceholderCandidate>,
+  valueMode: PlaceholderValueMode,
+): TokenResolution {
+  const problem = catalogProblem(token, declared);
+  if (problem !== undefined) return { status: 'issue', code: problem };
+  const lookup = lookupPlaceholderValue(values, token.path.split('.'));
+  if (lookup.status === 'missing') return { status: 'issue', code: 'missing_value' };
+  const formatted = lookup.status === 'found' ? formatPlaceholderValue(lookup.value) : undefined;
+  if (lookup.status !== 'found' || formatted === undefined) {
+    return { status: 'issue', code: 'invalid_value' };
+  }
+  if (!matchesPlaceholderTypes(lookup.value, declared.get(token.path)?.types)) {
+    return { status: 'issue', code: 'type_mismatch' };
+  }
+  const raw = formatted.kind === 'string' && valueMode === 'markdown';
+  return {
+    status: 'replaced',
+    text: raw ? formatted.text : encodeLiteralReplacement(formatted.text),
+  };
+}
+
+function finish(
+  text: string,
+  issues: readonly PlaceholderDiagnostic[],
+  unresolved: PlaceholderUnresolvedMode,
+): PlaceholderResolutionResult {
+  const ordered = sortPlaceholderDiagnostics(issues);
+  if (unresolved === 'error' && ordered.length > 0) throw new PlaceholderTemplateError(ordered);
+  return { text, issues: ordered };
 }
 
 /**
- * Resolve all placeholder tokens in the given text by substituting values.
+ * Fill the declared placeholders of a Markdown template with JSON values.
  *
- * Iterates tokens in reverse order to preserve earlier offsets during string splicing.
- * Unclosed tokens are left in the text unmodified.
- * When candidatePaths is provided, unknown paths are reported as issues.
+ * Only paths declared by `options.definitions` are substituted, and only
+ * from own data properties of plain objects: inherited properties, getters,
+ * `toJSON`, reserved segments and undeclared input keys never resolve.
+ * Tokens are found with {@link parseMarkdownPlaceholderTokens}, so code,
+ * math, HTML, URLs, front matter and other excluded contexts stay literal.
+ * The output is assembled once, front to back, from the original source and
+ * the replacements; replacement text is never scanned again.
+ *
+ * Each token gets at most one issue, in this order: `malformed_token`,
+ * `invalid_path_format`, `blocked_path`, `unknown_placeholder`,
+ * `missing_value` (no own property, distinct from `null`), `invalid_value`
+ * (`undefined`, bigint, symbols, functions, non-finite numbers, sparse
+ * arrays, accessors, cycles or non-plain objects in the referenced subtree)
+ * and `type_mismatch` (against declared `types`; `integer` accepts finite
+ * integers only). Invalid `valueMode` or `unresolved` strings
+ * (`invalid_option`), non-plain `values` (`invalid_values`) and any
+ * definitions issue disable fill: the template is returned unchanged with
+ * only those issues.
+ *
+ * Formatting: strings are unchanged; numbers use JSON serialization (`-0`
+ * becomes `0`); booleans and `null` become `true`, `false` and `null`; arrays
+ * and objects become compact JSON with recursively sorted keys. In the
+ * default `text` value mode every replacement is then encoded with decimal
+ * character references except ASCII letters, digits and code points at or
+ * above U+00A0, so it renders as literal text; in `markdown` mode string
+ * values are inserted raw. The result is Markdown source, not safe HTML.
+ *
+ * @param template - The Markdown template source.
+ * @param values - A plain object keyed by the catalog paths' first segments.
+ * @param options - Required `definitions`, plus optional `valueMode` and `unresolved`.
+ * @returns The filled source and ordered diagnostics, in `preserve` mode.
+ * @throws {PlaceholderTemplateError} In `error` mode when there is any issue.
  */
 export function resolveTemplatePlaceholders(
-  text: string,
-  values: Record<string, unknown>,
-  candidatePaths?: string[],
+  template: string,
+  values: JsonObject,
+  options: PlaceholderResolutionOptions,
 ): PlaceholderResolutionResult {
-  const tokens = parsePlaceholderTokens(text);
-  const candidateSet = candidatePaths ? new Set(candidatePaths) : undefined;
-  const issues: PlaceholderValidationIssue[] = [];
-
-  // Iterate in reverse to preserve offsets during splicing. Issues are
-  // collected in reverse traversal order and sorted by startOffset before
-  // return so downstream consumers receive them in forward document order,
-  // consistent with validatePlaceholderTokens.
-  for (let i = tokens.length - 1; i >= 0; i--) {
-    const token = tokens[i];
-    if (!token) continue;
-
-    if (!token.closed) {
-      continue;
-    }
-
-    const value = getNestedValue(values, token.path);
-    const replacement = formatValueForReplacement(value);
-    text = text.slice(0, token.startOffset) + replacement + text.slice(token.endOffset);
-
-    if (candidateSet && !candidateSet.has(token.path) && PATH_REGEX.test(token.path)) {
-      issues.push({ token, reason: 'unknown_placeholder' });
-    }
+  const settings = readResolutionOptions(options);
+  const catalog = normalizePlaceholderDefinitions(settings.definitions);
+  const configurationIssues = [...settings.issues, ...catalog.issues];
+  if (!isPlainObject(values)) {
+    configurationIssues.push({
+      code: 'invalid_values',
+      message: 'Placeholder values must be a plain object.',
+      location: { kind: 'configuration', property: 'values' },
+    });
+  }
+  if (configurationIssues.length > 0 || !catalog.enabled) {
+    return finish(template, configurationIssues, settings.unresolved);
   }
 
-  // Sort issues in forward document order so callers receive a consistent
-  // ordering regardless of whether they came from this function (which
-  // traverses tokens in reverse) or validatePlaceholderTokens (which
-  // traverses forward).
-  const sortedIssues = issues.toSorted((a, b) => a.token.startOffset - b.token.startOffset);
-
-  return { text, issues: sortedIssues };
-}
-
-/**
- * Render a template with placeholder substitution and markdown-to-HTML conversion.
- *
- * DEP-625: This function provides a secure rendering pipeline that:
- * 1. Resolves placeholders using the hardened getNestedValue() (blocks prototype pollution)
- * 2. Converts markdown to HTML using @lostgradient/markdown's sanitized pipeline
- * 3. Sanitizes output via rehype-sanitize (blocks XSS attacks)
- *
- * Security guarantees:
- * - Prototype pollution prevented via reserved segment blocking in getNestedValue()
- * - XSS prevented via markdown pipeline's raw HTML removal and rehype-sanitize
- * - Script tags, event handlers, and dangerous URLs are stripped
- * - Only safe HTML tags and attributes are allowed
- *
- * @param template - Template string with {{placeholder}} tokens
- * @param values - Data object for placeholder resolution
- * @returns Sanitized HTML string safe for rendering
- *
- * @example
- * ```typescript
- * const html = renderTemplate('# Hello {{name}}', { name: 'World' });
- * // Returns: '<h1>Hello World</h1>'
- *
- * const xss = renderTemplate('<script>alert(1)</script>{{user}}', { user: 'Alice' });
- * // Returns: 'Alice' (script tag removed by markdown pipeline)
- * ```
- */
-export function renderTemplate(template: string, values: Record<string, unknown>): string {
-  // Resolve placeholders using the hardened path resolution from Phase 1
-  const { text } = resolveTemplatePlaceholders(template, values);
-
-  // Render markdown to sanitized HTML using the secure pipeline. The sync
-  // entry point intentionally does not handle KaTeX math — templates use
-  // Markdown for formatting but never LaTeX, and avoiding the math pipeline
-  // here keeps the editor bundle from pulling katex (~200 KB).
-  const result = renderMarkdown(text);
-
-  return result.html;
+  const declared = candidateMap(catalog.candidates);
+  const issues: PlaceholderDiagnostic[] = [];
+  const parts: string[] = [];
+  let position = 0;
+  for (const token of parseMarkdownPlaceholderTokens(template)) {
+    const resolution = resolveToken(token, values, declared, settings.valueMode);
+    if (resolution.status === 'issue') {
+      issues.push(tokenIssue(token, resolution.code));
+      continue;
+    }
+    parts.push(template.slice(position, token.startOffset), resolution.text);
+    position = token.endOffset;
+  }
+  parts.push(template.slice(position));
+  return finish(parts.join(''), issues, settings.unresolved);
 }

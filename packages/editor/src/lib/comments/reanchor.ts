@@ -171,47 +171,8 @@ export function fuzzyReanchor(documentText: string, anchor: ReanchorInput): Rean
 
   // Try to find the junction point using prefix + suffix
   if (prefix.length > 0 && suffix.length > 0) {
-    // Search for prefix ending + suffix beginning near reference position
-    const searchRadius = 500; // Characters to search around reference
-    const searchStart = Math.max(0, (referenceOffset ?? 0) - searchRadius);
-    const searchEnd = Math.min(
-      documentText.length,
-      (referenceOffset ?? documentText.length) + searchRadius,
-    );
-    const searchText = documentText.slice(searchStart, searchEnd);
-
-    // Look for prefix ending
-    const prefixEnd = prefix.slice(-20); // Last 20 chars of prefix
-    const suffixStart = suffix.slice(0, 20); // First 20 chars of suffix
-
-    let bestPos = -1;
-    let bestScore = 0;
-
-    // Slide through search region looking for best match
-    for (let i = 0; i < searchText.length - 1; i++) {
-      const beforeSlice = searchText.slice(Math.max(0, i - prefixEnd.length), i);
-      const afterSlice = searchText.slice(i, i + suffixStart.length);
-
-      const beforeScore = lcsRatio(beforeSlice, prefixEnd);
-      const afterScore = lcsRatio(afterSlice, suffixStart);
-      const score = (beforeScore + afterScore) / 2;
-
-      if (score > bestScore) {
-        bestScore = score;
-        bestPos = searchStart + i;
-      }
-    }
-
-    if (bestScore >= 0.5) {
-      // Found a reasonable junction point where the text was deleted
-      // Return not found - the thread will be auto-deleted
-      return {
-        found: false,
-        from: bestPos,
-        to: bestPos,
-        confidence: bestScore,
-      };
-    }
+    const junction = findFuzzyJunction(documentText, prefix, suffix, referenceOffset);
+    if (junction) return junction;
   }
 
   // Couldn't find anything - completely gone
@@ -220,6 +181,47 @@ export function fuzzyReanchor(documentText: string, anchor: ReanchorInput): Rean
     from: referenceOffset ?? 0,
     to: referenceOffset ?? 0,
     confidence: 0,
+  };
+}
+
+/** Score possible junctions where the original quote was deleted. */
+function findFuzzyJunction(
+  documentText: string,
+  prefix: string,
+  suffix: string,
+  referenceOffset: number | undefined,
+): ReanchorResult | undefined {
+  const searchRadius = 500;
+  const searchStart = Math.max(0, (referenceOffset ?? 0) - searchRadius);
+  const searchEnd = Math.min(
+    documentText.length,
+    (referenceOffset ?? documentText.length) + searchRadius,
+  );
+  const searchText = documentText.slice(searchStart, searchEnd);
+  const prefixEnd = prefix.slice(-20);
+  const suffixStart = suffix.slice(0, 20);
+
+  let bestPosition = -1;
+  let bestScore = 0;
+  for (let index = 0; index < searchText.length - 1; index++) {
+    const beforeSlice = searchText.slice(Math.max(0, index - prefixEnd.length), index);
+    const afterSlice = searchText.slice(index, index + suffixStart.length);
+    const beforeScore = lcsRatio(beforeSlice, prefixEnd);
+    const afterScore = lcsRatio(afterSlice, suffixStart);
+    const score = (beforeScore + afterScore) / 2;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestPosition = searchStart + index;
+    }
+  }
+
+  if (bestScore < 0.5) return undefined;
+  return {
+    found: false,
+    from: bestPosition,
+    to: bestPosition,
+    confidence: bestScore,
   };
 }
 

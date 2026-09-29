@@ -8,8 +8,8 @@ See the [chronological display boundary decision](https://github.com/stevekinney
 
 ```svelte
 <script lang="ts">
-  import Timeline from '@lostgradient/cinder/timeline';
-  import type { TimelineEntry } from '@lostgradient/cinder/timeline';
+  import { Timeline } from '@lostgradient/cinder';
+  import type { TimelineEntry } from '@lostgradient/cinder';
 
   const entries: TimelineEntry[] = [
     {
@@ -62,7 +62,6 @@ Marker snippets are decorative. Do not place focusable or interactive content in
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents
@@ -70,4 +69,5 @@ This component does not declare any local CSS variables.
 <!-- generated:subcomponents:start -->
 
 - `TimelineItem` — one event entry on the rail.
+
 <!-- generated:subcomponents:end -->

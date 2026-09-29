@@ -45,7 +45,9 @@ export function normalizeStickyIndexes(
     validIndexes.add(candidate);
   }
 
-  return Array.from(validIndexes).sort((leftIndex, rightIndex) => leftIndex - rightIndex);
+  const sortedIndexes = Array.from(validIndexes);
+  sortedIndexes.sort((leftIndex, rightIndex) => leftIndex - rightIndex);
+  return sortedIndexes;
 }
 
 /**

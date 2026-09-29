@@ -24,22 +24,9 @@ Beyond ARIA, parse errors also participate in HTML constraint validation. The co
 
 ## The picker trigger and swatch
 
-The trailing surface is an accessible native `<button>`. Its visual swatch
-remains a nested `<span aria-hidden="true">`, and the adjacent pipette icon is
-also decorative — neither is independently reachable or announced; the button
-itself is the sole operable surface and the sole thing assistive technology
-sees. Because it's a real `<button>`, standard button semantics apply for
-free: it is `Tab`-reachable, both `Enter` and `Space` activate it, and it is
-excluded from the tab order and from `aria-label` announcement while
-`disabled` or `readonly`.
+The trailing surface is an accessible native `<button>`. Its visual swatch remains a nested `<span aria-hidden="true">`, and the adjacent pipette icon is also decorative — neither is independently reachable or announced; the button itself is the sole operable surface and the sole thing assistive technology sees. Because it's a real `<button>`, standard button semantics apply for free: it is `Tab`-reachable, both `Enter` and `Space` activate it, and it is excluded from the tab order and from `aria-label` announcement while `disabled` or `readonly`.
 
-The accessible name is computed, not static, so it conveys both purpose and
-current state: `"Choose a color, current color #ff0000"` once a value is
-committed, or `"Choose a color, no color selected"` before anything has been
-committed. The name recomputes from `committedHex` — the same source the
-visible swatch color reads from — so an uncommitted in-progress keystroke
-draft never leaks into the announced name, matching the swatch's own
-commit-only color policy described below.
+The accessible name is computed, not static, so it conveys both purpose and current state: `"Choose a color, current color #ff0000"` once a value is committed, or `"Choose a color, no color selected"` before anything has been committed. The name recomputes from `committedHex` — the same source the visible swatch color reads from — so an uncommitted in-progress keystroke draft never leaks into the announced name, matching the swatch's own commit-only color policy described below.
 
 ### Keyboard matrix
 
@@ -51,30 +38,13 @@ commit-only color policy described below.
 | Arrow keys / `Home` / `End` | Focus inside a ColorPicker slider | Adjusts that channel; commits via `onValueCommit` on each change; Popover stays open (see `color-picker.a11y.md`) |
 | `Tab`                       | Trigger button focused            | Moves to the next focusable element (the picker is closed; this control never traps focus while inactive)         |
 
-Activating the button opens a labeled Popover containing ColorPicker. Popover
-moves focus into the picker, Escape and outside activation dismiss it, and
-focus returns to the trigger — all handled by the shared Popover primitive
-(`focusManagement="panel"`), not reimplemented here. The trigger is disabled
-whenever ColorField is disabled or read-only; an already-open ColorPicker
-receives that same disabled state so pointer and keyboard commits cannot
-change the field.
+Activating the button opens a labeled Popover containing ColorPicker. Popover moves focus into the picker, Escape and outside activation dismiss it, and focus returns to the trigger — all handled by the shared Popover primitive (`focusManagement="panel"`), not reimplemented here. The trigger is disabled whenever ColorField is disabled or read-only; an already-open ColorPicker receives that same disabled state so pointer and keyboard commits cannot change the field.
 
-The swatch color comes from `committedHex`, not visible uncommitted text. A user
-can type `not-a-color`, and the swatch keeps the previous committed color (or its
-empty treatment); arbitrary input is never painted into the CSS variable. Picker
-pointer and keyboard adjustments keep the Popover open, while choosing an
-explicit preset swatch commits and closes it. ColorPicker owns its slider roles,
-keyboard matrix, and value announcements as documented in `color-picker.a11y.md`.
+The swatch color comes from `committedHex`, not visible uncommitted text. A user can type `not-a-color`, and the swatch keeps the previous committed color (or its empty treatment); arbitrary input is never painted into the CSS variable. Picker pointer and keyboard adjustments keep the Popover open, while choosing an explicit preset swatch commits and closes it. ColorPicker owns its slider roles, keyboard matrix, and value announcements as documented in `color-picker.a11y.md`.
 
 ## Picker interaction review outcome
 
-The composed interaction was reviewed against standalone ColorPicker and the
-previous text-only ColorField. Standalone ColorPicker remains the neighbour for a
-large visual discovery surface; ColorField remains justified as a compact form
-control that combines exact text entry with optional visual selection. The review
-accepted Button + Popover + ColorPicker composition with the focus, dismissal,
-commit, disabled/read-only, and announcement behavior recorded above and covered
-by component and browser tests.
+The composed interaction was reviewed against standalone ColorPicker and the previous text-only ColorField. Standalone ColorPicker remains the neighbour for a large visual discovery surface; ColorField remains justified as a compact form control that combines exact text entry with optional visual selection. The review accepted Button + Popover + ColorPicker composition with the focus, dismissal, commit, disabled/read-only, and announcement behavior recorded above and covered by component and browser tests.
 
 ## Enter key behavior — and why it's explicit
 
@@ -100,6 +70,4 @@ In Windows High Contrast / forced-colors mode the swatch still renders as a smal
 
 ## Pairing recommendation
 
-For forms that need a permanently visible discovery surface, use standalone
-`color-picker.svelte` alongside or instead of ColorField. The field's own trailing
-trigger already provides a compact picker for ordinary precision-entry forms.
+For forms that need a permanently visible discovery surface, use standalone `color-picker.svelte` alongside or instead of ColorField. The field's own trailing trigger already provides a compact picker for ordinary precision-entry forms.

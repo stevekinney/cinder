@@ -1,5 +1,5 @@
 /**
- * Builds and writes `packages/components/components.json`, the machine-readable
+ * Builds and writes `components/cinder/components.json`, the machine-readable
  * index of every public cinder component.
  *
  * Usage:
@@ -9,12 +9,10 @@
  * The generator fails loudly when `extractAllComponentMetadata()` returns any
  * errors — a partial manifest is never written to disk.
  *
- * `hasExamples` and `hasConstraints` are derived from the GENERATED JSON
- * artifacts on disk, not from the source. Run `bun run examples:generate`
- * and `bun run constraints:generate` first, or use the orchestrator
- * (`bun run components:generate`) which sequences them correctly. Without
- * the artifacts, the manifest will report `hasExamples: false` /
- * `hasConstraints: false` for components that have source-only data.
+ * `hasExamples` and `hasConstraints` are derived from the committed JSON
+ * artifacts on disk. Use the orchestrator (`bun run components:generate`)
+ * after changing component metadata or constraints so the manifest observes
+ * the current artifact set.
  */
 
 import { existsSync } from 'node:fs';
@@ -47,8 +45,7 @@ export type ManifestComponent = {
   /** Kebab-case canonical identifier, matching the component directory name. */
   id: string;
   /**
-   * Import specifier consumers use. E.g. `"@lostgradient/cinder/button"`.
-   * Experimental components use `"@lostgradient/cinder/experimental/{id}"`.
+   * Import specifier consumers use. E.g. `"@lostgradient/cinder"`.
    */
   import: string;
   /** PascalCase named export the component ships under. */
@@ -71,15 +68,15 @@ export type ManifestComponent = {
   a11y?: A11yMetadata;
   /**
    * True when the component directory contains a `{id}.constraints.ts` file.
-   * The constraints sidecar is published at `@lostgradient/cinder/{id}/constraints`.
+   * The constraints sidecar is read by local component tooling.
    */
   hasConstraints: boolean;
   /**
-   * True when the playground has at least one `.example.svelte` file for this
-   * component. The examples sidecar is published at `@lostgradient/cinder/{id}/examples`.
+   * True when the component has a committed examples sidecar. The sidecar is
+   * read by local component tooling.
    */
   hasExamples: boolean;
-  /** Subpath import specifiers for the machine-readable artifacts. */
+  /** Package-relative paths for local machine-readable artifacts. */
   artifacts: {
     schema: string;
     variables: string;
@@ -95,7 +92,6 @@ export type Manifest = {
   manifestVersion: 1;
   package: {
     name: string;
-    version: string;
     framework: 'svelte';
     frameworkVersionRange: string;
     classPrefix: string;
@@ -136,19 +132,9 @@ function kebabToPascal(id: string): string {
 }
 
 /**
- * Determine the `import` specifier for a component.
- * Experimental components use the `@lostgradient/cinder/experimental/{id}` subpath,
- * matching what `generate-exports.ts` emits for `./experimental/{name}`.
- */
-function importSpecifier(id: string, isExperimental: boolean): string {
-  return isExperimental ? `@lostgradient/cinder/experimental/${id}` : `@lostgradient/cinder/${id}`;
-}
-
-/**
- * Check whether the generated examples artifact exists on disk for a
- * component. We base the manifest flag on the artifact's presence — not the
- * playground source — so the manifest cannot advertise a subpath that won't
- * resolve. Run `bun run examples:generate` before `manifest:generate`.
+ * Check whether the committed examples artifact exists on disk for a
+ * component. We base the manifest flag on the artifact's presence so the
+ * manifest cannot advertise an artifact that is absent from the package.
  */
 function hasExamplesArtifact(id: string, isExperimental: boolean): boolean {
   const componentDir = isExperimental
@@ -169,25 +155,15 @@ function hasConstraintsArtifact(id: string, isExperimental: boolean): boolean {
   return existsSync(join(componentDir, `${id}.constraints.json`));
 }
 
-/**
- * Derive the artifact subpath prefix. Per the plan, artifact subpaths do NOT
- * include the `experimental/` prefix — they use the same flat `@lostgradient/cinder/{id}/…`
- * pattern regardless of whether the component is experimental.
- *
- * This matches how `generate-exports.ts` computes the `schema` and `variables`
- * subpaths for experimental components: it uses `./experimental/{name}/schema`
- * in `package.json#exports` but the consumer-facing import remains
- * `@lostgradient/cinder/experimental/{name}/schema`. We follow that same pattern here.
- */
-function artifactSubpath(id: string, isExperimental: boolean, suffix: string): string {
-  const prefix = isExperimental
-    ? `@lostgradient/cinder/experimental/${id}`
-    : `@lostgradient/cinder/${id}`;
-  return `${prefix}/${suffix}`;
+/** Paths are local tooling artifacts, independent of the public package entry. */
+function artifactPath(id: string, isExperimental: boolean, suffix: string): string {
+  const directory = isExperimental ? `experimental/${id}` : id;
+  const filename = suffix === 'enhancement' ? `${id}-enhancement.ts` : `${id}.${suffix}.json`;
+  return `src/components/${directory}/${filename}`;
 }
 
 /** Return the manifest subpath when this component owns a runtime enhancement. */
-export function enhancementArtifactSubpath(
+export function enhancementArtifactPath(
   id: string,
   isExperimental: boolean,
   componentsRoot: string = COMPONENTS_ROOT,
@@ -196,7 +172,7 @@ export function enhancementArtifactSubpath(
     [{ name: id, isExperimental }],
     componentsRoot,
   )[0];
-  return enhancement === undefined ? undefined : artifactSubpath(id, isExperimental, 'enhancement');
+  return enhancement === undefined ? undefined : artifactPath(id, isExperimental, 'enhancement');
 }
 
 // ---------------------------------------------------------------------------
@@ -274,37 +250,31 @@ export async function buildManifest(): Promise<Manifest> {
     throw new Error(formatExtractionErrorMessage(errors));
   }
 
-  // 2. Read version and frameworkVersionRange from package.json.
-  const packageJsonPath = join(PACKAGE_ROOT, 'package.json');
-  const packageJson = await readJsonFile<{
-    name: string;
-    version: string;
-    peerDependencies?: Record<string, string>;
-  }>(packageJsonPath);
-
-  const version = packageJson.version;
-  const frameworkVersionRange = packageJson.peerDependencies?.['svelte'] ?? '>=5.0.0';
+  // The internal library uses the same framework version as the root catalog.
+  const rootPackage = await readJsonFile<{ catalog: { svelte: string } }>(
+    join(PACKAGE_ROOT, '..', '..', 'package.json'),
+  );
+  const frameworkVersionRange = rootPackage.catalog.svelte;
 
   // 3. Build per-component entries in parallel.
   const componentEntries = await Promise.all(
     metadata.map(async (meta: ComponentMetadata): Promise<ManifestComponent> => {
       const exportName = kebabToPascal(meta.id);
-      const importPath = importSpecifier(meta.id, meta.isExperimental);
       const hasExamplesFlag = hasExamplesArtifact(meta.id, meta.isExperimental);
       const hasConstraintsFlag = hasConstraintsArtifact(meta.id, meta.isExperimental);
 
       const artifacts: ManifestComponent['artifacts'] = {
-        schema: artifactSubpath(meta.id, meta.isExperimental, 'schema'),
-        variables: artifactSubpath(meta.id, meta.isExperimental, 'variables'),
+        schema: artifactPath(meta.id, meta.isExperimental, 'schema'),
+        variables: artifactPath(meta.id, meta.isExperimental, 'variables'),
       };
 
       if (hasExamplesFlag) {
-        artifacts.examples = artifactSubpath(meta.id, meta.isExperimental, 'examples');
+        artifacts.examples = artifactPath(meta.id, meta.isExperimental, 'examples');
       }
       if (hasConstraintsFlag) {
-        artifacts.constraints = artifactSubpath(meta.id, meta.isExperimental, 'constraints');
+        artifacts.constraints = artifactPath(meta.id, meta.isExperimental, 'constraints');
       }
-      const enhancementArtifact = enhancementArtifactSubpath(meta.id, meta.isExperimental);
+      const enhancementArtifact = enhancementArtifactPath(meta.id, meta.isExperimental);
       if (enhancementArtifact !== undefined) {
         artifacts.enhancement = enhancementArtifact;
       }
@@ -312,7 +282,7 @@ export async function buildManifest(): Promise<Manifest> {
       return {
         name: exportName,
         id: meta.id,
-        import: importPath,
+        import: '@lostgradient/cinder',
         exportName,
         category: meta.category,
         status: meta.status,
@@ -330,7 +300,7 @@ export async function buildManifest(): Promise<Manifest> {
   );
 
   // 4. The metadata is already sorted stable-first, experimental-last,
-  //    alphabetical within each group (matching discoverDirectoryComponents).
+  //    alphabetical within each group (matching discoverComponents).
   //    No re-sorting needed here — extractAllComponentMetadata preserves the
   //    discover order modulo the stable/experimental split.
 
@@ -348,7 +318,6 @@ export async function buildManifest(): Promise<Manifest> {
     manifestVersion: 1,
     package: {
       name: '@lostgradient/cinder',
-      version,
       framework: 'svelte',
       frameworkVersionRange,
       classPrefix: 'cinder-',
@@ -358,7 +327,7 @@ export async function buildManifest(): Promise<Manifest> {
       // `color` -- a namespace CIN-33 deleted -- alongside names that had
       // drifted from the corpus.
       tokenNamespaces: readTokenNamespaces(),
-      stylesEntry: '@lostgradient/cinder/styles',
+      stylesEntry: '@lostgradient/cinder',
       schemaDialect: 'https://json-schema.org/draft/2020-12/schema',
     },
     categories,
@@ -397,7 +366,7 @@ async function formatJson(content: string, filepath: string): Promise<string> {
 }
 
 /**
- * Build the manifest and write it to `packages/components/components.json`.
+ * Build the manifest and write it to `components/cinder/components.json`.
  * Throws if extraction errors exist (never writes a partial manifest).
  */
 export async function writeManifest(): Promise<void> {
@@ -409,6 +378,27 @@ export async function writeManifest(): Promise<void> {
 // ---------------------------------------------------------------------------
 // CLI entry point
 // ---------------------------------------------------------------------------
+
+function reportManifestDiff(committed: string, generated: string): void {
+  const committedLines = committed.split('\n');
+  const generatedLines = generated.split('\n');
+  const maxLines = Math.max(committedLines.length, generatedLines.length);
+
+  let diffLines = 0;
+  for (let i = 0; i < maxLines && diffLines < 40; i++) {
+    const committed_line = committedLines[i] ?? '';
+    const generated_line = generatedLines[i] ?? '';
+    if (committed_line !== generated_line) {
+      process.stderr.write(`- ${committed_line}\n`);
+      process.stderr.write(`+ ${generated_line}\n`);
+      diffLines++;
+    }
+  }
+
+  if (diffLines >= 40) {
+    process.stderr.write('... (diff truncated — run manifest:generate to see full changes)\n');
+  }
+}
 
 async function main(): Promise<void> {
   const checkMode = process.argv.includes('--check');
@@ -445,24 +435,7 @@ async function main(): Promise<void> {
       'manifest:check — drift detected. Run `bun run manifest:generate` to fix:\n\n',
     );
 
-    const committedLines = committed.split('\n');
-    const generatedLines = generated.split('\n');
-    const maxLines = Math.max(committedLines.length, generatedLines.length);
-
-    let diffLines = 0;
-    for (let i = 0; i < maxLines && diffLines < 40; i++) {
-      const committed_line = committedLines[i] ?? '';
-      const generated_line = generatedLines[i] ?? '';
-      if (committed_line !== generated_line) {
-        process.stderr.write(`- ${committed_line}\n`);
-        process.stderr.write(`+ ${generated_line}\n`);
-        diffLines++;
-      }
-    }
-
-    if (diffLines >= 40) {
-      process.stderr.write('... (diff truncated — run manifest:generate to see full changes)\n');
-    }
+    reportManifestDiff(committed, generated);
 
     process.exit(1);
   }

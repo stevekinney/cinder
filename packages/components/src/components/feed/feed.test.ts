@@ -2,7 +2,7 @@
 import { describe, expect, test } from 'bun:test';
 import { createRawSnippet, tick } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -265,7 +265,10 @@ describe('Feed log arm', () => {
     const { container } = render(Feed, {
       props: { ...logProps, following: true },
     });
-    const viewport = container.querySelector('.cinder-feed-log__viewport') as HTMLElement;
+    const viewport = requiredInstance(
+      container.querySelector('.cinder-feed-log__viewport'),
+      HTMLElement,
+    );
     expect(viewport).not.toBeNull();
 
     // Simulate scrolled-away-from-bottom geometry.
@@ -293,7 +296,10 @@ describe('Feed log arm', () => {
         },
       },
     });
-    const viewport = container.querySelector('.cinder-feed-log__viewport') as HTMLElement;
+    const viewport = requiredInstance(
+      container.querySelector('.cinder-feed-log__viewport'),
+      HTMLElement,
+    );
     Object.defineProperty(viewport, 'scrollHeight', { value: 400, configurable: true });
     Object.defineProperty(viewport, 'clientHeight', { value: 100, configurable: true });
     viewport.scrollTop = 0;
@@ -315,7 +321,10 @@ describe('Feed log arm', () => {
         },
       },
     });
-    const viewport = container.querySelector('.cinder-feed-log__viewport') as HTMLElement;
+    const viewport = requiredInstance(
+      container.querySelector('.cinder-feed-log__viewport'),
+      HTMLElement,
+    );
 
     Object.defineProperty(viewport, 'scrollHeight', { value: 400, configurable: true });
     Object.defineProperty(viewport, 'clientHeight', { value: 100, configurable: true });
@@ -338,11 +347,17 @@ describe('Feed log arm', () => {
         },
       },
     });
-    const viewport = container.querySelector('.cinder-feed-log__viewport') as HTMLElement;
+    const viewport = requiredInstance(
+      container.querySelector('.cinder-feed-log__viewport'),
+      HTMLElement,
+    );
     Object.defineProperty(viewport, 'scrollHeight', { value: 400, configurable: true });
     Object.defineProperty(viewport, 'clientHeight', { value: 100, configurable: true });
 
-    const resume = container.querySelector('.cinder-feed-log__resume-button') as HTMLButtonElement;
+    const resume = requiredInstance(
+      container.querySelector('.cinder-feed-log__resume-button'),
+      HTMLButtonElement,
+    );
     expect(resume).not.toBeNull();
     await fireEvent.click(resume);
 

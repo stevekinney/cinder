@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -45,6 +45,17 @@ describe('ReviewEditorControls — comments toggle identity', () => {
     });
     const button = container.querySelector('button[aria-controls="test-editor-sidebar"]');
     expect(button?.getAttribute('id')).toBe('test-editor-sidebar-toggle');
+  });
+});
+
+describe('ReviewEditorControls — single-view accessibility', () => {
+  test('does not render a tablist or lone Editor tab when diff tabs are unavailable', () => {
+    const { container } = render(ReviewEditorControls, {
+      props: { ...BASE_PROPS, showDiffTabs: false },
+    });
+
+    expect(container.querySelector('[role="tablist"]')).toBeNull();
+    expect(container.querySelector('[role="tab"]')).toBeNull();
   });
 });
 

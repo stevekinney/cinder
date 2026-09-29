@@ -6,7 +6,7 @@ Shared locale and text-direction context for locale-aware descendants.
 
 ```svelte
 <script lang="ts">
-  import LocaleProvider from '@lostgradient/cinder/locale-provider';
+  import { LocaleProvider } from '@lostgradient/cinder';
 </script>
 
 <LocaleProvider locale="de-DE">
@@ -31,7 +31,6 @@ Shared locale and text-direction context for locale-aware descendants.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

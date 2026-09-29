@@ -12,6 +12,21 @@ const schema = {
       type: 'string',
       description: 'Visible text content of the chip.',
     },
+    pressed: {
+      type: 'boolean',
+      description:
+        'Toggle mode only. Whether the chip is currently in the pressed (selected) state. Reflected as `aria-pressed`.',
+    },
+    disabled: {
+      type: 'boolean',
+      description:
+        'Toggle mode only. When true, disables the toggle button and prevents interaction.',
+    },
+    removeAriaLabel: {
+      type: 'string',
+      description:
+        "Removable mode only. Accessible label for the remove button. Defaults to `Remove` followed by the chip's `label`.",
+    },
     variant: {
       enum: ['neutral', 'success', 'warning', 'danger', 'info', 'accent'],
       description: 'Color variant applied to the chip. Default `"neutral"`.',
@@ -36,21 +51,6 @@ const schema = {
     class: {
       type: 'string',
       description: 'Additional class names merged onto the chip element.',
-    },
-    pressed: {
-      type: 'boolean',
-      description:
-        'Toggle mode only. Whether the chip is currently in the pressed (selected) state. Reflected as `aria-pressed`.',
-    },
-    disabled: {
-      type: 'boolean',
-      description:
-        'Toggle mode only. When true, disables the toggle button and prevents interaction.',
-    },
-    removeAriaLabel: {
-      type: 'string',
-      description:
-        "Removable mode only. Accessible label for the remove button. Defaults to `Remove` followed by the chip's `label`.",
     },
   },
   additionalProperties: false,

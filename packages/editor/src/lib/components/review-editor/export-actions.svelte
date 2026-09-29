@@ -19,18 +19,18 @@
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
   import { createCopyState } from '../../utilities/use-copy-state.svelte.ts';
-  import Dropdown from '@lostgradient/cinder/dropdown';
-  import DropdownItem from '@lostgradient/cinder/dropdown-item';
-  import DropdownMenu from '@lostgradient/cinder/dropdown-menu';
-  import DropdownTrigger from '@lostgradient/cinder/dropdown-trigger';
   import {
+    Dropdown,
+    DropdownItem,
+    DropdownMenu,
+    DropdownTrigger,
     Check,
     Copy,
     FileCode,
     FileText,
     GitBranch,
     MessageSquare,
-  } from '@lostgradient/cinder/icons';
+  } from '@lostgradient/cinder';
 
   let {
     id,

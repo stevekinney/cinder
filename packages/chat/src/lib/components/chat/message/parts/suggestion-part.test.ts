@@ -1,30 +1,10 @@
-/**
- * Tests for suggestion-part.svelte (C5).
- *
- * Covers:
- *   1. Renders as a <button type="button">.
- *   2. Button text is the suggestion label.
- *   3. Clicking calls onSuggestionSelect(label).
- *   4. Enter/Space activate the button (native button behaviour — implicit).
- *   5. data-cinder-suggestion attribute is present.
- *   6. Long labels are rendered (text-overflow is CSS-only; label is accessible).
- *   7. onSuggestionSelect is optional — no callback = no error on click.
- *   8. deriveMessageParts with suggestions produces suggestion parts in order after markdown.
- *   9. Empty suggestions array produces no suggestion parts (compatible path).
- *  10. Absent suggestions context produces no suggestion parts (compatible path).
- *  11. toRenderUnits groups consecutive suggestion parts into a single 'suggestions' unit.
- *  12. Plain conversationalist transcript (no suggestions) renders no suggestion UI.
- *  13. Renderer renders a suggestions toolbar when suggestion parts are present.
- *  14. Toolbar has role="toolbar" and aria-label="Suggested replies".
- *  15. Each chip is a button inside the toolbar.
- *  16. Stable key identity — each suggestion part has a unique key based on message id + index.
- */
+/** Unit and derivation tests for suggestion message parts. */
 
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { flushSync } from 'svelte';
 
-import { setupHappyDom } from '../../../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import type { SuggestionMessagePart } from '../../utilities/types.ts';
 
 setupHappyDom();
@@ -51,7 +31,6 @@ function makeSuggestion(
   };
 }
 
-// ==========================================================================
 // Component rendering
 // ==========================================================================
 
@@ -309,103 +288,3 @@ describe('SuggestionPart — toRenderUnits grouping', () => {
 });
 
 // ==========================================================================
-// Renderer integration
-// ==========================================================================
-
-describe('SuggestionPart — renderer integration', () => {
-  test('plain transcript produces no suggestion toolbar', async () => {
-    const { default: ChatMessagePartsRenderer } =
-      await import('../chat-message-parts-renderer.svelte');
-    const { container } = render(ChatMessagePartsRenderer, {
-      props: {
-        parts: [
-          {
-            type: 'markdown',
-            key: 'plain:body',
-            content: 'A plain assistant message.',
-            streaming: false,
-            expanded: true,
-          },
-        ],
-      },
-    });
-    expect(container.querySelector('[data-cinder-suggested-replies]')).toBeNull();
-    expect(container.querySelector('[role="toolbar"]')).toBeNull();
-  });
-
-  test('suggestion parts render a toolbar with role="toolbar"', async () => {
-    const { default: ChatMessagePartsRenderer } =
-      await import('../chat-message-parts-renderer.svelte');
-    const suggestions: SuggestionMessagePart[] = [
-      { type: 'suggestion', key: 'msg:suggestion:0', index: 0, label: 'Option A' },
-      { type: 'suggestion', key: 'msg:suggestion:1', index: 1, label: 'Option B' },
-    ];
-    const { container } = render(ChatMessagePartsRenderer, {
-      props: { parts: suggestions },
-    });
-    const toolbar = container.querySelector('[role="toolbar"]');
-    expect(toolbar).not.toBeNull();
-  });
-
-  test('toolbar has aria-label="Suggested replies"', async () => {
-    const { default: ChatMessagePartsRenderer } =
-      await import('../chat-message-parts-renderer.svelte');
-    const suggestions: SuggestionMessagePart[] = [
-      { type: 'suggestion', key: 'msg:suggestion:0', index: 0, label: 'Chip 1' },
-    ];
-    const { container } = render(ChatMessagePartsRenderer, {
-      props: { parts: suggestions },
-    });
-    const toolbar = container.querySelector('[role="toolbar"]');
-    expect(toolbar?.getAttribute('aria-label')).toBe('Suggested replies');
-  });
-
-  test('toolbar has data-cinder-suggested-replies attribute', async () => {
-    const { default: ChatMessagePartsRenderer } =
-      await import('../chat-message-parts-renderer.svelte');
-    const suggestions: SuggestionMessagePart[] = [
-      { type: 'suggestion', key: 'msg:suggestion:0', index: 0, label: 'Test' },
-    ];
-    const { container } = render(ChatMessagePartsRenderer, {
-      props: { parts: suggestions },
-    });
-    expect(container.querySelector('[data-cinder-suggested-replies]')).not.toBeNull();
-  });
-
-  test('each chip renders as a button inside the toolbar', async () => {
-    const { default: ChatMessagePartsRenderer } =
-      await import('../chat-message-parts-renderer.svelte');
-    const suggestions: SuggestionMessagePart[] = [
-      { type: 'suggestion', key: 'msg:suggestion:0', index: 0, label: 'Alpha' },
-      { type: 'suggestion', key: 'msg:suggestion:1', index: 1, label: 'Beta' },
-      { type: 'suggestion', key: 'msg:suggestion:2', index: 2, label: 'Gamma' },
-    ];
-    const { container } = render(ChatMessagePartsRenderer, {
-      props: { parts: suggestions },
-    });
-    const toolbar = container.querySelector('[role="toolbar"]')!;
-    const buttons = toolbar.querySelectorAll('button');
-    expect(buttons).toHaveLength(3);
-
-    const labels = Array.from(buttons).map((button) => button.textContent?.trim());
-    expect(labels).toContain('Alpha');
-    expect(labels).toContain('Beta');
-    expect(labels).toContain('Gamma');
-  });
-
-  test('onSuggestionSelect is forwarded to each chip', async () => {
-    const { default: ChatMessagePartsRenderer } =
-      await import('../chat-message-parts-renderer.svelte');
-    const onSuggestionSelect = mock((label: string) => label);
-    const suggestions: SuggestionMessagePart[] = [
-      { type: 'suggestion', key: 'msg:suggestion:0', index: 0, label: 'Pick me' },
-    ];
-    const { container } = render(ChatMessagePartsRenderer, {
-      props: { parts: suggestions, onSuggestionSelect },
-    });
-    const button = container.querySelector('button')!;
-    fireEvent.click(button);
-    flushSync();
-    expect(onSuggestionSelect).toHaveBeenCalledWith('Pick me');
-  });
-});

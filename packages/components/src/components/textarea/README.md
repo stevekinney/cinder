@@ -6,7 +6,7 @@ Multi-line text input for longer freeform content with optional resize control.
 
 ```svelte
 <script lang="ts">
-  import Textarea from '@lostgradient/cinder/textarea';
+  import { Textarea } from '@lostgradient/cinder';
 </script>
 
 <Textarea id="notes" label="Notes" />
@@ -38,7 +38,6 @@ Multi-line text input for longer freeform content with optional resize control.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

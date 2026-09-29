@@ -15,13 +15,7 @@
     position: relative;
   }
 
-  :is(
-    .cinder-dropdown-item,
-    .cinder-command-item,
-    .cinder-navigation-item,
-    .cinder-combobox__option,
-    .cinder-select__option
-  )::after {
+  :is(.cinder-_row-item, .cinder-_option-row)[data-cinder-row-divider]::after {
     content: '';
     position: absolute;
     inset-inline: var(--cinder-space-2);

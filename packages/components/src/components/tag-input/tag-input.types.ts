@@ -24,7 +24,11 @@ export type TagInputProps = SupportedInputAttributes & {
   id?: string;
   /** Bindable tags. */
   value?: string[];
-  /** Key that commits the current input into a tag. Enter always commits separately. */
+  /**
+   * Key that commits the current input into a tag. Enter always commits
+   * separately. Defaults to `','`. (`string | RegExp` is not expressible
+   * in JSON Schema, so this default only appears here in prose.)
+   */
   delimiter?: string | RegExp;
   /** Maximum number of tags allowed. Non-finite values disable the cap. */
   max?: number;
@@ -53,7 +57,13 @@ export interface TagInputSchemaProps {
   id?: string;
   /** Bindable tags. */
   value?: string[];
-  /** Key that commits the current input into a tag. Enter always commits separately. @default "," */
+  /**
+   * Key that commits the current input into a tag. Enter always commits
+   * separately. Defaults to `','`. (`string | RegExp` is not expressible
+   * in JSON Schema, so this default only appears here in prose—the
+   * `@default` tag has no effect on an opaque prop's generated Default
+   * cell.)
+   */
   delimiter?: string | RegExp;
   /** Allow the same trimmed tag value to appear more than once. @default false */
   duplicateValuesAllowed?: boolean;

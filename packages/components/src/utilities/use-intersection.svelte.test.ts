@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -10,19 +10,36 @@ const { default: UseIntersectionAttachFixture } =
   await import('../test/fixtures/use-intersection-attach-fixture.svelte');
 
 type ObserverRecord = {
+  observer: IntersectionObserver;
   callback: IntersectionObserverCallback;
   options: IntersectionObserverInit | undefined;
   observeCalls: Element[];
   disconnectCalls: number;
 };
 
-class FakeIntersectionObserver {
+class FakeIntersectionObserver implements IntersectionObserver {
   static records: ObserverRecord[] = [];
+
+  readonly root: Element | Document | null;
+  readonly rootMargin: string;
+  // `IntersectionObserverInit` declares no `scrollMargin` (the installed DOM
+  // lib has the property on no IntersectionObserver type at all), so no caller
+  // can supply one and `options?.scrollMargin ?? ''` was always `''`. Declared
+  // as the constant it already resolved to, matching the other fake observers
+  // in this workspace. Restore the options read only once the DOM lib gains
+  // the field, and only if a test actually needs to set it.
+  readonly scrollMargin = '';
+  readonly thresholds: readonly number[];
 
   private readonly record: ObserverRecord;
 
   constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+    this.root = options?.root ?? null;
+    this.rootMargin = options?.rootMargin ?? '0px';
+    this.thresholds =
+      typeof options?.threshold === 'number' ? [options.threshold] : (options?.threshold ?? [0]);
     this.record = {
+      observer: this,
       callback,
       options,
       observeCalls: [],
@@ -40,7 +57,7 @@ class FakeIntersectionObserver {
   }
 
   unobserve() {}
-  takeRecords() {
+  takeRecords(): IntersectionObserverEntry[] {
     return [];
   }
 }
@@ -49,9 +66,9 @@ const originalIntersectionObserver = globalThis.IntersectionObserver;
 
 function createEntry(target: Element, isIntersecting: boolean): IntersectionObserverEntry {
   return {
-    boundingClientRect: {} as DOMRectReadOnly,
+    boundingClientRect: target.getBoundingClientRect(),
     intersectionRatio: isIntersecting ? 1 : 0,
-    intersectionRect: {} as DOMRectReadOnly,
+    intersectionRect: target.getBoundingClientRect(),
     isIntersecting,
     rootBounds: null,
     target,
@@ -61,8 +78,7 @@ function createEntry(target: Element, isIntersecting: boolean): IntersectionObse
 
 beforeEach(() => {
   FakeIntersectionObserver.records = [];
-  globalThis.IntersectionObserver =
-    FakeIntersectionObserver as unknown as typeof IntersectionObserver;
+  globalThis.IntersectionObserver = FakeIntersectionObserver;
 });
 
 afterEach(() => {
@@ -107,10 +123,7 @@ describe('useIntersection', () => {
     const sentinel = getByTestId('sentinel');
     const [record] = FakeIntersectionObserver.records;
 
-    record?.callback(
-      [createEntry(sentinel, true), createEntry(sentinel, false)],
-      {} as IntersectionObserver,
-    );
+    record?.callback([createEntry(sentinel, true), createEntry(sentinel, false)], record.observer);
 
     expect(seen).toEqual([true, false]);
   });
@@ -139,7 +152,7 @@ describe('useIntersection', () => {
       },
     });
 
-    record?.callback([createEntry(sentinel, true)], {} as IntersectionObserver);
+    record?.callback([createEntry(sentinel, true)], record.observer);
 
     expect(seen).toEqual([]);
   });
@@ -229,11 +242,9 @@ describe('useIntersection', () => {
       options: { enabled: () => enabled },
     });
 
-    firstRecord?.callback([createEntry(sentinel, false)], {} as IntersectionObserver);
-    FakeIntersectionObserver.records[1]?.callback(
-      [createEntry(sentinel, true)],
-      {} as IntersectionObserver,
-    );
+    firstRecord?.callback([createEntry(sentinel, false)], firstRecord.observer);
+    const secondRecord = FakeIntersectionObserver.records[1];
+    secondRecord?.callback([createEntry(sentinel, true)], secondRecord.observer);
 
     expect(seen).toEqual([true]);
   });
@@ -249,7 +260,7 @@ describe('useIntersection', () => {
   });
 
   test('is a safe no-op when IntersectionObserver is unavailable', () => {
-    globalThis.IntersectionObserver = undefined as unknown as typeof IntersectionObserver;
+    Object.defineProperty(globalThis, 'IntersectionObserver', { value: undefined });
 
     const rendered = render(UseIntersectionAttachFixture, {
       props: {

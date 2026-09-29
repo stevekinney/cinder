@@ -8,7 +8,7 @@ const schema = {
       enum: [2, 3, 4],
       description: 'Heading level for the conversation title. Default `2`.',
     },
-    showExportActions: {
+    exportActionsVisible: {
       type: 'boolean',
       description: 'Whether to render the built-in conversation export actions. Default `true`.',
     },

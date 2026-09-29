@@ -14,12 +14,8 @@
   let { fieldId, fieldLabel, fieldRequired, phoneRequired }: FormFieldPhoneInputFixtureProps =
     $props();
 
-  const fieldOptional = $derived({
-    ...(fieldRequired !== undefined ? { required: fieldRequired } : {}),
-  });
-  const phoneOptional = $derived({
-    ...(phoneRequired !== undefined ? { required: phoneRequired } : {}),
-  });
+  const fieldOptional = $derived(fieldRequired !== undefined ? { required: fieldRequired } : {});
+  const phoneOptional = $derived(phoneRequired !== undefined ? { required: phoneRequired } : {});
 </script>
 
 <FormField id={fieldId} label={fieldLabel} {...fieldOptional}>

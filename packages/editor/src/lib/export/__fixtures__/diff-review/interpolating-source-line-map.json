@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "scope": "all",
+  "reviewTitle": "Review feedback",
+  "reviewNote": "",
+  "totals": {
+    "records": 1,
+    "messageBodies": 1,
+    "open": 1,
+    "resolved": 0,
+    "outdated": 0
+  },
+  "records": [
+    {
+      "recordKind": "diff",
+      "exportId": "[\"diff\",\"comment-interpolated\"]",
+      "commentId": "comment-interpolated",
+      "targetId": "interpolated-target",
+      "current": true,
+      "targetKind": "markdown",
+      "targetLabel": "interpolated.md",
+      "repositoryLabel": null,
+      "baseRevisionLabel": null,
+      "headRevisionLabel": null,
+      "snapshotId": "interpolated-snapshot",
+      "fileOccurrence": 0,
+      "oldPath": null,
+      "newPath": "interpolated.md",
+      "anchor": {
+        "kind": "range",
+        "side": "new",
+        "startLine": 3,
+        "endLine": 3,
+        "coordinateSpace": "normalized-markdown",
+        "hunkOccurrence": 0,
+        "selectedText": "q",
+        "contextBefore": ["p"],
+        "contextAfter": ["r"]
+      },
+      "rawMapping": {
+        "status": "unavailable",
+        "reason": "normalization"
+      },
+      "body": "Double-check this line after normalization.",
+      "resolved": false,
+      "outdated": false,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ]
+}

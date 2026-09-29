@@ -58,6 +58,7 @@
     viewport.scrollTop = viewport.scrollHeight;
     void tick().then(() => {
       programmaticScroll = false;
+      return undefined;
     });
   }
 

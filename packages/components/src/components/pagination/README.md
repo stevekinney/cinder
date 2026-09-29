@@ -6,7 +6,7 @@ Page-navigation control for stepping through multi-page result sets.
 
 ```svelte
 <script lang="ts">
-  import Pagination from '@lostgradient/cinder/pagination';
+  import { Pagination } from '@lostgradient/cinder';
 
   let currentPage = $state(1);
 </script>
@@ -14,12 +14,11 @@ Page-navigation control for stepping through multi-page result sets.
 <Pagination bind:currentPage totalPages={10} />
 ```
 
-When the total page count is unknown, omit `totalPages` and pass the direction
-availability you know:
+When the total page count is unknown, omit `totalPages` and pass the direction availability you know:
 
 ```svelte
 <script lang="ts">
-  import Pagination from '@lostgradient/cinder/pagination';
+  import { Pagination } from '@lostgradient/cinder';
 
   let currentPage = $state(1);
   let hasNextPage = $state(false);
@@ -28,14 +27,13 @@ availability you know:
 <Pagination bind:currentPage hasPreviousPage={currentPage > 1} {hasNextPage} />
 ```
 
-This renders the current page and previous/next controls without implying a
-fake final page.
+This renders the current page and previous/next controls without implying a fake final page.
 
 ### REST Link headers
 
 ```svelte
 <script lang="ts">
-  import Pagination from '@lostgradient/cinder/pagination';
+  import { Pagination } from '@lostgradient/cinder';
 
   let currentPage = $state(1);
   let links = $state<{ prev?: string; next?: string }>({});
@@ -52,7 +50,7 @@ fake final page.
 
 ```svelte
 <script lang="ts">
-  import Pagination from '@lostgradient/cinder/pagination';
+  import { Pagination } from '@lostgradient/cinder';
 
   let currentPage = $state(1);
   let cursors = $state<{ previous?: string; next?: string }>({});
@@ -85,7 +83,6 @@ fake final page.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

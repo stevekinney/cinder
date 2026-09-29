@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "examples.schema.json",
   "title": "cinder component examples",
-  "description": "Per-component code examples derived from playground .example.svelte files. Agents fetch this to get canonical usage snippets they can copy into a consumer application.",
+  "description": "Per-component code examples committed as public metadata. Agents fetch this to get canonical usage snippets they can copy into a consumer application.",
   "type": "object",
   "required": ["$schema", "component", "import", "examples"],
   "additionalProperties": false,

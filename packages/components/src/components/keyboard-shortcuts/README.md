@@ -6,7 +6,7 @@ Grouped keyboard-shortcut reference that renders key combos via Kbd with accessi
 
 ```svelte
 <script lang="ts">
-  import KeyboardShortcuts from '@lostgradient/cinder/keyboard-shortcuts';
+  import { KeyboardShortcuts } from '@lostgradient/cinder';
 </script>
 
 <div style="max-width: 28rem;">
@@ -63,7 +63,6 @@ Grouped keyboard-shortcut reference that renders key combos via Kbd with accessi
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

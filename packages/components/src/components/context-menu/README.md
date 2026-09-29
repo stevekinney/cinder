@@ -6,8 +6,8 @@ Right-click and long-press menu positioned at the user's pointer while reusing d
 
 ```svelte
 <script lang="ts">
-  import Button from '@lostgradient/cinder/button';
-  import ContextMenu from '@lostgradient/cinder/context-menu';
+  import { Button } from '@lostgradient/cinder';
+  import { ContextMenu } from '@lostgradient/cinder';
 </script>
 
 <ContextMenu>
@@ -57,7 +57,6 @@ Right-click and long-press menu positioned at the user's pointer while reusing d
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

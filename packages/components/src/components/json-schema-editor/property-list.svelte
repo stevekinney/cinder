@@ -27,10 +27,10 @@
   import Button from '../button/button.svelte';
   import Checkbox from '../checkbox/checkbox.svelte';
   import Chip from '../chip/chip.svelte';
-  import Badge from '@lostgradient/cinder/badge';
-  import Collapsible from '@lostgradient/cinder/collapsible';
+  import { default as Badge } from '../badge/index.ts';
+  import { default as Collapsible } from '../collapsible/index.ts';
+  import { default as Table } from '../table/index.ts';
   import Input from '../input/input.svelte';
-  import Table from '@lostgradient/cinder/table';
   import PropertyEditor from './property-editor.svelte';
   import { calculatePropertyValidationErrorCount } from './property-list-validation.ts';
 

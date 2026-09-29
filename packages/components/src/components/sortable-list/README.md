@@ -6,8 +6,8 @@ Drag-and-drop reorderable list that emits the new order on each change.
 
 ```svelte
 <script lang="ts">
-  import SortableList from '@lostgradient/cinder/sortable-list';
-  import type { SortableListProps } from '@lostgradient/cinder/sortable-list';
+  import { SortableList } from '@lostgradient/cinder';
+  import type { SortableListProps } from '@lostgradient/cinder';
 
   type Task = { id: string; label: string };
 
@@ -65,7 +65,6 @@ Drag-and-drop reorderable list that emits the new order on each change.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

@@ -1,139 +1,14 @@
-// @ts-nocheck -- migrated commentary assertions use runtime-verified fixture indexing.
-import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
-import type { CommentAnchor } from '../comments/types.js';
+import { requiredValue } from '@lostgradient/testing';
+import { describe, expect, spyOn, test } from 'bun:test';
+import { STORAGE_KEY_PREFIX, getStorageKey, loadSession, saveSession } from './persistence.js';
+
 import {
-  STORAGE_KEY_PREFIX,
-  clearAllPersistedSessions,
-  clearPersistedSession,
-  getStorageKey,
-  hasPersistedSession,
-  listPersistedSessions,
-  loadSession,
-  saveSession,
-  validateSessionSchema,
-} from './persistence.js';
-import type { PersistedReviewSession, ReviewSession } from './types.js';
-
-// ============================================================================
-// Mock Setup
-// ============================================================================
-
-// Create a mock sessionStorage
-type MockStorageOptions = {
-  keys?: readonly string[];
-  removeItem?: Storage['removeItem'];
-  throwOnLength?: boolean;
-};
-
-function createMockStorage(options: MockStorageOptions = {}): Storage {
-  let store: Record<string, string> = {};
-  return {
-    getItem: mock((key: string) => store[key] ?? null),
-    setItem: mock((key: string, value: string) => {
-      store[key] = value;
-    }),
-    removeItem:
-      options.removeItem ??
-      mock((key: string) => {
-        delete store[key];
-      }),
-    clear: mock(() => {
-      store = {};
-    }),
-    key: mock((index: number) => options.keys?.[index] ?? Object.keys(store)[index] ?? null),
-    get length() {
-      if (options.throwOnLength) {
-        throw new Error('Storage unavailable');
-      }
-      return options.keys?.length ?? Object.keys(store).length;
-    },
-  };
-}
-
-let mockStorage: Storage;
-const originalWindow = globalThis.window;
-const originalSessionStorage = globalThis.sessionStorage;
-
-function stubGlobal(name: 'window' | 'sessionStorage', value: unknown): void {
-  Object.defineProperty(globalThis, name, {
-    value,
-    configurable: true,
-    writable: true,
-  });
-}
-
-function restoreGlobal(name: 'window' | 'sessionStorage', value: unknown): void {
-  if (value === undefined) {
-    Reflect.deleteProperty(globalThis, name);
-    return;
-  }
-
-  Object.defineProperty(globalThis, name, {
-    value,
-    configurable: true,
-    writable: true,
-  });
-}
-
-function restoreGlobals(): void {
-  restoreGlobal('window', originalWindow);
-  restoreGlobal('sessionStorage', originalSessionStorage);
-  mock.restore();
-}
-
-beforeEach(() => {
-  mockStorage = createMockStorage();
-  stubGlobal('window', globalThis);
-  stubGlobal('sessionStorage', mockStorage);
-});
-
-afterEach(() => {
-  restoreGlobals();
-});
-
-// ============================================================================
-// Test Fixtures
-// ============================================================================
-
-function createTestAnchor(overrides?: Partial<CommentAnchor>): CommentAnchor {
-  return {
-    quote: 'test quote',
-    prefix: 'prefix ',
-    suffix: ' suffix',
-    from: 10,
-    to: 20,
-    status: 'anchored',
-    ...overrides,
-  };
-}
-
-function createTestSession(overrides?: Partial<ReviewSession>): ReviewSession {
-  return {
-    id: 'session-1',
-    status: 'drafting',
-    draftComments: [],
-    startedAt: '2024-01-01T00:00:00.000Z',
-    updatedAt: '2024-01-01T00:00:00.000Z',
-    ...overrides,
-  };
-}
-
-function createValidPersistedSession(
-  overrides?: Partial<PersistedReviewSession>,
-): PersistedReviewSession {
-  return {
-    id: 'session-1',
-    status: 'drafting',
-    draftComments: [],
-    startedAt: '2024-01-01T00:00:00.000Z',
-    updatedAt: '2024-01-01T00:00:00.000Z',
-    ...overrides,
-  };
-}
-
-// ============================================================================
-// Storage Key
-// ============================================================================
+  createTestAnchor,
+  createTestSession,
+  createValidPersistedSession,
+  installStorageFixture,
+} from './persistence-test-support.ts';
+const fixture = installStorageFixture();
 
 describe('getStorageKey', () => {
   test('prepends prefix to document key', () => {
@@ -149,113 +24,13 @@ describe('getStorageKey', () => {
   });
 });
 
-// ============================================================================
-// Schema Validation
-// ============================================================================
-
-describe('validateSessionSchema', () => {
-  test('returns true for valid session', () => {
-    const data = createValidPersistedSession();
-    expect(validateSessionSchema(data)).toBe(true);
-  });
-
-  test('returns true for session with all optional fields', () => {
-    const data = createValidPersistedSession({
-      outcome: 'approve',
-      submittedAt: '2024-01-02T00:00:00.000Z',
-    });
-    expect(validateSessionSchema(data)).toBe(true);
-  });
-
-  test('returns false for null', () => {
-    expect(validateSessionSchema(null)).toBe(false);
-  });
-
-  test('returns false for non-object', () => {
-    expect(validateSessionSchema('string')).toBe(false);
-    expect(validateSessionSchema(123)).toBe(false);
-    expect(validateSessionSchema([])).toBe(false);
-  });
-
-  test('returns false for missing id', () => {
-    const data = { ...createValidPersistedSession() };
-    delete (data as Record<string, unknown>).id;
-    expect(validateSessionSchema(data)).toBe(false);
-  });
-
-  test('returns false for missing status', () => {
-    const data = { ...createValidPersistedSession() };
-    delete (data as Record<string, unknown>).status;
-    expect(validateSessionSchema(data)).toBe(false);
-  });
-
-  test('returns false for invalid status', () => {
-    const data = createValidPersistedSession();
-    (data as unknown as Record<string, unknown>).status = 'invalid';
-    expect(validateSessionSchema(data)).toBe(false);
-  });
-
-  test('returns false for invalid outcome', () => {
-    const data = createValidPersistedSession();
-    (data as unknown as Record<string, unknown>).outcome = 'invalid';
-    expect(validateSessionSchema(data)).toBe(false);
-  });
-
-  test('returns false for missing startedAt', () => {
-    const data = { ...createValidPersistedSession() };
-    delete (data as Record<string, unknown>).startedAt;
-    expect(validateSessionSchema(data)).toBe(false);
-  });
-
-  test('returns false for missing updatedAt', () => {
-    const data = { ...createValidPersistedSession() };
-    delete (data as Record<string, unknown>).updatedAt;
-    expect(validateSessionSchema(data)).toBe(false);
-  });
-
-  test('returns false for missing draftComments', () => {
-    const data = { ...createValidPersistedSession() };
-    delete (data as Record<string, unknown>).draftComments;
-    expect(validateSessionSchema(data)).toBe(false);
-  });
-
-  test('returns false for non-array draftComments', () => {
-    const data = createValidPersistedSession();
-    (data as unknown as Record<string, unknown>).draftComments = 'not-array';
-    expect(validateSessionSchema(data)).toBe(false);
-  });
-
-  test('returns false for non-string submittedAt', () => {
-    const data = createValidPersistedSession();
-    (data as unknown as Record<string, unknown>).submittedAt = 123;
-    expect(validateSessionSchema(data)).toBe(false);
-  });
-
-  test('accepts all valid outcomes', () => {
-    expect(validateSessionSchema(createValidPersistedSession({ outcome: 'approve' }))).toBe(true);
-    expect(validateSessionSchema(createValidPersistedSession({ outcome: 'request_changes' }))).toBe(
-      true,
-    );
-    expect(validateSessionSchema(createValidPersistedSession({ outcome: 'comment' }))).toBe(true);
-  });
-
-  test('accepts both valid statuses', () => {
-    expect(validateSessionSchema(createValidPersistedSession({ status: 'drafting' }))).toBe(true);
-    expect(validateSessionSchema(createValidPersistedSession({ status: 'submitted' }))).toBe(true);
-  });
-});
-
-// ============================================================================
-// Save Session
-// ============================================================================
-
 describe('saveSession', () => {
   test('saves session to sessionStorage', () => {
     const session = createTestSession({ id: 'my-session' });
     const result = saveSession('doc-123', session);
 
     expect(result).toBe(true);
-    expect(mockStorage.setItem).toHaveBeenCalledWith(
+    expect(fixture.storage.setItem).toHaveBeenCalledWith(
       `${STORAGE_KEY_PREFIX}doc-123`,
       expect.any(String),
     );
@@ -265,7 +40,7 @@ describe('saveSession', () => {
     const session = createTestSession({ id: 'my-session' });
     saveSession('doc-123', session);
 
-    const savedValue = (mockStorage.setItem as ReturnType<typeof mock>).mock.calls[0][1];
+    const savedValue = requiredValue(fixture.storage.setItem.mock.calls[0])[1];
     const parsed = JSON.parse(savedValue);
 
     expect(parsed.id).toBe('my-session');
@@ -287,33 +62,40 @@ describe('saveSession', () => {
     });
     saveSession('doc-123', session);
 
-    const savedValue = (mockStorage.setItem as ReturnType<typeof mock>).mock.calls[0][1];
+    const savedValue = requiredValue(fixture.storage.setItem.mock.calls[0])[1];
     const parsed = JSON.parse(savedValue);
 
-    expect(parsed.draftComments[0].anchor.from).toBeUndefined();
-    expect(parsed.draftComments[0].anchor.to).toBeUndefined();
+    expect(requiredValue(parsed.draftComments[0]).anchor.from).toBeUndefined();
+    expect(requiredValue(parsed.draftComments[0]).anchor.to).toBeUndefined();
   });
 
   test('handles storage errors gracefully', () => {
-    (mockStorage.setItem as ReturnType<typeof mock>).mockImplementationOnce(() => {
-      throw new Error('Storage full');
-    });
+    const diagnostic = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      fixture.storage.setItem.mockImplementationOnce(() => {
+        throw new Error('Storage full');
+      });
 
-    const session = createTestSession();
-    const result = saveSession('doc-123', session);
+      const session = createTestSession();
+      const result = saveSession('doc-123', session);
 
-    expect(result).toBe(false);
+      expect(result).toBe(false);
+
+      expect(diagnostic).toHaveBeenCalledTimes(1);
+      expect(diagnostic).toHaveBeenCalledWith(
+        'Failed to persist review session:',
+        new Error('Storage full'),
+      );
+    } finally {
+      diagnostic.mockRestore();
+    }
   });
 });
-
-// ============================================================================
-// Load Session
-// ============================================================================
 
 describe('loadSession', () => {
   test('loads and restores session from sessionStorage', () => {
     const persisted = createValidPersistedSession({ id: 'restored-session' });
-    (mockStorage.getItem as ReturnType<typeof mock>).mockReturnValueOnce(JSON.stringify(persisted));
+    fixture.storage.getItem.mockReturnValueOnce(JSON.stringify(persisted));
 
     const result = loadSession('doc-123');
 
@@ -322,7 +104,7 @@ describe('loadSession', () => {
   });
 
   test('returns null when key does not exist', () => {
-    (mockStorage.getItem as ReturnType<typeof mock>).mockReturnValueOnce(null);
+    fixture.storage.getItem.mockReturnValueOnce(null);
 
     const result = loadSession('doc-123');
 
@@ -330,35 +112,90 @@ describe('loadSession', () => {
   });
 
   test('returns null and clears corrupted data', () => {
-    (mockStorage.getItem as ReturnType<typeof mock>).mockReturnValueOnce('not-json');
+    const diagnostic = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      fixture.storage.getItem.mockReturnValueOnce('not-json');
 
-    const result = loadSession('doc-123');
+      const result = loadSession('doc-123');
 
-    expect(result).toBeNull();
-    expect(mockStorage.removeItem).toHaveBeenCalledWith(`${STORAGE_KEY_PREFIX}doc-123`);
+      expect(result).toBeNull();
+      expect(fixture.storage.removeItem).toHaveBeenCalledWith(`${STORAGE_KEY_PREFIX}doc-123`);
+
+      expect(diagnostic).toHaveBeenCalledTimes(1);
+      expect(diagnostic).toHaveBeenCalledWith(
+        'Failed to load review session:',
+        expect.any(SyntaxError),
+      );
+    } finally {
+      diagnostic.mockRestore();
+    }
+  });
+
+  test('keeps load diagnostics in a production browser bundle', async () => {
+    const bundle = await Bun.build({
+      entrypoints: [new URL('./persistence.ts', import.meta.url).pathname],
+      target: 'browser',
+      conditions: ['production'],
+      define: { 'process.env.NODE_ENV': '"production"' },
+      minify: true,
+    });
+    expect(bundle.success, JSON.stringify(bundle.logs)).toBe(true);
+    const output = requiredValue(bundle.outputs[0]);
+    const production = await import(
+      `data:text/javascript;base64,${Buffer.from(await output.text()).toString('base64')}`
+    );
+    const diagnostic = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      fixture.storage.getItem.mockReturnValueOnce('not-json');
+      expect(production.loadSession('doc-123')).toBeNull();
+      expect(diagnostic).toHaveBeenCalledWith(
+        'Failed to load review session:',
+        expect.any(SyntaxError),
+      );
+    } finally {
+      diagnostic.mockRestore();
+    }
   });
 
   test('returns null and clears invalid schema', () => {
-    const invalid = { notValid: true };
-    (mockStorage.getItem as ReturnType<typeof mock>).mockReturnValueOnce(JSON.stringify(invalid));
+    const diagnostic = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const invalid = { notValid: true };
+      fixture.storage.getItem.mockReturnValueOnce(JSON.stringify(invalid));
 
-    const result = loadSession('doc-123');
+      const result = loadSession('doc-123');
 
-    expect(result).toBeNull();
-    expect(mockStorage.removeItem).toHaveBeenCalled();
+      expect(result).toBeNull();
+      expect(fixture.storage.removeItem).toHaveBeenCalled();
+
+      expect(diagnostic).toHaveBeenCalledTimes(1);
+      expect(diagnostic).toHaveBeenCalledWith(
+        'Review session schema validation failed, clearing corrupted data',
+      );
+    } finally {
+      diagnostic.mockRestore();
+    }
   });
 
   test('returns null and clears submitted sessions', () => {
-    const submitted = createValidPersistedSession({
-      status: 'submitted',
-      submittedAt: '2024-01-02T00:00:00.000Z',
-    });
-    (mockStorage.getItem as ReturnType<typeof mock>).mockReturnValueOnce(JSON.stringify(submitted));
+    const diagnostic = spyOn(console, 'info').mockImplementation(() => {});
+    try {
+      const submitted = createValidPersistedSession({
+        status: 'submitted',
+        submittedAt: '2024-01-02T00:00:00.000Z',
+      });
+      fixture.storage.getItem.mockReturnValueOnce(JSON.stringify(submitted));
 
-    const result = loadSession('doc-123');
+      const result = loadSession('doc-123');
 
-    expect(result).toBeNull();
-    expect(mockStorage.removeItem).toHaveBeenCalled();
+      expect(result).toBeNull();
+      expect(fixture.storage.removeItem).toHaveBeenCalled();
+
+      expect(diagnostic).toHaveBeenCalledTimes(1);
+      expect(diagnostic).toHaveBeenCalledWith('Clearing stale submitted review session');
+    } finally {
+      diagnostic.mockRestore();
+    }
   });
 
   test('restores runtime anchor positions as placeholders', () => {
@@ -374,137 +211,35 @@ describe('loadSession', () => {
         },
       ],
     });
-    (mockStorage.getItem as ReturnType<typeof mock>).mockReturnValueOnce(JSON.stringify(persisted));
+    fixture.storage.getItem.mockReturnValueOnce(JSON.stringify(persisted));
 
     const result = loadSession('doc-123');
 
-    expect(result?.draftComments[0].anchor?.from).toBe(0);
-    expect(result?.draftComments[0].anchor?.to).toBe(0);
+    expect(requiredValue(result?.draftComments[0]).anchor?.from).toBe(0);
+    expect(requiredValue(result?.draftComments[0]).anchor?.to).toBe(0);
   });
 
   test('handles storage read errors gracefully', () => {
-    (mockStorage.getItem as ReturnType<typeof mock>).mockImplementationOnce(() => {
-      throw new Error('Storage unavailable');
-    });
+    const diagnostic = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      fixture.storage.getItem.mockImplementationOnce(() => {
+        throw new Error('Storage unavailable');
+      });
 
-    const result = loadSession('doc-123');
+      const result = loadSession('doc-123');
 
-    expect(result).toBeNull();
+      expect(result).toBeNull();
+
+      expect(diagnostic).toHaveBeenCalledTimes(1);
+      expect(diagnostic).toHaveBeenCalledWith(
+        'Failed to load review session:',
+        new Error('Storage unavailable'),
+      );
+    } finally {
+      diagnostic.mockRestore();
+    }
   });
 });
-
-// ============================================================================
-// Clear Session
-// ============================================================================
-
-describe('clearPersistedSession', () => {
-  test('removes session from sessionStorage', () => {
-    clearPersistedSession('doc-123');
-
-    expect(mockStorage.removeItem).toHaveBeenCalledWith(`${STORAGE_KEY_PREFIX}doc-123`);
-  });
-
-  test('handles storage errors gracefully', () => {
-    (mockStorage.removeItem as ReturnType<typeof mock>).mockImplementationOnce(() => {
-      throw new Error('Storage unavailable');
-    });
-
-    // Should not throw
-    expect(() => clearPersistedSession('doc-123')).not.toThrow();
-  });
-});
-
-// ============================================================================
-// Has Session
-// ============================================================================
-
-describe('hasPersistedSession', () => {
-  test('returns true when session exists', () => {
-    (mockStorage.getItem as ReturnType<typeof mock>).mockReturnValueOnce('{}');
-
-    expect(hasPersistedSession('doc-123')).toBe(true);
-  });
-
-  test('returns false when session does not exist', () => {
-    (mockStorage.getItem as ReturnType<typeof mock>).mockReturnValueOnce(null);
-
-    expect(hasPersistedSession('doc-123')).toBe(false);
-  });
-
-  test('handles storage errors gracefully', () => {
-    (mockStorage.getItem as ReturnType<typeof mock>).mockImplementationOnce(() => {
-      throw new Error('Storage unavailable');
-    });
-
-    expect(hasPersistedSession('doc-123')).toBe(false);
-  });
-});
-
-// ============================================================================
-// List Sessions
-// ============================================================================
-
-describe('listPersistedSessions', () => {
-  test('returns empty array when no sessions', () => {
-    expect(listPersistedSessions()).toEqual([]);
-  });
-
-  test('returns document keys for matching sessions', () => {
-    // Setup mock storage with some keys
-    const mockKeys = [`${STORAGE_KEY_PREFIX}doc-1`, `${STORAGE_KEY_PREFIX}doc-2`, 'other-key'];
-    mockStorage = createMockStorage({ keys: mockKeys });
-    stubGlobal('sessionStorage', mockStorage);
-
-    const result = listPersistedSessions();
-
-    expect(result).toEqual(['doc-1', 'doc-2']);
-  });
-
-  test('filters out non-matching keys', () => {
-    const mockKeys = ['other-key-1', 'other-key-2'];
-    mockStorage = createMockStorage({ keys: mockKeys });
-    stubGlobal('sessionStorage', mockStorage);
-
-    expect(listPersistedSessions()).toEqual([]);
-  });
-
-  test('handles storage errors gracefully', () => {
-    const throwingStorage = createMockStorage({ throwOnLength: true });
-    stubGlobal('sessionStorage', throwingStorage);
-
-    expect(listPersistedSessions()).toEqual([]);
-  });
-});
-
-// ============================================================================
-// Clear All Sessions
-// ============================================================================
-
-describe('clearAllPersistedSessions', () => {
-  test('clears all review session keys', () => {
-    const mockKeys = [`${STORAGE_KEY_PREFIX}doc-1`, `${STORAGE_KEY_PREFIX}doc-2`, 'other-key'];
-    mockStorage = createMockStorage({ keys: mockKeys, removeItem: mock(() => {}) });
-    stubGlobal('sessionStorage', mockStorage);
-
-    clearAllPersistedSessions();
-
-    expect(mockStorage.removeItem).toHaveBeenCalledTimes(2);
-    expect(mockStorage.removeItem).toHaveBeenCalledWith(`${STORAGE_KEY_PREFIX}doc-1`);
-    expect(mockStorage.removeItem).toHaveBeenCalledWith(`${STORAGE_KEY_PREFIX}doc-2`);
-  });
-
-  test('handles storage errors gracefully', () => {
-    const throwingStorage = createMockStorage({ throwOnLength: true });
-    stubGlobal('sessionStorage', throwingStorage);
-
-    // Should not throw
-    expect(() => clearAllPersistedSessions()).not.toThrow();
-  });
-});
-
-// ============================================================================
-// Round-trip Tests
-// ============================================================================
 
 describe('save/load round-trip', () => {
   test('preserves session data through save/load cycle', () => {
@@ -531,21 +266,21 @@ describe('save/load round-trip', () => {
     saveSession('doc-123', original);
 
     // Get saved value and simulate load
-    const savedValue = (mockStorage.setItem as ReturnType<typeof mock>).mock.calls[0][1];
-    (mockStorage.getItem as ReturnType<typeof mock>).mockReturnValueOnce(savedValue);
+    const savedValue = requiredValue(fixture.storage.setItem.mock.calls[0])[1];
+    fixture.storage.getItem.mockReturnValueOnce(savedValue);
 
     // Load
     const loaded = loadSession('doc-123');
 
     expect(loaded).not.toBeNull();
-    expect(loaded!.id).toBe(original.id);
-    expect(loaded!.status).toBe(original.status);
-    expect(loaded!.outcome).toBe(original.outcome);
-    expect(loaded!.draftComments).toHaveLength(1);
-    expect(loaded!.draftComments[0].body).toBe('My comment');
-    expect(loaded!.draftComments[0].mentions).toEqual(['alice']);
-    expect(loaded!.startedAt).toBe(original.startedAt);
-    expect(loaded!.updatedAt).toBe(original.updatedAt);
+    expect(requiredValue(loaded).id).toBe(original.id);
+    expect(requiredValue(loaded).status).toBe(original.status);
+    expect(requiredValue(loaded).outcome).toBe(original.outcome);
+    expect(requiredValue(loaded).draftComments).toHaveLength(1);
+    expect(requiredValue(requiredValue(loaded).draftComments[0]).body).toBe('My comment');
+    expect(requiredValue(requiredValue(loaded).draftComments[0]).mentions).toEqual(['alice']);
+    expect(requiredValue(loaded).startedAt).toBe(original.startedAt);
+    expect(requiredValue(loaded).updatedAt).toBe(original.updatedAt);
   });
 
   test('restores placeholder positions after round-trip', () => {
@@ -564,13 +299,13 @@ describe('save/load round-trip', () => {
 
     saveSession('doc-123', original);
 
-    const savedValue = (mockStorage.setItem as ReturnType<typeof mock>).mock.calls[0][1];
-    (mockStorage.getItem as ReturnType<typeof mock>).mockReturnValueOnce(savedValue);
+    const savedValue = requiredValue(fixture.storage.setItem.mock.calls[0])[1];
+    fixture.storage.getItem.mockReturnValueOnce(savedValue);
 
     const loaded = loadSession('doc-123');
 
     // Positions are restored as placeholders (0, 0)
-    expect(loaded!.draftComments[0].anchor?.from).toBe(0);
-    expect(loaded!.draftComments[0].anchor?.to).toBe(0);
+    expect(requiredValue(requiredValue(loaded).draftComments[0]).anchor?.from).toBe(0);
+    expect(requiredValue(requiredValue(loaded).draftComments[0]).anchor?.to).toBe(0);
   });
 });

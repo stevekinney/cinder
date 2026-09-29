@@ -2,8 +2,11 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
-import { renderToServerHtml } from '../../test/server-render.ts';
+import {
+  prepareSvelteServerSource,
+  renderSvelteOnServer,
+  setupHappyDom,
+} from '@lostgradient/testing';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
 // reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
@@ -17,6 +20,8 @@ const { default: RelativeTime } = await import('./relative-time.svelte');
 // A top-level static import of 'svelte' resolves to svelte/index-server.js in Bun's
 // non-browser environment, making `mount()` throw "not available on the server".
 const { createRawSnippet } = await import('svelte');
+const relativeTimeSource = new URL('./relative-time.svelte', import.meta.url).pathname;
+await prepareSvelteServerSource(relativeTimeSource);
 
 afterEach(cleanup);
 
@@ -80,11 +85,7 @@ describe('RelativeTime', () => {
     const realNow = Date.now;
     Date.now = () => Date.UTC(2026, 0, 2, 12);
     try {
-      const html = await renderToServerHtml<{
-        date: number;
-        locale: string;
-        tick: boolean;
-      }>(new URL('./relative-time.svelte', import.meta.url).pathname, {
+      const html = await renderSvelteOnServer(relativeTimeSource, {
         date: Date.UTC(2026, 0, 1, 12),
         locale: 'en',
         tick: false,
@@ -170,9 +171,11 @@ describe('RelativeTime', () => {
       originalClearTimeout(timer)) as typeof window.clearTimeout;
 
     try {
-      const view = render(RelativeTime, { date: Date.now() - 10_000 });
-      expect(scheduledDelays.at(-1)).toBeGreaterThan(400);
-      expect(scheduledDelays.at(-1)).toBeLessThan(700);
+      const renderedAt = Date.now();
+      const view = render(RelativeTime, { date: renderedAt - 10_000 });
+      const elapsed = Date.now() - renderedAt;
+      expect(scheduledDelays.at(-1)).toBeGreaterThan(500 - elapsed - 5);
+      expect(scheduledDelays.at(-1)).toBeLessThanOrEqual(500);
       view.unmount();
     } finally {
       window.setTimeout = originalSetTimeout;

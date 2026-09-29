@@ -1,11 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
-import type {
-  FixtureCategory,
-  InteractionStep,
-  MaskRule,
-} from '../../../components/scripts/lib/visual-fixtures/schema.ts';
+import type { FixtureCategory, InteractionStep, MaskRule } from '../visual-fixtures.ts';
 import { screenshotMetadataPath, screenshotPath, type ArtifactKey } from './artifact-path.ts';
 import type { Theme, ViewportName } from './manifest.ts';
 

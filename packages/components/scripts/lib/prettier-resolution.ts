@@ -29,11 +29,11 @@ let checked: { version: string; resolvedFrom: string } | null = null;
  * own `node_modules`; the artifact pipeline then formatted with 3.9.6 while the
  * root stayed locked at 3.8.1, and 3.9's markdown printer moved blank lines
  * around the `<!-- generated:variables:* -->` markers -- so `components:check`
- * reported ~150 READMEs stale on a branch that never touched `packages/components`
+ * reported ~150 READMEs stale on a branch that never touched `components/cinder`
  * (CIN-456).
  *
  * The invariant is not "one prettier in the lockfile" -- transitives such as
- * `@changesets/*` legitimately carry a nested 2.x -- but "the artifact pipeline
+ * some workspaces legitimately carry a nested formatter version -- but "the artifact pipeline
  * uses the ROOT's prettier". Compare against the version the root actually
  * resolves rather than a declared range, so a deliberate `bun update` at the root
  * is not a false positive while a shadow copy nested under this package is.

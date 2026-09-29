@@ -10,6 +10,12 @@
  * These utilities provide fallback behavior for safe serialization.
  */
 
+function primitiveFallback(value: unknown): string {
+  return typeof value === 'number' || typeof value === 'boolean' || typeof value === 'symbol'
+    ? String(value)
+    : '[Unserializable value]';
+}
+
 /**
  * Stringify a value with fallback for circular refs/BigInt/etc.
  *
@@ -37,19 +43,9 @@ export function stringify(value: unknown, indent: number = 2): string {
   try {
     const serializedValue = JSON.stringify(value, null, indent);
     if (serializedValue !== undefined) return serializedValue;
-    return typeof value === 'number' || typeof value === 'boolean' || typeof value === 'symbol'
-      ? String(value)
-      : '[Unserializable value]';
+    return primitiveFallback(value);
   } catch {
-    if (
-      typeof value === 'number' ||
-      typeof value === 'boolean' ||
-      typeof value === 'bigint' ||
-      typeof value === 'symbol'
-    ) {
-      return String(value);
-    }
-    return '[Unserializable value]';
+    return typeof value === 'bigint' ? String(value) : primitiveFallback(value);
   }
 }
 

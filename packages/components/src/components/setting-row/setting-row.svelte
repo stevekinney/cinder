@@ -14,7 +14,7 @@
 </script>
 
 <script lang="ts">
-  import FormField from '@lostgradient/cinder/form-field';
+  import { default as FormField } from '../form-field/index.ts';
   import type { SettingRowProps } from './setting-row.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
   let {

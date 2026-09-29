@@ -1,7 +1,11 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { parse, type ChildNode, type Declaration } from 'postcss';
+
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -65,8 +69,8 @@ describe('RadioGroup', () => {
         { id: 'r-b', value: 'b', label: 'B' },
       ],
     });
-    const a = container.querySelector('#r-a') as HTMLInputElement;
-    const b = container.querySelector('#r-b') as HTMLInputElement;
+    const a = requiredInstance(container.querySelector('#r-a'), HTMLInputElement);
+    const b = requiredInstance(container.querySelector('#r-b'), HTMLInputElement);
     expect(a.checked).toBe(false);
     expect(b.checked).toBe(true);
   });
@@ -80,8 +84,8 @@ describe('RadioGroup', () => {
         { id: 'r-b', value: 'b', label: 'B' },
       ],
     });
-    const a = container.querySelector('#r-a') as HTMLInputElement;
-    const b = container.querySelector('#r-b') as HTMLInputElement;
+    const a = requiredInstance(container.querySelector('#r-a'), HTMLInputElement);
+    const b = requiredInstance(container.querySelector('#r-b'), HTMLInputElement);
     expect(a.checked).toBe(true);
 
     await fireEvent.click(b);
@@ -99,8 +103,8 @@ describe('RadioGroup', () => {
         { id: 'r-b', value: 'b', label: 'B' },
       ],
     });
-    const a = container.querySelector('#r-a') as HTMLInputElement;
-    const b = container.querySelector('#r-b') as HTMLInputElement;
+    const a = requiredInstance(container.querySelector('#r-a'), HTMLInputElement);
+    const b = requiredInstance(container.querySelector('#r-b'), HTMLInputElement);
     expect(a.disabled).toBe(true);
     expect(b.disabled).toBe(true);
   });
@@ -170,7 +174,7 @@ describe('RadioGroup', () => {
       value: 'a',
       options: [{ id: 'r-a', value: 'a', label: 'A', description: 'Helper' }],
     });
-    const input = container.querySelector('#r-a') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#r-a'), HTMLInputElement);
     const describedBy = input.getAttribute('aria-describedby') ?? '';
     expect(describedBy.split(' ')).toContain('r-a-description');
   });
@@ -181,7 +185,7 @@ describe('RadioGroup', () => {
       value: 'a',
       options: [{ id: 'r-a', value: 'a', label: 'A' }],
     });
-    const input = container.querySelector('#r-a') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#r-a'), HTMLInputElement);
     expect(input.hasAttribute('aria-describedby')).toBe(false);
   });
 
@@ -191,7 +195,7 @@ describe('RadioGroup', () => {
       value: 'a',
       options: [{ id: 'r-a', value: 'a', label: 'A', ariaDescribedBy: 'external-help' }],
     });
-    const input = container.querySelector('#r-a') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#r-a'), HTMLInputElement);
     const value = input.getAttribute('aria-describedby');
     expect(value).toBe('external-help');
     expect(value).not.toContain('r-a-description');
@@ -205,7 +209,7 @@ describe('RadioGroup', () => {
         { id: 'r-a', value: 'a', label: 'A', description: 'x', ariaDescribedBy: 'external-help' },
       ],
     });
-    const input = container.querySelector('#r-a') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#r-a'), HTMLInputElement);
     const parts = (input.getAttribute('aria-describedby') ?? '').split(' ');
     expect(parts).toContain('r-a-description');
     expect(parts).toContain('external-help');
@@ -219,7 +223,10 @@ describe('RadioGroup', () => {
       value: 'a',
       options: [{ id: 'r-a', value: 'a', label: 'A', description: 'Helper' }],
     });
-    const row = container.querySelector('#r-a')?.closest('.cinder-radio-row') as HTMLElement;
+    const row = requiredInstance(
+      container.querySelector('#r-a')?.closest('.cinder-radio-row'),
+      HTMLElement,
+    );
     expect(row.classList.contains('cinder-radio-row--has-description')).toBe(true);
   });
 
@@ -229,7 +236,10 @@ describe('RadioGroup', () => {
       value: 'a',
       options: [{ id: 'r-a', value: 'a', label: 'A' }],
     });
-    const row = container.querySelector('#r-a')?.closest('.cinder-radio-row') as HTMLElement;
+    const row = requiredInstance(
+      container.querySelector('#r-a')?.closest('.cinder-radio-row'),
+      HTMLElement,
+    );
     expect(row.classList.contains('cinder-radio-row--has-description')).toBe(false);
   });
 
@@ -286,12 +296,18 @@ describe('RadioGroup', () => {
         { id: 'r-b', value: 'b', label: 'B' },
       ],
     });
-    const rowA = container.querySelector('#r-a')?.closest('.cinder-radio-row') as HTMLElement;
-    const rowB = container.querySelector('#r-b')?.closest('.cinder-radio-row') as HTMLElement;
+    const rowA = requiredInstance(
+      container.querySelector('#r-a')?.closest('.cinder-radio-row'),
+      HTMLElement,
+    );
+    const rowB = requiredInstance(
+      container.querySelector('#r-b')?.closest('.cinder-radio-row'),
+      HTMLElement,
+    );
     expect(rowA.classList.contains('cinder-radio-row--checked')).toBe(false);
     expect(rowB.classList.contains('cinder-radio-row--checked')).toBe(true);
 
-    await fireEvent.click(container.querySelector('#r-a') as HTMLElement);
+    await fireEvent.click(requiredInstance(container.querySelector('#r-a'), HTMLElement));
     expect(rowA.classList.contains('cinder-radio-row--checked')).toBe(true);
     expect(rowB.classList.contains('cinder-radio-row--checked')).toBe(false);
   });
@@ -326,7 +342,9 @@ describe('RadioGroup', () => {
     const rows = Array.from(container.querySelectorAll('.cinder-radio-row'));
     expect(rows.length).toBe(2);
     rows.forEach((row) =>
-      expect((row as HTMLElement).classList.contains('cinder-radio-row--invalid')).toBe(true),
+      expect(
+        requiredInstance(row, HTMLElement).classList.contains('cinder-radio-row--invalid'),
+      ).toBe(true),
     );
 
     // Without error, no row carries the invalid modifier class
@@ -337,7 +355,9 @@ describe('RadioGroup', () => {
     });
     const cleanRows = Array.from(c2.querySelectorAll('.cinder-radio-row'));
     cleanRows.forEach((row) =>
-      expect((row as HTMLElement).classList.contains('cinder-radio-row--invalid')).toBe(false),
+      expect(
+        requiredInstance(row, HTMLElement).classList.contains('cinder-radio-row--invalid'),
+      ).toBe(false),
     );
   });
 
@@ -356,7 +376,9 @@ describe('RadioGroup', () => {
     });
     const rows1 = Array.from(c1.querySelectorAll('.cinder-radio-row'));
     rows1.forEach((row) =>
-      expect((row as HTMLElement).classList.contains('cinder-radio-row--disabled')).toBe(true),
+      expect(
+        requiredInstance(row, HTMLElement).classList.contains('cinder-radio-row--disabled'),
+      ).toBe(true),
     );
 
     // Only one option disabled: only that row carries the disabled modifier class
@@ -368,8 +390,14 @@ describe('RadioGroup', () => {
         { id: 'r-d', value: 'b', label: 'B' },
       ],
     });
-    const rowC = c2.querySelector('#r-c')?.closest('.cinder-radio-row') as HTMLElement;
-    const rowD = c2.querySelector('#r-d')?.closest('.cinder-radio-row') as HTMLElement;
+    const rowC = requiredInstance(
+      c2.querySelector('#r-c')?.closest('.cinder-radio-row'),
+      HTMLElement,
+    );
+    const rowD = requiredInstance(
+      c2.querySelector('#r-d')?.closest('.cinder-radio-row'),
+      HTMLElement,
+    );
     expect(rowC.classList.contains('cinder-radio-row--disabled')).toBe(true);
     expect(rowD.classList.contains('cinder-radio-row--disabled')).toBe(false);
 
@@ -384,7 +412,9 @@ describe('RadioGroup', () => {
     });
     const rows3 = Array.from(c3.querySelectorAll('.cinder-radio-row'));
     rows3.forEach((row) =>
-      expect((row as HTMLElement).classList.contains('cinder-radio-row--disabled')).toBe(false),
+      expect(
+        requiredInstance(row, HTMLElement).classList.contains('cinder-radio-row--disabled'),
+      ).toBe(false),
     );
   });
   // ── required propagation ────────────────────────────────────────────────
@@ -521,5 +551,120 @@ describe('RadioGroup — missing-label dev warning', () => {
       options: [{ id: 'r-a', value: 'a', label: 'A' }],
     });
     expect(warnings.some((w) => w.includes('[cinder/RadioGroup]'))).toBe(false);
+  });
+});
+
+/**
+ * Source-graph regressions for COR-452: the compound `.cinder-radio-row.cinder-form-field`
+ * rule's `flex-direction: row` must reach a rendered row through BOTH ways
+ * `@lostgradient/cinder`'s CSS is delivered — the full aggregated bundle
+ * (`styles/all.css`) and the leaner per-component "sidecar" combination a
+ * consumer imports when it wants only RadioGroup's styles — and the
+ * described-row grid override (`.cinder-radio-row--has-description`) must
+ * still win over it in both.
+ *
+ * Export targets: `components/cinder/package.json`'s `exports` map currently
+ * declares only the root `.` entry (no `./styles/all` or `./<component>/styles`
+ * subpaths exist in this workspace, unlike the standalone Cinder repo this
+ * issue was written against), so there is nothing to resolve a subpath FROM.
+ * The two graphs are instead resolved from the real files those aspirational
+ * subpaths describe: `src/styles/all.css` (the all-styles aggregator that
+ * every application actually imports) for the first graph, and
+ * `src/styles/index.css` + `src/components/radio-group/radio-group.css` for
+ * the second, per this ticket's own text ("the second starts at `./styles`
+ * plus `./radio-group/styles`").
+ *
+ * `radio-group.css` does not itself `@import` `form-field/form-field.css`
+ * the way sibling FormFieldFrame consumers do (input.css, setting-row.css,
+ * time-field.css, date-picker.css, find-bar.css all do) — that is a separate,
+ * pre-existing style-delivery gap this atomic fix does not touch (COR-452's
+ * own scope excludes changing style delivery). The slim graph below therefore
+ * also resolves `form-field/form-field.css` directly, as the third file a real
+ * slim RadioGroup consumer needs today, rather than reaching it transitively.
+ */
+describe('RadioGroup — row-direction cascade (COR-452)', () => {
+  const cinderSource = join(import.meta.dir, '..', '..');
+
+  type FlatCssRule = { selector: string; declarations: string };
+
+  function resolveCssImportTarget(fromFile: string, params: string): string | null {
+    const match = params.match(/['"]([^'"]+)['"]/);
+    if (!match?.[1]) return null;
+    return join(dirname(fromFile), match[1]);
+  }
+
+  function flattenCssRules(file: string): FlatCssRule[] {
+    const out: FlatCssRule[] = [];
+    const root = parse(readFileSync(file, 'utf8'), { from: file });
+
+    const walk = (nodes: ChildNode[]): void => {
+      for (const node of nodes) {
+        if (node.type === 'rule') {
+          out.push({
+            selector: node.selector.replace(/\s+/g, ' ').trim(),
+            declarations: node.nodes
+              .filter((child): child is Declaration => child.type === 'decl')
+              .map((decl) => `${decl.prop}: ${decl.value}`)
+              .join('; '),
+          });
+        } else if (node.type === 'atrule') {
+          if (node.name === 'import') {
+            const target = resolveCssImportTarget(file, node.params);
+            if (target) out.push(...flattenCssRules(target));
+          } else if (node.nodes) {
+            walk(node.nodes);
+          }
+        }
+      }
+    };
+
+    walk(root.nodes);
+    return out;
+  }
+
+  /**
+   * Asserts the three-rule invariant against an already-resolved, ordered
+   * rule stream: the FormField column declaration exists, the RadioGroup
+   * row-direction override exists AFTER it (source order is how the equal,
+   * two-class specificity tie between `.cinder-radio-row.cinder-form-field`
+   * and `.cinder-form-field` gets broken in this rule's favor), and the
+   * described-row grid override is present (unconditionally — it wins on
+   * `display` regardless of `flex-direction`, since a grid container ignores
+   * that property, so its mere presence is what "preserved" means here).
+   */
+  function expectRowDirectionCascade(rules: FlatCssRule[]): void {
+    const formFieldColumnIndex = rules.findIndex(
+      (rule) =>
+        rule.selector === '.cinder-form-field' &&
+        /flex-direction:\s*column/.test(rule.declarations),
+    );
+    const rowDirectionIndex = rules.findIndex(
+      (rule) =>
+        rule.selector.includes('.cinder-radio-row.cinder-form-field') &&
+        /flex-direction:\s*row/.test(rule.declarations),
+    );
+    const describedGridIndex = rules.findIndex(
+      (rule) =>
+        rule.selector.includes('cinder-radio-row--has-description') &&
+        /display:\s*grid/.test(rule.declarations),
+    );
+
+    expect(formFieldColumnIndex).toBeGreaterThanOrEqual(0);
+    expect(rowDirectionIndex).toBeGreaterThan(formFieldColumnIndex);
+    expect(describedGridIndex).toBeGreaterThanOrEqual(0);
+  }
+
+  test('RadioGroup all-styles row direction', () => {
+    const rules = flattenCssRules(join(cinderSource, 'styles/all.css'));
+    expectRowDirectionCascade(rules);
+  });
+
+  test('RadioGroup slim-styles row direction', () => {
+    const rules = [
+      ...flattenCssRules(join(cinderSource, 'styles/index.css')),
+      ...flattenCssRules(join(cinderSource, 'components/form-field/form-field.css')),
+      ...flattenCssRules(join(cinderSource, 'components/radio-group/radio-group.css')),
+    ];
+    expectRowDirectionCascade(rules);
   });
 });

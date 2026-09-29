@@ -29,7 +29,6 @@
       "description": "Package-level metadata describing the library and its conventions.",
       "required": [
         "name",
-        "version",
         "framework",
         "frameworkVersionRange",
         "classPrefix",
@@ -42,13 +41,8 @@
       "properties": {
         "name": {
           "type": "string",
-          "description": "The npm package name.",
+          "description": "The private workspace package name.",
           "examples": ["@lostgradient/cinder"]
-        },
-        "version": {
-          "type": "string",
-          "description": "The npm package version (semver string).",
-          "examples": ["0.0.1"]
         },
         "framework": {
           "type": "string",
@@ -57,7 +51,7 @@
         },
         "frameworkVersionRange": {
           "type": "string",
-          "description": "The peer-dependency range for the UI framework.",
+          "description": "The framework version selected by the root Bun catalog.",
           "examples": [">=5.36"]
         },
         "classPrefix": {
@@ -73,7 +67,9 @@
         "tokenNamespaces": {
           "type": "array",
           "description": "Design-token namespaces this package defines CSS custom properties for.",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "examples": [["color", "space", "radius", "ring", "type", "motion", "shadow"]]
         },
         "stylesEntry": {
@@ -110,14 +106,18 @@
     "statusLevels": {
       "type": "object",
       "description": "Closed set of component maturity statuses. Keys are status identifiers; values are human-readable descriptions.",
-      "additionalProperties": { "type": "string" }
+      "additionalProperties": {
+        "type": "string"
+      }
     },
     "overlapFamilies": {
       "type": "object",
       "description": "Named groupings of components that serve overlapping purposes. Use these to decide between similar components. Keys are family names; values are arrays of kebab-case component ids.",
       "additionalProperties": {
         "type": "array",
-        "items": { "type": "string" },
+        "items": {
+          "type": "string"
+        },
         "minItems": 2
       }
     },
@@ -177,19 +177,24 @@
           },
           "purpose": {
             "type": "string",
-            "description": "One-sentence description of what this component is for. 1–200 characters.",
+            "description": "One-sentence description of what this component is for. 1\u2013200 characters.",
             "minLength": 1,
             "maxLength": 200
           },
           "tags": {
             "type": "array",
             "description": "Free-form classification tags for search and filtering.",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           },
           "useWhen": {
             "type": "array",
             "description": "Guidance on when to reach for this component instead of a similar alternative.",
-            "items": { "type": "string", "maxLength": 140 }
+            "items": {
+              "type": "string",
+              "maxLength": 140
+            }
           },
           "avoidWhen": {
             "type": "array",
@@ -219,7 +224,10 @@
           "related": {
             "type": "array",
             "description": "Kebab-case ids of components that are frequently used alongside this one or serve related purposes.",
-            "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" }
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            }
           },
           "hasConstraints": {
             "type": "boolean",
@@ -231,34 +239,34 @@
           },
           "artifacts": {
             "type": "object",
-            "description": "Subpath import specifiers for the machine-readable artifacts this component ships.",
+            "description": "Package-relative paths for local component tooling.",
             "required": ["schema", "variables"],
             "additionalProperties": false,
             "properties": {
               "schema": {
                 "type": "string",
-                "description": "Import specifier for the JSON Schema describing this component's props.",
-                "examples": ["cinder/button/schema"]
+                "description": "Package-relative source path for the schema artifact.",
+                "examples": ["src/components/button/button.schema.json"]
               },
               "variables": {
                 "type": "string",
-                "description": "Import specifier for the CSS custom property definitions for this component.",
-                "examples": ["cinder/button/variables"]
+                "description": "Package-relative source path for the variables artifact.",
+                "examples": ["src/components/button/button.variables.json"]
               },
               "examples": {
                 "type": "string",
-                "description": "Import specifier for the examples sidecar. Present only when hasExamples is true.",
-                "examples": ["cinder/button/examples"]
+                "description": "Package-relative source path for the examples artifact.",
+                "examples": ["src/components/button/button.examples.json"]
               },
               "constraints": {
                 "type": "string",
-                "description": "Import specifier for the constraints sidecar. Present only when hasConstraints is true.",
-                "examples": ["cinder/button/constraints"]
+                "description": "Package-relative source path for the constraints artifact.",
+                "examples": ["src/components/button/button.constraints.json"]
               },
               "enhancement": {
                 "type": "string",
-                "description": "Import specifier for a separately published runtime enhancement owned by this component.",
-                "examples": ["cinder/json-editor/enhancement"]
+                "description": "Package-relative source path for the enhancement artifact.",
+                "examples": ["src/components/json-editor/json-editor-enhancement.ts"]
               }
             }
           },
@@ -301,7 +309,11 @@
                 "type": "array",
                 "description": "Free-form accessibility notes.",
                 "minItems": 1,
-                "items": { "type": "string", "minLength": 1, "maxLength": 280 }
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 280
+                }
               }
             }
           }

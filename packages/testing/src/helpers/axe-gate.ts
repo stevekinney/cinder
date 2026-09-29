@@ -1,10 +1,10 @@
 /**
  * The accessibility gate for the broad component sweep
- * (`tests/components.playwright.ts`).
+ * (`scripts/browser-fixtures/tests/component-sweep.ts`).
  *
  * The sweep runs `runAxe()` across every component in two themes × three
  * viewports and buckets violations by impact. This module decides which of
- * those buckets are *blocking* (fail CI) and provides an explicit, documented
+ * those buckets are *blocking* (fail validation) and provides an explicit, documented
  * allow-list so a known pre-existing violation can be recorded as an exception
  * — with a required reason — rather than silently tolerated or forcing a
  * zero-violation baseline on day one.
@@ -81,7 +81,7 @@ export type AxeAllowEntry = {
  * roles + accessible names, avatar-group role, progressbar names, tag-input
  * listbox restructure, code-block dark-theme contrast + scroll focus, and the
  * copy-button/table/chip color-contrast fixes). The gate is therefore fully
- * enforced for every component: any `critical`/`serious` violation now fails CI.
+ * enforced for every component: any `critical`/`serious` violation now fails validation.
  * When a new entry is genuinely needed, record the exact axe rule ids it covers
  * in `ruleIds` (only those rules are downgraded) plus a tracking `reason`.
  */

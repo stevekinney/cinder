@@ -129,6 +129,21 @@ describe('isOpaqueForFormat (format-dependent opacity boundary)', () => {
   });
 });
 
+test.each([
+  'rgb(0.3foo 0 -180)',
+  'rgba(1px 0 0 / 0.5)',
+  'hsl(10px 50% 50%)',
+  'hsla(10foo 50% 50% / 0.5)',
+  'hwb(10foo 20% 30%)',
+  'oklch(0.4foo 0.1 120)',
+])('malformed numeric dimensions return null: %s', (input) => {
+  expect(parseCssColor(input)).toBeNull();
+});
+
+test('parseOklch rejects malformed numeric dimensions without throwing', () => {
+  expect(parseOklch('oklch(0.4foo 0.1 120)')).toBeNull();
+});
+
 describe('parseCssColor syntax allowlist (review thread #5)', () => {
   // culori's own `parse()` resolves CSS named colors and keywords to mode
   // 'rgb', which would silently bypass the documented
