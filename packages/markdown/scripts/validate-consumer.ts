@@ -105,6 +105,21 @@ async function assertNoDanglingSourceMapComments(installedRoot: string): Promise
   }
 }
 
+async function assertPackedWorkerSpecifier(installedRoot: string): Promise<void> {
+  const workerPath = join(installedRoot, 'dist', 'rendering', 'render-worker.js');
+  const asyncPath = join(installedRoot, 'dist', 'rendering', 'render-async.js');
+  if (!existsSync(workerPath) || !existsSync(asyncPath)) {
+    fail('packed Markdown worker and async renderer are missing');
+  }
+  const source = await Bun.file(asyncPath).text();
+  if (!source.includes("new URL('./render-worker.js', import.meta.url)")) {
+    fail('packed async renderer does not reference its JavaScript worker');
+  }
+  if (source.includes("new URL('./render-worker.ts', import.meta.url)")) {
+    fail('packed async renderer still references the unpublished TypeScript worker');
+  }
+}
+
 function barePackageName(specifier: string): string {
   return specifier.startsWith('@')
     ? specifier.split('/').slice(0, 2).join('/')
@@ -293,6 +308,7 @@ export async function validateConsumer(): Promise<void> {
     assertPackedExports(packedManifest, fixture.installedMarkdownRoot);
     await assertPackedFileSet(fixture.installedMarkdownRoot);
     await assertNoDanglingSourceMapComments(fixture.installedMarkdownRoot);
+    await assertPackedWorkerSpecifier(fixture.installedMarkdownRoot);
     await assertImportClosure(packedManifest, fixture.installedMarkdownRoot);
     await runPlainNodeConsumer(fixture);
     process.stdout.write(

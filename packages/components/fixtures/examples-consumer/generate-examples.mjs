@@ -81,19 +81,19 @@ const expectedCompositeIds = [];
 let entryCount = 0;
 
 for (const component of componentsWithExamples) {
-  // Resolve the examples sidecar through the package's own export — the same
-  // specifier a real consumer would import.
-  const exampleSet = require(component.artifacts.examples);
-  if (!Array.isArray(exampleSet.examples)) {
-    process.stderr.write(`generate-examples: ${component.id} examples is not an array\n`);
-    process.exit(1);
-  }
-
   if (!SAFE_ID.test(component.id)) {
     process.stderr.write(
       `generate-examples: component id "${component.id}" is not attribute-safe (${SAFE_ID}); ` +
         `the data-example-id marker contract requires it.\n`,
     );
+    process.exit(1);
+  }
+
+  // The manifest records a package-relative file for local knowledge tooling;
+  // consumers load the matching public component subpath.
+  const exampleSet = require(`${manifest.package.name}/${component.id}/examples`);
+  if (!Array.isArray(exampleSet.examples)) {
+    process.stderr.write(`generate-examples: ${component.id} examples is not an array\n`);
     process.exit(1);
   }
 
