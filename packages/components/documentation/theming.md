@@ -1,0 +1,301 @@
+# Theming and dark mode
+
+Cinder's color tokens are written with [`light-dark()`][mdn-light-dark]. That means the library doesn't ship a theme switcher, a context provider, or a class-toggling JavaScript runtime. Instead, **the active theme is whatever value `color-scheme` resolves to on the element where a token is read**. Cinder reads that signal through `light-dark()`, and every semantic color token follows automatically.
+
+This page documents that contract, gives you a minimal Svelte recipe for a user-facing toggle, and shows how to wire the same control into a Storybook toolbar.
+
+> [!NOTE] The toggle recipe uses Svelte 5 — runes (`$state`, `$effect`) plus the `bind:group` directive. Corvidae owns the Svelte version in its root dependency catalog, shared by Cinder and its consuming applications.
+
+## The contract
+
+Every semantic color token in [`tokens-base.css`](../src/styles/tokens-base.css) is defined like this:
+
+```css
+--cinder-surface-canvas: light-dark(oklch(96.5% 0.012 245), oklch(15% 0.035 245));
+```
+
+`light-dark(light-value, dark-value)` returns the first argument when the resolved `color-scheme` is `light`, and the second when it's `dark`. Cinder's `:root` block declares:
+
+```css
+color-scheme: light dark;
+```
+
+That tells the browser cinder supports both schemes _and_ that the active one should follow the user's OS preference by default. So a user on macOS with **Dark** appearance sees the dark tokens; a user on **Light** sees the light tokens. No additional configuration required.
+
+To override the OS preference, cinder supports two related paths. They both influence `light-dark()` resolution, but only `data-theme` also gets Cinder's scoped semantic token redeclarations:
+
+- **`data-theme` attribute**: set `data-theme="light"` or `data-theme="dark"` on `:root` (or any ancestor of the styled element). Cinder's stylesheet maps those attributes to `color-scheme` and pins the core semantic surface, text, border, overlay, interaction, status, and control tokens wherever the `[data-theme]` selector matches, including scoped subtree themes:
+
+  ```css
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+  }
+  :root[data-theme='light'] {
+    color-scheme: light;
+  }
+  [data-theme='dark'] {
+    color-scheme: dark;
+    --cinder-surface: oklch(21% 0.04 245);
+    --cinder-surface-raised: oklch(28% 0.045 245);
+    --cinder-text-default: oklch(92% 0.02 245);
+    --cinder-border-ink: oklch(86% 0.065 250);
+    --cinder-accent-solid: oklch(72% 0.14 270);
+    --cinder-ring-color: oklch(from var(--cinder-accent-solid) 0.7 0.14 h);
+  }
+  [data-theme='light'] {
+    color-scheme: light;
+    --cinder-surface: oklch(99.4% 0.002 255);
+    --cinder-surface-raised: oklch(100% 0 255);
+    --cinder-text-default: oklch(20% 0.018 245);
+    --cinder-border-ink: oklch(20% 0.02 255);
+    --cinder-accent-solid: oklch(50% 0.22 270);
+    --cinder-ring-color: oklch(from var(--cinder-accent-solid) 0.55 0.16 h);
+  }
+  ```
+
+- **Direct `color-scheme`**: set `color-scheme: light` or `color-scheme: dark` directly via CSS or inline style. This drives the `light-dark()` tokens, but it does not get the concrete scoped token redeclarations that Cinder wires to `[data-theme]`.
+
+The toggle recipe below uses `data-theme` because it's a single attribute mutation, plays nicely with CSS selectors elsewhere in your app, and doesn't leave inline styles lying around after the component unmounts.
+
+> [!NOTE] Because these `[data-theme]` selectors are not limited to `:root`, you can scope a theme override to a subtree — for example, a dark-themed navigation region embedded in an otherwise-light page. Cinder redeclares the core semantic tokens in that subtree, so components such as `Sidebar` and `Drawer` inherit the local dark surface, text, border, active, focus, and variant-control values without app-level token pinning. Nested `[data-theme='light']` scopes can switch those tokens back for a light island. If your app globally replaces Cinder's public tokens for custom branding, repeat those brand overrides in the scoped selector that should use them.
+
+## Minimal Svelte toggle
+
+Three states — `light`, `dark`, `system` — and a single source of truth: the `data-theme` attribute on `<html>`. Persist the user's choice in `localStorage` so it survives reloads, and apply it before paint so dark-mode users don't flash light first.
+
+### The pre-paint script
+
+This goes in your app's `<head>`, _before_ any stylesheet. It runs synchronously and sets `data-theme` on `<html>` before the first paint:
+
+```html
+<script>
+  (function () {
+    var theme = 'system';
+    try {
+      var stored = localStorage.getItem('app-theme');
+      if (stored === 'light' || stored === 'dark' || stored === 'system') {
+        theme = stored;
+      }
+    } catch (error) {
+      /* localStorage may be unavailable (private mode, sandboxed iframe) — fall back to system */
+    }
+    // For light/dark, set the attribute so cinder's [data-theme] selectors apply.
+    // For system, leave it unset so :root's `color-scheme: light dark` follows the OS preference.
+    if (theme === 'light' || theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+  })();
+</script>
+```
+
+On SvelteKit, put the body inside the `%sveltekit.head%`-adjacent `<head>` block in `src/app.html`. On Vite + Svelte, it goes in `index.html`'s `<head>`. In both cases the inline script runs before external stylesheets load — SvelteKit injects its assets after the literal `<head>` contents you write — so the attribute is set before paint.
+
+> [!TIP] The script only sets `data-theme` for explicit `light`/`dark` choices. For `system`, the absence of the attribute lets `:root`'s `color-scheme: light dark` declaration (shipped by cinder) fall through to the OS preference. Removing the attribute is what restores system-follow behavior — don't write `data-theme="system"` to the DOM.
+
+> [!WARNING] The pre-paint script avoids "flash of incorrect theme" only for users who have already chosen `light` or `dark`. System-mode users rely on cinder's stylesheet (which declares `color-scheme: light dark` on `:root`) loading promptly. If your bundler defers the cinder stylesheet behind a slow code-split chunk, system-mode users may see a brief light flash before the stylesheet resolves. In practice this is invisible on production builds, but worth knowing about if you see it during development.
+
+> [!TIP] The storage key (`'app-theme'`) is repeated in the pre-paint script and the toggle component below. Nothing enforces the match — a copy-paste typo silently breaks persistence. The pre-paint script must stay an inline classic `<script>` to run before stylesheets, so you can't `import` a shared constant into it. Either keep the two literals in sync by hand, or inject the value into your HTML template from your server/build system (a SvelteKit `transformPageChunk` hook or a Vite HTML transform).
+
+### The toggle component
+
+```svelte
+<!-- ThemeToggle.svelte -->
+<script lang="ts">
+  type Theme = 'light' | 'dark' | 'system';
+
+  // Must match the key used by the pre-paint script in app.html / index.html.
+  const STORAGE_KEY = 'app-theme';
+  const THEMES: readonly Theme[] = ['light', 'system', 'dark'];
+
+  import { onMount } from 'svelte';
+
+  // Initialize to 'system' on both server and client so the SSR-rendered
+  // radio markup matches the first client render. After mount, read the
+  // real value from the DOM (set by the pre-paint script) and reconcile
+  // state. The `mounted` flag gates the write effect until that read has
+  // happened, so the write effect can't clobber the pre-paint attribute
+  // with the placeholder `'system'` value before `onMount` runs.
+  let theme = $state<Theme>('system');
+  let mounted = $state(false);
+
+  onMount(() => {
+    const value = document.documentElement.getAttribute('data-theme');
+    theme = value === 'light' || value === 'dark' ? value : 'system';
+    mounted = true;
+  });
+
+  function setTheme(next: Theme) {
+    try {
+      localStorage.setItem(STORAGE_KEY, next);
+    } catch {
+      /* ignore — localStorage may be unavailable */
+    }
+    const root = document.documentElement;
+    if (next === 'system') {
+      root.removeAttribute('data-theme');
+    } else {
+      root.setAttribute('data-theme', next);
+    }
+  }
+
+  // Sync `theme` to the DOM and localStorage on every change. The `mounted`
+  // guard prevents the first run (with the placeholder `'system'` value)
+  // from running before `onMount` reads the real value out of the DOM. Once
+  // `onMount` flips the flag, the effect runs once with the just-read value
+  // (an idempotent re-write of the attribute and a re-write of localStorage)
+  // and then reruns on every subsequent user change.
+  $effect(() => {
+    if (!mounted) return;
+    setTheme(theme);
+  });
+</script>
+
+<fieldset>
+  <legend>Theme</legend>
+  {#each THEMES as option}
+    <label>
+      <input type="radio" name="theme" value={option} bind:group={theme} />
+      {option}
+    </label>
+  {/each}
+</fieldset>
+```
+
+A few notes on what's happening:
+
+- **`data-theme` is the only mutation.** The component never touches `color-scheme` directly; cinder's stylesheet does that translation. That keeps the DOM clean — no inline styles to remove later — and makes it trivial to query the active choice from elsewhere (`getAttribute('data-theme')`).
+- **`system` removes the attribute** rather than setting `data-theme="system"`. The absence of the attribute is what lets `:root`'s default `color-scheme: light dark` fall back to the OS preference.
+- **State starts at `'system'` on both server and client.** That matches the SSR-rendered radio markup to the first client render. The `onMount` callback reads the real value from the DOM (populated by the pre-paint script) and reconciles state; the `mounted` guard keeps the write effect from running with the placeholder value before that read. After mount, the effect runs once with the just-read value — an idempotent re-write of the same `data-theme` attribute — and then on every subsequent user change. Net result: no hydration mismatch.
+- **Three options, not two.** A binary light/dark toggle hides the system option, which is what most users actually want.
+
+That's the whole recipe. No store, no context, no provider.
+
+### Reading the resolved scheme
+
+`color-scheme: light dark` doesn't tell JavaScript which one is _active_ — only that both are supported. If you need to know the resolved value (for example, to swap a hand-authored SVG between light and dark variants), check the media query:
+
+```ts
+function getResolvedScheme(): 'light' | 'dark' {
+  const explicit = document.documentElement.getAttribute('data-theme');
+  if (explicit === 'light' || explicit === 'dark') return explicit;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+```
+
+Listen on the same `MediaQueryList` (`addEventListener('change', …)`) if you need live updates when the user is in `system` mode and changes their OS appearance.
+
+## Storybook toolbar integration
+
+If your consumer app uses Storybook, you can wire the same `data-theme` mutation into a [global toolbar control][sb-toolbars]. Declare a `globalTypes` entry for the toolbar, set the initial value via `initialGlobals`, and use a decorator that mirrors the toolbar state onto `document.documentElement`:
+
+```ts
+// .storybook/preview.ts
+import type { Preview } from '@storybook/svelte-vite';
+
+const preview: Preview = {
+  globalTypes: {
+    theme: {
+      description: 'Color scheme',
+      toolbar: {
+        title: 'Theme',
+        icon: 'circlehollow',
+        items: [
+          { value: 'light', title: 'Light' },
+          { value: 'system', title: 'System' },
+          { value: 'dark', title: 'Dark' },
+        ],
+        dynamicTitle: true,
+      },
+    },
+  },
+  initialGlobals: {
+    theme: 'system',
+  },
+  decorators: [
+    (story, context) => {
+      const theme = context.globals.theme as 'light' | 'dark' | 'system';
+      const root = document.documentElement;
+      if (theme === 'system') {
+        root.removeAttribute('data-theme');
+      } else {
+        root.setAttribute('data-theme', theme);
+      }
+      return story(context);
+    },
+  ],
+};
+
+export default preview;
+```
+
+Import cinder's stylesheet once in `.storybook/preview.ts` (or via a `preview-head.html` `<link>`), and every story renders against the active theme. The decorator runs on every story render, so flipping the toolbar control updates the canvas immediately.
+
+> [!NOTE] The import is `@storybook/svelte-vite` (the Storybook 8/9 Svelte + Vite renderer), not the legacy `@storybook/svelte`. `initialGlobals` is the current home for the initial value of a global; older docs that put `defaultValue` directly on `globalTypes` describe Storybook 7 behavior.
+
+> [!NOTE] Storybook's [`@storybook/addon-themes`][sb-addon-themes] ships a higher-level wrapper around this pattern. The hand-rolled version above is small enough that the addon is optional — pick whichever your team prefers.
+
+If a story renders the `ThemeToggle` component itself, the toggle reads the current `data-theme` attribute on mount and writes back to `data-theme` (plus `localStorage`) independently of the toolbar global. That's by design for the toggle, but it does mean the two controls compete — flipping the toolbar overwrites the attribute, and flipping the toggle overwrites it again. For visual-regression tests of the toggle, mount it in a story with no other theme controls so the toolbar doesn't fight it.
+
+## Why not a `ThemeSwitcher` component?
+
+A full `ThemeSwitcher` isn't on the v1 roadmap. The recipe above is short enough to copy, and theming-as-a-component tends to bake in opinions (icon set, label copy, layout, focus styles) that don't survive contact with real apps. When two or three reference consumers ship a near-identical toggle and ask cinder to standardize it, that's the signal to promote the recipe into a component.
+
+## Overriding tokens
+
+Dark mode is the headline use of the token system, but the same mechanism themes _anything_. To re-skin cinder, override the documented design tokens on `:root` (or any ancestor of the styled subtree) and every component that consumes them follows:
+
+```css
+:root {
+  --cinder-accent-solid: oklch(62% 0.22 25); /* a warmer brand accent */
+  --cinder-radius-lg: 1.25rem; /* rounder cards and surfaces */
+  --cinder-surface: oklch(95% 0.03 280);
+}
+```
+
+### No migration-alias namespace
+
+Cinder deliberately does not ship a second namespace of legacy, product-specific, or migration-only token aliases. The documented `--cinder-*` design tokens are the contract. A permanent alias layer obscures which values are live, lets stale mappings survive indefinitely, and turns another product's historical vocabulary into Cinder API.
+
+When an application migrates from another token system, keep the temporary mapping in that application, update call sites to the Cinder tokens, and delete the mapping when the migration finishes. Do not add those aliases to Cinder's token registry or published styles.
+
+The set of tokens you can safely override is exactly the table in [`tokens.md`](./tokens.md) — the global `--cinder-*` design tokens declared in `tokens-base.css`. You do **not** override a component's own implementation variables; those are not a stable API.
+
+How do you know an override actually reaches a component, rather than hitting a hard-coded value the override can't touch? Two layers enforce it:
+
+### Token categories
+
+Every `--cinder-*` custom property a component references falls into one of four categories. Only the first is consumer-facing theme API:
+
+| Category                            | Shape                                         | Who owns it              | Override it?                                                       |
+| ----------------------------------- | --------------------------------------------- | ------------------------ | ------------------------------------------------------------------ |
+| **Global design token**             | `--cinder-accent-solid`, `--cinder-radius-lg` | `tokens-base.css`        | **Yes** — this is the theme API.                                   |
+| **Component override variable**     | `--cinder-color-picker-hue`                   | the component            | Advanced; per-component, documented in that component's variables. |
+| **Private implementation variable** | `--_cinder-button-ring`                       | the component, internal  | No — not an API.                                                   |
+| **Runtime-state variable**          | `--cinder-toast-height` (set from JS)         | the component at runtime | No — written by the component.                                     |
+
+### The guards
+
+Two local audits check component CSS against the override contract. Run them from the Corvidae root with `--strict` to reject regressions from their checked-in baselines.
+
+- **Token-usage audit** ([`check-component-css-token-usage.ts`](../scripts/check-component-css-token-usage.ts)) classifies every `var(--cinder-*)` reference into the four categories above and reports any that resolve to nothing — a typo, a stale rename, or an undeclared "looks-like-a-token" name. Those references silently fall back to their inline default, so the component stops tracking the token system without any error. Run `bun components/cinder/scripts/check-component-css-token-usage.ts --strict` for the full inventory.
+
+- **Raw-color audit** ([`check-component-css-raw-colors.ts`](../scripts/check-component-css-raw-colors.ts)) reports raw color values (`#hex`, `rgb()`, `hsl()`, `oklch()`, `light-dark()`) in component CSS — values that don't track token overrides. Not every raw color is debt: a color-domain control (a color picker's hue spectrum) or a structural pattern (a transparency checkerboard) is intrinsic. Mark those intentional sites inline so the audit classifies them correctly:
+
+  ```css
+  background: linear-gradient(
+    /* … hue spectrum … */
+  ); /* cinder-allow-raw-color: domain-rendering — the hue the user is picking */
+  ```
+
+  Anything unmarked counts as **migration debt** — a color that should become a token or a shared recipe.
+
+When you fix debt (replace a raw color with a token, rename a stale reference), the baseline shrinks: run `bun components/cinder/scripts/check-component-css-raw-colors.ts --update-baseline` (or `bun components/cinder/scripts/check-component-css-token-usage.ts --update-baseline`) to record the new, lower floor.
+
+### Proving it at paint time
+
+The static guards catch leaks in source. A leak that only manifests when styles cascade is caught by the [`alternate-theme.playwright.ts`](../../../scripts/browser-fixtures/tests/alternate-theme.playwright.ts) browser fixture: it loads a real component, overrides documented `:root` tokens to deliberately distinct values, and asserts the component's _computed_ style changes. If a component hard-codes a value instead of consuming the token, the override is inert, the computed style doesn't move, and the test fails. Add a case here whenever you migrate a component family to tokens, so its themeability is locked in.
+
+[mdn-light-dark]: https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/light-dark
+[mdn-color-scheme]: https://developer.mozilla.org/en-US/docs/Web/CSS/color-scheme
+[sb-toolbars]: https://storybook.js.org/docs/essentials/toolbars-and-globals
+[sb-addon-themes]: https://github.com/storybookjs/storybook/tree/next/code/addons/themes

@@ -1,9 +1,25 @@
 import { sveltePlugin, throwingRejectionOf } from '@lostgradient/testing';
 import { describe, expect, test } from 'bun:test';
 
+import { allowCinderTestStyleBlock } from '../scripts/preload.ts';
 import Button from './components/button/button.svelte';
 
 describe('svelte plugin', () => {
+  test('preload permits only colocated Cinder style fixtures', () => {
+    expect(
+      allowCinderTestStyleBlock(
+        `${import.meta.dir}/components/button/workspace-style.fixture.svelte`,
+      ),
+    ).toBe(true);
+    expect(allowCinderTestStyleBlock(`${import.meta.dir}/test/fixtures/example.svelte`)).toBe(true);
+    expect(allowCinderTestStyleBlock(`${import.meta.dir}/components/button/button.svelte`)).toBe(
+      false,
+    );
+    expect(
+      allowCinderTestStyleBlock(`${import.meta.dir}/../other/src/test/fixtures/example.svelte`),
+    ).toBe(false);
+  });
+
   test('compiles Button to a callable', () => {
     expect(typeof Button).toBe('function');
   });
