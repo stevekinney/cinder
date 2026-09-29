@@ -81,6 +81,11 @@ describe('allowsStyleBlock', () => {
         '/checkout/packages/components/src/test/fixtures/virtualizer-live-fixture.svelte',
       ),
     ).toBe(true);
+    expect(
+      allowsStyleBlock(
+        '/checkout/packages/components/src/components/data-grid/data-grid-selection-bind-fixtures.svelte',
+      ),
+    ).toBe(true);
   });
 });
 

@@ -110,12 +110,15 @@ export function allowsStyleBlock(path: string): boolean {
   // cascade. Allow them to keep scoped styles local to the fixture.
   if (normalizedPath.includes('/packages/components/src/test/fixtures/')) return true;
   // Visual-regression fixture hosts colocated with their component
-  // (`src/components/<name>/<name>.fixture.svelte`, e.g. `accordion.fixture.svelte`)
+  // (`src/components/<name>/<name>.fixture.svelte` or `*-fixture.svelte`, e.g.
+  // `accordion.fixture.svelte` and `data-grid-selection-bind-fixtures.svelte`)
   // are dev-only mounting scaffolding for Playwright/visual fixtures and are
   // never shipped in dist — same rationale as the `/test/fixtures/` carve-out
   // above, extended to this established naming convention (`extract-fixtures.ts`
   // already requires fixture hosts to end in `.fixture.svelte`).
-  if (/\/src\/components\/[^/]+\/[^/]+\.fixture\.svelte$/.test(normalizedPath)) return true;
+  if (/\/src\/components\/[^/]+\/[^/]*(?:\.fixture|-fixtures?)\.svelte$/.test(normalizedPath)) {
+    return true;
+  }
 
   const componentPathMatch = normalizedPath.match(
     /\/(?:src\/(?:lib\/)?|dist\/)components\/([^/]+)(?:\/|\.svelte$)/,

@@ -336,6 +336,8 @@ export const PUBLISHED_SOURCE_FILES_GLOBS: readonly string[] = [
   'src/schema-types.ts',
   'src/components/**/*.ts',
   '!src/components/**/*-test-helpers.ts',
+  '!src/components/**/*-test-support.ts',
+  '!src/components/**/*-snippet-helpers.ts',
   'src/components/**/*.svelte',
   '!src/components/**/*.test.ts',
   '!src/components/**/*.spec.ts',
@@ -355,9 +357,13 @@ export const PUBLISHED_SOURCE_FILES_GLOBS: readonly string[] = [
   'src/components/**/*.css',
   'src/_internal/**/*.ts',
   '!src/_internal/**/*.test.ts',
+  '!src/_internal/**/*-test-helpers.ts',
+  '!src/_internal/**/*-test-support.ts',
   'src/_internal/**/*.svelte',
   'src/utilities/**/*.ts',
   '!src/utilities/**/*.test.ts',
+  '!src/utilities/**/*-test-helpers.ts',
+  '!src/utilities/**/*-test-support.ts',
   // Non-component static sub-paths whose exports map carries a `svelte`
   // condition pointing at `./src/highlighters/<name>/index.ts` (the
   // first-party Shiki adapter today; future siblings live here too).
