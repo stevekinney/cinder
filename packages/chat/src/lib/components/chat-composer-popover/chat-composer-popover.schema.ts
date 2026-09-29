@@ -24,20 +24,6 @@ const schema = {
       type: 'string',
       description: "Accessible listbox label. Default `'Composer suggestions'`.",
     },
-    placement: {
-      enum: [
-        'top',
-        'bottom',
-        'left',
-        'right',
-        'top-start',
-        'top-end',
-        'bottom-start',
-        'bottom-end',
-      ],
-      description:
-        "Caret-relative placement. Default `'top-start'`, which keeps the menu above a bottom composer.",
-    },
     offset: {
       type: 'number',
       description: 'Distance in px between the caret and popover. Default `6`.',
@@ -88,6 +74,12 @@ const schema = {
         name: 'onSelect',
         reason: 'function-or-snippet',
         description: 'Invoked when an enabled item is selected by keyboard or pointer.',
+      },
+      {
+        name: 'placement',
+        reason: 'unknown-shape',
+        description:
+          "Caret-relative placement. Default `'top-start'`, which keeps the menu above a bottom composer.",
       },
       {
         name: 'sources',

@@ -7,7 +7,7 @@ const schema = {
     placeholder: {
       type: 'string',
       description:
-        'Hint text shown while the editor is empty. Unrelated to `{{path}}` template placeholders, which `placeholderDefinitions` configures.',
+        'Hint text shown while the editor is empty. Unrelated to `{{path}}` template\nplaceholders, which `placeholderDefinitions` configures.',
     },
     id: {
       type: 'string',
@@ -43,11 +43,6 @@ const schema = {
       type: 'boolean',
       description: 'Show formatting toolbar (DEP-37)',
     },
-    placeholderValueMode: {
-      enum: ['text', 'markdown'],
-      description:
-        "How preview inserts string placeholder values: `'text'` (the default)\nrenders them as literal text, `'markdown'` lets them contribute Markdown\nformatting. Other values render as literal JSON either way. An invalid\nstring reports `invalid_option` at `placeholderValueMode` and disables fill.",
-    },
     class: {
       type: 'string',
       description: 'Additional CSS classes',
@@ -62,11 +57,6 @@ const schema = {
   required: ['id'],
   metadata: {
     unsupportedProps: [
-      {
-        name: 'onValueChange',
-        reason: 'function-or-snippet',
-        description: 'Called when content changes',
-      },
       {
         name: 'onCommentShortcut',
         reason: 'function-or-snippet',
@@ -100,6 +90,11 @@ const schema = {
           'Notified whenever the toolbar context changes.\n\nUse this to host the formatting controls somewhere this component does not\nrender — for example folding them into a surrounding application toolbar so\nthe editor does not stack a second bar of its own. Pair it with\n`toolbarEnabled={false}`.',
       },
       {
+        name: 'onValueChange',
+        reason: 'function-or-snippet',
+        description: 'Called when content changes',
+      },
+      {
         name: 'placeholderCompletion',
         reason: 'unknown-shape',
         description:
@@ -116,6 +111,12 @@ const schema = {
         reason: 'unknown-shape',
         description:
           'Allowed placeholders, as a JSON Schema or explicit candidates. Drives\ncompletion, invalid-token decoration and diagnostics from one catalog.\nReplacing the object updates the live editor without recreating it.',
+      },
+      {
+        name: 'placeholderValueMode',
+        reason: 'unknown-shape',
+        description:
+          "How preview inserts string placeholder values: `'text'` (the default)\nrenders them as literal text, `'markdown'` lets them contribute Markdown\nformatting. Other values render as literal JSON either way. An invalid\nstring reports `invalid_option` at `placeholderValueMode` and disables fill.",
       },
       {
         name: 'placeholderValues',

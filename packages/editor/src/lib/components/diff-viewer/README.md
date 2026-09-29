@@ -89,7 +89,6 @@ DiffViewer exposes optional, side-aware selection and file hooks so a caller can
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

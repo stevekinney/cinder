@@ -44,9 +44,9 @@
   "metadata": {
     "unsupportedProps": [
       {
-        "name": "onValueChange",
-        "reason": "function-or-snippet",
-        "description": "Called when content changes."
+        "name": "diffReviewState",
+        "reason": "unknown-shape",
+        "description": "Opt-in, host-controlled diff-review session for this document's embedded diff tab\n(COR-512 / DR-7). Absent by default: every existing consumer's behavior, DOM, and export\nscope are exactly unchanged. Never mutated directly — every change flows back out through\n`onDiffReviewStateChange`. Independent of `threads`/`ProseMirror` anchoring: enabling or\nremoving this prop never touches document comment threads, and a bound `original`/`value`\nchange latches diff comments outdated without affecting prose threads.\n\n`ReviewEditor` reconciles this against its own bound `original`/`value` as a single\n`markdown` target keyed by its `id` prop (see `buildReviewEditorDiffReviewTarget`), through\n`restoreDiffReviewState` — the same atomic validate-and-reconcile path a remount uses. An\ninput that fails that validation shows an integration error and keeps the last valid state;\nordinary document editing is never affected. Removing this prop stops diff controls/export\nintegration without erasing or overwriting the host's own state; supplying it again\nre-validates from the current input."
       },
       {
         "name": "onCommentCreate",
@@ -64,6 +64,11 @@
         "description": "Called when a comment is updated."
       },
       {
+        "name": "onDiffReviewStateChange",
+        "reason": "function-or-snippet",
+        "description": "Called whenever the reconciled diff-review state changes: after a comment/draft/review-note\naction the diff tab's controls dispatch, and whenever a bound `original`/`value` change\nlatches affected diff comments outdated. Never called for a supplied state that fails\nvalidation. Named `onDiffReviewStateChange` (not the cross-package contract's lowercase\n`ondiffreviewstatechange`): this repository's `check-prop-conventions` gate structurally\nbans a non-native-passthrough lowercase `on*` prop, exactly like `DiffReview`'s\n`onStateChange` and `SourceDiffViewer`'s `onFilesChange` before it. The field and payload\nare otherwise exactly the ratified contract's."
+      },
+      {
         "name": "onThreadCreate",
         "reason": "function-or-snippet",
         "description": "Called when user initiates thread creation."
@@ -72,6 +77,11 @@
         "name": "onThreadDelete",
         "reason": "function-or-snippet",
         "description": "Called when a thread is deleted."
+      },
+      {
+        "name": "onValueChange",
+        "reason": "function-or-snippet",
+        "description": "Called when content changes."
       },
       {
         "name": "threads",

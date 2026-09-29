@@ -1,5 +1,17 @@
 # @lostgradient/editor
 
+## 0.15.0
+
+### Minor Changes
+
+- [#1560](https://github.com/stevekinney/cinder/pull/1560) [`5871bbd`](https://github.com/stevekinney/cinder/commit/5871bbd68c91fc2e74799a9087926be2b5625fef) Thanks [@stevekinney](https://github.com/stevekinney)! - Publish the DiffReview component and its comments and state APIs, including their package subpaths and generated declarations.
+
+### Patch Changes
+
+- Updated dependencies [[`7a5689b`](https://github.com/stevekinney/cinder/commit/7a5689bfa243f327c662c67b6b54900e38f52a6d), [`5871bbd`](https://github.com/stevekinney/cinder/commit/5871bbd68c91fc2e74799a9087926be2b5625fef)]:
+  - @lostgradient/cinder@0.26.3
+  - @lostgradient/markdown@0.6.0
+
 ## 0.14.0
 
 ### Minor Changes
