@@ -40,7 +40,7 @@ See the [tabular family boundaries](https://github.com/stevekinney/cinder/blob/m
 
 Pass `scrollable` for dense or unknown-width tables. The Table root stays a native `<table>`; Cinder generates a focusable `.cinder-table-scroll` wrapper that owns horizontal overflow when the available component width is too narrow. Use `scrollContainerProps` to label, style, or override attributes on that generated wrapper. When `scrollable` and `stickyHeader` are combined, the generated wrapper is the sticky header's scroll container; set a bounded block size on `scrollContainerProps` when the table should scroll vertically inside that wrapper.
 
-The leaves remain importable individually for à-la-carte builds — see `@lostgradient/cinder`, `@lostgradient/cinder`, `@lostgradient/cinder`, `@lostgradient/cinder`, and `@lostgradient/cinder`.
+The leaves are also named exports of `@lostgradient/cinder`.
 
 ## Props
 

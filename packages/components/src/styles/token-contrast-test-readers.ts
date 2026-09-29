@@ -26,6 +26,10 @@ export function readJsonRecord(...pathSegments: readonly string[]): Record<strin
   return parsed;
 }
 
+function luminance(rgb: Rgb): number {
+  return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+}
+
 /** The registry's `cssProperty -> corpus path` map, validated at load. */
 export function readCssPropertyToPath(
   registryPath = join(TOKENS_DIRECTORY, 'registry.generated.json'),
@@ -186,7 +190,6 @@ export function translucentContrastOn(ink: TranslucentColor, ground: OklchColor)
     groundRgb,
     ink.alpha,
   );
-  const luminance = (rgb: Rgb) => 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
   return contrastRatio(luminance(painted), luminance(groundRgb));
 }
 

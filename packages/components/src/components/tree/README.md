@@ -24,7 +24,7 @@ Hierarchical tree view for navigating or selecting nested data structures.
 </Tree>
 ```
 
-The leaf remains importable individually for à-la-carte builds — see `@lostgradient/cinder`.
+The leaf is also a named export of `@lostgradient/cinder`.
 
 ## Props
 

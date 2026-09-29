@@ -22,7 +22,7 @@ See the [SideNavigation versus Sidebar decision](https://github.com/stevekinney/
 </SideNavigation>
 ```
 
-The leaves remain importable individually for à-la-carte builds — see `@lostgradient/cinder` and `@lostgradient/cinder`.
+The leaves are also named exports of `@lostgradient/cinder`.
 
 ## Props
 

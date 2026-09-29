@@ -4,7 +4,7 @@
 
 ## Usage
 
-`TableBody` is a compose-only leaf of [`Table`](../table/README.md). The idiomatic API is `Table.Body`, reached through the parent namespace — see the [table README](../table/README.md#usage) for the composed snippet. The flat `@lostgradient/cinder` subpath remains exported for à-la-carte builds that import the leaf directly.
+`TableBody` is a compose-only leaf of [`Table`](../table/README.md). The idiomatic API is `Table.Body`, reached through the parent namespace — see the [table README](../table/README.md#usage) for the composed snippet. The leaf is also a named export of `@lostgradient/cinder`.
 
 ## Props
 

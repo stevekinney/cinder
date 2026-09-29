@@ -22,7 +22,7 @@ GridList lays out homogeneous card-like list items in responsive auto-fit column
 </GridList>
 ```
 
-The leaf remains importable individually for à-la-carte builds — see `@lostgradient/cinder`.
+The leaf is also a named export of `@lostgradient/cinder`.
 
 ## Props
 

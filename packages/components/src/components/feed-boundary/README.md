@@ -4,7 +4,7 @@ Separator entry inside a feed marking a stream discontinuity such as a reconnect
 
 ## Usage
 
-`FeedBoundary` is a compose-only leaf of [`Feed`](../feed/README.md). The idiomatic API is `Feed.Boundary`, reached through the parent namespace — see the [feed README](../feed/README.md#usage) for the composed snippet. The flat `@lostgradient/cinder` subpath remains exported for à-la-carte builds that import the leaf directly.
+`FeedBoundary` is a compose-only leaf of [`Feed`](../feed/README.md). The idiomatic API is `Feed.Boundary`, reached through the parent namespace — see the [feed README](../feed/README.md#usage) for the composed snippet. The leaf is also a named export of `@lostgradient/cinder`.
 
 The consumer owns the wording (`label`); the boundary owns the `role="separator"` semantics and the horizontal-rule treatment.
 
