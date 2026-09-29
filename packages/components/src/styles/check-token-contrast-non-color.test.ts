@@ -1,19 +1,27 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
+const tokenDocumentationPath = join(import.meta.dirname, '..', '..', 'documentation', 'tokens.md');
+const sourcePath = (...candidates: string[]) => {
+  const path = candidates.map((candidate) => join(repositoryRoot, candidate)).find(existsSync);
+  if (path === undefined)
+    throw new Error(`Expected one of these repository paths: ${candidates.join(', ')}`);
+  return path;
+};
+
 describe('non-color component tokens', () => {
   it('documents the Chat typography control and keeps it out of the color contract', () => {
-    const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
     const chatCss = readFileSync(
-      join(repositoryRoot, 'components/chat/src/lib/components/chat/chat.css'),
+      sourcePath(
+        'components/chat/src/lib/components/chat/chat.css',
+        'packages/chat/src/lib/components/chat/chat.css',
+      ),
       'utf8',
     );
-    const tokenDocumentation = readFileSync(
-      join(repositoryRoot, 'components/cinder/documentation/tokens.md'),
-      'utf8',
-    );
+    const tokenDocumentation = readFileSync(tokenDocumentationPath, 'utf8');
 
     expect(chatCss).toContain('--cinder-chat-font-size: 1rem');
     expect(chatCss).toContain('--_cinder-chat-text-base: clamp(');
@@ -26,21 +34,26 @@ describe('non-color component tokens', () => {
   // changed in CSS without the docs following, or the token removed from one
   // side only, fails here.
   it('documents the Chat transcript measure and keeps it out of the color contract', () => {
-    const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
     const chatCss = readFileSync(
-      join(repositoryRoot, 'components/chat/src/lib/components/chat/chat.css'),
+      sourcePath(
+        'components/chat/src/lib/components/chat/chat.css',
+        'packages/chat/src/lib/components/chat/chat.css',
+      ),
       'utf8',
     );
     const chatVariables = readFileSync(
-      join(repositoryRoot, 'components/chat/src/lib/components/chat/chat.variables.json'),
+      sourcePath(
+        'components/chat/src/lib/components/chat/chat.variables.json',
+        'packages/chat/src/lib/components/chat/chat.variables.json',
+      ),
       'utf8',
     );
-    const tokenDocumentation = readFileSync(
-      join(repositoryRoot, 'components/cinder/documentation/tokens.md'),
-      'utf8',
-    );
+    const tokenDocumentation = readFileSync(tokenDocumentationPath, 'utf8');
     const tokenBaseCss = readFileSync(
-      join(repositoryRoot, 'components/cinder/src/styles/tokens-base.css'),
+      sourcePath(
+        'components/cinder/src/styles/tokens-base.css',
+        'packages/components/src/styles/tokens-base.css',
+      ),
       'utf8',
     );
 

@@ -85,13 +85,13 @@ export const CORPUS_ALIASES: Record<string, Classification> = {
   },
 };
 
-/** Corpus documents whose entries can alias a tier. */
+/** Package-relative corpus documents whose entries can alias a tier. */
 export const CORPUS_DOCUMENTS = [
-  'components/cinder/src/tokens/themes/light.tokens.json',
-  'components/cinder/src/tokens/themes/dark.tokens.json',
-  'components/cinder/src/tokens/sets/components.tokens.json',
-  'components/cinder/src/tokens/sets/colors.tokens.json',
-  'components/cinder/src/tokens/sets/semantic.tokens.json',
+  'src/tokens/themes/light.tokens.json',
+  'src/tokens/themes/dark.tokens.json',
+  'src/tokens/sets/components.tokens.json',
+  'src/tokens/sets/colors.tokens.json',
+  'src/tokens/sets/semantic.tokens.json',
 ];
 
 export const CORPUS_TIER =
@@ -145,13 +145,16 @@ export const REPOSITORY_ROOT = join(import.meta.dirname, '..', '..', '..', '..')
  * tokens, so a tier used as a fill there changed rendering just as much.
  */
 const SCAN_ROOTS = [
-  'components/cinder/src/components',
-  'components/cinder/src/styles',
-  'components/chat/src',
-  'components/editor/src',
-  // A registered workspace that consumes cinder and styles with these tiers.
-  'applications/desktop/src',
-];
+  ['components/cinder/src/components', 'components/cinder/src/components'],
+  ['components/cinder/src/styles', 'components/cinder/src/styles'],
+  ['components/chat/src', 'components/chat/src'],
+  ['components/editor/src', 'components/editor/src'],
+  ['applications/desktop/src', 'applications/desktop/src'],
+  ['packages/components/src/components', 'components/cinder/src/components'],
+  ['packages/components/src/styles', 'components/cinder/src/styles'],
+  ['packages/chat/src', 'components/chat/src'],
+  ['packages/editor/src', 'components/editor/src'],
+] as const;
 
 /** `tokens-base.css` is generated from the corpus, where the aliases are already gated. */
 const GENERATED = 'tokens-base.css';
@@ -368,10 +371,12 @@ export function allUseSites(): Array<readonly [string, string]> {
 
 function scanUseSites(): Array<readonly [string, string]> {
   const sites: Array<readonly [string, string]> = [];
-  for (const root of SCAN_ROOTS) {
-    for (const path of styleFiles(join(REPOSITORY_ROOT, root))) {
+  for (const [root, canonicalRoot] of SCAN_ROOTS) {
+    const absoluteRoot = join(REPOSITORY_ROOT, root);
+    if (!statSync(absoluteRoot, { throwIfNoEntry: false })) continue;
+    for (const path of styleFiles(absoluteRoot)) {
       if (path.endsWith(GENERATED)) continue;
-      const relativePath = relative(REPOSITORY_ROOT, path);
+      const relativePath = relative(REPOSITORY_ROOT, path).replace(root, canonicalRoot);
       for (const use of tierUses(readFileSync(path, 'utf8'))) sites.push([relativePath, use]);
     }
   }
@@ -418,8 +423,10 @@ describe('CIN-245: structural border tiers used outside a border declaration', (
     // plain (secondary-variant) disabled Button's cross-file-only compound,
     // each with its own `AUDITED_SITES` entry.
     const offenders: string[] = [];
-    for (const root of SCAN_ROOTS) {
-      for (const path of styleFiles(join(REPOSITORY_ROOT, root))) {
+    for (const [root, canonicalRoot] of SCAN_ROOTS) {
+      const absoluteRoot = join(REPOSITORY_ROOT, root);
+      if (!statSync(absoluteRoot, { throwIfNoEntry: false })) continue;
+      for (const path of styleFiles(absoluteRoot)) {
         if (path.endsWith(GENERATED)) continue;
         const source = readFileSync(path, 'utf8');
         // Rule bodies, roughly: everything between a `{` and the next `}`.
@@ -433,7 +440,7 @@ describe('CIN-245: structural border tiers used outside a border declaration', (
           for (const rawFragment of body.split(';')) {
             const fragment = rawFragment.trim();
             if (!TIER_REFERENCE.test(fragment)) continue;
-            const site = `${relative(REPOSITORY_ROOT, path)}  ${fragment};`;
+            const site = `${relative(REPOSITORY_ROOT, path).replace(root, canonicalRoot)}  ${fragment};`;
             if (!OPACITY_COMPOUNDED.includes(site)) offenders.push(site);
           }
         }
