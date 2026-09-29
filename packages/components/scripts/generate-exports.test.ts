@@ -61,14 +61,14 @@ describe('orderedExportEntry', () => {
 });
 
 describe('computeRootExport', () => {
-  it('points node at the shared server root and default at the root barrel', () => {
+  it('points the published import at the built root barrel', () => {
     const root = computeRootExport();
     expect(root).toEqual({
       types: './dist/index.d.ts',
       browser: './src/index.ts',
       svelte: './src/index.ts',
       node: './dist/server/index.js',
-      import: './src/index.ts',
+      import: './dist/index.js',
       default: './dist/index.js',
     });
     expect(Object.keys(root)).toEqual(['types', 'browser', 'svelte', 'node', 'import', 'default']);

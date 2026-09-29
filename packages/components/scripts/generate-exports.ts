@@ -317,7 +317,7 @@ export function computeRootExport(): ExportEntry {
     browser: './src/index.ts',
     svelte: './src/index.ts',
     node: './dist/server/index.js',
-    import: './src/index.ts',
+    import: './dist/index.js',
     default: './dist/index.js',
   });
 }

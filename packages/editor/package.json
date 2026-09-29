@@ -240,11 +240,18 @@
   },
   "dependencies": {
     "@floating-ui/dom": "1.7.6",
-    "esm-env": "^1.2.0"
-  },
-  "devDependencies": {
     "@lostgradient/cinder": "workspace:*",
     "@lostgradient/markdown": "workspace:*",
+    "@milkdown/kit": "catalog:",
+    "@milkdown/prose": "catalog:",
+    "@noble/hashes": "catalog:",
+    "esm-env": "^1.2.0",
+    "prosemirror-inputrules": "catalog:",
+    "prosemirror-model": "catalog:",
+    "prosemirror-state": "catalog:",
+    "prosemirror-view": "catalog:"
+  },
+  "devDependencies": {
     "@milkdown/ctx": "^7.17.3",
     "@sveltejs/package": "^2.5.8",
     "@testing-library/svelte": "^5.2.7",

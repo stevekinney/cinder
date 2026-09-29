@@ -11,11 +11,19 @@ import {
 import { emitArbitraryExtensionDeclarations } from '../../components/scripts/lib/emit-arbitrary-extension-declarations.ts';
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
 import { shortHash, shouldSkipBuild, writeBuildInputHash } from './lib/build-cache.ts';
-import { parsePackageManifest, runtimeExternalSpecifiers } from './pack-for-publish.ts';
+import {
+  parsePackageManifest,
+  runtimeExternalSpecifiers,
+  serverEntrypointsFromManifest,
+  styleDeclarationPathsFromManifest,
+} from './pack-for-publish.ts';
 
 const PACKAGE_ROOT = join(import.meta.dir, '..');
 const WORKSPACE_ROOT = `${PACKAGE_ROOT}/../..`;
 const DISTRIBUTION_DIRECTORY = join(PACKAGE_ROOT, 'dist');
+const packageManifest = parsePackageManifest(
+  await Bun.file(join(PACKAGE_ROOT, 'package.json')).text(),
+);
 
 // `shouldSkipBuild` computes this package's input hash from source, config,
 // and workspace-level inputs (bun.lock, the base tsconfig). This package's
@@ -76,19 +84,10 @@ process.stdout.write(
   `build — rewrote TypeScript import specifiers in ${rewrittenFiles} emitted files\n`,
 );
 
-// Only `review-editor` has a standalone top-level CSS file (imported once by
-// `review-editor.svelte`, matching Chat's per-component convention).
-// `markdown-editor` and `diff-viewer` style entirely through per-file scoped
-// `<style>` blocks compiled inline by Svelte — there is no separate CSS
-// asset to stub a declaration for, and no `./markdown-editor/styles` or
-// `./diff-viewer/styles` export in `package.json` (matching the shape they
-// had as cinder components before this move).
-// `pack-for-publish.ts` requires every `package.json#exports` `types` target to exist on disk —
-// including `review-editor`'s `./styles` subpath, which points at this legacy `<base>.css.d.ts`
-// name (not the Node16-correct one the step below adds). `svelte-package` never generates this
-// file itself (unlike cinder's `emitDts()`), so it stays a hardcoded stub.
-for (const cssPath of ['dist/components/review-editor/review-editor.css']) {
-  await Bun.write(join(PACKAGE_ROOT, `${cssPath}.d.ts`), 'export {};\n');
+// Svelte Package copies CSS assets but does not emit their exported type stubs.
+// Derive every sidecar from the manifest so newly mirrored styles stay packable.
+for (const declarationPath of styleDeclarationPathsFromManifest(packageManifest)) {
+  await Bun.write(join(PACKAGE_ROOT, declarationPath), 'export {};\n');
 }
 
 // Node16/bundler ESM resolution (what a real consumer's `"types"` condition uses, and what
@@ -99,7 +98,9 @@ for (const cssPath of ['dist/components/review-editor/review-editor.css']) {
 // rewritten to carry the extension that resolution mode requires — neither `svelte-package` nor
 // the stub loop above adds an extension to a bare relative specifier at all (see
 // `emit-arbitrary-extension-declarations.ts`'s module doc for the `tsc --traceResolution` proof).
-const arbitraryExtensionResult = await emitArbitraryExtensionDeclarations(join(PACKAGE_ROOT, 'dist'));
+const arbitraryExtensionResult = await emitArbitraryExtensionDeclarations(
+  join(PACKAGE_ROOT, 'dist'),
+);
 process.stdout.write(
   `build — created ${arbitraryExtensionResult.createdDeclarations.length} arbitrary-extension declaration(s), rewrote ${arbitraryExtensionResult.rewrittenSpecifiers.length} extensionless specifier(s)\n`,
 );
@@ -110,10 +111,12 @@ process.stdout.write(
 // have already fixed every instance of both; this is the regression gate.
 {
   const declarationGlob = new Glob('dist/**/*.d.ts');
-  const unresolvedArbitraryExtensionImports: ReturnType<typeof findUnresolvedArbitraryExtensionImports> =
-    [];
-  const extensionlessDeclarationSpecifiers: ReturnType<typeof findExtensionlessDeclarationSpecifiers> =
-    [];
+  const unresolvedArbitraryExtensionImports: ReturnType<
+    typeof findUnresolvedArbitraryExtensionImports
+  > = [];
+  const extensionlessDeclarationSpecifiers: ReturnType<
+    typeof findExtensionlessDeclarationSpecifiers
+  > = [];
   const selfReferentialTypeImports: ReturnType<typeof findSelfReferentialTypeImports> = [];
   for await (const relative of declarationGlob.scan({ cwd: PACKAGE_ROOT })) {
     const distRelative = relative.slice('dist/'.length);
@@ -136,7 +139,10 @@ process.stdout.write(
     process.stderr.write(
       'Build aborted: relative import(s) in compiled output do not resolve under Node16:\n' +
         unresolvedArbitraryExtensionImports
-          .map((offender) => `  ${offender.file} -> ${offender.specifier} (needs ${offender.requiredDeclarationPath})`)
+          .map(
+            (offender) =>
+              `  ${offender.file} -> ${offender.specifier} (needs ${offender.requiredDeclarationPath})`,
+          )
           .join('\n') +
         extensionlessDeclarationSpecifiers
           .map((offender) => `  ${offender.file} -> ${offender.specifier}`)
@@ -152,14 +158,14 @@ process.stdout.write(
 
 const sourceRoot = join(PACKAGE_ROOT, 'src', 'lib');
 const serverOutputRoot = join(PACKAGE_ROOT, 'dist', 'server');
-// The root export (`.`) is plain TypeScript — comments, sessions, export, and
-// the ProseMirror/Milkdown runtime, no Svelte — so it needs no server-target
-// Svelte compilation, only the three real components do.
+// The root barrel is plain TypeScript; each component Node export needs its own
+// compiled server entry. Derive those entries from the manifest the mirror emits.
+const componentServerEntrypoints = serverEntrypointsFromManifest(packageManifest);
 const serverEntrypoints = [
   join(sourceRoot, 'index.ts'),
-  join(sourceRoot, 'components', 'markdown-editor', 'index.ts'),
-  join(sourceRoot, 'components', 'review-editor', 'index.ts'),
-  join(sourceRoot, 'components', 'diff-viewer', 'index.ts'),
+  ...componentServerEntrypoints.map(({ sourceRelativePath }) =>
+    join(sourceRoot, sourceRelativePath),
+  ),
 ];
 const serverCssNoopPlugin: BunPlugin = {
   name: 'editor-server-css-noop',
@@ -168,9 +174,6 @@ const serverCssNoopPlugin: BunPlugin = {
     builder.onLoad({ filter: /.*/, namespace: 'css-noop' }, () => ({ contents: '', loader: 'js' }));
   },
 };
-const packageManifest = parsePackageManifest(
-  await Bun.file(join(PACKAGE_ROOT, 'package.json')).text(),
-);
 const runtimeExternals = runtimeExternalSpecifiers(packageManifest);
 async function buildServerEntries() {
   const previousNodeEnvironment = process.env['NODE_ENV'];
@@ -207,9 +210,9 @@ if (!serverBuild.success) {
 
 for (const expectedPath of [
   join(serverOutputRoot, 'index.js'),
-  join(serverOutputRoot, 'components', 'markdown-editor', 'index.js'),
-  join(serverOutputRoot, 'components', 'review-editor', 'index.js'),
-  join(serverOutputRoot, 'components', 'diff-viewer', 'index.js'),
+  ...componentServerEntrypoints.map(({ outputRelativePath }) =>
+    join(serverOutputRoot, outputRelativePath),
+  ),
 ]) {
   if (!existsSync(expectedPath)) throw new Error(`server build is missing ${expectedPath}`);
   const serverSource = await Bun.file(expectedPath).text();
@@ -217,7 +220,9 @@ for (const expectedPath of [
     throw new Error(`server build retained a CSS or Svelte import in ${expectedPath}`);
   }
 }
-process.stdout.write('build — emitted plain-Node server entries for 4 public exports\n');
+process.stdout.write(
+  `build — emitted plain-Node server entries for ${serverEntrypoints.length} public exports\n`,
+);
 
 // Written only now that both the svelte-package build and the server build
 // have succeeded, so the marker never claims a failed or partial build is up

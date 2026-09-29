@@ -69,6 +69,7 @@ const REQUIRED_DEPENDENCIES: Record<string, string> = {
   '@lostgradient/markdown': 'workspace:*',
   '@milkdown/kit': 'catalog:',
   '@milkdown/prose': 'catalog:',
+  '@noble/hashes': 'catalog:',
   'esm-env': '^1.2.0',
   'prosemirror-inputrules': 'catalog:',
   'prosemirror-model': 'catalog:',
@@ -104,9 +105,7 @@ function resolveWorkspaceSiblingVersion(name: string): string {
 
 /** The root workspace manifest's `catalog` block. */
 function readRootCatalog(): Readonly<Record<string, string>> {
-  const parsed: unknown = JSON.parse(
-    readFileSync(join(WORKSPACE_ROOT, 'package.json'), 'utf8'),
-  );
+  const parsed: unknown = JSON.parse(readFileSync(join(WORKSPACE_ROOT, 'package.json'), 'utf8'));
   if (typeof parsed !== 'object' || parsed === null) return {};
   const catalog = (parsed as { catalog?: unknown }).catalog;
   return typeof catalog === 'object' && catalog !== null ? (catalog as Record<string, string>) : {};
@@ -234,6 +233,42 @@ export function runtimeExternalSpecifiers(
   return names.flatMap((name) => [name, `${name}/*`]);
 }
 
+export function serverEntrypointsFromManifest(
+  manifest: Pick<PackageManifest, 'exports'>,
+): { sourceRelativePath: string; outputRelativePath: string }[] {
+  const entries: { sourceRelativePath: string; outputRelativePath: string }[] = [];
+  for (const [subpath, entry] of Object.entries(manifest.exports)) {
+    if (typeof entry === 'string' || !entry.node?.startsWith('./dist/server/')) continue;
+    const source = entry.svelte;
+    if (!source?.startsWith('./src/lib/') || !source.endsWith('.ts')) {
+      throw new Error(`${subpath} has a Node export without a TypeScript source entry`);
+    }
+    const expectedNode = source.replace('./src/lib/', './dist/server/').replace(/\.ts$/u, '.js');
+    if (entry.node !== expectedNode) {
+      throw new Error(`${subpath} Node export ${entry.node} does not match ${expectedNode}`);
+    }
+    entries.push({
+      sourceRelativePath: source.slice('./src/lib/'.length),
+      outputRelativePath: entry.node.slice('./dist/server/'.length),
+    });
+  }
+  return entries;
+}
+
+export function styleDeclarationPathsFromManifest(
+  manifest: Pick<PackageManifest, 'exports'>,
+): string[] {
+  const declarations: string[] = [];
+  for (const [subpath, entry] of Object.entries(manifest.exports)) {
+    if (typeof entry === 'string' || !entry.default?.endsWith('.css')) continue;
+    if (!entry.default.startsWith('./dist/') || entry.types !== `${entry.default}.d.ts`) {
+      throw new Error(`${subpath} CSS export lacks a matching dist declaration`);
+    }
+    declarations.push(`${entry.default.slice(2)}.d.ts`);
+  }
+  return declarations;
+}
+
 function publishedExport(entry: string | ConditionalExport): string | ConditionalExport {
   if (typeof entry === 'string') return entry;
   const published: ConditionalExport = {};
@@ -270,7 +305,7 @@ export function buildPublishedManifest(
       '!dist/**/*.fixture.*',
       '!dist/**/*-fixture.*',
       '!dist/**/*-fixtures.*',
-      '!dist/**/fixtures.*',
+      '!dist/session/fixtures.*',
       '!dist/**/test/**',
       '!dist/**/*.map',
       'components.json',

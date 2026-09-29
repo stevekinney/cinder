@@ -6,6 +6,8 @@ import {
   assertSourceManifest,
   buildPublishedManifest,
   runtimeExternalSpecifiers,
+  serverEntrypointsFromManifest,
+  styleDeclarationPathsFromManifest,
   type PackageManifest,
 } from './pack-for-publish.ts';
 
@@ -37,6 +39,47 @@ const plannedCinderVersion =
   cinderManifest.version;
 
 describe('Editor package ownership boundary', () => {
+  test('builds each public Node component entry from its source export', () => {
+    const manifest = {
+      ...editorManifest,
+      exports: {
+        ...editorManifest.exports,
+        './diff-review': {
+          svelte: './src/lib/components/diff-review/index.ts',
+          node: './dist/server/components/diff-review/index.js',
+        },
+        './diff-review-comments': {
+          svelte: './src/lib/components/diff-review-comments/index.ts',
+          node: './dist/server/components/diff-review-comments/index.js',
+        },
+      },
+    };
+    expect(serverEntrypointsFromManifest(manifest)).toContainEqual({
+      sourceRelativePath: 'components/diff-review/index.ts',
+      outputRelativePath: 'components/diff-review/index.js',
+    });
+    expect(serverEntrypointsFromManifest(manifest)).toContainEqual({
+      sourceRelativePath: 'components/diff-review-comments/index.ts',
+      outputRelativePath: 'components/diff-review-comments/index.js',
+    });
+  });
+
+  test('declares every exported component stylesheet', () => {
+    const manifest = {
+      ...editorManifest,
+      exports: {
+        ...editorManifest.exports,
+        './diff-review/styles': {
+          types: './dist/components/diff-review/diff-review.css.d.ts',
+          default: './dist/components/diff-review/diff-review.css',
+        },
+      },
+    };
+    expect(styleDeclarationPathsFromManifest(manifest)).toContain(
+      'dist/components/diff-review/diff-review.css.d.ts',
+    );
+  });
+
   test('keeps component tests serial without isolating the Svelte preload plugin', () => {
     for (const scriptName of ['test', 'test:coverage']) {
       const script = editorManifest.scripts?.[scriptName];
@@ -77,6 +120,7 @@ describe('Editor package ownership boundary', () => {
       '@lostgradient/markdown': 'workspace:*',
       '@milkdown/kit': 'catalog:',
       '@milkdown/prose': 'catalog:',
+      '@noble/hashes': 'catalog:',
       'esm-env': '^1.2.0',
       'prosemirror-inputrules': 'catalog:',
       'prosemirror-model': 'catalog:',
@@ -151,6 +195,8 @@ describe('Editor package ownership boundary', () => {
       '@milkdown/kit/*',
       '@milkdown/prose',
       '@milkdown/prose/*',
+      '@noble/hashes',
+      '@noble/hashes/*',
       'esm-env',
       'esm-env/*',
       'prosemirror-inputrules',
@@ -162,6 +208,14 @@ describe('Editor package ownership boundary', () => {
       'prosemirror-view',
       'prosemirror-view/*',
     ]);
+  });
+
+  test('rejects a manifest that omits the source-owned hashing dependency', () => {
+    const dependencies = { ...editorManifest.dependencies };
+    delete dependencies['@noble/hashes'];
+    expect(() => assertSourceManifest({ ...editorManifest, dependencies })).toThrow(
+      'production dependency contract mismatch',
+    );
   });
 
   test('keeps Editor’s Cinder peer range covering the planned Cinder release', () => {
@@ -244,6 +298,8 @@ describe('Editor package ownership boundary', () => {
     expect(serialized).not.toContain('workspace:');
     expect(serialized).not.toContain('./src/');
     expect(published.peerDependencies).toEqual(editorManifest.peerDependencies);
+    expect(published.files).toContain('!dist/session/fixtures.*');
+    expect(published.files).not.toContain('!dist/**/fixtures.*');
   });
 
   /**

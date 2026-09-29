@@ -36,8 +36,17 @@
     "stylelint-use-logical": "^2.1.3",
     "turbo": "2.10.5"
   },
-  "packageManager": "bun@1.4.0",
+  "packageManager": "bun@1.4.2",
   "engines": {
     "bun": ">=1.3.0"
+  },
+  "catalog": {
+    "@milkdown/kit": "^7.17.3",
+    "@milkdown/prose": "^7.17.3",
+    "@noble/hashes": "^2.4.0",
+    "prosemirror-inputrules": "^1.5.1",
+    "prosemirror-model": "^1.25.4",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-view": "^1.41.3"
   }
 }
