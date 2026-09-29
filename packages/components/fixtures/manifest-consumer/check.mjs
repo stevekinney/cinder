@@ -11,8 +11,8 @@
  * What this proves:
  *   1. `@lostgradient/cinder/manifest` resolves and its target exists + is non-empty in the
  *      tarball.
- *   2. Every manifest entry's `import` and runtime artifact subpaths
- *      (`examples`, `constraints`) resolve via BOTH ESM `import.meta.resolve`
+ *   2. Every manifest entry's root `import` and its component subpath and
+ *      runtime artifacts (`examples`, `constraints`) resolve via BOTH ESM `import.meta.resolve`
  *      AND CJS `createRequire().resolve`, and the resolved target exists and is
  *      non-empty. The two resolvers can pick different export conditions, so we
  *      check both.
@@ -23,9 +23,9 @@
  *      AND that Node default runtime resolution of them succeeds via BOTH the
  *      ESM and CJS resolvers — a plain Node/Vite consumer can therefore import
  *      `@lostgradient/cinder/<name>/schema` for its default-exported JSON Schema value.
- *   4. Two-way export <-> manifest consistency: every runtime artifact the
- *      manifest advertises has a matching package export, and every per-component
- *      export the package ships is accounted for by the manifest (or the
+ *   4. Two-way export <-> manifest consistency: every local artifact the
+ *      manifest advertises exists in the tarball and has a matching package export,
+ *      and every per-component export is accounted for by the manifest (or the
  *      documented non-manifest allowlist).
  *   5. Style policy is all-or-nothing: either no per-component styles subpath
  *      export exists (validate only root `@lostgradient/cinder/styles`), or every component
@@ -232,8 +232,9 @@ assertCliJson(
 );
 
 // ---------------------------------------------------------------------------
-// 2. Per-component contract. Treat manifest `import` + `artifacts.*` as THE
-//    contract — resolve those exact specifiers, do not recompute `@lostgradient/cinder/${id}`.
+// 2. Per-component contract. `import` is the root named-export specifier,
+//    while `artifacts.*` are package-relative files used by the knowledge API.
+//    Public component subpaths are derived from each manifest id.
 // ---------------------------------------------------------------------------
 
 // The expected export set we will build up from the manifest, to compare
@@ -299,7 +300,9 @@ assertRuntimeResolvable('@lostgradient/cinder/knowledge');
       record('@lostgradient/cinder/knowledge: button schema artifact did not resolve to an object');
     }
   } catch (error) {
-    record(`@lostgradient/cinder/knowledge: button schema artifact failed to load — ${error.message}`);
+    record(
+      `@lostgradient/cinder/knowledge: button schema artifact failed to load — ${error.message}`,
+    );
   }
 }
 
@@ -319,15 +322,15 @@ for (const key of exportKeys) {
 
 for (const component of manifest.components) {
   const { id, import: importSpecifier, artifacts } = component;
+  const componentSpecifier = `${manifest.package.name}/${id}`;
 
-  // 2a. The component's main import must runtime-resolve (it IS a runtime entry
-  //     point: it carries `node`/`default` conditions).
+  // 2a. The named-export root and the component's public subpath both resolve.
   assertRuntimeResolvable(importSpecifier);
-  expectedComponentExportKeys.add(specifierToExportKey(importSpecifier));
+  assertRuntimeResolvable(componentSpecifier);
+  expectedComponentExportKeys.add(specifierToExportKey(componentSpecifier));
 
-  // 2b. schema + variables + component-owned runtime enhancements: full runtime
-  //     entry points (task 4176c51c). The
-  //     `types` declaration target must exist AND the subpath must runtime-resolve
+  // 2b. schema, variables and enhancements are full runtime entry points.
+  //     The `types` declaration target must exist AND the subpath must runtime-resolve
   //     via both the ESM and CJS resolvers.
   for (const artifactKey of ['schema', 'variables', 'enhancement']) {
     const specifier = artifacts[artifactKey];
@@ -336,14 +339,17 @@ for (const component of manifest.components) {
       record(`${id}: manifest is missing artifacts.${artifactKey}`);
       continue;
     }
-    // Accumulate (don't throw) so one malformed component doesn't mask the rest.
-    if (specifier !== `${importSpecifier}/${artifactKey}`) {
-      record(
-        `${id}: artifacts.${artifactKey} ("${specifier}") must equal import + "/${artifactKey}"`,
-      );
+    const expectedPath =
+      artifactKey === 'enhancement'
+        ? `src/components/${id}/${id}-enhancement.ts`
+        : `src/components/${id}/${id}.${artifactKey}.json`;
+    if (specifier !== expectedPath) {
+      record(`${id}: artifacts.${artifactKey} ("${specifier}") must equal "${expectedPath}"`);
       continue;
     }
-    const exportKey = specifierToExportKey(specifier);
+    assertResolvedTargetUsable(`${id} local ${artifactKey}`, packageRelativeToAbsolute(specifier));
+    const runtimeSpecifier = `${componentSpecifier}/${artifactKey}`;
+    const exportKey = specifierToExportKey(runtimeSpecifier);
     expectedComponentExportKeys.add(exportKey);
 
     const exportEntry = exportsMap[exportKey];
@@ -355,7 +361,10 @@ for (const component of manifest.components) {
       if (typeof typesTarget !== 'string') {
         record(`${id}: export "${exportKey}" has no string "types" condition`);
       } else {
-        assertResolvedTargetUsable(`${specifier} [types]`, packageRelativeToAbsolute(typesTarget));
+        assertResolvedTargetUsable(
+          `${runtimeSpecifier} [types]`,
+          packageRelativeToAbsolute(typesTarget),
+        );
       }
       // The resolver only ever selects ONE condition (node wins for both ESM and
       // CJS here), so assertRuntimeResolvable never touches the `default` target.
@@ -368,7 +377,7 @@ for (const component of manifest.components) {
           record(`${id}: export "${exportKey}" has no string "${condition}" condition`);
         } else {
           assertResolvedTargetUsable(
-            `${specifier} [${condition}]`,
+            `${runtimeSpecifier} [${condition}]`,
             packageRelativeToAbsolute(target),
           );
         }
@@ -376,29 +385,33 @@ for (const component of manifest.components) {
     }
 
     // Runtime entry point must be importable from a plain Node/Vite consumer.
-    assertRuntimeResolvable(specifier);
+    assertRuntimeResolvable(runtimeSpecifier);
   }
 
   // 2c. examples + constraints: JSON sidecars — genuine runtime entry points
   //     (import + default conditions), emitted only when present.
   for (const sidecarKey of ['examples', 'constraints']) {
-    const specifier = artifacts[sidecarKey];
-    if (specifier === undefined) continue; // not all components ship these
-    if (specifier !== `${importSpecifier}/${sidecarKey}`) {
-      record(
-        `${id}: artifacts.${sidecarKey} ("${specifier}") must equal import + "/${sidecarKey}"`,
-      );
+    const artifactPath = artifacts[sidecarKey];
+    if (artifactPath === undefined) continue; // not all components ship these
+    const expectedPath = `src/components/${id}/${id}.${sidecarKey}.json`;
+    if (artifactPath !== expectedPath) {
+      record(`${id}: artifacts.${sidecarKey} ("${artifactPath}") must equal "${expectedPath}"`);
       continue;
     }
-    assertRuntimeResolvable(specifier);
-    expectedComponentExportKeys.add(specifierToExportKey(specifier));
+    assertResolvedTargetUsable(
+      `${id} local ${sidecarKey}`,
+      packageRelativeToAbsolute(artifactPath),
+    );
+    const runtimeSpecifier = `${componentSpecifier}/${sidecarKey}`;
+    assertRuntimeResolvable(runtimeSpecifier);
+    expectedComponentExportKeys.add(specifierToExportKey(runtimeSpecifier));
   }
 
   // 2d. styles: all-or-nothing policy.
   if (anyPerComponentStylesExport) {
-    const stylesKey = specifierToExportKey(`${importSpecifier}/styles`);
+    const stylesKey = specifierToExportKey(`${componentSpecifier}/styles`);
     if (exportKeys.has(stylesKey)) {
-      assertRuntimeResolvable(`${importSpecifier}/styles`);
+      assertRuntimeResolvable(`${componentSpecifier}/styles`);
       expectedComponentExportKeys.add(stylesKey);
     }
     // A component without a `*/styles` export is allowed only if it ships no
