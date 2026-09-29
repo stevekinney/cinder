@@ -15,7 +15,7 @@
 import { Glob } from 'bun';
 import { describe, expect, test } from 'bun:test';
 import { readFileSync, statSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { environmentConfiguration } from '../../scripts/environment-configuration.ts';
 
 const ALLOWED_COLOR_VALUES = new Set(['none', 'currentcolor', 'inherit']);
@@ -45,9 +45,9 @@ function resolveScanRoots(): string[] {
         .split(',')
         .map((entry) => entry.trim())
         .filter((entry) => entry.length > 0)
-    : ['components/cinder/src'];
-  return roots.map((root) => {
-    const absolute = resolve(repoRoot, root);
+    : undefined;
+  return (roots ?? [join(resolve(import.meta.dir, '..', '..'), 'src')]).map((root) => {
+    const absolute = roots ? resolve(repoRoot, root) : root;
     let exists = false;
     try {
       exists = statSync(absolute).isDirectory();

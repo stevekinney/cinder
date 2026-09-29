@@ -1,13 +1,19 @@
 import { plugin } from 'bun';
 import { afterEach } from 'bun:test';
+import { resolve } from 'node:path';
 
 import { registerGlobalCleanup, setupHappyDom, sveltePlugin } from '@lostgradient/testing';
 
-function allowCinderTestStyleBlock(path: string): boolean {
+const sourceDirectory = resolve(import.meta.dir, '../src').replaceAll('\\', '/');
+
+export function allowCinderTestStyleBlock(path: string): boolean {
   const normalizedPath = path.replaceAll('\\', '/');
+  if (!normalizedPath.startsWith(`${sourceDirectory}/`)) return false;
+
+  const relativePath = normalizedPath.slice(sourceDirectory.length + 1);
   return (
-    normalizedPath.includes('/components/cinder/src/test/fixtures/') ||
-    /\/components\/cinder\/src\/components\/[^/]+\/[^/]+\.fixture\.svelte$/.test(normalizedPath)
+    relativePath.startsWith('test/fixtures/') ||
+    /^components\/[^/]+\/[^/]+\.fixture\.svelte$/.test(relativePath)
   );
 }
 
