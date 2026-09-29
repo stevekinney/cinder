@@ -12,7 +12,7 @@
     },
     "horizontal": {
       "type": "boolean",
-      "description": "Scrolls and lays rows out along the inline axis instead of the block axis.\n\n`itemHeight` and `height` are REINTERPRETED rather than renamed: `itemHeight`\nbecomes each item's width in pixels along the main axis, and `height` becomes\nthe container's inline-size. The `--cinder-virtual-list-height` custom property\nkeeps its name too and switches to driving `inline-size`, so an existing theme\noverride keeps working when this is turned on.\n\nRight-to-left is handled: the writing direction is resolved from the container's\ncomputed style at mount, and the scroll offset is read from the start (right)\nedge in that case.\n\nDefaults to false."
+      "description": "Scrolls and lays rows out along the inline axis instead of the block axis.\n\n`itemHeight` and `height` are REINTERPRETED rather than renamed: `itemHeight`\nbecomes each item's width in pixels along the main axis, and `height` becomes\nthe container's inline-size. The `--cinder-virtual-list-height` custom property\nkeeps its name too and switches to driving `inline-size`, so an existing theme\noverride keeps working when this is turned on.\n\nRight-to-left is handled: the writing direction is resolved from the container's\ncomputed style at mount, and the scroll offset is read from the start (right)\nedge in that case.\n\nDoes not compose with `windowScroll` — see that prop, which silently ignores this\none rather than windowing the window's own horizontal scroll.\n\nDefaults to false."
     },
     "overscan": {
       "type": "number",
@@ -25,6 +25,10 @@
     "stickToBottom": {
       "type": "boolean",
       "description": "When true, appending items while the viewport is already at the bottom\nkeeps the newest item pinned in view. Appending while scrolled up leaves the\nscroll position unchanged."
+    },
+    "windowScroll": {
+      "type": "boolean",
+      "description": "Virtualizes against the window's own scroll position instead of an\ninternal scrolling container. Use this for a long list embedded directly\nin the page — a post list, a log — where the page itself scrolls rather\nthan a fixed-height panel.\n\nUnder this mode:\n- `height` is IGNORED. The component renders no scrolling container of\n  its own — no fixed block-size, no `overflow` — and instead takes its\n  full virtual size in normal document flow, like an unvirtualized list\n  would, with the page's own scrollbar covering it.\n- The viewport used for windowing is `window.innerHeight`, re-measured on\n  every window resize.\n- The list's scroll offset is the window's scroll position minus the\n  list's own offset in the document, so a list that starts partway down\n  the page (below a header, other content) windows correctly relative to\n  ITS top edge rather than the page's. That document offset is\n  re-measured on window resize, whenever the component's own resize\n  observer fires, and on the animation frame after a window scroll — so\n  content above the list that changes size without resizing anything,\n  an accordion collapsing, say, is picked up by the next scroll.\n- `scrollToIndex` and keyboard navigation scroll the window\n  (`window.scrollTo`) rather than an internal element.\n- The container keeps `tabindex=\"0\"` by default, but it is no longer a\n  native scroll container: arrow-key and page navigation are handled\n  entirely by this component's own keyboard logic here, rather than\n  falling back to the browser's native scrolling of a focused element the\n  way a non-`windowScroll` list without `stickyItems` does.\n\n`stickyItems`, `stickToBottom`, `reverse`, and `scrollRestoration` all\ncompose with `windowScroll` unchanged — every one of them is built on the\nsame scroll-offset primitive this prop redirects to the window, so\npinning a header at the window's top, pinning to the newest row on\nappend, and restoring a saved position keep working exactly as documented\nelsewhere on this type.\n\n`horizontal` does NOT compose with this prop and is silently ignored\nwhile it is on: windowing the window's own horizontal scroll is not\nsupported, and the combination degrades to an ordinary vertical\n`windowScroll` list rather than throwing. Pass one or the other.\n\nA consumer-supplied `onscroll` handler is bound to the internal\ncontainer's native `scroll` event, which never fires under this mode;\nlisten on `window` directly for scroll notifications instead.\n\nThe window listener is passive, added on mount, and removed on teardown.\n\nDefaults to false."
     },
     "reverse": {
       "type": "boolean",
@@ -55,7 +59,7 @@
     },
     "tabindex": {
       "type": "number",
-      "description": "Override the default focus behavior. The component sets `tabindex=\"0\"`\nby default so keyboard users can reach the native scroll container for\narrow-key scrolling. Pass `tabindex={-1}` when the viewport should be\nprogrammatically focusable without entering the tab order."
+      "description": "Override the default focus behavior. The component sets `tabindex=\"0\"`\nby default so keyboard users can reach the native scroll container for\narrow-key scrolling. Pass `tabindex={-1}` when the viewport should be\nprogrammatically focusable without entering the tab order.\n\nUnder `windowScroll` the container is no longer a native scroll\ncontainer, but it stays in the tab order by the same default — arrow-key\nand page navigation there are handled by this component rather than by\nfocusing a scrollable element."
     },
     "class": {
       "type": "string",

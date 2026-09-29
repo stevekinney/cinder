@@ -6,13 +6,9 @@ Inline caret-anchored slash-command list for textareas and single-line text inpu
 
 ```svelte
 <script lang="ts">
-  import CommandItem from '@lostgradient/cinder/command-item';
-  import {
-    CommandMenu,
-    detectTrigger,
-    type CommandMenuCompletion,
-  } from '@lostgradient/cinder/command-menu';
-  import Textarea from '@lostgradient/cinder/textarea';
+  import { CommandItem } from '@lostgradient/cinder';
+  import { CommandMenu, detectTrigger, type CommandMenuCompletion } from '@lostgradient/cinder';
+  import { Textarea } from '@lostgradient/cinder';
 
   type Command = {
     value: string;
@@ -193,7 +189,6 @@ Inline caret-anchored slash-command list for textareas and single-line text inpu
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

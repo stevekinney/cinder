@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet, tick } from 'svelte';
 
-import { setupHappyDom } from '../../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 

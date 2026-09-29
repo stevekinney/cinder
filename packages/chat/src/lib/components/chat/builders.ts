@@ -21,6 +21,7 @@ export {
   createConversationHistory,
   isConversationHistory,
   isJSONValue,
+  isStreamingMessage,
   isTokenUsage,
   isToolResult,
   prependMessages,
@@ -32,6 +33,15 @@ export {
 // the form edit flows usually want, since the adapter hands them a message id.
 export { rewindBeforeMessage, rewindBeforePosition } from 'conversationalist';
 export type { RewindOptions } from 'conversationalist';
+
+// Streaming transcript helpers — canonical placeholder lifecycle for content
+// that is still arriving from a transport.
+export {
+  appendStreamingMessage,
+  cancelStreamingMessage,
+  finalizeStreamingMessage,
+  updateStreamingMessage,
+} from 'conversationalist';
 
 // Transcript mutation helpers—canonical in-place edits (update, remove,
 // hide/show, replace a tool result) that keep message identity, role, order,

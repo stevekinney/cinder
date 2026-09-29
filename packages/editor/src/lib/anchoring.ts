@@ -135,7 +135,7 @@ export function detectBlockLevelAnchor(
  * if (from !== to) {
  *   const anchor = buildAnchorFromSelection(view, from, to);
  *   // Use anchor for thread creation
- *   onthreadcreate?.({ anchor, body: comment, authorId: userId });
+ *   onThreadCreate?.({ anchor, body: comment, authorId: userId });
  * }
  * ```
  */

@@ -31,7 +31,7 @@ export type SelectionPopoverOptions = {
   /** Announce message to screen readers */
   announce: (message: string, priority?: 'polite' | 'assertive') => void;
   /** Event callback for thread creation */
-  onthreadcreate?: (event: ThreadCreateEvent) => void;
+  onThreadCreate?: (event: ThreadCreateEvent) => void;
 };
 
 /**

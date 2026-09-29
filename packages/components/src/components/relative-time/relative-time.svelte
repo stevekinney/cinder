@@ -49,7 +49,7 @@
       return;
     }
     const now = Date.now();
-    const nextAt = Math.min(...[...clockSubscribers].map(({ nextAt }) => nextAt));
+    const nextAt = Math.min(...[...clockSubscribers].map((subscriber) => subscriber.nextAt));
     clockTimer = window.setTimeout(
       () => {
         clockTimer = undefined;

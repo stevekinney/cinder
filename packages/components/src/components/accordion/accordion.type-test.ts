@@ -13,8 +13,8 @@ import type { Component } from 'svelte';
 import AccordionItem from '../accordion-item/accordion-item.svelte';
 import { Accordion } from './index.ts';
 
-const _item: typeof AccordionItem = Accordion.Item;
+const item: typeof AccordionItem = Accordion.Item;
 
 Accordion satisfies Component<never>;
 
-void _item;
+void item;

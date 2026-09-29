@@ -120,8 +120,8 @@ export function validateModifierSetExpansionOrder(
     ? order
         .filter((entry) => entry.kind === 'sets')
         .flatMap((entry) =>
-          expandSetSources(resolver, entry.name).map(
-            (source) => documentsByPath.get(normalizeSourcePath(source.$ref))!,
+          expandSetSources(resolver, entry.name).map((source) =>
+            documentsByPath.get(normalizeSourcePath(source.$ref))!,
           ),
         )
     : [];
@@ -147,8 +147,8 @@ export function validateModifierSetExpansionOrder(
         const setTokenPaths = new Set<string>();
         if (documentsByPath) {
           const expandedContextSources = expandContextSources(resolver, entry.name, contextName);
-          const contextDocuments = expandedContextSources.map(
-            (source) => documentsByPath.get(normalizeSourcePath(source.$ref))!,
+          const contextDocuments = expandedContextSources.map((source) =>
+            documentsByPath.get(normalizeSourcePath(source.$ref))!,
           );
           const resetSourcePaths = new Set(
             expandSetSources(resolver, setName).map((source) => normalizeSourcePath(source.$ref)),
@@ -199,8 +199,8 @@ export function validateModifierSetExpansionOrder(
               resolver,
               candidate.name,
               candidateContext,
-            ).map(
-              (candidateSource) => documentsByPath.get(normalizeSourcePath(candidateSource.$ref))!,
+            ).map((candidateSource) =>
+              documentsByPath.get(normalizeSourcePath(candidateSource.$ref))!,
             );
             collectDeclaredTokenPaths(
               mergeAndExpandExtends(candidateDocuments, [...baseDocuments, ...candidateDocuments]),
@@ -303,7 +303,7 @@ function canonicalizeJson(value: unknown): unknown {
   if (!isRecord(value)) return value;
   return Object.fromEntries(
     Object.entries(value)
-      .sort(([left], [right]) => left.localeCompare(right))
+      .toSorted(([left], [right]) => left.localeCompare(right))
       .map(([key, child]) => [key, canonicalizeJson(child)]),
   );
 }
@@ -345,8 +345,8 @@ export function validateModifierTokenPaths(
   const baseDocuments = parseResolutionOrder(resolver)
     .filter((entry) => entry.kind === 'sets')
     .flatMap((entry) =>
-      expandSetSources(resolver, entry.name).map(
-        (source) => documentsByPath.get(normalizeSourcePath(source.$ref))!,
+      expandSetSources(resolver, entry.name).map((source) =>
+        documentsByPath.get(normalizeSourcePath(source.$ref))!,
       ),
     );
   const basePaths = new Set<string>();

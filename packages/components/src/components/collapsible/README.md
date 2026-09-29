@@ -8,7 +8,7 @@ Uncontrolled — the component owns its state:
 
 ```svelte
 <script lang="ts">
-  import Collapsible from '@lostgradient/cinder/collapsible';
+  import { Collapsible } from '@lostgradient/cinder';
 </script>
 
 <Collapsible trigger="Shipping details">
@@ -20,7 +20,7 @@ Controlled — the parent owns the state with `bind:open`:
 
 ```svelte
 <script lang="ts">
-  import Collapsible from '@lostgradient/cinder/collapsible';
+  import { Collapsible } from '@lostgradient/cinder';
 
   let open = $state(false);
 </script>
@@ -34,8 +34,7 @@ Controlled — the parent owns the state with `bind:open`:
 
 `open` is bindable. Without `bind:open`, it seeds local state and can still be updated by parent prop changes, but trigger clicks update local state only. Use `bind:open` (or mirror `onToggle` in the parent) when parent and trigger interactions must stay fully synchronized. `onToggle` fires on every toggle with the next boolean, so one-way observers stay in sync.
 
-The `trigger` prop is either a string or a snippet receiving `{ open, disabled }`, letting the label react to state (for example, swapping "Show" and "Hide").
-Use `triggerAriaLabel` when you need a dedicated accessible name on the internal trigger button. It accepts either a static string or a state-aware function (`({ open, disabled }) => string`) for dynamic labels and stable `getByRole(..., { name })` selectors.
+The `trigger` prop is either a string or a snippet receiving `{ open, disabled }`, letting the label react to state (for example, swapping "Show" and "Hide"). Use `triggerAriaLabel` when you need a dedicated accessible name on the internal trigger button. It accepts either a static string or a state-aware function (`({ open, disabled }) => string`) for dynamic labels and stable `getByRole(..., { name })` selectors.
 
 ## Accessibility
 
@@ -72,7 +71,6 @@ For multiple coordinated sections where opening one may close others, use [`Acco
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

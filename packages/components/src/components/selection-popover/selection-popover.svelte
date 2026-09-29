@@ -439,8 +439,7 @@
         aria-label="Comment text"
         placeholder="Add a comment..."
         rows={2}
-        onkeydown={handleTextareaKeydown}
-      ></textarea>
+        onkeydown={handleTextareaKeydown}></textarea>
       <div class="cinder-selection-popover__actions">
         <button
           type="button"

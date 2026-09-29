@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import { getFocusableIndex, handleRovingKeydown, isRovingKey } from './roving-tabindex.ts';
 
 function createKeyEvent(key: string): KeyboardEvent {
-  return { key } as KeyboardEvent;
+  return new KeyboardEvent('keydown', { key });
 }
 
 function isSecondItemDisabled(index: number): boolean {

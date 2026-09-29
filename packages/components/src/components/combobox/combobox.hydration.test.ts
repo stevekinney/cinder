@@ -8,14 +8,13 @@
  */
 import { describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
-import { prepareHydrationSource, renderThenHydrate } from '../../test/hydrate.ts';
+import { prepareSvelteServerSource, renderThenHydrate, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
 const { default: Combobox } = await import('./combobox.svelte');
 const sourcePath = new URL('./combobox.svelte', import.meta.url).pathname;
-await prepareHydrationSource(sourcePath);
+await prepareSvelteServerSource(sourcePath);
 
 const fruits = [
   { value: 'apple', label: 'Apple' },
@@ -41,7 +40,7 @@ describe('Combobox hydration', () => {
       );
       expect(hydrationWarnings).toEqual([]);
     } finally {
-      result.cleanup();
+      await result.cleanup();
     }
   });
 
@@ -58,7 +57,7 @@ describe('Combobox hydration', () => {
       expect(input?.hasAttribute('aria-controls')).toBe(false);
       expect(input?.getAttribute('aria-expanded')).toBe('false');
     } finally {
-      result.cleanup();
+      await result.cleanup();
     }
   });
 });

@@ -1,35 +1,11 @@
-/*
- * Base stylesheet — `cinder/styles`.
- *
- * Every cinder app imports this ONCE, FIRST, before any per-component CSS.
- * It establishes:
- *   1. The `@layer` declaration order (tokens → foundation → components →
- *      utilities). Declaring the order up front means per-component CSS
- *      imported later still slots into the correct layer regardless of import
- *      order.
- *   2. Design tokens (`cinder.tokens`).
- *   3. Foundation resets and base element styles (`cinder.foundation`).
- *   4. Shared internal component chrome that is not owned by any single
- *      component — currently the Alert/Banner dismiss-button base
- *      (`cinder.components`). It self-declares its layer, so it is imported
- *      without a `layer()` qualifier.
- *   5. Utilities (`cinder.utilities`).
- *
- * It does NOT import per-component CSS. Import `cinder/<component>/styles` for
- * each component you use, or `cinder/styles/all` for the all-in (non
- * tree-shaken) bundle.
+/* The root package entry imports these shared layers once. Component entries
+ * import their own styles, so application bundlers retain only used components.
+ * Declaring the layer order before either set keeps the cascade deterministic.
  */
 
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 
 @import './tokens.css' layer(cinder.tokens);
-/*
- * Base-loaded marker — imported into cinder.tokens so that it slots directly
- * after the token primitives in cascade order. This file is NOT an independent
- * subpath export, so importing only `cinder/styles/tokens` does NOT set the
- * marker. See _base-marker.css for full rationale.
- */
-@import './_base-marker.css' layer(cinder.tokens);
 @import './foundation.css' layer(cinder.foundation);
 @import './components/_dismiss-button.css';
 @import './components/_field-label.css';

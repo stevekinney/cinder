@@ -5,7 +5,7 @@
  *
  * 1. `no-focus-visible-colored-outline.mjs` — Stylelint plugin that rejects
  *    colored outline channels in non-forced-colors `:focus-visible` rules.
- * 2. `packages/components/src/test/focus-ring-recipe.test.ts` — parser-based
+ * 2. `components/cinder/src/test/focus-ring-recipe.test.ts` — parser-based
  *    regression test that pins the `box-shadow` half of Strategy B on the
  *    specific selectors this task realigned.
  *

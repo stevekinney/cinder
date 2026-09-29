@@ -184,12 +184,12 @@ describe('FrameBatcher', () => {
     let requestCount = 0;
 
     try {
-      globalThis.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => {
         requestCount += 1;
         capturedCallback = callback;
         return 1;
-      }) as typeof requestAnimationFrame;
-      globalThis.cancelAnimationFrame = (() => {}) as typeof cancelAnimationFrame;
+      };
+      globalThis.cancelAnimationFrame = () => {};
 
       const onCommit = mock((_value: number) => {});
       const batcher = new FrameBatcher<number>(onCommit);
@@ -217,10 +217,10 @@ describe('rafFrameScheduler', () => {
 
   test('request forwards the callback to requestAnimationFrame and returns its id', () => {
     let capturedCallback: FrameRequestCallback | undefined;
-    globalThis.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+    globalThis.requestAnimationFrame = (callback: FrameRequestCallback) => {
       capturedCallback = callback;
       return 123;
-    }) as typeof requestAnimationFrame;
+    };
 
     const callback = mock((_time: number) => {});
     const id = rafFrameScheduler.request(callback);
@@ -232,7 +232,7 @@ describe('rafFrameScheduler', () => {
 
   test('cancel forwards the id to cancelAnimationFrame', () => {
     const cancel = mock((_id: number) => {});
-    globalThis.cancelAnimationFrame = cancel as typeof cancelAnimationFrame;
+    globalThis.cancelAnimationFrame = cancel;
 
     rafFrameScheduler.cancel(456);
 

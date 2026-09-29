@@ -26,8 +26,8 @@ The component marks the currently active step with `aria-current="step"`. `runni
 
 ```svelte
 <script lang="ts">
-  import RunStepTimeline from '@lostgradient/cinder/run-step-timeline';
-  import type { RunStep } from '@lostgradient/cinder/run-step-timeline';
+  import { RunStepTimeline } from '@lostgradient/cinder';
+  import type { RunStep } from '@lostgradient/cinder';
 
   const steps: RunStep[] = [
     {
@@ -76,7 +76,7 @@ The component marks the currently active step with `aria-current="step"`. `runni
 
 ```svelte
 <script lang="ts">
-  import type { RunStep } from '@lostgradient/cinder/run-step-timeline';
+  import type { RunStep } from '@lostgradient/cinder';
 
   const steps: RunStep[] = [
     {
@@ -89,11 +89,13 @@ The component marks the currently active step with `aria-current="step"`. `runni
         {
           id: 'test-error-log',
           label: 'Error output',
+          type: 'text',
           content: 'AssertionError: expected 1 to equal 2\n  at src/math.test.ts:12',
         },
         {
           id: 'test-env',
           label: 'Environment',
+          type: 'text',
           content: 'NODE_ENV=test\nCI=true',
         },
       ],
@@ -106,7 +108,7 @@ The component marks the currently active step with `aria-current="step"`. `runni
 
 ```svelte
 <script lang="ts">
-  import type { RunStep } from '@lostgradient/cinder/run-step-timeline';
+  import type { RunStep } from '@lostgradient/cinder';
 
   const steps: RunStep[] = [
     {
@@ -137,7 +139,7 @@ A top-level entry can be a branch group instead of a step. A branch group fans o
 
 ```svelte
 <script lang="ts">
-  import type { RunStepTimelineEntry } from '@lostgradient/cinder/run-step-timeline';
+  import type { RunStepTimelineEntry } from '@lostgradient/cinder';
 
   const steps: RunStepTimelineEntry[] = [
     { id: 'plan', label: 'Plan rollout', status: 'succeeded' },
@@ -218,9 +220,13 @@ children     RunStep[]        optional  Nested child-workflow steps rendered as 
 ### RunStepDetail shape
 
 ```
-id       string  required  Stable identity for this detail panel.
-label    string  required  Trigger label on the Collapsible header.
-content  string  required  Pre-formatted content shown inside the panel.
+id       string              required  Stable identity for this detail panel.
+label    string              required  Trigger label on the Collapsible header.
+type     "text" | "code"  required  Selects the detail renderer.
+content  string              required for text details. Pre-formatted content shown inside the panel.
+code     string              required for code details. CodeBlock content shown inside the panel.
+language string              optional  CodeBlock language for code details.
+languageLabelVisible boolean optional  Whether the CodeBlock language label is visible.
 ```
 
 ### RunStepLink shape

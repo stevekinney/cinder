@@ -47,7 +47,7 @@ const SELECTION_DEBOUNCE_MS = 20;
  *     getCurrentUserId: () => currentUserId,
  *     isThreadPopoverOpen: () => threadManager.popoverThreadId !== null,
  *     announce,
- *     onthreadcreate,
+ *     onThreadCreate,
  *   });
  *
  *   // Start listening when component mounts
@@ -68,7 +68,7 @@ export function createSelectionPopover(options: SelectionPopoverOptions): Select
     getCurrentUserId,
     isThreadPopoverOpen,
     announce,
-    onthreadcreate,
+    onThreadCreate,
   } = options;
 
   // Internal state
@@ -196,7 +196,7 @@ export function createSelectionPopover(options: SelectionPopoverOptions): Select
       authorId: currentUserId,
       mentions: mentions.length > 0 ? mentions : undefined,
     };
-    onthreadcreate?.(event);
+    onThreadCreate?.(event);
 
     // Clear state
     clear();

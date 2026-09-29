@@ -1,13 +1,25 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "shortcut-field",
-  "import": "@lostgradient/cinder/shortcut-field",
+  "import": "@lostgradient/cinder",
   "examples": [
     {
       "id": "basic",
       "title": "Shortcut field",
-      "description": "Capture a keyboard shortcut in an accessible field.",
-      "code": "<script lang=\"ts\">\n  import { ShortcutField } from '@lostgradient/cinder/shortcut-field';\n</script>\n\n<ShortcutField label=\"Open command palette\" value={['Meta', 'K']} />\n"
+      "description": "Capture a keyboard shortcut in an accessible field. The label renders as visible text by default.",
+      "code": "<script lang=\"ts\">\n  import { ShortcutField } from '@lostgradient/cinder';\n</script>\n\n<ShortcutField label=\"Open command palette\" value={['Meta', 'K']} />\n"
+    },
+    {
+      "id": "hidden-label",
+      "title": "Compact field with hidden label",
+      "description": "Keep the accessible name from label while visually hiding it, for a compact toolbar-adjacent layout.",
+      "code": "<script lang=\"ts\">\n  import { ShortcutField } from '@lostgradient/cinder';\n</script>\n\n<ShortcutField id=\"toolbar-shortcut\" label=\"Toolbar shortcut\" labelVisible={false} value={['Control', 'B']} />\n"
+    },
+    {
+      "id": "validation-and-disabled",
+      "title": "Validation and disabled state",
+      "description": "validate rejects a reserved combination through the shared FormField error region; a second field shows the disabled, inert state.",
+      "code": "<script lang=\"ts\">\n  import { ShortcutField } from '@lostgradient/cinder';\n\n  let shortcut = $state<string[]>(['Meta', 'K']);\n\n  function rejectReserved(next: string[]): string | undefined {\n    return next.join('+') === 'Meta+Q' ? 'Meta+Q is reserved by the operating system.' : undefined;\n  }\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 1rem;\">\n  <ShortcutField\n    id=\"validated-shortcut\"\n    label=\"Open command palette\"\n    bind:value={shortcut}\n    validate={rejectReserved}\n  />\n  <ShortcutField id=\"locked-shortcut\" label=\"Locked shortcut\" value={['Control', 'L']} disabled />\n</div>\n"
     }
   ]
 }

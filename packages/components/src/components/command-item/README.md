@@ -6,8 +6,8 @@ Individual selectable row within a command palette or dropdown command list.
 
 ```svelte
 <script lang="ts">
-  import CommandItem from '@lostgradient/cinder/command-item';
-  import CommandPalette from '@lostgradient/cinder/command-palette';
+  import { CommandItem } from '@lostgradient/cinder';
+  import { CommandPalette } from '@lostgradient/cinder';
 
   let open = $state(true);
 </script>
@@ -46,7 +46,6 @@ Individual selectable row within a command palette or dropdown command list.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

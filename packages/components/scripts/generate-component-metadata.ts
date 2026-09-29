@@ -16,7 +16,7 @@ import { join } from 'node:path';
 
 import type { CategoryId, StatusLevel } from '../src/manifest.meta.ts';
 import { categories, statusLevels } from '../src/manifest.meta.ts';
-import { discoverDirectoryComponents } from './generate-exports.ts';
+import { discoverComponents } from './lib/discover-components.ts';
 
 export type { CategoryId, StatusLevel };
 
@@ -110,8 +110,7 @@ export type ExtractError = {
 
 /** Discriminated union returned by `extractComponentMetadata`. */
 export type ExtractResult =
-  | { ok: true; metadata: ComponentMetadata }
-  | { ok: false; error: ExtractError };
+  { ok: true; metadata: ComponentMetadata } | { ok: false; error: ExtractError };
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -562,13 +561,13 @@ export async function extractComponentMetadata(
 
 /**
  * Extract metadata for every directory component discovered by
- * `discoverDirectoryComponents()`. Returns successes and errors separately.
+ * `discoverComponents()`. Returns successes and errors separately.
  */
 export async function extractAllComponentMetadata(): Promise<{
   metadata: ComponentMetadata[];
   errors: ExtractError[];
 }> {
-  const components = await discoverDirectoryComponents();
+  const components = await discoverComponents();
   const componentsRoot = new URL('../src/components', import.meta.url).pathname;
 
   const allResults = await Promise.all(

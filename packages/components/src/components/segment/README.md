@@ -6,8 +6,8 @@ Individual option inside a SegmentedControl that renders either a selection butt
 
 ```svelte
 <script lang="ts">
-  import Segment from '@lostgradient/cinder/segment';
-  import SegmentedControl from '@lostgradient/cinder/segmented-control';
+  import { Segment } from '@lostgradient/cinder';
+  import { SegmentedControl } from '@lostgradient/cinder';
 
   let view = $state('list');
 </script>
@@ -56,7 +56,6 @@ Individual option inside a SegmentedControl that renders either a selection butt
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

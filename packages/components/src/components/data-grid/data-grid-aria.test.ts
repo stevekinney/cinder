@@ -3,8 +3,7 @@ import * as matchers from '@testing-library/jest-dom/matchers';
 import { describe, expect, mock, test } from 'bun:test';
 import type { Component } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
-import { renderThenHydrate } from '../../test/hydrate.ts';
+import { prepareSvelteServerSource, renderThenHydrate, setupHappyDom } from '@lostgradient/testing';
 import type { DataGridColumnDef, DataGridProps } from './data-grid.types.ts';
 
 // Extend Bun's expect with @testing-library/jest-dom matchers (e.g. toHaveAttribute).
@@ -16,7 +15,9 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: DataGrid } = await import('./data-grid.svelte');
-const sourcePath = new URL('./data-grid.svelte', import.meta.url).pathname;
+const { default: DataGridHydrationFixture } = await import('./_data-grid-hydration-test.svelte');
+const sourcePath = new URL('./_data-grid-hydration-test.svelte', import.meta.url).pathname;
+await prepareSvelteServerSource(sourcePath);
 
 type Issue = {
   id: string;
@@ -44,12 +45,7 @@ type HydrationSnapshot = {
 };
 
 async function captureEmptyGridHydrationSnapshot(): Promise<HydrationSnapshot> {
-  const result = await renderThenHydrate(IssueDataGrid, sourcePath, {
-    rows: [],
-    columns,
-    getRowId: getIssueId,
-    'aria-label': 'Issues',
-  });
+  const result = await renderThenHydrate(DataGridHydrationFixture, sourcePath, { mode: 'issues' });
 
   try {
     const grid = result.container.querySelector('[role="grid"]');
@@ -59,7 +55,7 @@ async function captureEmptyGridHydrationSnapshot(): Promise<HydrationSnapshot> {
       columnCount: grid?.getAttribute('aria-colcount'),
     };
   } finally {
-    result.cleanup();
+    await result.cleanup();
   }
 }
 
@@ -118,6 +114,49 @@ describe('DataGrid ARIA', () => {
     expect(headerRow).not.toBeNull();
     expect(dataRows.map((row) => row.getAttribute('aria-rowindex'))).toEqual(['2', '3']);
     expect(firstDataCells.map((cell) => cell.getAttribute('aria-colindex'))).toEqual(['1', '2']);
+  });
+
+  // Regression: `aria-colindex` must track each column's actual left-to-right
+  // *visual* position (pinned-left, then unpinned, then pinned-right), not
+  // its position in the `columns`/`columnOrder` array. Declaring a `pin`ned
+  // column away from its pin group (a right-pinned column declared first,
+  // here) used to leave `aria-colindex` mirroring declaration order while
+  // the DOM rendered in pin-grouped order — inverted from what a
+  // screen-reader user's `aria-colindex`-driven column announcement would
+  // read against what's actually on screen.
+  test('assigns aria-colindex by rendered pin-grouped order, not declaration order', () => {
+    type Widget = { a: string; b: string; c: string };
+    const widgetColumns: DataGridColumnDef<Widget>[] = [
+      { key: 'a', header: 'A', pin: 'right' },
+      { key: 'b', header: 'B' },
+      { key: 'c', header: 'C', pin: 'left' },
+    ];
+    const widgetRows: Widget[] = [{ a: '1', b: '2', c: '3' }];
+    const WidgetDataGrid = DataGrid as Component<DataGridProps<Widget>>;
+
+    const { container } = render(WidgetDataGrid, {
+      rows: widgetRows,
+      columns: widgetColumns,
+      getRowId: () => 'row-1',
+      'aria-label': 'Widgets',
+    });
+
+    const headers = Array.from(container.querySelectorAll('[role="columnheader"]'));
+    expect(headers.map((header) => header.getAttribute('data-cinder-column-key'))).toEqual([
+      'c',
+      'b',
+      'a',
+    ]);
+    expect(headers.map((header) => header.getAttribute('aria-colindex'))).toEqual(['1', '2', '3']);
+
+    const firstDataRow = container.querySelector('[role="row"][aria-rowindex="2"]');
+    const cells = Array.from(firstDataRow?.querySelectorAll('[role="gridcell"]') ?? []);
+    expect(cells.map((cell) => cell.getAttribute('data-cinder-column-key'))).toEqual([
+      'c',
+      'b',
+      'a',
+    ]);
+    expect(cells.map((cell) => cell.getAttribute('aria-colindex'))).toEqual(['1', '2', '3']);
   });
 
   test('renders row-header columns with role=rowheader', () => {

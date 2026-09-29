@@ -6,7 +6,7 @@ Filterable dropdown that combines a text input with a selectable option list.
 
 ```svelte
 <script lang="ts">
-  import Combobox from '@lostgradient/cinder/combobox';
+  import { Combobox } from '@lostgradient/cinder';
   const options = [
     { value: 'free', label: 'Free' },
     { value: 'pro', label: 'Pro' },
@@ -56,7 +56,6 @@ Filterable dropdown that combines a text input with a selectable option list.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

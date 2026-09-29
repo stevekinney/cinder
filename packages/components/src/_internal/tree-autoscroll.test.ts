@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -41,10 +41,10 @@ function createController() {
  */
 function stubRaf(): { calls: FrameRequestCallback[] } {
   const state: { calls: FrameRequestCallback[] } = { calls: [] };
-  globalThis.requestAnimationFrame = ((callback: FrameRequestCallback): number => {
+  globalThis.requestAnimationFrame = (callback: FrameRequestCallback): number => {
     state.calls.push(callback);
     return state.calls.length;
-  }) as typeof requestAnimationFrame;
+  };
   return state;
 }
 

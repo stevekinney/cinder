@@ -1,99 +1,101 @@
-/**
- * @lostgradient/editor SSR import safety.
- *
- * Mirrors `packages/commentary/src/editor/ssr-import.test.ts` (formerly `packages/editor/src/ssr-import.test.ts`). The contract this guards:
- * importing any entry point of `@lostgradient/editor` in a server (no-DOM)
- * context must NOT touch a browser-only global at module-evaluation time.
- *
- * Why this matters: ReviewEditor statically imports the commentary anchoring
- * and decoration surfaces (`@lostgradient/editor/anchor-decorations`,
- * `@lostgradient/editor/anchoring`, `@lostgradient/editor/comments`). Those static
- * imports execute during SSR, so any module-eval-time `document`/`window`/
- * `getSelection` access would throw on the server before a fallback skeleton
- * could render.
- *
- * BROWSER-BOUND DEPENDENCY — the deliberate, SSR-safe exception:
- * `anchor-decorations.ts` is the ProseMirror plugin layer for comment anchors.
- * It statically value-imports `@milkdown/kit/prose/state` and
- * `@milkdown/kit/prose/view` (which re-export prosemirror-state and
- * prosemirror-view). That is the SAME legitimate pattern as @cinder/editor:
- * this module IS the browser-side editor layer, and a *static* import is
- * correct because prosemirror itself is SSR-safe at module-evaluation time —
- * `prosemirror-view` reads `document`/`navigator` only behind
- * `typeof X !== 'undefined'` guards, so when those globals are absent it
- * falls back to null/"" rather than throwing. There is therefore nothing to
- * defer behind a runtime browser guard at this layer; the SSR boundary lives
- * in the consuming Svelte component (MarkdownEditor mounts the live editor
- * inside `{#if browser}`).
- *
- * Approach (matching @cinder/editor): the DOM-only globals are *deleted*
- * before each dynamic import so the test models a genuine Node SSR
- * environment where `document`/`window` do not exist and prosemirror's
- * `typeof`-guarded reads resolve to the safe branch. `navigator` is left in
- * place because Node and Bun both define it and prosemirror reads it
- * defensively; deleting it would model an environment that does not occur in
- * practice. NOTE: this package preloads happy-dom (see bunfig.toml), so these
- * globals are present unless explicitly removed here — deletion is what makes
- * the assertion meaningful.
- */
+import { afterAll, describe, expect, it } from 'bun:test';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 
-import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
+const packageRoot = resolve(import.meta.dir, '../..');
 
-// Browser-only globals that are genuinely absent in a Node SSR context.
-const SSR_ABSENT_GLOBALS = ['document', 'window', 'getSelection'] as const;
+// Compile the complete public source graph in a separate server process before
+// the timed assertion. The import assertion below still runs in a fresh process
+// so it cannot inherit browser conditions, DOM globals, or cached modules.
+const serverCompileProbe = `
+import { sveltePlugin } from '@lostgradient/testing';
+import { dirname } from 'node:path';
+if (typeof document !== 'undefined' || typeof window !== 'undefined') {
+  throw new Error('The SSR compilation process unexpectedly has DOM globals.');
+}
+const result = await Bun.build({
+  entrypoints: ['./src/index.ts'],
+  target: 'bun',
+  plugins: [sveltePlugin({ generate: 'server' }), {
+    name: 'preserve-source-dependency-ownership',
+    setup(builder) {
+      builder.onResolve({ filter: /^[^./]/ }, (arguments_) => {
+        if (arguments_.path.startsWith('@lostgradient/')) return undefined;
+        if (/^(node|bun):/.test(arguments_.path)) return { path: arguments_.path, external: true };
+        const directory = arguments_.importer ? dirname(arguments_.importer) : arguments_.resolveDir;
+        return { path: Bun.resolveSync(arguments_.path, directory), external: true };
+      });
+    },
+  }],
+});
+if (!result.success) throw new AggregateError(result.logs, 'Public editor SSR compilation failed');
+const output = result.outputs.find((artifact) => artifact.kind === 'entry-point');
+if (!output) throw new Error('SSR compilation emitted no entry point');
+process.stdout.write(JSON.stringify(await output.text()));
+`;
 
-const savedDescriptors: { name: string; descriptor: PropertyDescriptor | undefined }[] = [];
+// A fresh server process must load the prepared public surface without
+// inheriting browser export conditions, DOM globals, or cached modules.
+const serverImportProbe = `
+import { pathToFileURL } from 'node:url';
+const { entryPath } = await Bun.stdin.json();
+if (typeof document !== 'undefined' || typeof window !== 'undefined') {
+  throw new Error('The SSR import process unexpectedly has DOM globals.');
+}
+const editor = await import(pathToFileURL(entryPath).href);
+const functions = ['generateBlockId', 'createAnchorPlugin', 'extractMentions',
+  'createSession', 'generateMarkdownSummary', 'createEditor', 'destroyEditor',
+  'MarkdownEditor', 'ReviewEditor', 'DiffViewer'];
+for (const name of functions) {
+  if (typeof editor[name] !== 'function') throw new Error('Missing public API: ' + name);
+}
+if (typeof document !== 'undefined' || typeof window !== 'undefined') {
+  throw new Error('The public editor import installed browser globals on the server.');
+}
+process.stdout.write(JSON.stringify(functions));
+`;
 
-function removeBrowserGlobals(): void {
-  savedDescriptors.length = 0;
-  for (const name of SSR_ABSENT_GLOBALS) {
-    savedDescriptors.push({ name, descriptor: Object.getOwnPropertyDescriptor(globalThis, name) });
-    Reflect.deleteProperty(globalThis, name);
-  }
+async function runServerProbe(
+  source: string,
+  input: Record<string, string> | undefined,
+): Promise<{ status: number; output: string; errors: string }> {
+  const child = Bun.spawn([process.execPath, '--eval', source], {
+    cwd: packageRoot,
+    stdin: input ? new TextEncoder().encode(JSON.stringify(input)) : undefined,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  const [status, output, errors] = await Promise.all([
+    child.exited,
+    new Response(child.stdout).text(),
+    new Response(child.stderr).text(),
+  ]);
+  return { status, output, errors };
 }
 
-function restoreBrowserGlobals(): void {
-  for (const { name, descriptor } of savedDescriptors) {
-    if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+const preparedDirectory = await mkdtemp(join(packageRoot, 'node_modules/.corvidae-ssr-'));
+const preparedEntryPath = join(preparedDirectory, 'editor.ts');
+try {
+  const compilation = await runServerProbe(serverCompileProbe, undefined);
+  if (compilation.status !== 0 || compilation.errors !== '') {
+    throw new Error(
+      `Server compilation failed (${compilation.status}): ${compilation.errors || compilation.output}`,
+    );
   }
-  savedDescriptors.length = 0;
+  await Bun.write(preparedEntryPath, JSON.parse(compilation.output));
+} catch (error) {
+  await rm(preparedDirectory, { recursive: true });
+  throw error;
 }
+afterAll(async () => {
+  await rm(preparedDirectory, { recursive: true });
+});
 
-beforeEach(removeBrowserGlobals);
-afterEach(restoreBrowserGlobals);
-
-describe('@lostgradient/editor SSR import safety', () => {
-  it('imports the package barrel without needing browser globals', async () => {
-    // The barrel re-exports `anchor-decorations`, which transitively pulls in
-    // prosemirror-view. This assertion therefore also proves that the
-    // prosemirror dependency is SSR-safe at module-evaluation time.
-    const commentaryModule = await import('./index.js');
-    expect(typeof commentaryModule.generateBlockId).toBe('function');
-    expect(typeof commentaryModule.createAnchorPlugin).toBe('function');
-  });
-
-  it('imports the anchor-decorations subpath (prosemirror layer) without needing browser globals', async () => {
-    const anchorDecorationsModule = await import('./anchor-decorations.js');
-    expect(typeof anchorDecorationsModule.createAnchorPlugin).toBe('function');
-  });
-
-  it('imports the anchoring subpath without needing browser globals', async () => {
-    const anchoringModule = await import('./anchoring.js');
-    expect(typeof anchoringModule.generateBlockId).toBe('function');
-  });
-
-  it('imports the comments subpath without needing browser globals', async () => {
-    const commentsModule = await import('./comments/index.js');
-    expect(typeof commentsModule.extractMentions).toBe('function');
-  });
-
-  it('imports the session subpath without needing browser globals', async () => {
-    const sessionModule = await import('./session/index.js');
-    expect(typeof sessionModule.createSession).toBe('function');
-  });
-
-  it('imports the export subpath without needing browser globals', async () => {
-    const exportModule = await import('./export/index.js');
-    expect(typeof exportModule.generateMarkdownSummary).toBe('function');
+describe('@lostgradient/editor public source entry point', () => {
+  it('imports on a fresh server with the real server export conditions and no DOM', async () => {
+    const result = await runServerProbe(serverImportProbe, { entryPath: preparedEntryPath });
+    expect(result.status, result.errors).toBe(0);
+    expect(result.errors).toBe('');
+    expect(JSON.parse(result.output)).toContain('ReviewEditor');
   });
 });

@@ -1,139 +1,23 @@
+import {
+  deriveItemsFromHeadings,
+  resolveTargetElement,
+} from './table-of-contents-heading-derivation.ts';
 import type { TableOfContentsItem, TableOfContentsProps } from './table-of-contents.types.ts';
 
-type ParsedHeading = {
-  id: string;
-  label: string;
-  level: number;
-};
+const hasBrowserEnvironment = (): boolean =>
+  typeof window !== 'undefined' && typeof document !== 'undefined';
 
-function isNonNullable<TValue>(value: TValue | null | undefined): value is TValue {
-  return value != null;
-}
+const hasMutationObserver = (): boolean => typeof MutationObserver !== 'undefined';
 
-export function slugifyHeading(text: string): string {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
-}
+const canCreateTargetObserver = (
+  target: HTMLElement | null,
+  observer: MutationObserver | null,
+): target is HTMLElement => target !== null && observer === null && hasMutationObserver();
 
-export function resolveTargetElement(
-  targetProp: TableOfContentsProps['target'],
-): HTMLElement | null {
-  if (typeof document === 'undefined') {
-    return null;
-  }
-
-  if (typeof targetProp === 'string') {
-    const selector = targetProp.trim();
-    if (selector === '') {
-      return null;
-    }
-    return document.querySelector<HTMLElement>(selector);
-  }
-
-  if (targetProp instanceof HTMLElement) {
-    return targetProp.isConnected ? targetProp : null;
-  }
-
-  return null;
-}
-
-function parseHeadingLevel(heading: HTMLElement): number | null {
-  const match = /^H([1-6])$/.exec(heading.tagName);
-  if (!match) {
-    return null;
-  }
-
-  return Number(match[1]);
-}
-
-function ensureHeadingId(
-  heading: HTMLElement,
-  fallbackLabel: string,
-  index: number,
-  seenIds: Set<string>,
-): string {
-  const rawId = heading.id.trim();
-  const baseId =
-    rawId !== '' ? rawId : slugifyHeading(fallbackLabel) || `section-${Math.max(index + 1, 1)}`;
-
-  let candidate = baseId;
-  let suffix = 2;
-
-  while (
-    seenIds.has(candidate) ||
-    (document.getElementById(candidate) !== null && document.getElementById(candidate) !== heading)
-  ) {
-    candidate = `${baseId}-${suffix}`;
-    suffix += 1;
-  }
-
-  if (heading.id !== candidate) {
-    heading.id = candidate;
-  }
-
-  seenIds.add(candidate);
-  return candidate;
-}
-
-export function deriveItemsFromHeadings(
-  targetElement: HTMLElement | null,
-  selector: string,
-): TableOfContentsItem[] {
-  if (targetElement === null) {
-    return [];
-  }
-
-  const selectorToUse = selector.trim() === '' ? 'h2, h3, h4' : selector;
-  const headings = [...targetElement.querySelectorAll<HTMLElement>(selectorToUse)];
-  const seenIds = new Set<string>();
-
-  const parsed: ParsedHeading[] = headings
-    .map((heading, index) => {
-      const label = heading.textContent?.trim() ?? '';
-      if (label === '') {
-        return null;
-      }
-
-      const level = parseHeadingLevel(heading);
-      if (level === null) {
-        return null;
-      }
-
-      const id = ensureHeadingId(heading, label, index, seenIds);
-      return { id, label, level };
-    })
-    .filter(isNonNullable);
-
-  const nested: TableOfContentsItem[] = [];
-  const stack: Array<{ level: number; item: TableOfContentsItem }> = [];
-
-  for (const heading of parsed) {
-    const item: TableOfContentsItem = {
-      id: heading.id,
-      label: heading.label,
-      level: heading.level,
-      children: [],
-    };
-
-    while (stack.length > 0 && heading.level <= stack[stack.length - 1]!.level) {
-      stack.pop();
-    }
-
-    if (stack.length === 0) {
-      nested.push(item);
-    } else {
-      stack[stack.length - 1]!.item.children?.push(item);
-    }
-
-    stack.push({ level: heading.level, item });
-  }
-
-  return nested;
-}
+const canCreateParentObserver = (
+  parent: HTMLElement | null,
+  observer: MutationObserver | null,
+): parent is HTMLElement => parent !== null && observer === null && hasMutationObserver();
 
 /**
  * Derives `items` from live DOM headings under `target`, matching on
@@ -150,7 +34,7 @@ export class TableOfContentsHeadingRegistry {
   items = $state<TableOfContentsItem[]>([]);
 
   sync(target: TableOfContentsProps['target'], headingSelector: string): () => void {
-    if (typeof window === 'undefined' || typeof document === 'undefined') {
+    if (!hasBrowserEnvironment()) {
       this.items = [];
       return () => {};
     }
@@ -198,11 +82,7 @@ export class TableOfContentsHeadingRegistry {
         observedTargetParent = nextTarget?.parentElement ?? null;
       }
 
-      if (
-        nextTarget !== null &&
-        targetObserver === null &&
-        typeof MutationObserver !== 'undefined'
-      ) {
+      if (canCreateTargetObserver(nextTarget, targetObserver)) {
         targetObserver = new MutationObserver(() => {
           refreshDerived();
         });
@@ -218,11 +98,7 @@ export class TableOfContentsHeadingRegistry {
         });
       }
 
-      if (
-        observedTargetParent !== null &&
-        targetParentObserver === null &&
-        typeof MutationObserver !== 'undefined'
-      ) {
+      if (canCreateParentObserver(observedTargetParent, targetParentObserver)) {
         targetParentObserver = new MutationObserver(() => {
           refreshDerived();
         });
@@ -249,7 +125,7 @@ export class TableOfContentsHeadingRegistry {
 
       if (targetElement !== null) {
         clearRetryTimer();
-      } else if (shouldWatchForTargetBySelector && typeof MutationObserver === 'undefined') {
+      } else if (shouldWatchForTargetBySelector && !hasMutationObserver()) {
         scheduleRetry();
       } else {
         clearRetryTimer();
@@ -257,26 +133,22 @@ export class TableOfContentsHeadingRegistry {
     };
 
     const scheduleDocumentRefreshCheck = () => {
-      if (
-        (!shouldWatchForTargetBySelector && !shouldWatchTargetConnection) ||
-        pendingDocumentRefresh !== null
-      ) {
+      const watchesTarget = shouldWatchForTargetBySelector || shouldWatchTargetConnection;
+      if (!watchesTarget || pendingDocumentRefresh !== null) {
         return;
       }
-      if (observedTarget !== null && !document.contains(observedTarget)) {
-        refreshDerived();
-        return;
-      }
-      if (!shouldWatchForTargetBySelector) {
-        return;
-      }
-      if (observedTarget !== null && document.contains(observedTarget)) {
-        const latestTarget = resolveTargetElement(target);
-        if (latestTarget === observedTarget) {
+      if (observedTarget !== null) {
+        if (!document.contains(observedTarget)) {
+          refreshDerived();
           return;
         }
-      } else if (observedTarget !== null) {
-        refreshDerived();
+        if (!shouldWatchForTargetBySelector) {
+          return;
+        }
+        if (resolveTargetElement(target) === observedTarget) {
+          return;
+        }
+      } else if (!shouldWatchForTargetBySelector) {
         return;
       }
 
@@ -289,11 +161,11 @@ export class TableOfContentsHeadingRegistry {
       }, 50);
     };
 
-    if (
+    const shouldObserveDocument =
       (shouldWatchForTargetBySelector || shouldWatchTargetConnection) &&
-      typeof MutationObserver !== 'undefined' &&
-      document.body !== null
-    ) {
+      hasMutationObserver() &&
+      document.body !== null;
+    if (shouldObserveDocument) {
       documentObserver = new MutationObserver(() => {
         scheduleDocumentRefreshCheck();
       });

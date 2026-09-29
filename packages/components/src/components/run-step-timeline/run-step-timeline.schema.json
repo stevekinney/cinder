@@ -81,23 +81,70 @@
               "details": {
                 "type": "array",
                 "items": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string",
-                      "description": "Stable identity for this detail panel."
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Stable identity for this detail panel."
+                        },
+                        "label": {
+                          "type": "string",
+                          "description": "Trigger label rendered on the Collapsible header."
+                        },
+                        "open": {
+                          "type": "boolean",
+                          "description": "Initial expanded state for this detail panel."
+                        },
+                        "type": {
+                          "const": "text",
+                          "description": "Text details preserve the existing preformatted rendering behavior."
+                        },
+                        "content": {
+                          "type": "string",
+                          "description": "Pre-formatted content shown inside the panel."
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": ["content", "id", "label", "type"]
                     },
-                    "label": {
-                      "type": "string",
-                      "description": "Trigger label rendered on the Collapsible header."
-                    },
-                    "content": {
-                      "type": "string",
-                      "description": "Pre-formatted content shown inside the panel."
+                    {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Stable identity for this detail panel."
+                        },
+                        "label": {
+                          "type": "string",
+                          "description": "Trigger label rendered on the Collapsible header."
+                        },
+                        "open": {
+                          "type": "boolean",
+                          "description": "Initial expanded state for this detail panel."
+                        },
+                        "type": {
+                          "const": "code",
+                          "description": "Code details render with Cinder CodeBlock."
+                        },
+                        "code": {
+                          "type": "string",
+                          "description": "Code content shown inside the panel."
+                        },
+                        "language": {
+                          "type": "string",
+                          "description": "Optional CodeBlock language."
+                        },
+                        "languageLabelVisible": {
+                          "type": "boolean",
+                          "description": "Whether the CodeBlock language label is visible."
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": ["code", "id", "label", "type"]
                     }
-                  },
-                  "additionalProperties": false,
-                  "required": ["content", "id", "label"]
+                  ]
                 },
                 "description": "Expandable detail panels (logs, payloads, errors) shown inline."
               },
@@ -183,23 +230,70 @@
                     "details": {
                       "type": "array",
                       "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "string",
-                            "description": "Stable identity for this detail panel."
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Stable identity for this detail panel."
+                              },
+                              "label": {
+                                "type": "string",
+                                "description": "Trigger label rendered on the Collapsible header."
+                              },
+                              "open": {
+                                "type": "boolean",
+                                "description": "Initial expanded state for this detail panel."
+                              },
+                              "type": {
+                                "const": "text",
+                                "description": "Text details preserve the existing preformatted rendering behavior."
+                              },
+                              "content": {
+                                "type": "string",
+                                "description": "Pre-formatted content shown inside the panel."
+                              }
+                            },
+                            "additionalProperties": false,
+                            "required": ["content", "id", "label", "type"]
                           },
-                          "label": {
-                            "type": "string",
-                            "description": "Trigger label rendered on the Collapsible header."
-                          },
-                          "content": {
-                            "type": "string",
-                            "description": "Pre-formatted content shown inside the panel."
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Stable identity for this detail panel."
+                              },
+                              "label": {
+                                "type": "string",
+                                "description": "Trigger label rendered on the Collapsible header."
+                              },
+                              "open": {
+                                "type": "boolean",
+                                "description": "Initial expanded state for this detail panel."
+                              },
+                              "type": {
+                                "const": "code",
+                                "description": "Code details render with Cinder CodeBlock."
+                              },
+                              "code": {
+                                "type": "string",
+                                "description": "Code content shown inside the panel."
+                              },
+                              "language": {
+                                "type": "string",
+                                "description": "Optional CodeBlock language."
+                              },
+                              "languageLabelVisible": {
+                                "type": "boolean",
+                                "description": "Whether the CodeBlock language label is visible."
+                              }
+                            },
+                            "additionalProperties": false,
+                            "required": ["code", "id", "label", "type"]
                           }
-                        },
-                        "additionalProperties": false,
-                        "required": ["content", "id", "label"]
+                        ]
                       },
                       "description": "Expandable detail panels (logs, payloads, errors) shown inline."
                     },
@@ -285,23 +379,70 @@
                           "details": {
                             "type": "array",
                             "items": {
-                              "type": "object",
-                              "properties": {
-                                "id": {
-                                  "type": "string",
-                                  "description": "Stable identity for this detail panel."
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "description": "Stable identity for this detail panel."
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "description": "Trigger label rendered on the Collapsible header."
+                                    },
+                                    "open": {
+                                      "type": "boolean",
+                                      "description": "Initial expanded state for this detail panel."
+                                    },
+                                    "type": {
+                                      "const": "text",
+                                      "description": "Text details preserve the existing preformatted rendering behavior."
+                                    },
+                                    "content": {
+                                      "type": "string",
+                                      "description": "Pre-formatted content shown inside the panel."
+                                    }
+                                  },
+                                  "additionalProperties": false,
+                                  "required": ["content", "id", "label", "type"]
                                 },
-                                "label": {
-                                  "type": "string",
-                                  "description": "Trigger label rendered on the Collapsible header."
-                                },
-                                "content": {
-                                  "type": "string",
-                                  "description": "Pre-formatted content shown inside the panel."
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "description": "Stable identity for this detail panel."
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "description": "Trigger label rendered on the Collapsible header."
+                                    },
+                                    "open": {
+                                      "type": "boolean",
+                                      "description": "Initial expanded state for this detail panel."
+                                    },
+                                    "type": {
+                                      "const": "code",
+                                      "description": "Code details render with Cinder CodeBlock."
+                                    },
+                                    "code": {
+                                      "type": "string",
+                                      "description": "Code content shown inside the panel."
+                                    },
+                                    "language": {
+                                      "type": "string",
+                                      "description": "Optional CodeBlock language."
+                                    },
+                                    "languageLabelVisible": {
+                                      "type": "boolean",
+                                      "description": "Whether the CodeBlock language label is visible."
+                                    }
+                                  },
+                                  "additionalProperties": false,
+                                  "required": ["code", "id", "label", "type"]
                                 }
-                              },
-                              "additionalProperties": false,
-                              "required": ["content", "id", "label"]
+                              ]
                             },
                             "description": "Expandable detail panels (logs, payloads, errors) shown inline."
                           },
@@ -387,23 +528,70 @@
                                 "details": {
                                   "type": "array",
                                   "items": {
-                                    "type": "object",
-                                    "properties": {
-                                      "id": {
-                                        "type": "string",
-                                        "description": "Stable identity for this detail panel."
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "string",
+                                            "description": "Stable identity for this detail panel."
+                                          },
+                                          "label": {
+                                            "type": "string",
+                                            "description": "Trigger label rendered on the Collapsible header."
+                                          },
+                                          "open": {
+                                            "type": "boolean",
+                                            "description": "Initial expanded state for this detail panel."
+                                          },
+                                          "type": {
+                                            "const": "text",
+                                            "description": "Text details preserve the existing preformatted rendering behavior."
+                                          },
+                                          "content": {
+                                            "type": "string",
+                                            "description": "Pre-formatted content shown inside the panel."
+                                          }
+                                        },
+                                        "additionalProperties": false,
+                                        "required": ["content", "id", "label", "type"]
                                       },
-                                      "label": {
-                                        "type": "string",
-                                        "description": "Trigger label rendered on the Collapsible header."
-                                      },
-                                      "content": {
-                                        "type": "string",
-                                        "description": "Pre-formatted content shown inside the panel."
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "string",
+                                            "description": "Stable identity for this detail panel."
+                                          },
+                                          "label": {
+                                            "type": "string",
+                                            "description": "Trigger label rendered on the Collapsible header."
+                                          },
+                                          "open": {
+                                            "type": "boolean",
+                                            "description": "Initial expanded state for this detail panel."
+                                          },
+                                          "type": {
+                                            "const": "code",
+                                            "description": "Code details render with Cinder CodeBlock."
+                                          },
+                                          "code": {
+                                            "type": "string",
+                                            "description": "Code content shown inside the panel."
+                                          },
+                                          "language": {
+                                            "type": "string",
+                                            "description": "Optional CodeBlock language."
+                                          },
+                                          "languageLabelVisible": {
+                                            "type": "boolean",
+                                            "description": "Whether the CodeBlock language label is visible."
+                                          }
+                                        },
+                                        "additionalProperties": false,
+                                        "required": ["code", "id", "label", "type"]
                                       }
-                                    },
-                                    "additionalProperties": false,
-                                    "required": ["content", "id", "label"]
+                                    ]
                                   },
                                   "description": "Expandable detail panels (logs, payloads, errors) shown inline."
                                 },
@@ -551,23 +739,70 @@
                           "details": {
                             "type": "array",
                             "items": {
-                              "type": "object",
-                              "properties": {
-                                "id": {
-                                  "type": "string",
-                                  "description": "Stable identity for this detail panel."
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "description": "Stable identity for this detail panel."
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "description": "Trigger label rendered on the Collapsible header."
+                                    },
+                                    "open": {
+                                      "type": "boolean",
+                                      "description": "Initial expanded state for this detail panel."
+                                    },
+                                    "type": {
+                                      "const": "text",
+                                      "description": "Text details preserve the existing preformatted rendering behavior."
+                                    },
+                                    "content": {
+                                      "type": "string",
+                                      "description": "Pre-formatted content shown inside the panel."
+                                    }
+                                  },
+                                  "additionalProperties": false,
+                                  "required": ["content", "id", "label", "type"]
                                 },
-                                "label": {
-                                  "type": "string",
-                                  "description": "Trigger label rendered on the Collapsible header."
-                                },
-                                "content": {
-                                  "type": "string",
-                                  "description": "Pre-formatted content shown inside the panel."
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "description": "Stable identity for this detail panel."
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "description": "Trigger label rendered on the Collapsible header."
+                                    },
+                                    "open": {
+                                      "type": "boolean",
+                                      "description": "Initial expanded state for this detail panel."
+                                    },
+                                    "type": {
+                                      "const": "code",
+                                      "description": "Code details render with Cinder CodeBlock."
+                                    },
+                                    "code": {
+                                      "type": "string",
+                                      "description": "Code content shown inside the panel."
+                                    },
+                                    "language": {
+                                      "type": "string",
+                                      "description": "Optional CodeBlock language."
+                                    },
+                                    "languageLabelVisible": {
+                                      "type": "boolean",
+                                      "description": "Whether the CodeBlock language label is visible."
+                                    }
+                                  },
+                                  "additionalProperties": false,
+                                  "required": ["code", "id", "label", "type"]
                                 }
-                              },
-                              "additionalProperties": false,
-                              "required": ["content", "id", "label"]
+                              ]
                             },
                             "description": "Expandable detail panels (logs, payloads, errors) shown inline."
                           },
@@ -653,23 +888,70 @@
                                 "details": {
                                   "type": "array",
                                   "items": {
-                                    "type": "object",
-                                    "properties": {
-                                      "id": {
-                                        "type": "string",
-                                        "description": "Stable identity for this detail panel."
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "string",
+                                            "description": "Stable identity for this detail panel."
+                                          },
+                                          "label": {
+                                            "type": "string",
+                                            "description": "Trigger label rendered on the Collapsible header."
+                                          },
+                                          "open": {
+                                            "type": "boolean",
+                                            "description": "Initial expanded state for this detail panel."
+                                          },
+                                          "type": {
+                                            "const": "text",
+                                            "description": "Text details preserve the existing preformatted rendering behavior."
+                                          },
+                                          "content": {
+                                            "type": "string",
+                                            "description": "Pre-formatted content shown inside the panel."
+                                          }
+                                        },
+                                        "additionalProperties": false,
+                                        "required": ["content", "id", "label", "type"]
                                       },
-                                      "label": {
-                                        "type": "string",
-                                        "description": "Trigger label rendered on the Collapsible header."
-                                      },
-                                      "content": {
-                                        "type": "string",
-                                        "description": "Pre-formatted content shown inside the panel."
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "string",
+                                            "description": "Stable identity for this detail panel."
+                                          },
+                                          "label": {
+                                            "type": "string",
+                                            "description": "Trigger label rendered on the Collapsible header."
+                                          },
+                                          "open": {
+                                            "type": "boolean",
+                                            "description": "Initial expanded state for this detail panel."
+                                          },
+                                          "type": {
+                                            "const": "code",
+                                            "description": "Code details render with Cinder CodeBlock."
+                                          },
+                                          "code": {
+                                            "type": "string",
+                                            "description": "Code content shown inside the panel."
+                                          },
+                                          "language": {
+                                            "type": "string",
+                                            "description": "Optional CodeBlock language."
+                                          },
+                                          "languageLabelVisible": {
+                                            "type": "boolean",
+                                            "description": "Whether the CodeBlock language label is visible."
+                                          }
+                                        },
+                                        "additionalProperties": false,
+                                        "required": ["code", "id", "label", "type"]
                                       }
-                                    },
-                                    "additionalProperties": false,
-                                    "required": ["content", "id", "label"]
+                                    ]
                                   },
                                   "description": "Expandable detail panels (logs, payloads, errors) shown inline."
                                 },
@@ -755,23 +1037,70 @@
                                       "details": {
                                         "type": "array",
                                         "items": {
-                                          "type": "object",
-                                          "properties": {
-                                            "id": {
-                                              "type": "string",
-                                              "description": "Stable identity for this detail panel."
+                                          "anyOf": [
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "id": {
+                                                  "type": "string",
+                                                  "description": "Stable identity for this detail panel."
+                                                },
+                                                "label": {
+                                                  "type": "string",
+                                                  "description": "Trigger label rendered on the Collapsible header."
+                                                },
+                                                "open": {
+                                                  "type": "boolean",
+                                                  "description": "Initial expanded state for this detail panel."
+                                                },
+                                                "type": {
+                                                  "const": "text",
+                                                  "description": "Text details preserve the existing preformatted rendering behavior."
+                                                },
+                                                "content": {
+                                                  "type": "string",
+                                                  "description": "Pre-formatted content shown inside the panel."
+                                                }
+                                              },
+                                              "additionalProperties": false,
+                                              "required": ["content", "id", "label", "type"]
                                             },
-                                            "label": {
-                                              "type": "string",
-                                              "description": "Trigger label rendered on the Collapsible header."
-                                            },
-                                            "content": {
-                                              "type": "string",
-                                              "description": "Pre-formatted content shown inside the panel."
+                                            {
+                                              "type": "object",
+                                              "properties": {
+                                                "id": {
+                                                  "type": "string",
+                                                  "description": "Stable identity for this detail panel."
+                                                },
+                                                "label": {
+                                                  "type": "string",
+                                                  "description": "Trigger label rendered on the Collapsible header."
+                                                },
+                                                "open": {
+                                                  "type": "boolean",
+                                                  "description": "Initial expanded state for this detail panel."
+                                                },
+                                                "type": {
+                                                  "const": "code",
+                                                  "description": "Code details render with Cinder CodeBlock."
+                                                },
+                                                "code": {
+                                                  "type": "string",
+                                                  "description": "Code content shown inside the panel."
+                                                },
+                                                "language": {
+                                                  "type": "string",
+                                                  "description": "Optional CodeBlock language."
+                                                },
+                                                "languageLabelVisible": {
+                                                  "type": "boolean",
+                                                  "description": "Whether the CodeBlock language label is visible."
+                                                }
+                                              },
+                                              "additionalProperties": false,
+                                              "required": ["code", "id", "label", "type"]
                                             }
-                                          },
-                                          "additionalProperties": false,
-                                          "required": ["content", "id", "label"]
+                                          ]
                                         },
                                         "description": "Expandable detail panels (logs, payloads, errors) shown inline."
                                       },
@@ -857,23 +1186,70 @@
                                             "details": {
                                               "type": "array",
                                               "items": {
-                                                "type": "object",
-                                                "properties": {
-                                                  "id": {
-                                                    "type": "string",
-                                                    "description": "Stable identity for this detail panel."
+                                                "anyOf": [
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "id": {
+                                                        "type": "string",
+                                                        "description": "Stable identity for this detail panel."
+                                                      },
+                                                      "label": {
+                                                        "type": "string",
+                                                        "description": "Trigger label rendered on the Collapsible header."
+                                                      },
+                                                      "open": {
+                                                        "type": "boolean",
+                                                        "description": "Initial expanded state for this detail panel."
+                                                      },
+                                                      "type": {
+                                                        "const": "text",
+                                                        "description": "Text details preserve the existing preformatted rendering behavior."
+                                                      },
+                                                      "content": {
+                                                        "type": "string",
+                                                        "description": "Pre-formatted content shown inside the panel."
+                                                      }
+                                                    },
+                                                    "additionalProperties": false,
+                                                    "required": ["content", "id", "label", "type"]
                                                   },
-                                                  "label": {
-                                                    "type": "string",
-                                                    "description": "Trigger label rendered on the Collapsible header."
-                                                  },
-                                                  "content": {
-                                                    "type": "string",
-                                                    "description": "Pre-formatted content shown inside the panel."
+                                                  {
+                                                    "type": "object",
+                                                    "properties": {
+                                                      "id": {
+                                                        "type": "string",
+                                                        "description": "Stable identity for this detail panel."
+                                                      },
+                                                      "label": {
+                                                        "type": "string",
+                                                        "description": "Trigger label rendered on the Collapsible header."
+                                                      },
+                                                      "open": {
+                                                        "type": "boolean",
+                                                        "description": "Initial expanded state for this detail panel."
+                                                      },
+                                                      "type": {
+                                                        "const": "code",
+                                                        "description": "Code details render with Cinder CodeBlock."
+                                                      },
+                                                      "code": {
+                                                        "type": "string",
+                                                        "description": "Code content shown inside the panel."
+                                                      },
+                                                      "language": {
+                                                        "type": "string",
+                                                        "description": "Optional CodeBlock language."
+                                                      },
+                                                      "languageLabelVisible": {
+                                                        "type": "boolean",
+                                                        "description": "Whether the CodeBlock language label is visible."
+                                                      }
+                                                    },
+                                                    "additionalProperties": false,
+                                                    "required": ["code", "id", "label", "type"]
                                                   }
-                                                },
-                                                "additionalProperties": false,
-                                                "required": ["content", "id", "label"]
+                                                ]
                                               },
                                               "description": "Expandable detail panels (logs, payloads, errors) shown inline."
                                             },

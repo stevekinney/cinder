@@ -2,8 +2,11 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet, mount, unmount } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
-import { renderToServerHtml } from '../../test/server-render.ts';
+import {
+  prepareSvelteServerSource,
+  renderSvelteOnServer,
+  setupHappyDom,
+} from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -12,6 +15,11 @@ const { default: Sidebar } = await import('./sidebar.svelte');
 const { default: SideNavigation } = await import('../side-navigation/side-navigation.svelte');
 const { SIDEBAR_MOBILE_BREAKPOINT, SIDEBAR_MOBILE_MEDIA_QUERY } = await import('./index.ts');
 const SIDEBAR_SOURCE = new URL('./sidebar.svelte', import.meta.url).pathname;
+await prepareSvelteServerSource(SIDEBAR_SOURCE);
+
+function assertNever(value: never): never {
+  throw new Error(`Unexpected exhaustive value: ${String(value)}`);
+}
 
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
@@ -182,9 +190,8 @@ describe('Sidebar (desktop / inline aside)', () => {
       expectQueryWasUsed(mock, '(max-width: 64rem)');
       expect(aside?.getAttribute('data-cinder-sidebar-mobile-breakpoint')).toBe('64rem');
       expect(aside?.getAttribute('style')).toContain('--cinder-sidebar-mobile-breakpoint: 64rem;');
-      expect(
-        container.querySelector('style[data-cinder-sidebar-breakpoint-style]')?.textContent,
-      ).toContain('@media (max-width: 64rem)');
+      // Once matchMedia has synchronized, the SSR-only fallback stylesheet is removed.
+      expect(container.querySelector('style[data-cinder-sidebar-breakpoint-style]')).toBeNull();
     } finally {
       mock.restore();
     }
@@ -238,12 +245,9 @@ describe('Sidebar (desktop / inline aside)', () => {
 
   test('non-string mobile breakpoint throws the component validation error', () => {
     expect(() => {
-      render(Sidebar, {
-        props: {
-          mobileBreakpoint: 640 as unknown as string,
-          navigation: listSnippet('items'),
-        },
-      });
+      const props = { mobileBreakpoint: '640px', navigation: listSnippet('items') };
+      Reflect.set(props, 'mobileBreakpoint', 640);
+      render(Sidebar, { props });
     }).toThrow('Sidebar mobileBreakpoint must be a CSS length such as "47.99rem".');
   });
 
@@ -329,7 +333,7 @@ describe('Sidebar SSR responsive fallback', () => {
   });
 
   test('server output marks the desktop aside for mobile first-paint hiding', async () => {
-    const html = await renderToServerHtml(SIDEBAR_SOURCE, {
+    const html = await renderSvelteOnServer(SIDEBAR_SOURCE, {
       id: 'workspace-sidebar',
       label: 'Workspace',
     });
@@ -342,10 +346,10 @@ describe('Sidebar SSR responsive fallback', () => {
   });
 
   test('server output includes custom mobile fallback CSS only when the breakpoint changes', async () => {
-    const defaultHtml = await renderToServerHtml(SIDEBAR_SOURCE, {
+    const defaultHtml = await renderSvelteOnServer(SIDEBAR_SOURCE, {
       label: 'Workspace',
     });
-    const customHtml = await renderToServerHtml(SIDEBAR_SOURCE, {
+    const customHtml = await renderSvelteOnServer(SIDEBAR_SOURCE, {
       label: 'Workspace',
       mobileBreakpoint: '64rem',
     });
@@ -430,19 +434,19 @@ function installMatchMediaMock(
   };
   const originalMatchMedia = (window as unknown as { matchMedia?: typeof window.matchMedia })
     .matchMedia;
-  (window as unknown as { matchMedia: typeof window.matchMedia }).matchMedia = ((query: string) => {
+  (window as unknown as { matchMedia: typeof window.matchMedia }).matchMedia = (query: string) => {
     queries.push(query);
 
     if (query === matchingQuery) {
-      return list as unknown as MediaQueryList;
+      return list;
     }
 
     return {
       ...list,
       matches: false,
       media: query,
-    } as unknown as MediaQueryList;
-  }) as typeof window.matchMedia;
+    };
+  };
   return {
     list,
     queries,
@@ -749,6 +753,8 @@ function selectorMatchesArm(selector: string, arm: ArmKey, shape: ArmShape): boo
         selector.includes(`${base} > [aria-hidden='true']`) ||
         selector.includes(`${base} > [aria-hidden="true"]`)
       );
+    default:
+      return assertNever(shape);
   }
 }
 

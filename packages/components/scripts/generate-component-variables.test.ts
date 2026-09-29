@@ -4,12 +4,12 @@ import { readCorpusVariables, resolveRegistryPath } from './generate-component-v
 
 describe('component variable corpus lookup', () => {
   test('resolves standard and experimental component registries', () => {
-    expect(resolveRegistryPath('/workspace/packages/components/src/components/button')).toBe(
-      '/workspace/packages/components/src/tokens/registry.generated.json',
+    expect(resolveRegistryPath('/workspace/components/cinder/src/components/button')).toBe(
+      '/workspace/components/cinder/src/tokens/registry.generated.json',
     );
     expect(
-      resolveRegistryPath('/workspace/packages/components/src/components/experimental/button'),
-    ).toBe('/workspace/packages/components/src/tokens/registry.generated.json');
+      resolveRegistryPath('/workspace/components/cinder/src/components/experimental/button'),
+    ).toBe('/workspace/components/cinder/src/tokens/registry.generated.json');
   });
 
   test('caches the parsed registry and supports packages without one', async () => {
@@ -22,7 +22,7 @@ describe('component variable corpus lookup', () => {
     expect(second).not.toContain('--cinder-accordion-item-trigger-gap');
 
     const missing = await readCorpusVariables(
-      '/workspace/packages/chat/src/components/chat',
+      '/workspace/components/chat/src/components/chat',
       'chat',
     );
     expect(missing).toEqual(new Set());

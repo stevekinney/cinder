@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import type { DataListProps } from './data-list.types.ts';
 
 setupHappyDom();
@@ -26,6 +26,13 @@ function itemSnippet(transform: (item: unknown) => string) {
   return createRawSnippet<[unknown]>((getItem: any) => ({
     render: () => `<li>${transform(getItem())}</li>`,
   }));
+}
+
+function itemLabel(item: unknown): string {
+  if (typeof item === 'object' && item !== null && 'label' in item) {
+    return String(item.label);
+  }
+  throw new Error('Expected a labelled data-list item');
 }
 
 // Key extractor for string items used in tests. Typed as `unknown` to match
@@ -127,8 +134,8 @@ describe('DataList', () => {
     // optional again, the directive becomes unused and tsc/svelte-check fail.
     const children = itemSnippet((item) => String(item)) as DataListProps<string>['children'];
     // @ts-expect-error `key` is a required prop; omitting it must not type-check
-    const _propsWithoutKey: DataListProps<string> = { items: ['a', 'b'], children };
-    expect(_propsWithoutKey).toBeDefined();
+    const propsWithoutKey: DataListProps<string> = { items: ['a', 'b'], children };
+    expect(propsWithoutKey).toBeDefined();
   });
 
   test('keyed reconciliation follows item identity across a reorder', () => {
@@ -144,7 +151,7 @@ describe('DataList', () => {
     const { container, rerender } = render(DataList, {
       items: itemsA,
       key: idKey,
-      children: itemSnippet((item) => String((item as { id: string; label: string }).label)),
+      children: itemSnippet(itemLabel),
     });
     let listItems = container.querySelectorAll('.cinder-data-list li');
     expect(listItems).toHaveLength(2);
@@ -161,9 +168,9 @@ describe('DataList', () => {
     // compile-time `@ts-expect-error` test above — that regression cannot reach
     // runtime, so this test stays an order/behavior check.
     rerender({
-      items: [itemsA[1]!, itemsA[0]!],
+      items: [itemsA[1], itemsA[0]],
       key: idKey,
-      children: itemSnippet((item) => String((item as { id: string; label: string }).label)),
+      children: itemSnippet(itemLabel),
     });
     listItems = container.querySelectorAll('.cinder-data-list li');
     expect(listItems).toHaveLength(2);

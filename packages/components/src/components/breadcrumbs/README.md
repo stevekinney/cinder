@@ -6,7 +6,7 @@ A navigation trail that shows the current page's position in a hierarchy.
 
 ```svelte
 <script lang="ts">
-  import Breadcrumbs from '@lostgradient/cinder/breadcrumbs';
+  import { Breadcrumbs } from '@lostgradient/cinder';
 </script>
 
 <Breadcrumbs items={[{ label: 'Home', href: '/' }, { label: 'Docs' }]} />
@@ -29,7 +29,6 @@ A navigation trail that shows the current page's position in a hierarchy.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

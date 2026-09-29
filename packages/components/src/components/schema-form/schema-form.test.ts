@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -24,7 +24,7 @@ async function submit(form: HTMLFormElement): Promise<SubmitEvent> {
 function formFrom(container: HTMLElement): HTMLFormElement {
   const form = container.querySelector('form');
   expect(form).toBeInstanceOf(HTMLFormElement);
-  return form as HTMLFormElement;
+  return requiredInstance(form, HTMLFormElement);
 }
 
 describe('SchemaForm', () => {
@@ -60,7 +60,7 @@ describe('SchemaForm', () => {
 
     // happy-dom does not collect controls through `new FormData(form)`, so assert
     // the exact form-associated control properties that browsers serialize.
-    const payloadInput = hiddenInput as HTMLInputElement;
+    const payloadInput = requiredInstance(hiddenInput, HTMLInputElement);
     const formData = new FormData();
     formData.set(payloadInput.name, payloadInput.value);
     const viaNativeSubmit = readSchemaFormData(formData, 'payload');
@@ -84,7 +84,7 @@ describe('SchemaForm', () => {
 
     const input = screen.getByRole('spinbutton', { name: /Count/ });
     expect(input).toBeInstanceOf(HTMLInputElement);
-    expect((input as HTMLInputElement).value).toBe('');
+    expect(requiredInstance(input, HTMLInputElement).value).toBe('');
   });
 
   test('resumes native submit without forwarding non-submit submitters', async () => {
@@ -103,9 +103,9 @@ describe('SchemaForm', () => {
 
     const form = formFrom(container);
     const requestSubmitCalls: unknown[] = [];
-    form.requestSubmit = ((submitter?: HTMLElement | null) => {
+    form.requestSubmit = (submitter?: HTMLElement | null) => {
       requestSubmitCalls.push(submitter);
-    }) as typeof form.requestSubmit;
+    };
     const invalidSubmitter = document.createElement('div');
     const event = new Event('submit', { bubbles: true, cancelable: true }) as SubmitEvent;
     Object.defineProperty(event, 'submitter', { value: invalidSubmitter });
@@ -285,7 +285,7 @@ describe('SchemaForm', () => {
     // A required boolean property is presence-required (enforced by the schema
     // validator), NOT "must be checked" — so the checkbox carries no native
     // `required` constraint that would block a valid `false`.
-    expect((activeCheckbox as HTMLInputElement).required).toBe(false);
+    expect(requiredInstance(activeCheckbox, HTMLInputElement).required).toBe(false);
     await fireEvent.click(activeCheckbox);
     await fireEvent.change(screen.getByLabelText(/Mode/), { target: { value: '"safe"' } });
 
@@ -428,7 +428,7 @@ describe('SchemaForm', () => {
     await fireEvent.blur(countInput);
     await flush();
 
-    expect((countInput as HTMLInputElement).value).toBe('999');
+    expect(requiredInstance(countInput, HTMLInputElement).value).toBe('999');
 
     const form = formFrom(container);
     await submit(form);
@@ -492,14 +492,14 @@ describe('SchemaForm — composed-control regressions', () => {
 
     const nameInput = screen.getByLabelText(/Name/);
     await fireEvent.input(nameInput, { target: { value: 'Ada' } });
-    expect((nameInput as HTMLInputElement).value).toBe('Ada'); // does not revert
+    expect(requiredInstance(nameInput, HTMLInputElement).value).toBe('Ada'); // does not revert
 
     const countInput = screen.getByRole('spinbutton', { name: /Count/ });
     await fireEvent.input(countInput, { target: { value: '7' } });
     await fireEvent.blur(countInput);
-    expect((countInput as HTMLInputElement).value).toBe('7'); // does not revert after blur commit
+    expect(requiredInstance(countInput, HTMLInputElement).value).toBe('7'); // does not revert after blur commit
 
-    const rawTextarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    const rawTextarea = requiredInstance(container.querySelector('textarea'), HTMLTextAreaElement);
     expect(rawTextarea.getAttribute('data-cinder-variant')).toBe('code');
     await fireEvent.input(rawTextarea, { target: { value: '{"ok":true}' } });
     expect(rawTextarea.value).toBe('{"ok":true}'); // draft does not revert
@@ -530,7 +530,7 @@ describe('SchemaForm — composed-control regressions', () => {
     const countInput = screen.getByRole('spinbutton', { name: /Count/ });
     await fireEvent.input(countInput, { target: { value: '2.5' } });
     await fireEvent.blur(countInput);
-    expect((countInput as HTMLInputElement).value).toBe('3'); // snapped to an integer
+    expect(requiredInstance(countInput, HTMLInputElement).value).toBe('3'); // snapped to an integer
     await submit(formFrom(container));
 
     expect(submitted).toHaveLength(1);
@@ -558,7 +558,7 @@ describe('SchemaForm — composed-control regressions', () => {
     await flush();
 
     const checkbox = screen.getByRole('checkbox', { name: /Enabled/ });
-    expect((checkbox as HTMLInputElement).required).toBe(false); // not constrained
+    expect(requiredInstance(checkbox, HTMLInputElement).required).toBe(false); // not constrained
     await submit(formFrom(container));
     expect(submitted).toEqual([{ enabled: false }]);
   });
@@ -603,7 +603,7 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
     // Schema 1 renders a Name field seeded with 'Ada'.
     const nameField = view.getByLabelText(/Name/);
     expect(nameField).toBeInstanceOf(HTMLInputElement);
-    const nameInput = nameField as HTMLInputElement;
+    const nameInput = requiredInstance(nameField, HTMLInputElement);
     expect(nameInput.value).toBe('Ada');
 
     // Simulate user editing.
@@ -625,7 +625,7 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
     const ageInput = view.getByRole('spinbutton', { name: /Age/ });
     expect(emailField).toBeInstanceOf(HTMLInputElement);
     expect(ageInput).toBeTruthy();
-    const emailInput = emailField as HTMLInputElement;
+    const emailInput = requiredInstance(emailField, HTMLInputElement);
 
     // formValue reset: new fields start empty (or schema-seeded), not carrying
     // stale values from schema1.
@@ -657,7 +657,7 @@ describe('SchemaForm — schema-change resets form state; value is seed-only', (
 
     const nameField = screen.getByLabelText(/Name/);
     expect(nameField).toBeInstanceOf(HTMLInputElement);
-    const nameInput = nameField as HTMLInputElement;
+    const nameInput = requiredInstance(nameField, HTMLInputElement);
     expect(nameInput.value).toBe('Initial');
 
     // User edits the field.
@@ -925,7 +925,7 @@ describe('SchemaForm — initialization without write-back $effect', () => {
     // The initial value is present in the form — initialization worked.
     const labelInput = screen.getByRole('textbox', { name: /Label/ });
     expect(labelInput).toBeInstanceOf(HTMLInputElement);
-    expect((labelInput as HTMLInputElement).value).toBe('hello');
+    expect(requiredInstance(labelInput, HTMLInputElement).value).toBe('hello');
     // onSubmit was NOT called during initialization.
     expect(submitted).toHaveLength(0);
 

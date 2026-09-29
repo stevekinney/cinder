@@ -1,4 +1,5 @@
 /// <reference lib="dom" />
+import { setupHappyDom } from '@lostgradient/testing';
 import { editorViewOptionsCtx } from '@milkdown/kit/core';
 import type { MilkdownPlugin } from '@milkdown/kit/ctx';
 import type { Transaction } from '@milkdown/prose/state';
@@ -7,7 +8,6 @@ import type { EditorView } from '@milkdown/prose/view';
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 import type { FakeClock } from '../test/fake-clock.js';
 import { installFakeClock } from '../test/fake-clock.js';
-import { setupHappyDom } from '../test/happy-dom.js';
 import { createEditor } from './editor.js';
 import type { EditorState } from './types.js';
 

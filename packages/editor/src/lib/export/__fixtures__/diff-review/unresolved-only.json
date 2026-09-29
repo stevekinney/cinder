@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "scope": "unresolved",
+  "reviewTitle": "Review feedback",
+  "reviewNote": "",
+  "totals": {
+    "records": 2,
+    "messageBodies": 2,
+    "open": 2,
+    "resolved": 0,
+    "outdated": 1
+  },
+  "records": [
+    {
+      "recordKind": "diff",
+      "exportId": "[\"diff\",\"comment-file\"]",
+      "commentId": "comment-file",
+      "targetId": "left",
+      "current": true,
+      "targetKind": "source",
+      "targetLabel": "src/shared.ts",
+      "repositoryLabel": "org/repo",
+      "baseRevisionLabel": "main",
+      "headRevisionLabel": "feature/left",
+      "snapshotId": "left-snapshot",
+      "fileOccurrence": 0,
+      "oldPath": "src/shared.ts",
+      "newPath": "src/shared.ts",
+      "anchor": {
+        "kind": "file"
+      },
+      "rawMapping": {
+        "status": "exact"
+      },
+      "body": "Please add a docstring here.",
+      "resolved": false,
+      "outdated": false,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "recordKind": "diff",
+      "exportId": "[\"diff\",\"comment-outdated\"]",
+      "commentId": "comment-outdated",
+      "targetId": "right",
+      "current": true,
+      "targetKind": "source",
+      "targetLabel": "src/shared.ts",
+      "repositoryLabel": "org/repo",
+      "baseRevisionLabel": "main",
+      "headRevisionLabel": "feature/right",
+      "snapshotId": "right-snapshot-old",
+      "fileOccurrence": 0,
+      "oldPath": "src/shared.ts",
+      "newPath": "src/shared.ts",
+      "anchor": {
+        "kind": "range",
+        "side": "old",
+        "startLine": 5,
+        "endLine": 5,
+        "coordinateSpace": "raw-source",
+        "hunkOccurrence": 0,
+        "selectedText": "return legacy();",
+        "contextBefore": [],
+        "contextAfter": []
+      },
+      "rawMapping": {
+        "status": "exact"
+      },
+      "body": "This branch is now dead code.",
+      "resolved": false,
+      "outdated": true,
+      "createdAt": "2026-01-01T00:00:02.000Z",
+      "updatedAt": "2026-01-01T00:00:02.000Z"
+    }
+  ]
+}

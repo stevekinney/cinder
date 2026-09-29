@@ -9,13 +9,13 @@
  */
 import { describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
-import { renderThenHydrate } from '../../test/hydrate.ts';
+import { prepareSvelteServerSource, renderThenHydrate, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
 const { default: Checkbox } = await import('./checkbox.svelte');
 const sourcePath = new URL('./checkbox.svelte', import.meta.url).pathname;
+await prepareSvelteServerSource(sourcePath);
 
 describe('Checkbox hydration', () => {
   test('hydrates without warnings and keeps the checkbox role/id stable', async () => {
@@ -34,7 +34,7 @@ describe('Checkbox hydration', () => {
       );
       expect(hydrationWarnings).toEqual([]);
     } finally {
-      result.cleanup();
+      await result.cleanup();
     }
   });
 
@@ -54,7 +54,7 @@ describe('Checkbox hydration', () => {
       // After hydration the sync effect sets the live DOM property.
       expect(input?.indeterminate).toBe(true);
     } finally {
-      result.cleanup();
+      await result.cleanup();
     }
   });
 });

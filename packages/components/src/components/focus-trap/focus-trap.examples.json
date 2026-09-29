@@ -1,7 +1,7 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "focus-trap",
-  "import": "@lostgradient/cinder/focus-trap",
+  "import": "@lostgradient/cinder",
   "examples": [
     {
       "id": "basic",

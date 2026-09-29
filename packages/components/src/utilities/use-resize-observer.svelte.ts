@@ -22,7 +22,7 @@ export function useResizeObserver(
     $effect(() => {
       if (!enabled()) {
         disconnectObserver();
-        return;
+        return undefined;
       }
 
       const ResizeObserverConstructor =
@@ -31,7 +31,7 @@ export function useResizeObserver(
           : node.ownerDocument.defaultView?.ResizeObserver;
       if (!ResizeObserverConstructor) {
         disconnectObserver();
-        return;
+        return undefined;
       }
 
       observer = new ResizeObserverConstructor((entries) => {

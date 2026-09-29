@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 
-import type { ReviewState, Thread } from '../../comments/index.ts';
+import { toPersistedThreads, type ReviewState, type Thread } from '../../comments/index.ts';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -71,7 +71,7 @@ describe('review-editor export helpers', () => {
     expect(result.summary.length).toBeGreaterThan(0);
   });
 
-  test('builds form data from raw values and persisted thread anchors', () => {
+  test('builds form data from raw values and preserves live thread positions', () => {
     const thread = createThread({
       anchor: {
         from: 5,
@@ -85,11 +85,44 @@ describe('review-editor export helpers', () => {
     });
 
     const result = buildFormDataFromValues('Original', 'Current', [thread]);
-    const parsedComments = JSON.parse(result.comments) as Thread[];
+    const comments = JSON.parse(result.comments) as Array<{
+      anchor: { from?: number; to?: number; quote: string };
+    }>;
 
-    expect(parsedComments[0]?.anchor.quote).toBe('test text');
-    expect(parsedComments[0]?.anchor.prefix).toBe('pre');
-    expect(parsedComments[0]?.anchor.suffix).toBe('suf');
+    expect(comments[0]?.anchor.from).toBe(5);
+    expect(comments[0]?.anchor.to).toBe(15);
+    expect(result.comments).toContain('"quote":"test text"');
+    expect(result.comments).toContain('"prefix":"pre"');
+    expect(result.comments).toContain('"suffix":"suf"');
+  });
+
+  test('keeps persisted form state free of runtime positions', () => {
+    const thread = createThread({
+      anchor: {
+        from: 5,
+        to: 15,
+        quote: 'test text',
+        prefix: 'pre',
+        suffix: 'suf',
+        status: 'anchored',
+        originalQuote: 'test text',
+      },
+    });
+
+    const result = buildFormData(
+      createReviewState({
+        content: 'Current',
+        original: 'Original',
+        threads: toPersistedThreads([thread]),
+      }),
+    );
+    const comments = JSON.parse(result.comments) as Array<{
+      anchor: { from?: number; to?: number; quote: string };
+    }>;
+
+    expect(comments[0]?.anchor.from).toBeUndefined();
+    expect(comments[0]?.anchor.to).toBeUndefined();
+    expect(comments[0]?.anchor.quote).toBe('test text');
   });
 
   test('exports markdown summaries, unified diffs, and comments', () => {

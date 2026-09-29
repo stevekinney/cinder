@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import type { TransferListItem } from './transfer-list.types.ts';
 
 setupHappyDom();

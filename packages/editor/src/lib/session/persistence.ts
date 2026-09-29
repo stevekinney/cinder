@@ -48,6 +48,16 @@ function isArray(value: unknown): value is unknown[] {
   return Array.isArray(value);
 }
 
+function isSessionStatus(value: unknown): boolean {
+  return value === 'drafting' || value === 'submitted';
+}
+
+function isOptionalOutcome(value: unknown): boolean {
+  return (
+    value === undefined || value === 'approve' || value === 'request_changes' || value === 'comment'
+  );
+}
+
 /**
  * Validate persisted session schema.
  *
@@ -61,40 +71,12 @@ function isArray(value: unknown): value is unknown[] {
 export function validateSessionSchema(data: unknown): data is PersistedReviewSession {
   if (!isObject(data)) return false;
 
-  const id = data['id'];
-  const status = data['status'];
-  const startedAt = data['startedAt'];
-  const updatedAt = data['updatedAt'];
-  const outcome = data['outcome'];
-  const draftComments = data['draftComments'];
-  const submittedAt = data['submittedAt'];
-
-  // Required string fields
-  if (!isString(id)) return false;
-  if (!isString(status)) return false;
-  if (!isString(startedAt)) return false;
-  if (!isString(updatedAt)) return false;
-
-  // Status must be valid
-  if (status !== 'drafting' && status !== 'submitted') return false;
-
-  // Optional outcome must be a valid string if present (reject null)
-  if (outcome !== undefined) {
-    if (typeof outcome !== 'string') return false;
-    if (outcome !== 'approve' && outcome !== 'request_changes' && outcome !== 'comment') {
-      return false;
-    }
-  }
-
-  // Required arrays
-  if (!isArray(draftComments)) return false;
-
-  // Note: draftSuggestions was removed from the schema. Old persisted
-  // sessions may still have this field - we allow it for backward
-  // compatibility but don't require it.
-
-  // Optional submittedAt must be string if present
-  if (submittedAt !== undefined && !isString(submittedAt)) return false;
+  const requiredStrings = ['id', 'startedAt', 'updatedAt'];
+  if (!requiredStrings.every((key) => isString(data[key]))) return false;
+  if (!isSessionStatus(data['status'])) return false;
+  if (!isOptionalOutcome(data['outcome'])) return false;
+  if (!isArray(data['draftComments'])) return false;
+  if (data['submittedAt'] !== undefined && !isString(data['submittedAt'])) return false;
 
   return true;
 }

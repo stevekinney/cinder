@@ -3,7 +3,7 @@ import * as matchers from '@testing-library/jest-dom/matchers';
 import { afterEach, beforeEach, describe, expect, setSystemTime, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import type { DateRangeDatePreset, DateRangeValue } from './date-range-field.types.ts';
 
 expect.extend(matchers as Parameters<typeof expect.extend>[0]);
@@ -23,11 +23,11 @@ afterEach(() => cleanup());
 // ---------------------------------------------------------------------------
 
 function getStartInput(container: Element): HTMLInputElement {
-  return container.querySelector('[id$="-start"]') as HTMLInputElement;
+  return requiredInstance(container.querySelector('[id$="-start"]'), HTMLInputElement);
 }
 
 function getEndInput(container: Element): HTMLInputElement {
-  return container.querySelector('[id$="-end"]') as HTMLInputElement;
+  return requiredInstance(container.querySelector('[id$="-end"]'), HTMLInputElement);
 }
 
 function getPresetButtons(container: Element): HTMLButtonElement[] {

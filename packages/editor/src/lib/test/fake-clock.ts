@@ -12,6 +12,8 @@
  * @module
  */
 
+import { spyOn } from 'bun:test';
+
 /** A `setTimeout` replacement whose passage of time the caller controls. */
 export interface FakeClock {
   /**
@@ -37,45 +39,61 @@ export interface FakeClock {
  * ambient `setTimeout`, which is the thing being controlled.
  */
 export function installFakeClock(): FakeClock {
-  const originalSetTimeout = globalThis.setTimeout;
-  const originalClearTimeout = globalThis.clearTimeout;
+  // This harness runs in Bun. The DOM overload's numeric return type does not
+  // describe its native Timeout objects, so spy through the runtime contract.
+  const timers: {
+    setTimeout: (
+      callback: Bun.TimerHandler,
+      delay?: number,
+      ...arguments_: unknown[]
+    ) => ReturnType<typeof globalThis.setTimeout>;
+    clearTimeout: (handle: ReturnType<typeof globalThis.setTimeout> | number | undefined) => void;
+  } = globalThis;
+  const originalSetTimeout = timers.setTimeout;
+  const originalClearTimeout = timers.clearTimeout;
 
   let now = 0;
-  let nextId = 1;
-  let scheduledCount = 0;
   const pending = new Map<number, { callback: () => void; dueAt: number }>();
 
-  globalThis.setTimeout = ((callback: () => void, delay = 0) => {
-    const id = nextId++;
-    scheduledCount += 1;
-    pending.set(id, { callback, dueAt: now + delay });
-    return id as unknown as ReturnType<typeof setTimeout>;
-  }) as unknown as typeof setTimeout;
+  const setTimeoutSpy = spyOn(timers, 'setTimeout');
+  setTimeoutSpy.mockImplementation((callback, delay = 0, ...arguments_) => {
+    if (typeof callback !== 'function') throw new TypeError('Expected a timeout callback');
+    // Keep the native handle contract without leaving a real timeout armed.
+    const handle = originalSetTimeout(() => {}, 0);
+    originalClearTimeout(handle);
+    pending.set(Number(handle), {
+      callback: () => callback(...arguments_),
+      dueAt: now + delay,
+    });
+    return handle;
+  });
 
-  globalThis.clearTimeout = ((id: unknown) => {
-    if (typeof id === 'number') pending.delete(id);
-  }) as unknown as typeof clearTimeout;
+  const clearTimeoutSpy = spyOn(timers, 'clearTimeout');
+  clearTimeoutSpy.mockImplementation((handle) => {
+    pending.delete(Number(handle));
+    originalClearTimeout(Number(handle));
+  });
 
   return {
     advance(ms: number) {
       now += ms;
       const due = [...pending.entries()]
         .filter(([, timer]) => timer.dueAt <= now)
-        .sort((a, b) => a[1].dueAt - b[1].dueAt);
+        .toSorted((a, b) => a[1].dueAt - b[1].dueAt);
       for (const [id, timer] of due) {
-        pending.delete(id);
-        timer.callback();
+        if (pending.delete(id)) timer.callback();
       }
     },
     get scheduledCount() {
-      return scheduledCount;
+      return setTimeoutSpy.mock.calls.length;
     },
     get pendingCount() {
       return pending.size;
     },
     restore() {
-      globalThis.setTimeout = originalSetTimeout;
-      globalThis.clearTimeout = originalClearTimeout;
+      setTimeoutSpy.mockRestore();
+      clearTimeoutSpy.mockRestore();
+      pending.clear();
     },
   };
 }
@@ -98,27 +116,30 @@ export function installFakeClock(): FakeClock {
  * the clock AFTER the async work had already started) is why late-install
  * call sites in this package were migrated to this one.
  */
+type Settlement<T> =
+  | { status: 'pending' }
+  | { status: 'fulfilled'; value: T }
+  | { status: 'rejected'; reason: unknown };
+
 export async function drainMount<T>(promise: Promise<T>, clock: FakeClock): Promise<T> {
-  const outcome: { settled: boolean; value?: T; error?: unknown } = { settled: false };
+  const outcome: { current: Settlement<T> } = { current: { status: 'pending' } };
   promise
     .then((value) => {
-      outcome.value = value;
-      outcome.settled = true;
+      outcome.current = { status: 'fulfilled', value };
       return value;
     })
     .catch((reason: unknown) => {
-      outcome.error = reason;
-      outcome.settled = true;
+      outcome.current = { status: 'rejected', reason };
     });
 
   const maxIterations = 200;
-  for (let i = 0; i < maxIterations && !outcome.settled; i++) {
+  for (let i = 0; i < maxIterations && outcome.current.status === 'pending'; i++) {
     await Promise.resolve();
     clock.advance(20);
   }
-  if (!outcome.settled) {
+  if (outcome.current.status === 'pending') {
     throw new Error(`drainMount: promise did not settle within ${maxIterations} iterations`);
   }
-  if (outcome.error !== undefined) throw outcome.error;
-  return outcome.value as T;
+  if (outcome.current.status === 'rejected') throw outcome.current.reason;
+  return outcome.current.value;
 }

@@ -8,7 +8,7 @@
 
 ```svelte
 <script lang="ts">
-  import QuotaMeter from '@lostgradient/cinder/quota-meter';
+  import { QuotaMeter } from '@lostgradient/cinder';
 </script>
 
 <QuotaMeter used={72} />
@@ -36,9 +36,7 @@
 
 <!-- generated:authoring:start -->
 
-Before publishing this component, complete the live
-[component authoring pre-flight](../../../AGENTS.md#component-authoring-pre-flight).
-
+Before publishing this component, complete the live [component authoring pre-flight](../../../README.md#component-authoring-checklist).
 <!-- generated:authoring:end -->
 
 ## CSS Variables
@@ -46,7 +44,6 @@ Before publishing this component, complete the live
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

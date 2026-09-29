@@ -50,7 +50,7 @@ function isVirtualKeyboardResize(source: 'window' | 'visual-viewport'): boolean 
  */
 export function createVirtualKeyboardDismissal(options: VirtualKeyboardDismissalOptions): void {
   $effect(() => {
-    if (!options.enabled()) return;
+    if (!options.enabled()) return undefined;
     let viewportWidth = window.innerWidth;
     let viewportHeight = window.innerHeight;
     const visualViewport = window.visualViewport;

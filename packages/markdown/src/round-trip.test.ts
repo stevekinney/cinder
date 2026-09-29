@@ -261,7 +261,8 @@ describe('round-trip edge cases', () => {
     const separator = '|' + Array.from({ length: 10 }, () => '---').join('|') + '|';
     const rows = Array.from(
       { length: 50 },
-      (_, r) => '| ' + Array.from({ length: 10 }, (_, c) => `R${r}C${c}`).join(' | ') + ' |',
+      (_unused, row) =>
+        '| ' + Array.from({ length: 10 }, (_, column) => `R${row}C${column}`).join(' | ') + ' |',
     );
     const table = [header, separator, ...rows].join('\n');
     const result = roundTrip(table);

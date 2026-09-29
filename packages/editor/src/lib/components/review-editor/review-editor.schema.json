@@ -44,32 +44,32 @@
   "metadata": {
     "unsupportedProps": [
       {
-        "name": "onchange",
+        "name": "onValueChange",
         "reason": "function-or-snippet",
         "description": "Called when content changes."
       },
       {
-        "name": "oncommentcreate",
+        "name": "onCommentCreate",
         "reason": "function-or-snippet",
         "description": "Called when a comment is created in an existing thread."
       },
       {
-        "name": "oncommentdelete",
+        "name": "onCommentDelete",
         "reason": "function-or-snippet",
         "description": "Called when a comment is deleted."
       },
       {
-        "name": "oncommentupdate",
+        "name": "onCommentUpdate",
         "reason": "function-or-snippet",
         "description": "Called when a comment is updated."
       },
       {
-        "name": "onthreadcreate",
+        "name": "onThreadCreate",
         "reason": "function-or-snippet",
         "description": "Called when user initiates thread creation."
       },
       {
-        "name": "onthreaddelete",
+        "name": "onThreadDelete",
         "reason": "function-or-snippet",
         "description": "Called when a thread is deleted."
       },

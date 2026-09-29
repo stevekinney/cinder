@@ -216,6 +216,10 @@ function evaluateCombinator(
       // Semantic sugar over anyOf with a single entry; enforced to one predicate by convention.
       return predicates.some((predicate) => evaluatePredicate(predicate, attributes));
     }
+    default: {
+      const unsupportedCombinator: never = kind;
+      throw new TypeError(`Unsupported constraint combinator: ${String(unsupportedCombinator)}`);
+    }
   }
 }
 

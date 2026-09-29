@@ -195,7 +195,7 @@ export function collectResolvedReferenceLabels(value: string, metadata: ScanMeta
   let codeFence: CodeFence | null = null;
   let htmlBlockEnd = 0;
   let indentedCode = false;
-  for (let lineStart = 0; lineStart < value.length; ) {
+  for (let lineStart = 0; lineStart < value.length;) {
     const lineEnd = getLineEnd(value, lineStart);
     let candidate = metadata.containerStarts.get(lineStart) ?? lineStart;
     let indentation = 0;

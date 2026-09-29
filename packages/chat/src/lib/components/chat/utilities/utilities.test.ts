@@ -9,7 +9,9 @@ import {
   getMessageRoleLabel,
   getMessageText,
   messagesToMarkdown,
+  normalizeArtifactTitle,
   resolveMessageArtifact,
+  resolveMessageArtifactValue,
   resolveMessageReasoning,
   resolveMessageSteps,
   resolveMessageSuggestions,
@@ -205,6 +207,78 @@ describe('resolveMessageArtifact', () => {
     });
 
     expect(resolveMessageArtifact(value)).toBeUndefined();
+  });
+
+  it('normalizes blank and whitespace artifact titles to Artifact', () => {
+    expect(normalizeArtifactTitle(undefined)).toBe('Artifact');
+    expect(normalizeArtifactTitle('')).toBe('Artifact');
+    expect(normalizeArtifactTitle('   ')).toBe('Artifact');
+    expect(normalizeArtifactTitle('  Report  ')).toBe('Report');
+  });
+
+  it('resolves artifacts by source message identity instead of title or content', () => {
+    const first = message({
+      id: 'source-one',
+      role: 'assistant',
+      metadata: {
+        [CINDER_ARTIFACT_METADATA_KEY]: {
+          type: 'code',
+          content: 'const duplicated = true;',
+          language: 'typescript',
+          title: 'Duplicate',
+        },
+      },
+    });
+    const second = message({
+      id: 'source-two',
+      role: 'assistant',
+      metadata: {
+        [CINDER_ARTIFACT_METADATA_KEY]: {
+          type: 'code',
+          content: 'const duplicated = true;',
+          language: 'typescript',
+          title: 'Duplicate',
+        },
+      },
+    });
+
+    expect(resolveMessageArtifactValue(first)).toEqual({
+      type: 'code',
+      content: 'const duplicated = true;',
+      language: 'typescript',
+      title: 'Duplicate',
+      id: 'source-one',
+    });
+    expect(resolveMessageArtifactValue(second)).toMatchObject({
+      id: 'source-two',
+      title: 'Duplicate',
+    });
+  });
+
+  it('preserves the raw artifact descriptor while resolving a user-facing title', () => {
+    const value = message({
+      id: 'blank-title-source',
+      role: 'assistant',
+      metadata: {
+        [CINDER_ARTIFACT_METADATA_KEY]: {
+          type: 'code',
+          content: 'const fallback = true;',
+          title: ' ',
+        },
+      },
+    });
+
+    expect(resolveMessageArtifact(value)).toEqual({
+      type: 'code',
+      content: 'const fallback = true;',
+      title: ' ',
+    });
+    expect(resolveMessageArtifactValue(value)).toEqual({
+      type: 'code',
+      content: 'const fallback = true;',
+      title: 'Artifact',
+      id: 'blank-title-source',
+    });
   });
 });
 

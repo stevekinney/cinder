@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
-import { setupHappyDom } from '../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import { copyToClipboard, escapeClipboardHtmlAttribute } from './clipboard.ts';
 
 setupHappyDom();
@@ -11,7 +11,7 @@ let originalClipboard: ClipboardLike | undefined;
 let originalExecCommand: typeof document.execCommand | undefined;
 
 beforeEach(() => {
-  originalClipboard = navigator.clipboard as ClipboardLike | undefined;
+  originalClipboard = navigator.clipboard;
   originalExecCommand = document.execCommand;
 });
 
@@ -42,7 +42,7 @@ describe('copyToClipboard', () => {
       configurable: true,
       value: { writeText: mock(async () => Promise.reject(new Error('denied'))) },
     });
-    document.execCommand = mock(() => true) as typeof document.execCommand;
+    document.execCommand = mock(() => true);
 
     expect(await copyToClipboard('fallback')).toBe(true);
     expect(document.execCommand).toHaveBeenCalledWith('copy');
@@ -53,7 +53,7 @@ describe('copyToClipboard', () => {
     delete (navigator as unknown as { clipboard?: ClipboardLike }).clipboard;
     document.execCommand = mock(() => {
       throw new Error('copy unavailable');
-    }) as typeof document.execCommand;
+    });
     expect(await copyToClipboard('nope')).toBe(false);
     expect(document.querySelector('textarea')).toBeNull();
   });

@@ -19,6 +19,7 @@
   import type { ButtonGroupProps } from './button-group.types.ts';
   import type { Attachment } from 'svelte/attachments';
 
+  import { setButtonGroupContext } from '../../_internal/button-group-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { useMutationObserver } from '../../utilities/use-mutation-observer.svelte.ts';
@@ -47,6 +48,13 @@
   // group overwrites the value and the old group's cleanup only removes it if
   // the value still matches this instance's ID.
   const groupId = $props.id();
+
+  // Publish groupId to descendant Buttons so each one can render the
+  // styling-contract attribute itself, from its own initialization — which
+  // also runs during SSR (see button-group-context.ts). `{@attach}` below
+  // still owns the attribute for non-Button children and for children added
+  // or moved after mount.
+  setButtonGroupContext({ groupId });
 
   const tagDirectChildren: Attachment = (element) => {
     const ATTR = 'data-cinder-button-group-item';

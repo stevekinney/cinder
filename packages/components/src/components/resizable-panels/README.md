@@ -6,8 +6,8 @@ Measured splitter layout for editor-style panes. The component keeps sizing stat
 
 ```svelte
 <script lang="ts">
-  import ResizablePanels from '@lostgradient/cinder/resizable-panels';
-  import type { ResizablePanelDefinition } from '@lostgradient/cinder/resizable-panels';
+  import { ResizablePanels } from '@lostgradient/cinder';
+  import type { ResizablePanelDefinition } from '@lostgradient/cinder';
 
   const panes: ResizablePanelDefinition[] = [
     {
@@ -57,7 +57,6 @@ Measured splitter layout for editor-style panes. The component keeps sizing stat
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

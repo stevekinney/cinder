@@ -69,8 +69,18 @@ export interface UseChatKeyboardNavReturn {
  */
 function canNavigateMessagesFrom(viewport: HTMLElement): boolean {
   const active = document.activeElement;
-  return (
-    active === viewport || (active?.matches('.chat-message, .chat-tool-call-timeline') ?? false)
+  return active === viewport || (active instanceof HTMLElement && isChatNavigationRow(active));
+}
+
+function isChatNavigationRow(element: HTMLElement): boolean {
+  if (!element.matches('.chat-navigation-row')) return false;
+  const owningMessage = element.closest('.chat-message');
+  return owningMessage === null || owningMessage === element;
+}
+
+function chatNavigationRows(viewport: HTMLElement): HTMLElement[] {
+  return Array.from(viewport.querySelectorAll<HTMLElement>('.chat-navigation-row')).filter(
+    isChatNavigationRow,
   );
 }
 
@@ -118,12 +128,10 @@ export function useChatKeyboardNav(options: UseChatKeyboardNavOptions): UseChatK
    * Scrolls the focused message into view.
    */
   function navigateMessages(viewport: HTMLElement, direction: 'next' | 'previous'): void {
-    const allMessages = viewport.querySelectorAll<HTMLElement>(
-      '.chat-message, .chat-tool-call-timeline',
-    );
+    const allMessages = chatNavigationRows(viewport);
     if (allMessages.length === 0) return;
 
-    const currentIndex = Array.from(allMessages).findIndex((msg) => msg === document.activeElement);
+    const currentIndex = allMessages.findIndex((msg) => msg === document.activeElement);
 
     let targetIndex: number;
     if (currentIndex === -1) {
@@ -206,9 +214,7 @@ export function useChatKeyboardNav(options: UseChatKeyboardNavOptions): UseChatK
             if (getIsVirtualized?.() ?? false) {
               viewport.focus({ preventScroll: true });
             } else {
-              const firstMessage = viewport.querySelector<HTMLElement>(
-                '.chat-message, .chat-tool-call-timeline',
-              );
+              const firstMessage = chatNavigationRows(viewport)[0];
               if (firstMessage) firstMessage.focus();
               else viewport.focus({ preventScroll: true });
             }

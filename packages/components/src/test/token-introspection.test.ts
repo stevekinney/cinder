@@ -59,7 +59,7 @@ describe('readRootTokenNames', () => {
     expect(readRootTokenNames(css)).toEqual(new Set(['--cinder-accent-solid', '--cinder-space-4']));
   });
 
-  // B3 (CIN-30 review): docs/tokens.md's own intro states the scope is
+  // B3 (CIN-30 review): documentation/tokens.md's own intro states the scope is
   // "--cinder-*" (public) AND "--_cinder-*" (internal) -- so a helper this
   // scoped to only the public prefix silently fails a supported internal
   // token declared in :root. This is what made completeness.test.ts's

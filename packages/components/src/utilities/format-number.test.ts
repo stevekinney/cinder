@@ -1,9 +1,10 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
 
+import { environmentConfiguration } from '../../scripts/environment-configuration.ts';
 import { formatNumber } from './format-number.ts';
 
 beforeAll(() => {
-  if (process.env.TZ !== 'UTC') {
+  if (environmentConfiguration().tz !== 'UTC') {
     throw new Error(
       'format-number.test.ts requires TZ=UTC. Run via `bun run test`, not bare `bun test`.',
     );

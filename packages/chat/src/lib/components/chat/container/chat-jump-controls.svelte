@@ -18,12 +18,12 @@
     /** Whether the count exceeds 99 (for compact badge styling) */
     hasLargeCount: boolean;
     /** Callback when jump-to-latest is clicked */
-    onjumptolatest?: () => void;
+    onJumpToLatest?: () => void;
   };
 </script>
 
 <script lang="ts">
-  import { ChevronDown } from '@lostgradient/cinder/icons';
+  import { ChevronDown } from '@lostgradient/cinder';
 
   let {
     showJumpButton,
@@ -31,11 +31,11 @@
     unreadCount,
     displayUnreadCount,
     hasLargeCount,
-    onjumptolatest,
+    onJumpToLatest,
   }: ChatJumpControlsProps = $props();
 
   function handleJump(): void {
-    onjumptolatest?.();
+    onJumpToLatest?.();
   }
 </script>
 
@@ -136,7 +136,7 @@
     min-width: 1.25rem;
     height: 1.25rem;
     padding: 0 var(--cinder-space-1);
-    font-size: var(--_cinder-chat-text-3xs, var(--cinder-text-3xs));
+    font-size: var(--_cinder-chat-text-3xs, var(--cinder-text-2xs));
     font-weight: var(--cinder-font-semibold);
     background: var(--cinder-accent-solid);
     color: var(--cinder-accent-contrast);
@@ -144,7 +144,7 @@
   }
 
   .chat-jump-badge[data-large] {
-    font-size: var(--_cinder-chat-text-4xs, var(--cinder-text-4xs));
+    font-size: var(--_cinder-chat-text-4xs, var(--cinder-text-2xs));
     padding: 0 var(--cinder-space-0-5);
   }
 

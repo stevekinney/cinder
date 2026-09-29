@@ -1,10 +1,10 @@
 /// <reference lib="dom" />
+import { setupHappyDom } from '@lostgradient/testing';
 import type { Node as ProseMirrorNode } from '@milkdown/prose/model';
 import { Selection, TextSelection } from '@milkdown/prose/state';
 import { afterEach, describe, expect, test } from 'bun:test';
 import type { FakeClock } from '../test/fake-clock.js';
 import { drainMount, installFakeClock } from '../test/fake-clock.js';
-import { setupHappyDom } from '../test/happy-dom.js';
 import { createEditor } from './editor.js';
 import type { EditorState } from './types.js';
 

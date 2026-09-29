@@ -1,4 +1,5 @@
 import type { HTMLAttributes } from 'svelte/elements';
+import type { DataAttributes, WithoutDataAttributes } from '../../_internal/union-props.ts';
 
 /**
  * A single condition within a rule. The field, operator, and value
@@ -159,9 +160,17 @@ export type InvocationRuleConditionChange =
  * `mode="flat-conditions"` uses a direct `conditions` array so consumers do
  * not need to invent rule-group metadata.
  */
-type InvocationRuleBuilderBaseProps = Omit<
-  HTMLAttributes<HTMLElement>,
-  'class' | 'children' | 'onchange'
+// COR-239: keyof Props became too complex for TypeScript to represent (TS2590) once a consumer
+// type-checked this published declaration under `skipLibCheck: false` — even a single, unvarying
+// `HTMLAttributes<HTMLElement>`-derived base still carries the `data-*` index signature, and
+// intersecting it with this file's mode/grouped-vs-flat/readonly-vs-editable union was enough to
+// trigger it (no per-arm attribute-interface split was needed for the defect to appear here).
+// Fix: strip `data-*` from the base (`WithoutDataAttributes` below) and restore it via a single
+// non-distributed `DataAttributes` intersected once on `InvocationRuleBuilderProps`. See
+// `src/_internal/union-props.ts` for the full mechanism. No prop was added, removed, widened, or
+// narrowed — arbitrary `data-*` props are still accepted, exactly as before.
+type InvocationRuleBuilderBaseProps = WithoutDataAttributes<
+  Omit<HTMLAttributes<HTMLElement>, 'class' | 'children' | 'onchange'>
 > & {
   /**
    * Options for the condition field selector. Consumer-provided list of
@@ -181,61 +190,6 @@ type InvocationRuleBuilderBaseProps = Omit<
   class?: string;
 };
 
-/**
- * Mode-specific props for `mode="full"` (the default). Behavior and prop
- * shape are unchanged from before conditions-only mode existed.
- */
-type InvocationRuleBuilderFullModeProps = {
-  /**
-   * Rendering mode. Omit or pass `'full'` to render both conditions and
-   * actions — the component's original, unchanged behavior.
-   */
-  mode?: 'full';
-
-  /**
-   * Options for the condition operator selector. Consumer-provided list
-   * of operators, e.g. "matches", "is", "is-not", "contains".
-   */
-  operatorOptions: InvocationRuleOption[];
-
-  /**
-   * Options for the action target selector. Consumer-provided list of
-   * targets, e.g. review-agent slugs or step identifiers.
-   */
-  actionOptions: InvocationRuleOption[];
-
-  /**
-   * Label for the "Add action" button. Defaults to "Add action".
-   */
-  addActionLabel?: string;
-};
-
-/**
- * Mode-specific props for `mode="conditions"`. Actions are not rendered, so
- * action-related props are not accepted — cinder owns the operator
- * vocabulary and there is nothing to configure for actions.
- */
-type InvocationRuleBuilderConditionsOnlyModeProps = {
-  /**
-   * Renders conditions only: action controls are hidden entirely and rules
-   * never emit action descriptors.
-   */
-  mode: 'conditions';
-
-  /**
-   * Not accepted in conditions-only mode. Cinder supplies the fixed
-   * eq/gt/lt/gte/lte operator set internally; see
-   * {@link InvocationRuleConditionsOnlyOperator}.
-   */
-  operatorOptions?: never;
-
-  /** Not accepted in conditions-only mode — action controls are not rendered. */
-  actionOptions?: never;
-
-  /** Not accepted in conditions-only mode — action controls are not rendered. */
-  addActionLabel?: never;
-};
-
 type InvocationRuleBuilderChangeHandler = (
   nextRules: InvocationRule[],
   change: InvocationRuleChange,
@@ -246,79 +200,143 @@ type InvocationRuleBuilderConditionChangeHandler = (
   change: InvocationRuleConditionChange,
 ) => void;
 
-type InvocationRuleBuilderReadonlyProps<ChangeHandler> =
-  | {
-      /**
-       * Called whenever the user makes any edit. Required for editable runtime
-       * usage because editable controls must commit controlled state changes.
-       * Receives the next controlled state (pure, not mutated) and a change descriptor.
-       * Consumer owns persistence, validation, and execution.
-       */
-      onValueChange: ChangeHandler;
-
-      /**
-       * When false or omitted, renders editable controls. Editable mode requires
-       * `onValueChange` so controls cannot become interactive-but-no-op.
-       */
-      readonly?: false;
-    }
-  | {
-      /**
-       * Optional in readonly usage because no edit controls are rendered.
-       * Runtime consumers may still pass it when sharing props between modes.
-       */
-      onValueChange?: ChangeHandler;
-
-      /**
-       * When true, renders a readonly summary of each rule instead of editable
-       * controls.
-       */
-      readonly: true;
-    };
-
-type InvocationRuleBuilderGroupedProps = {
-  /**
-   * The current list of automation rules. Controlled — pass the updated
-   * list returned from `onValueChange` back into this prop to commit a change.
-   */
-  rules: InvocationRule[];
-
-  /** Not accepted in grouped modes. */
-  conditions?: never;
-
-  /** Label for the "Add rule" button. Defaults to "Add rule". */
-  addRuleLabel?: string;
-} & (InvocationRuleBuilderFullModeProps | InvocationRuleBuilderConditionsOnlyModeProps) &
-  InvocationRuleBuilderReadonlyProps<InvocationRuleBuilderChangeHandler>;
-
-type InvocationRuleBuilderFlatConditionsProps = {
-  /**
-   * Renders one direct, implicit-AND conditions list without rule headers or
-   * rule-level controls.
-   */
-  mode: 'flat-conditions';
-
-  /** The controlled flat conditions list. */
-  conditions: InvocationRuleCondition[];
-
-  /** Not accepted in flat-conditions mode. */
-  rules?: never;
-
-  /** Not accepted because flat-conditions mode has no rule controls. */
-  addRuleLabel?: never;
-
-  /** Cinder supplies the fixed eq/gt/lt/gte/lte operator set internally. */
-  operatorOptions?: never;
-
-  /** Not accepted because flat-conditions mode has no actions. */
-  actionOptions?: never;
-
-  /** Not accepted because flat-conditions mode has no actions. */
-  addActionLabel?: never;
-} & InvocationRuleBuilderReadonlyProps<InvocationRuleBuilderConditionChangeHandler>;
-
+// The mode/grouped-vs-flat/readonly-vs-editable discriminant below is intentionally written as
+// one fully INLINE, fully-crossed six-arm union rather than through separately-named
+// intermediate types (this file previously composed it from `InvocationRuleBuilderFullModeProps`,
+// `InvocationRuleBuilderConditionsOnlyModeProps`, `InvocationRuleBuilderGroupedProps`,
+// `InvocationRuleBuilderFlatConditionsProps`, and a generic `InvocationRuleBuilderReadonlyProps<
+// ChangeHandler>` intersected together). That composed shape reintroduced TS2590 once the full
+// fifteen-component baseline is checked together, even after `data-*` was stripped from
+// `InvocationRuleBuilderBaseProps` above — named aliases to union members, used alongside a large
+// attribute type, are themselves expensive here; the identical shapes fully crossed and written
+// inline are not. See `src/_internal/union-props.ts` and card.types.ts for the general mechanism
+// and a fuller writeup. Every one of the six arms below already carries the same nine keys
+// (`rules`, `conditions`, `addRuleLabel`, `mode`, `operatorOptions`, `actionOptions`,
+// `addActionLabel`, `onValueChange`, `readonly`), so no `PadUnion` is needed.
 export type InvocationRuleBuilderProps = InvocationRuleBuilderBaseProps &
-  (InvocationRuleBuilderGroupedProps | InvocationRuleBuilderFlatConditionsProps);
+  DataAttributes &
+  (
+    | {
+        rules: InvocationRule[];
+        conditions?: never;
+        addRuleLabel?: string;
+        mode?: 'full';
+        operatorOptions: InvocationRuleOption[];
+        actionOptions: InvocationRuleOption[];
+        addActionLabel?: string;
+        /**
+         * Called whenever the user makes any edit. Required for editable runtime
+         * usage because editable controls must commit controlled state changes.
+         * Receives the next controlled state (pure, not mutated) and a change descriptor.
+         * Consumer owns persistence, validation, and execution.
+         */
+        onValueChange: InvocationRuleBuilderChangeHandler;
+        /**
+         * When false or omitted, renders editable controls. Editable mode requires
+         * `onValueChange` so controls cannot become interactive-but-no-op.
+         */
+        readonly?: false;
+      }
+    | {
+        rules: InvocationRule[];
+        conditions?: never;
+        addRuleLabel?: string;
+        mode?: 'full';
+        operatorOptions: InvocationRuleOption[];
+        actionOptions: InvocationRuleOption[];
+        addActionLabel?: string;
+        /**
+         * Optional in readonly usage because no edit controls are rendered.
+         * Runtime consumers may still pass it when sharing props between modes.
+         */
+        onValueChange?: InvocationRuleBuilderChangeHandler;
+        /**
+         * When true, renders a readonly summary of each rule instead of editable
+         * controls.
+         */
+        readonly: true;
+      }
+    | {
+        rules: InvocationRule[];
+        conditions?: never;
+        addRuleLabel?: string;
+        mode: 'conditions';
+        operatorOptions?: never;
+        actionOptions?: never;
+        addActionLabel?: never;
+        /**
+         * Called whenever the user makes any edit. Required for editable runtime
+         * usage because editable controls must commit controlled state changes.
+         * Receives the next controlled state (pure, not mutated) and a change descriptor.
+         * Consumer owns persistence, validation, and execution.
+         */
+        onValueChange: InvocationRuleBuilderChangeHandler;
+        /**
+         * When false or omitted, renders editable controls. Editable mode requires
+         * `onValueChange` so controls cannot become interactive-but-no-op.
+         */
+        readonly?: false;
+      }
+    | {
+        rules: InvocationRule[];
+        conditions?: never;
+        addRuleLabel?: string;
+        mode: 'conditions';
+        operatorOptions?: never;
+        actionOptions?: never;
+        addActionLabel?: never;
+        /**
+         * Optional in readonly usage because no edit controls are rendered.
+         * Runtime consumers may still pass it when sharing props between modes.
+         */
+        onValueChange?: InvocationRuleBuilderChangeHandler;
+        /**
+         * When true, renders a readonly summary of each rule instead of editable
+         * controls.
+         */
+        readonly: true;
+      }
+    | {
+        mode: 'flat-conditions';
+        conditions: InvocationRuleCondition[];
+        rules?: never;
+        addRuleLabel?: never;
+        operatorOptions?: never;
+        actionOptions?: never;
+        addActionLabel?: never;
+        /**
+         * Called whenever the user makes any edit. Required for editable runtime
+         * usage because editable controls must commit controlled state changes.
+         * Receives the next controlled state (pure, not mutated) and a change descriptor.
+         * Consumer owns persistence, validation, and execution.
+         */
+        onValueChange: InvocationRuleBuilderConditionChangeHandler;
+        /**
+         * When false or omitted, renders editable controls. Editable mode requires
+         * `onValueChange` so controls cannot become interactive-but-no-op.
+         */
+        readonly?: false;
+      }
+    | {
+        mode: 'flat-conditions';
+        conditions: InvocationRuleCondition[];
+        rules?: never;
+        addRuleLabel?: never;
+        operatorOptions?: never;
+        actionOptions?: never;
+        addActionLabel?: never;
+        /**
+         * Optional in readonly usage because no edit controls are rendered.
+         * Runtime consumers may still pass it when sharing props between modes.
+         */
+        onValueChange?: InvocationRuleBuilderConditionChangeHandler;
+        /**
+         * When true, renders a readonly summary of each rule instead of editable
+         * controls.
+         */
+        readonly: true;
+      }
+  );
 
 /**
  * Cinder-specific schema surface for InvocationRuleBuilder.

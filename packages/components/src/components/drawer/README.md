@@ -23,9 +23,9 @@ Edge-anchored overlay panel for supplementary content without leaving the curren
 
 ```svelte
 <script lang="ts">
-  import Button from '@lostgradient/cinder/button';
-  import Checkbox from '@lostgradient/cinder/checkbox';
-  import Drawer from '@lostgradient/cinder/drawer';
+  import { Button } from '@lostgradient/cinder';
+  import { Checkbox } from '@lostgradient/cinder';
+  import { Drawer } from '@lostgradient/cinder';
 
   let open = $state(false);
   let triggerRef: HTMLElement | null = $state(null);
@@ -84,7 +84,6 @@ Edge-anchored overlay panel for supplementary content without leaving the curren
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

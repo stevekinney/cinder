@@ -53,6 +53,8 @@ export { transformUrls, type TransformUrlsResult } from './transform-urls.js';
 // Syntax highlighting
 export {
   BUNDLED_LANGUAGES,
+  BUNDLED_LANGUAGE_LOADERS,
+  CSS_VARIABLE_THEME,
   PLAINTEXT_LANGUAGE,
   SUPPORTED_LANGUAGES,
   getHighlighter,
@@ -60,14 +62,20 @@ export {
   initializeHighlighter,
   isBundledLanguage,
   isLanguageSupported,
+  resetHighlighter,
+  type BundledLanguage,
+  type Highlighter,
+  type PlaintextLanguage,
   type SupportedLanguage,
+  type ThemeRegistration,
 } from './highlighter.js';
 
 // Mermaid SVG cache (DEP-95)
 export {
   clearMermaidCache,
-  getCacheKey as getMermaidCacheKey,
+  getMermaidCacheKey,
   getMermaidCacheSize,
-  getCachedSvg as getMermaidCachedSvg,
-  setCachedSvg as setMermaidCachedSvg,
+  getMermaidCachedSvg,
+  setMermaidCachedSvg,
+  withMermaidLock,
 } from './mermaid-cache.js';

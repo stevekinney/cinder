@@ -1,10 +1,9 @@
 import {
   composedContains,
   composedFocusScopes,
-  getSequentialFocusTargets,
-  getTabIndexValue,
   type SequentialFocusTarget,
-} from '../../utilities/focus.ts';
+} from '../../utilities/composed-tree.ts';
+import { getSequentialFocusTargets, getTabIndexValue } from '../../utilities/focus.ts';
 import { getShadowHost } from '../portal/portal.utilities.svelte.ts';
 
 export interface QueuedFocusRestoration {

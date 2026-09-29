@@ -11,8 +11,8 @@ import DropdownRoot from './dropdown.svelte';
  * `Dropdown` is the parent compound component and a namespace exposing the
  * compose-only leaves: `Dropdown.Trigger`, `Dropdown.Menu`, `Dropdown.Item`,
  * `Dropdown.Label`, `Dropdown.Separator`, and `Dropdown.Group`. The leaves
- * remain importable individually via `@lostgradient/cinder/dropdown-trigger`,
- * `@lostgradient/cinder/dropdown-menu`, etc.
+ * remain importable individually via `@lostgradient/cinder`,
+ * `@lostgradient/cinder`, etc.
  */
 const Dropdown = Object.assign(DropdownRoot, {
   Trigger: DropdownTrigger,

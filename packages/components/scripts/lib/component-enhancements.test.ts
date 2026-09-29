@@ -11,13 +11,22 @@ import {
 } from './component-enhancements.ts';
 
 describe('component enhancements', () => {
-  it('discovers and builds browser/server outputs for a hypothetical second component', async () => {
+  // COR-1196: the target's build.ts imports this alongside the two functions below, and
+  // corvidae's own copy dropped it before this fix — a regression this test would have caught.
+  it('computes the browser, declaration, and server outputs for one enhancement', () => {
+    const paths = componentEnhancementOutputPaths('/dist', 'second-editor');
+    expect(paths).toEqual({
+      browser: '/dist/components/second-editor/second-editor-enhancement.js',
+      types: '/dist/components/second-editor/second-editor-enhancement.d.ts',
+      server: '/dist/server/components/second-editor/second-editor-enhancement.js',
+    });
+  });
+
+  it('discovers directly importable source for a second component', async () => {
     const fixtureRoot = mkdtempSync(join(tmpdir(), 'cinder-component-enhancement-'));
     const sourceRoot = join(fixtureRoot, 'src');
     const componentsRoot = join(sourceRoot, 'components');
     const sourcePath = join(componentsRoot, 'second-editor', 'second-editor-enhancement.ts');
-    const browserOutput = join(fixtureRoot, 'dist');
-    const serverOutput = join(fixtureRoot, 'dist', 'server');
     mkdirSync(join(componentsRoot, 'second-editor'), { recursive: true });
     writeFileSync(sourcePath, 'export const enhancement = "second-editor";\n');
 
@@ -29,28 +38,8 @@ describe('component enhancements', () => {
       expect(enhancements).toEqual([{ name: 'second-editor', isExperimental: false, sourcePath }]);
       expect(componentEnhancementKey(enhancements[0]!)).toBe('stable/second-editor');
 
-      const browserBuild = await Bun.build({
-        entrypoints: enhancements.map((enhancement) => enhancement.sourcePath),
-        outdir: browserOutput,
-        root: sourceRoot,
-        target: 'browser',
-        format: 'esm',
-        naming: { entry: '[dir]/[name].[ext]' },
-      });
-      const serverBuild = await Bun.build({
-        entrypoints: enhancements.map((enhancement) => enhancement.sourcePath),
-        outdir: serverOutput,
-        root: sourceRoot,
-        target: 'node',
-        format: 'esm',
-        naming: { entry: '[dir]/[name].[ext]' },
-      });
-
-      expect(browserBuild.success).toBe(true);
-      expect(serverBuild.success).toBe(true);
-      const outputPaths = componentEnhancementOutputPaths(browserOutput, 'second-editor');
-      expect(await Bun.file(outputPaths.browser).exists()).toBe(true);
-      expect(await Bun.file(outputPaths.server).exists()).toBe(true);
+      const sourceModule: unknown = await import(sourcePath);
+      expect(sourceModule).toMatchObject({ enhancement: 'second-editor' });
     } finally {
       rmSync(fixtureRoot, { recursive: true, force: true });
     }

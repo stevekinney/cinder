@@ -1,8 +1,24 @@
 import { describe, expect, it } from 'bun:test';
 
+import { setupHappyDom } from '@lostgradient/testing';
 import * as icons from './index.ts';
 
+setupHappyDom();
+const { render, cleanup } = await import('@testing-library/svelte');
+const { Link, LinkIcon } = await import('@lostgradient/cinder');
+
 describe('icons/index', () => {
+  it('exposes the Link icon separately from the Link component through the package root', () => {
+    expect(LinkIcon).not.toBe(Link);
+    const result = render(LinkIcon, { 'aria-label': 'Insert link' });
+    try {
+      expect(result.container.querySelector('svg')?.getAttribute('aria-label')).toBe('Insert link');
+      expect(result.container.querySelector('a')).toBeNull();
+    } finally {
+      cleanup();
+    }
+  });
+
   it('exports a non-empty set of distinct, function-shaped Svelte components', () => {
     const entries = Object.entries(icons);
 

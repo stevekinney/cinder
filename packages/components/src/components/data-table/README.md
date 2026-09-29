@@ -2,17 +2,14 @@
 
 Data-driven accessible table that renders rows and columns into a real `<table>` with `<caption>`, scoped column and row headers, optional sortable columns, and a horizontal-scroll responsive container.
 
-See the [tabular family boundaries](https://github.com/stevekinney/cinder/blob/main/docs/decisions/tabular-families.md).
-DataTable is the native-table convenience layer; use Table for bespoke cell
-composition and DataGrid when cell focus, range selection, or grid semantics
-are required.
+See the [tabular family boundaries](https://github.com/stevekinney/cinder/blob/main/docs/decisions/tabular-families.md). DataTable is the native-table convenience layer; use Table for bespoke cell composition and DataGrid when cell focus, range selection, or grid semantics are required.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import DataTable from '@lostgradient/cinder/data-table';
-  import type { DataTableColumn } from '@lostgradient/cinder/data-table';
+  import { DataTable } from '@lostgradient/cinder';
+  import type { DataTableColumn } from '@lostgradient/cinder';
 
   type Student = { name: string; score: number };
 
@@ -31,12 +28,7 @@ are required.
 
 ## Guidance
 
-Set `virtualized` with a fixed `rowHeight` when the table is rendering thousands
-of same-height append-only rows. The virtualized path keeps the `<table>`,
-`<thead>`, and `<tbody>` semantics intact, sets `aria-rowcount` to the full
-logical row count, and annotates mounted body rows with full-table
-`aria-rowindex` values. Variable or measured body row heights are out of scope
-for this mode.
+Set `virtualized` with a fixed `rowHeight` when the table is rendering thousands of same-height append-only rows. The virtualized path keeps the `<table>`, `<thead>`, and `<tbody>` semantics intact, sets `aria-rowcount` to the full logical row count, and annotates mounted body rows with full-table `aria-rowindex` values. Variable or measured body row heights are out of scope for this mode.
 
 ### Use When
 
@@ -83,6 +75,7 @@ for this mode.
 <!-- generated:variables:start -->
 
 - `--cinder-data-table-height`
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

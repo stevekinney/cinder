@@ -13,27 +13,19 @@
  *    we assert that the open dialog's `aria-labelledby` resolves to the title
  *    element and that `aria-describedby` is wired through.
  *
- * KNOWN GAP: the open-dialog test below is a CLIENT-ONLY render, not a hydration
- * round-trip. Modal's open body uses an attachment, and the SSR-recompile helper
- * nulls `document` during the server pass, which is incompatible with rendering
- * raw-snippet children server-side. So that test proves the client wires
- * `aria-labelledby`/`aria-describedby` correctly, but does NOT prove the SSR HTML
- * and the hydrated client agree on those ids for an initially-open dialog.
- * $props.id() derives from the component's position in the component tree, which
- * is deterministic for a given tree, but the open-dialog test does not exercise
- * the SSR path so server/client agreement on these ids is not asserted here.
  */
 import { describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
-import { renderThenHydrate } from '../../test/hydrate.ts';
+import { prepareSvelteServerSource, renderThenHydrate, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: Modal } = await import('./modal.svelte');
-const sourcePath = new URL('./modal.svelte', import.meta.url).pathname;
+const { default: ModalHydrationFixture } = await import('./_modal-hydration-test.svelte');
+const sourcePath = new URL('./_modal-hydration-test.svelte', import.meta.url).pathname;
+await prepareSvelteServerSource(sourcePath);
 
 const bodyContent = createRawSnippet(() => ({
   render: () => `<p id="modal-body-copy">Are you sure?</p>`,
@@ -41,10 +33,9 @@ const bodyContent = createRawSnippet(() => ({
 
 describe('Modal hydration', () => {
   test('a closed modal SSRs to empty markup and mounts without hydration warnings', async () => {
-    const result = await renderThenHydrate(Modal, sourcePath, {
+    const result = await renderThenHydrate(ModalHydrationFixture, sourcePath, {
       open: false,
       title: 'Confirm',
-      children: bodyContent,
     });
 
     try {
@@ -56,7 +47,7 @@ describe('Modal hydration', () => {
       );
       expect(hydrationWarnings).toEqual([]);
     } finally {
-      result.cleanup();
+      await result.cleanup();
     }
   });
 

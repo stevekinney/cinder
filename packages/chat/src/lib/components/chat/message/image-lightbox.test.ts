@@ -23,7 +23,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { tick } from 'svelte';
 
-import { setupHappyDom } from '../../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 const source = readFileSync(resolve(import.meta.dir, 'image-lightbox.svelte'), 'utf8');
 
@@ -65,7 +65,9 @@ afterEach(() => {
 
 describe('image-lightbox source contract — Modal composition', () => {
   test('composes Modal in chromeless mode rather than hand-rolling its own dialog shell', () => {
-    expect(source).toContain("import { Modal } from '@lostgradient/cinder/modal'");
+    expect(source).toMatch(
+      /import\s*\{[^}]*\bModal\b[^}]*\}\s*from\s*['"]@lostgradient\/cinder['"]/,
+    );
     expect(source).toContain('chrome="none"');
     expect(source).toContain('aria-label="Image viewer"');
   });

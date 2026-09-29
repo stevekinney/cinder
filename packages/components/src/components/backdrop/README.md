@@ -6,9 +6,9 @@ Full-viewport fixed scrim primitive for custom overlay patterns such as loading 
 
 ```svelte
 <script lang="ts">
-  import Backdrop from '@lostgradient/cinder/backdrop';
-  import Button from '@lostgradient/cinder/button';
-  import Spinner from '@lostgradient/cinder/spinner';
+  import { Backdrop } from '@lostgradient/cinder';
+  import { Button } from '@lostgradient/cinder';
+  import { Spinner } from '@lostgradient/cinder';
 
   let open = $state(false);
   let invisible = $state(false);
@@ -76,7 +76,6 @@ Full-viewport fixed scrim primitive for custom overlay patterns such as loading 
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

@@ -1,9 +1,9 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import Ajv2020 from 'ajv/dist/2020';
 import { createRawSnippet } from 'svelte';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 import type {
   RunStep,
   RunStepBranchGroup,
@@ -69,6 +69,7 @@ const failedStep: RunStep = {
     {
       id: 'error-log',
       label: 'Error output',
+      type: 'text',
       content: 'AssertionError: expected 1 to equal 2',
     },
   ],
@@ -287,8 +288,7 @@ describe('structure', () => {
     expect(depthThreeProperties).toHaveProperty('link');
     expect(depthThreeProperties).toHaveProperty('children');
     const cappedChildren = depthThreeProperties['children'] as
-      | { items?: { additionalProperties?: boolean } }
-      | undefined;
+      { items?: { additionalProperties?: boolean } } | undefined;
     expect(cappedChildren?.items?.additionalProperties).toBe(true);
   });
 
@@ -540,6 +540,92 @@ describe('behavior', () => {
     const trigger = container.querySelector('.cinder-collapsible__trigger');
     expect(trigger).not.toBeNull();
     expect(trigger?.textContent?.trim()).toContain('Error output');
+  });
+
+  test('renders text and code detail panels through their discriminated renderers', async () => {
+    const { container } = render(RunStepTimeline, {
+      steps: [
+        {
+          id: 'detail-step',
+          label: 'Inspect payload',
+          status: 'succeeded',
+          details: [
+            {
+              id: 'text-log',
+              label: 'Text log',
+              type: 'text',
+              content: 'plain execution log',
+            },
+            {
+              id: 'json-payload',
+              label: 'Payload',
+              type: 'code',
+              code: '{"ok":true}',
+              language: 'json',
+              languageLabelVisible: false,
+            },
+          ],
+        },
+      ],
+    });
+
+    await fireEvent.click(
+      Array.from(container.querySelectorAll<HTMLButtonElement>('button')).find((button) =>
+        button.textContent?.includes('Text log'),
+      )!,
+    );
+    expect(
+      container.querySelector('.cinder-run-step-timeline__detail-content')?.textContent,
+    ).toContain('plain execution log');
+
+    await fireEvent.click(
+      Array.from(container.querySelectorAll<HTMLButtonElement>('button')).find((button) =>
+        button.textContent?.includes('Payload'),
+      )!,
+    );
+    expect(container.querySelector('.cinder-code-block')).not.toBeNull();
+    expect(container.querySelector('.cinder-code-block__language')).toBeNull();
+    expect(container.textContent).toContain('{"ok":true}');
+  });
+
+  test('namespaces detail disclosure ids by timeline instance and step path', async () => {
+    const repeatedDetail = {
+      id: 'shared-detail',
+      label: 'Shared detail',
+      type: 'text' as const,
+      content: 'same detail id',
+    };
+    const repeatedSteps: RunStep[] = [
+      {
+        id: 'shared-step',
+        label: 'First step',
+        status: 'succeeded',
+        details: [repeatedDetail],
+      },
+      {
+        id: 'other-step',
+        label: 'Second step',
+        status: 'succeeded',
+        details: [repeatedDetail],
+      },
+    ];
+
+    render(RunStepTimeline, { steps: repeatedSteps });
+    render(RunStepTimeline, { steps: [repeatedSteps[0]!] });
+
+    const triggers = Array.from(
+      document.body.querySelectorAll<HTMLButtonElement>('.cinder-collapsible__trigger'),
+    );
+    expect(triggers).toHaveLength(3);
+    expect(new Set(triggers.map((trigger) => trigger.id)).size).toBe(triggers.length);
+
+    for (const trigger of triggers) {
+      await fireEvent.click(trigger);
+    }
+
+    const controlledPanelIds = triggers.map((trigger) => trigger.getAttribute('aria-controls'));
+    expect(controlledPanelIds.every((id) => typeof id === 'string' && id.length > 0)).toBe(true);
+    expect(new Set(controlledPanelIds).size).toBe(controlledPanelIds.length);
   });
 
   test('does not render details section when step has no details', () => {
@@ -1028,7 +1114,7 @@ describe('selection', () => {
       label: 'Inspect result',
       status: 'running',
       link: { label: 'Open logs', href: '/logs' },
-      details: [{ id: 'stdout', label: 'Output', content: 'Ready' }],
+      details: [{ id: 'stdout', label: 'Output', type: 'text', content: 'Ready' }],
     };
     const { container, getByRole } = render(RunStepTimeline, {
       steps: [step],
@@ -1041,7 +1127,7 @@ describe('selection', () => {
     await fireEvent.keyDown(getByRole('button', { name: 'Output' }), { key: 'Enter' });
 
     expect(selectedStepIds).toEqual([]);
-    await fireEvent.click(stepRowByPath(container, 'inspect') as HTMLElement);
+    await fireEvent.click(requiredInstance(stepRowByPath(container, 'inspect'), HTMLElement));
     expect(selectedStepIds).toEqual(['inspect']);
   });
 
@@ -1066,7 +1152,7 @@ describe('selection', () => {
     await fireEvent.click(label);
     await fireEvent.click(textNode!);
     expect(selectedStepIds).toEqual([]);
-    await fireEvent.click(stepRowByPath(container, runningStep.id) as HTMLElement);
+    await fireEvent.click(requiredInstance(stepRowByPath(container, runningStep.id), HTMLElement));
     expect(selectedStepIds).toEqual([runningStep.id]);
   });
 
@@ -1084,7 +1170,7 @@ describe('selection', () => {
 
     await fireEvent.click(getByRole('checkbox', { name: 'Retry' }));
     expect(selectedStepIds).toEqual([]);
-    await fireEvent.click(stepRowByPath(container, runningStep.id) as HTMLElement);
+    await fireEvent.click(requiredInstance(stepRowByPath(container, runningStep.id), HTMLElement));
     expect(selectedStepIds).toEqual([runningStep.id]);
   });
 
@@ -1710,7 +1796,7 @@ describe('rewound steps', () => {
     label: 'Speculative write',
     status: 'succeeded',
     rewound: true,
-    details: [{ id: 'log', label: 'Log', content: 'unwound after conflict' }],
+    details: [{ id: 'log', label: 'Log', type: 'text', content: 'unwound after conflict' }],
   };
 
   test('flags a rewound step with a data attribute and visible badge', () => {

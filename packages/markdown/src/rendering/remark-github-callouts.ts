@@ -14,7 +14,7 @@
  * line is a stray `[!WARNING]`.
  *
  * The rewrite targets Cinder's `<Callout>` markup (see
- * `packages/components/src/components/callout/callout.svelte`) so the result
+ * `components/cinder/src/components/callout/callout.svelte`) so the result
  * picks up `callout.css` and re-themes with the rest of the design system,
  * rather than needing a parallel set of styles.
  *
@@ -84,7 +84,7 @@ const VARIANTS: Readonly<Record<string, CalloutVariant>> = {
  * the marker to sit alone and renders `> [!NOTE] Heads up` as a literal
  * blockquote. Cinder's Callout takes a `title` prop, so the trailing text has
  * an obvious home, and the repo's own docs already write alerts this way (see
- * `packages/chat/src/lib/components/chat/README.md`). Anchoring to the start
+ * `components/chat/src/lib/components/chat/README.md`). Anchoring to the start
  * of the line still keeps prose that merely mentions `[!NOTE]` mid-sentence
  * from being promoted.
  *
@@ -114,35 +114,37 @@ const ROOT_CLASSES = [
 function takeMarker(blockquote: Blockquote): AlertKind | null {
   const firstChild = blockquote.children[0];
   if (firstChild?.type !== 'paragraph') return null;
-
   const firstInline = firstChild.children[0];
-  // Only a literal text run can carry the marker. If markdown parsed the
-  // brackets into something else (a link reference resolved by a matching
-  // definition, say), the author wrote a link, not an alert.
   if (firstInline?.type !== 'text') return null;
-
   const match = MARKER.exec(firstInline.value);
   if (!match) return null;
-
-  const type = (match[1] ?? '').toUpperCase();
-  const variant = VARIANTS[type];
-  const defaultTitle = DEFAULT_TITLES[type];
-  if (!variant || !defaultTitle) return null;
-
-  // Consume the marker line. Everything after it on the same paragraph is
-  // real content and stays.
-  const remainder = firstInline.value.slice(match[0].length);
-  if (remainder === '') {
-    firstChild.children.shift();
-    // `> [!NOTE]` with the body on following blocks leaves an empty paragraph
-    // behind; drop it so the callout does not open with a blank line.
-    if (firstChild.children.length === 0) blockquote.children.shift();
-  } else {
-    firstInline.value = remainder;
-  }
-
+  const alert = getAlertKind(match[1]);
+  if (!alert) return null;
+  consumeMarker(blockquote, firstChild, firstInline, match[0]);
   const customTitle = (match[2] ?? '').trim();
-  return { variant, title: customTitle === '' ? defaultTitle : customTitle };
+  return { variant: alert.variant, title: customTitle || alert.title };
+}
+
+function consumeMarker(
+  blockquote: Blockquote,
+  paragraph: Paragraph,
+  text: Text,
+  marker: string,
+): void {
+  const remainder = text.value.slice(marker.length);
+  if (remainder) {
+    text.value = remainder;
+    return;
+  }
+  paragraph.children.shift();
+  if (paragraph.children.length === 0) blockquote.children.shift();
+}
+
+function getAlertKind(type: string | undefined): AlertKind | null {
+  const normalizedType = (type ?? '').toUpperCase();
+  const variant = VARIANTS[normalizedType];
+  const title = DEFAULT_TITLES[normalizedType];
+  return variant && title ? { variant, title } : null;
 }
 
 /** Build the `<p class="cinder-callout__title">` node. */
@@ -165,7 +167,7 @@ export const remarkGithubCallouts: Plugin<[], Root> = () => {
   return (tree: Root): undefined => {
     visit(tree, 'blockquote', (node: Blockquote) => {
       const kind = takeMarker(node);
-      if (!kind) return;
+      if (!kind) return undefined;
 
       // The content wrapper. Modeled as a blockquote (a block container, so
       // the mdast types stay honest about its children) that renders as a

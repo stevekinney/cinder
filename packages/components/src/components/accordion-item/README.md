@@ -4,14 +4,9 @@ A single expandable panel inside an `Accordion`. Reads the accordion context to 
 
 ## Usage
 
-`AccordionItem` is a compose-only leaf of [`Accordion`](../accordion/README.md).
-The idiomatic API is `Accordion.Item`, reached through the parent namespace —
-see the [Accordion README](../accordion/README.md#usage) for the composed
-snippet. The flat `@lostgradient/cinder/accordion-item` subpath remains exported for
-à-la-carte builds that import the leaf directly.
+`AccordionItem` is a compose-only leaf of [`Accordion`](../accordion/README.md). The idiomatic API is `Accordion.Item`, reached through the parent namespace — see the [Accordion README](../accordion/README.md#usage) for the composed snippet. The flat `@lostgradient/cinder` subpath remains exported for à-la-carte builds that import the leaf directly.
 
-`AccordionItem` throws if used outside an `Accordion` — the context lookup is
-required.
+`AccordionItem` throws if used outside an `Accordion` — the context lookup is required.
 
 ## Props
 
@@ -42,6 +37,7 @@ required.
 - `--cinder-accordion-item-trigger-gap`
 - `--cinder-accordion-item-trigger-padding-block`
 - `--cinder-accordion-item-trigger-padding-inline`
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

@@ -2,13 +2,18 @@
 import { join } from 'node:path';
 
 import { afterEach, describe, expect, test } from 'bun:test';
+import { tick } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
-import { renderToServerHtml } from '../../test/server-render.ts';
+import {
+  prepareSvelteServerSource,
+  renderSvelteOnServer,
+  setupHappyDom,
+} from '@lostgradient/testing';
 
 setupHappyDom();
 
 const IMAGE_SOURCE = join(import.meta.dir, 'image.svelte');
+await prepareSvelteServerSource(IMAGE_SOURCE);
 
 const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: Image } = await import('./image.svelte');
@@ -56,7 +61,7 @@ describe('Image', () => {
 
   test('always renders a wrapper containing the img', () => {
     const { container } = render(Image, { src: '/a.jpg', alt: 'A' });
-    const wrapper = container.querySelector('div.cinder-image');
+    const wrapper = container.querySelector<HTMLDivElement>('div.cinder-image');
     expect(wrapper).not.toBeNull();
     expect(wrapper?.querySelector('img.cinder-image__img')).not.toBeNull();
   });
@@ -129,6 +134,7 @@ describe('Image', () => {
     await fireEvent.error(container.querySelector('img')!);
     expect(wrapper?.hasAttribute('data-cinder-errored')).toBe(true);
     await rerender({ src: '/fixed.jpg', alt: 'A' });
+    await tick();
     expect(wrapper?.hasAttribute('data-cinder-errored')).toBe(false);
   });
 
@@ -151,9 +157,9 @@ describe('Image', () => {
     });
     const img = container.querySelector('img')!;
     await fireEvent.error(img);
-    const wrapper = container.querySelector('div.cinder-image');
+    const wrapper = container.querySelector<HTMLDivElement>('div.cinder-image');
     expect(wrapper).not.toBeNull();
-    expect((wrapper as HTMLElement).style.aspectRatio).toBe('16 / 9');
+    expect(wrapper?.style.aspectRatio).toBe('16 / 9');
     expect(wrapper?.querySelector('[data-testid="image-fallback"]')?.textContent).toBe(
       'Could not load image',
     );
@@ -333,7 +339,7 @@ describe('Image', () => {
 // hasn't happened yet and hydration would mismatch.
 describe('Image SSR contract', () => {
   test('emits the wrapper and <img> server-side', async () => {
-    const html = await renderToServerHtml(IMAGE_SOURCE, { src: '/a.jpg', alt: 'A photo' });
+    const html = await renderSvelteOnServer(IMAGE_SOURCE, { src: '/a.jpg', alt: 'A photo' });
     expect(html).toContain('cinder-image');
     expect(html).toContain('cinder-image__img');
     expect(html).toContain('src="/a.jpg"');
@@ -341,7 +347,7 @@ describe('Image SSR contract', () => {
   });
 
   test('omits client-only load/error state markers server-side', async () => {
-    const html = await renderToServerHtml(IMAGE_SOURCE, {
+    const html = await renderSvelteOnServer(IMAGE_SOURCE, {
       src: '/a.jpg',
       alt: 'A photo',
       placeholder: 'data:image/png;base64,iVBORw0KGgo=',

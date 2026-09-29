@@ -119,6 +119,13 @@
 
   type ConsumerStateRefreshes = ReadonlyArray<readonly [HTMLElement, readonly string[]]>;
 
+  function moveFocusOffControl(control: HTMLElement): void {
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement && control.contains(activeElement)) {
+      activeElement.blur();
+    }
+  }
+
   const disableDeniedControls: Attachment<HTMLElement> = (element) => {
     const disabledControls: Array<[HTMLElement, DisabledControlState]> = [];
     let ignoringGateMutations = false;
@@ -186,13 +193,6 @@
       restoreAttribute(control, 'data-cinder-access-gate-control', state.dataControl);
     }
 
-    function moveFocusOffControl(control: HTMLElement): void {
-      const activeElement = document.activeElement;
-      if (activeElement instanceof HTMLElement && control.contains(activeElement)) {
-        activeElement.blur();
-      }
-    }
-
     function disableControl(
       control: HTMLElement,
       stateRefreshes: ConsumerStateRefreshes | undefined,
@@ -240,7 +240,10 @@
         disableControl(control, stateRefreshes);
       }
 
-      for (const [control] of [...disabledControls]) {
+      // Snapshot before restoring controls because the loop removes entries
+      // from `disabledControls` as disconnected controls are processed.
+      const controlsToRestore = [...disabledControls];
+      for (const [control] of controlsToRestore) {
         if (!element.contains(control)) {
           const index = disabledControlIndex(control);
           if (index !== -1) {

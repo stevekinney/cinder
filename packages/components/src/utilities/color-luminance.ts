@@ -40,33 +40,20 @@ export function parseColor(input: string): RgbaComponents | null {
 }
 
 function parseHex(hex: string): RgbaComponents | null {
-  let r: number, g: number, b: number, a: number;
-
-  if (hex.length === 3) {
-    r = parseInt((hex[0] ?? '') + (hex[0] ?? ''), 16);
-    g = parseInt((hex[1] ?? '') + (hex[1] ?? ''), 16);
-    b = parseInt((hex[2] ?? '') + (hex[2] ?? ''), 16);
-    a = 1;
-  } else if (hex.length === 4) {
-    r = parseInt((hex[0] ?? '') + (hex[0] ?? ''), 16);
-    g = parseInt((hex[1] ?? '') + (hex[1] ?? ''), 16);
-    b = parseInt((hex[2] ?? '') + (hex[2] ?? ''), 16);
-    a = parseInt((hex[3] ?? '') + (hex[3] ?? ''), 16) / 255;
-  } else if (hex.length === 6) {
-    r = parseInt(hex.slice(0, 2), 16);
-    g = parseInt(hex.slice(2, 4), 16);
-    b = parseInt(hex.slice(4, 6), 16);
-    a = 1;
-  } else if (hex.length === 8) {
-    r = parseInt(hex.slice(0, 2), 16);
-    g = parseInt(hex.slice(2, 4), 16);
-    b = parseInt(hex.slice(4, 6), 16);
-    a = parseInt(hex.slice(6, 8), 16) / 255;
-  } else {
-    return null;
-  }
-
-  return { r, g, b, a };
+  const expanded =
+    hex.length === 3 || hex.length === 4
+      ? hex
+          .split('')
+          .map((digit) => digit + digit)
+          .join('')
+      : hex;
+  if (expanded.length !== 6 && expanded.length !== 8) return null;
+  return {
+    r: parseInt(expanded.slice(0, 2), 16),
+    g: parseInt(expanded.slice(2, 4), 16),
+    b: parseInt(expanded.slice(4, 6), 16),
+    a: expanded.length === 8 ? parseInt(expanded.slice(6, 8), 16) / 255 : 1,
+  };
 }
 
 function parseChannelValue(raw: string): number {
@@ -169,14 +156,38 @@ function parseHsl(inner: string): RgbaComponents | null {
   const p1 = parts[1] ?? '';
   const p2 = parts[2] ?? '';
   const h = parseFloat(p0); // unitless degrees
-  const sPct = p1.endsWith('%') ? parseFloat(p1) : NaN;
-  const lPct = p2.endsWith('%') ? parseFloat(p2) : NaN;
+  const sPct = parsePercentage(p1);
+  const lPct = parsePercentage(p2);
   const a = parts.length === 4 ? parseAlphaValue(parts[3] ?? '') : 1;
 
   if ([h, sPct, lPct, a].some(isNaN)) return null;
 
   const { r, g, b } = hslToRgb(h, sPct / 100, lPct / 100);
   return { r, g, b, a };
+}
+
+function parsePercentage(raw: string): number {
+  return raw.endsWith('%') ? parseFloat(raw) : NaN;
+}
+
+function isHwbSyntax(
+  hueRaw: string,
+  whitenessRaw: string,
+  blacknessRaw: string,
+  alphaRaw: string | undefined,
+): boolean {
+  const numberPattern = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
+  const percentagePattern = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?%$/i;
+  if (
+    !numberPattern.test(hueRaw) ||
+    !percentagePattern.test(whitenessRaw) ||
+    !percentagePattern.test(blacknessRaw)
+  )
+    return false;
+  if (alphaRaw !== undefined && !numberPattern.test(alphaRaw) && !percentagePattern.test(alphaRaw))
+    return false;
+
+  return true;
 }
 
 function parseHwb(inner: string): RgbaComponents | null {
@@ -188,22 +199,22 @@ function parseHwb(inner: string): RgbaComponents | null {
   const hue = Number.parseFloat(hueRaw);
   const whitenessRaw = parts[1] ?? '';
   const blacknessRaw = parts[2] ?? '';
-  const numberPattern = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
-  const percentagePattern = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?%$/i;
-  if (
-    !numberPattern.test(hueRaw) ||
-    !percentagePattern.test(whitenessRaw) ||
-    !percentagePattern.test(blacknessRaw)
-  )
-    return null;
-  if (alphaRaw !== undefined && !numberPattern.test(alphaRaw) && !percentagePattern.test(alphaRaw))
-    return null;
+  if (!isHwbSyntax(hueRaw, whitenessRaw, blacknessRaw, alphaRaw)) return null;
 
-  let whiteness = Number.parseFloat(whitenessRaw) / 100;
-  let blackness = Number.parseFloat(blacknessRaw) / 100;
+  const whiteness = Number.parseFloat(whitenessRaw) / 100;
+  const blackness = Number.parseFloat(blacknessRaw) / 100;
   const alpha = alphaRaw === undefined ? 1 : parseAlphaValue(alphaRaw);
   if ([hue, whiteness, blackness, alpha].some(Number.isNaN)) return null;
 
+  return hwbToRgb(hue, whiteness, blackness, alpha);
+}
+
+function hwbToRgb(
+  hue: number,
+  whiteness: number,
+  blackness: number,
+  alpha: number,
+): RgbaComponents {
   whiteness = Math.max(0, Math.min(1, whiteness));
   blackness = Math.max(0, Math.min(1, blackness));
   if (whiteness + blackness >= 1) {

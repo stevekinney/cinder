@@ -8,7 +8,7 @@
 </script>
 
 <script lang="ts">
-  import CodeBlock from '@lostgradient/cinder/code-block';
+  import { CodeBlock } from '@lostgradient/cinder';
   import { classNames } from '../../../utilities/class-names.ts';
 
   let { code, class: className }: ToolPayloadCodeProps = $props();

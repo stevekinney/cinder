@@ -16,7 +16,7 @@
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 import { flushSync, mount, unmount } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import type { ChatAdapter, ChatPushHandlers } from './adapter/chat-adapter.ts';
 import type { ReadReceipt } from './chat.types.ts';
 import type { ConversationHistory } from './conversation-model.ts';
@@ -29,7 +29,7 @@ class TestResizeObserver {
   disconnect(): void {}
 }
 const originalResizeObserver = globalThis.ResizeObserver;
-globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
+globalThis.ResizeObserver = TestResizeObserver;
 
 class TestIntersectionObserver {
   observe(): void {}
@@ -131,6 +131,39 @@ describe('Chat — readReceipts prop', () => {
     expect(container.querySelector('[data-cinder-receipt-status]')).toBeNull();
     unmount(instance);
   }, 20_000);
+
+  test('receipt renders in metadata below the visual message bubble', () => {
+    let conversation = createConversation();
+    conversation = appendMessage(
+      conversation,
+      'user',
+      'Receipt placement',
+      'user-receipt-placement',
+    );
+
+    const readReceipts = new Map<string, ReadReceipt>([
+      ['user-receipt-placement', { status: 'read', readBy: ['Avery'] }],
+    ]);
+
+    const { container, instance } = mountChat({
+      id: 'chat-receipt-placement',
+      conversation,
+      readReceipts,
+    });
+
+    const wrapper = container.querySelector('[data-role="user"]');
+    const bubble = wrapper?.querySelector('.chat-message') ?? null;
+    const metadata = wrapper?.querySelector('.chat-message-metadata') ?? null;
+    const receipt = wrapper?.querySelector('[data-cinder-receipt-status]') ?? null;
+    expect(wrapper).not.toBeNull();
+    expect(bubble).not.toBeNull();
+    expect(metadata).not.toBeNull();
+    expect(receipt).not.toBeNull();
+    expect(metadata!.contains(receipt)).toBe(true);
+    expect(bubble!.contains(receipt)).toBe(false);
+
+    unmount(instance);
+  });
 
   test('receipt wrapper has role="img" (accessible name via aria-label, not subtree text)', () => {
     // Regression guard: role=img makes the badge a single named widget so
@@ -305,9 +338,9 @@ describe('Chat — readReceipts prop', () => {
     const timeline = container.querySelector<HTMLElement>('.chat-timeline');
     let scrollCount = 0;
     if (timeline) {
-      timeline.scrollTo = (() => {
+      timeline.scrollTo = () => {
         scrollCount += 1;
-      }) as HTMLElement['scrollTo'];
+      };
     }
 
     // Initial render with receipts already present — no scroll side-effect.

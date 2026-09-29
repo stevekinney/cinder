@@ -6,7 +6,7 @@ Presents a single pricing plan with its name, price, feature list, an optional c
 
 ```svelte
 <script lang="ts">
-  import PricingCard from '@lostgradient/cinder/pricing-card';
+  import { PricingCard } from '@lostgradient/cinder';
 </script>
 
 <div style="max-inline-size: 22rem;">
@@ -75,7 +75,6 @@ Pass `href` (plus optional `target`/`rel`) to render the CTA as a link instead o
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

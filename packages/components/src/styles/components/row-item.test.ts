@@ -14,6 +14,12 @@ describe('shared row-item boundary', () => {
     expect(shared).toMatch(/:hover::after[\s\S]*?visibility:\s*hidden/);
   });
 
+  test('consumes the shared row divider marker instead of inferring sibling boundaries in CSS', () => {
+    const shared = readFileSync(resolve(import.meta.dir, '_row-item.css'), 'utf8');
+
+    expect(shared).toContain('[data-cinder-row-divider]::after');
+  });
+
   test('is composed by the option-like families only', () => {
     const shared = readFileSync(resolve(import.meta.dir, '_row-item.css'), 'utf8');
     const floatingSurface = readFileSync(

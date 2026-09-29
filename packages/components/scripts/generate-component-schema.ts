@@ -707,6 +707,68 @@ function sortedUniqueStrings(values: string[]): string[] {
   return sorted;
 }
 
+function makeRunStepTimelineDetailSchema(): PropertySchema {
+  const baseProperties: Record<string, PropertySchema> = {
+    id: {
+      type: 'string',
+      description: 'Stable identity for this detail panel.',
+    },
+    label: {
+      type: 'string',
+      description: 'Trigger label rendered on the Collapsible header.',
+    },
+    open: {
+      type: 'boolean',
+      description: 'Initial expanded state for this detail panel.',
+    },
+  };
+
+  return {
+    anyOf: [
+      {
+        type: 'object',
+        properties: {
+          ...baseProperties,
+          type: {
+            const: 'text',
+            description: 'Text details preserve the existing preformatted rendering behavior.',
+          },
+          content: {
+            type: 'string',
+            description: 'Pre-formatted content shown inside the panel.',
+          },
+        },
+        additionalProperties: false,
+        required: ['content', 'id', 'label', 'type'],
+      },
+      {
+        type: 'object',
+        properties: {
+          ...baseProperties,
+          type: {
+            const: 'code',
+            description: 'Code details render with Cinder CodeBlock.',
+          },
+          code: {
+            type: 'string',
+            description: 'Code content shown inside the panel.',
+          },
+          language: {
+            type: 'string',
+            description: 'Optional CodeBlock language.',
+          },
+          languageLabelVisible: {
+            type: 'boolean',
+            description: 'Whether the CodeBlock language label is visible.',
+          },
+        },
+        additionalProperties: false,
+        required: ['code', 'id', 'label', 'type'],
+      },
+    ],
+  };
+}
+
 function makeRunStepTimelineStepSchema(childrenSchema?: PropertySchema): PropertySchema {
   const properties: Record<string, PropertySchema> = {
     id: {
@@ -761,25 +823,7 @@ function makeRunStepTimelineStepSchema(childrenSchema?: PropertySchema): Propert
     },
     details: {
       type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: {
-            type: 'string',
-            description: 'Stable identity for this detail panel.',
-          },
-          label: {
-            type: 'string',
-            description: 'Trigger label rendered on the Collapsible header.',
-          },
-          content: {
-            type: 'string',
-            description: 'Pre-formatted content shown inside the panel.',
-          },
-        },
-        additionalProperties: false,
-        required: ['content', 'id', 'label'],
-      },
+      items: makeRunStepTimelineDetailSchema(),
       description: 'Expandable detail panels (logs, payloads, errors) shown inline.',
     },
     link: {
@@ -1002,7 +1046,7 @@ function isDeclaredInComponentTypesFile(type: Type): boolean {
   return declarations.some((declaration) => {
     const filePath = declaration.getSourceFile().getFilePath();
     return (
-      filePath.includes('/packages/components/src/components/') && filePath.endsWith('.types.ts')
+      filePath.includes('/components/cinder/src/components/') && filePath.endsWith('.types.ts')
     );
   });
 }

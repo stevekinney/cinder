@@ -1,31 +1,43 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "choice-grid",
-  "import": "@lostgradient/cinder/choice-grid",
+  "import": "@lostgradient/cinder",
   "examples": [
     {
       "id": "basic",
       "title": "Basic single-select",
       "description": "A simple quiz question with four answer options and roving keyboard focus.",
-      "code": "<script lang=\"ts\">\n  import { ChoiceGrid } from '@lostgradient/cinder/choice-grid';\n\n  let selected = $state<string | null>(null);\n</script>\n\n<ChoiceGrid ariaLabel=\"What is the capital of France?\" bind:value={selected}>\n  <ChoiceGrid.Item value=\"london\">London</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"berlin\">Berlin</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"paris\">Paris</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"madrid\">Madrid</ChoiceGrid.Item>\n</ChoiceGrid>\n\n{#if selected}\n  <p style=\"margin-top: 1rem; color: var(--cinder-text-muted); font-size: var(--cinder-text-sm);\">\n    Selected: {selected}\n  </p>\n{/if}\n"
+      "code": "<script lang=\"ts\">\n  import { ChoiceGrid } from '@lostgradient/cinder';\n\n  let selected = $state<string | null>(null);\n</script>\n\n<ChoiceGrid ariaLabel=\"What is the capital of France?\" bind:value={selected}>\n  <ChoiceGrid.Item value=\"london\">London</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"berlin\">Berlin</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"paris\">Paris</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"madrid\">Madrid</ChoiceGrid.Item>\n</ChoiceGrid>\n\n{#if selected}\n  <p style=\"margin-top: 1rem; color: var(--cinder-text-muted); font-size: var(--cinder-text-sm);\">\n    Selected: {selected}\n  </p>\n{/if}\n"
     },
     {
       "id": "dense-layout",
       "title": "Dense phone layout",
       "description": "Fixed 2-column grid with compact cells — suitable for narrow mobile viewports.",
-      "code": "<script lang=\"ts\">\n  import { ChoiceGrid } from '@lostgradient/cinder/choice-grid';\n\n  let selected = $state<string | null>(null);\n</script>\n\n<div style=\"max-width: 20rem; margin: 0 auto;\">\n  <ChoiceGrid ariaLabel=\"Choose a difficulty\" bind:value={selected} columns={2}>\n    <ChoiceGrid.Item value=\"easy\">Easy</ChoiceGrid.Item>\n    <ChoiceGrid.Item value=\"medium\">Medium</ChoiceGrid.Item>\n    <ChoiceGrid.Item value=\"hard\">Hard</ChoiceGrid.Item>\n    <ChoiceGrid.Item value=\"expert\">Expert</ChoiceGrid.Item>\n  </ChoiceGrid>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { ChoiceGrid } from '@lostgradient/cinder';\n\n  let selected = $state<string | null>(null);\n</script>\n\n<div style=\"max-width: 20rem; margin: 0 auto;\">\n  <ChoiceGrid ariaLabel=\"Choose a difficulty\" bind:value={selected} columns={2}>\n    <ChoiceGrid.Item value=\"easy\">Easy</ChoiceGrid.Item>\n    <ChoiceGrid.Item value=\"medium\">Medium</ChoiceGrid.Item>\n    <ChoiceGrid.Item value=\"hard\">Hard</ChoiceGrid.Item>\n    <ChoiceGrid.Item value=\"expert\">Expert</ChoiceGrid.Item>\n  </ChoiceGrid>\n</div>\n"
     },
     {
       "id": "feedback-states",
       "title": "Feedback states",
       "description": "Correct, incorrect, and pending states for quiz and assessment surfaces. Cell dimensions stay stable across states.",
-      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { ChoiceGrid } from '@lostgradient/cinder/choice-grid';\n  import type { ChoiceGridItemState } from '@lostgradient/cinder/choice-grid';\n\n  let selected = $state<string | null>(null);\n  let revealed = $state(false);\n\n  const correctAnswer = 'paris';\n\n  function getState(value: string): ChoiceGridItemState {\n    if (!revealed || selected === null) return 'neutral';\n    if (value === correctAnswer) return 'correct';\n    if (value === selected && value !== correctAnswer) return 'incorrect';\n    return 'neutral';\n  }\n</script>\n\n<ChoiceGrid ariaLabel=\"What is the capital of France?\" bind:value={selected}>\n  <ChoiceGrid.Item value=\"london\" state={getState('london')}>London</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"berlin\" state={getState('berlin')}>Berlin</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"paris\" state={getState('paris')}>Paris</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"madrid\" state={getState('madrid')}>Madrid</ChoiceGrid.Item>\n</ChoiceGrid>\n\n<div style=\"margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;\">\n  <Button variant=\"secondary\" onclick={() => (revealed = !revealed)}>\n    {revealed ? 'Hide feedback' : 'Reveal answer'}\n  </Button>\n  <Button\n    variant=\"ghost\"\n    onclick={() => {\n      selected = null;\n      revealed = false;\n    }}\n  >\n    Reset\n  </Button>\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder';\n  import { ChoiceGrid } from '@lostgradient/cinder';\n  import type { ChoiceGridItemState } from '@lostgradient/cinder';\n\n  let selected = $state<string | null>(null);\n  let revealed = $state(false);\n\n  const correctAnswer = 'paris';\n\n  function getState(value: string): ChoiceGridItemState {\n    if (!revealed || selected === null) return 'neutral';\n    if (value === correctAnswer) return 'correct';\n    if (value === selected && value !== correctAnswer) return 'incorrect';\n    return 'neutral';\n  }\n</script>\n\n<ChoiceGrid ariaLabel=\"What is the capital of France?\" bind:value={selected}>\n  <ChoiceGrid.Item value=\"london\" state={getState('london')}>London</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"berlin\" state={getState('berlin')}>Berlin</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"paris\" state={getState('paris')}>Paris</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"madrid\" state={getState('madrid')}>Madrid</ChoiceGrid.Item>\n</ChoiceGrid>\n\n<div style=\"margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;\">\n  <Button variant=\"secondary\" onclick={() => (revealed = !revealed)}>\n    {revealed ? 'Hide feedback' : 'Reveal answer'}\n  </Button>\n  <Button\n    variant=\"ghost\"\n    onclick={() => {\n      selected = null;\n      revealed = false;\n    }}\n  >\n    Reset\n  </Button>\n</div>\n"
     },
     {
       "id": "multi-select",
       "title": "Multi-select",
       "description": "Toggle multiple answers simultaneously — useful for checkboxes presented as large tiles.",
-      "code": "<script lang=\"ts\">\n  import { ChoiceGrid } from '@lostgradient/cinder/choice-grid';\n\n  let selected = $state<string[]>([]);\n</script>\n\n<ChoiceGrid multiple ariaLabel=\"Which topics interest you?\" bind:values={selected} columns={2}>\n  <ChoiceGrid.Item value=\"design\">Design</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"engineering\">Engineering</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"product\">Product</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"data\">Data</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"marketing\">Marketing</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"leadership\">Leadership</ChoiceGrid.Item>\n</ChoiceGrid>\n\n{#if selected.length > 0}\n  <p style=\"margin-top: 1rem; color: var(--cinder-text-muted); font-size: var(--cinder-text-sm);\">\n    Selected: {selected.join(', ')}\n  </p>\n{/if}\n"
+      "code": "<script lang=\"ts\">\n  import { ChoiceGrid } from '@lostgradient/cinder';\n\n  let selected = $state<string[]>([]);\n</script>\n\n<ChoiceGrid multiple ariaLabel=\"Which topics interest you?\" bind:values={selected} columns={2}>\n  <ChoiceGrid.Item value=\"design\">Design</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"engineering\">Engineering</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"product\">Product</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"data\">Data</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"marketing\">Marketing</ChoiceGrid.Item>\n  <ChoiceGrid.Item value=\"leadership\">Leadership</ChoiceGrid.Item>\n</ChoiceGrid>\n\n{#if selected.length > 0}\n  <p style=\"margin-top: 1rem; color: var(--cinder-text-muted); font-size: var(--cinder-text-sm);\">\n    Selected: {selected.join(', ')}\n  </p>\n{/if}\n"
+    },
+    {
+      "id": "compact-single-select",
+      "title": "Compact single-select",
+      "description": "`size=\"sm\"` shrinks each cell to Cinder's `button` `sm` scale (widening to a 44×44 touch target under a coarse pointer) and defaults `minColumnWidth` to `6rem`, so a dense set of short-label choices — like these twelve pitch classes — fits a narrow container without overflow.",
+      "code": "<script lang=\"ts\">\n  import { ChoiceGrid } from '@lostgradient/cinder';\n\n  const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];\n  let selected = $state<string | null>(null);\n</script>\n\n<div style=\"max-width: 20rem;\">\n  <ChoiceGrid ariaLabel=\"Choose a root note\" size=\"sm\" bind:value={selected}>\n    {#each notes as note (note)}\n      <ChoiceGrid.Item value={note}>{note}</ChoiceGrid.Item>\n    {/each}\n  </ChoiceGrid>\n</div>\n"
+    },
+    {
+      "id": "compact-multi-select",
+      "title": "Compact multi-select",
+      "description": "The same `size=\"sm\"` compaction applies to multi-select — cells stay the same size whether checked, hovered, focused, or disabled.",
+      "code": "<script lang=\"ts\">\n  import { ChoiceGrid } from '@lostgradient/cinder';\n\n  const strings = ['E2', 'A2', 'D3', 'G3', 'B3', 'E4'];\n  let selected = $state<string[]>([]);\n</script>\n\n<div style=\"max-width: 20rem;\">\n  <ChoiceGrid multiple ariaLabel=\"Choose open strings\" size=\"sm\" bind:values={selected}>\n    {#each strings as string (string)}\n      <ChoiceGrid.Item value={string}>{string}</ChoiceGrid.Item>\n    {/each}\n  </ChoiceGrid>\n</div>\n"
     }
   ]
 }

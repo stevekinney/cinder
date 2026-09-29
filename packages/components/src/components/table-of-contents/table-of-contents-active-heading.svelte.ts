@@ -102,7 +102,8 @@ export class TableOfContentsActiveHeadingTracker {
         return;
       }
 
-      const elementsInDocumentOrder = [...observedElements].sort((a, b) => {
+      const elementsInDocumentOrder = [...observedElements];
+      elementsInDocumentOrder.sort((a, b) => {
         if (a === b) {
           return 0;
         }

@@ -5,34 +5,29 @@
  * in `manifest.meta.ts` and the parts of the binary acceptance criteria that
  * can be checked from component metadata alone (criteria 1–4 in the plan).
  *
- * During the pilot phase most components lack `@cinder` JSDoc annotations.
- * The suite detects that, reports the first 10 extraction errors, and skips
- * downstream checks to keep failure output tractable.
+ * All extraction and taxonomy checks run against the complete source set.
  */
 
 import { beforeAll, describe, expect, test } from 'bun:test';
 
 import type { ComponentMetadata, ExtractError } from '../scripts/generate-component-metadata.ts';
 import { extractAllComponentMetadata } from '../scripts/generate-component-metadata.ts';
-import { discoverDirectoryComponents } from '../scripts/generate-exports.ts';
+import { discoverComponents } from '../scripts/lib/discover-components.ts';
 import { categories, overlapFamilies, requiredConstraints, statusLevels } from './manifest.meta.ts';
 
 // State populated in beforeAll — shared across all describe blocks.
 let allMetadata: ComponentMetadata[] = [];
 let allErrors: ExtractError[] = [];
 let discoveredIds: Set<string> = new Set();
-/** True when extraction errors exist; downstream checks are skipped to avoid noise. */
-let hasExtractionErrors = false;
 
 beforeAll(async () => {
   const [{ metadata, errors }, discovered] = await Promise.all([
     extractAllComponentMetadata(),
-    discoverDirectoryComponents(),
+    discoverComponents(),
   ]);
   allMetadata = metadata;
   allErrors = errors;
   discoveredIds = new Set(discovered.map((c) => c.name));
-  hasExtractionErrors = errors.length > 0;
 });
 
 /** Format the first N extraction errors into a human-readable string. */
@@ -42,17 +37,6 @@ function formatErrors(errors: ExtractError[], limit: number): string {
     .map((e) => `  [${e.componentId}] ${e.file}\n    reason: ${e.reason}`);
   if (errors.length > limit) lines.push(`  … and ${errors.length - limit} more errors`);
   return lines.join('\n');
-}
-
-const SKIP_MESSAGE = 'Skipping downstream checks until extraction errors are resolved.';
-
-/** Skip-guard used at the top of every downstream test. */
-function skipIfExtractionErrors(): boolean {
-  if (hasExtractionErrors) {
-    console.log(SKIP_MESSAGE);
-    return true;
-  }
-  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -66,10 +50,7 @@ describe('extraction', () => {
       return;
     }
     const detail = formatErrors(allErrors, 10);
-    const trailer = allErrors.length > 10 ? `\n${SKIP_MESSAGE}` : '';
-    throw new Error(
-      `${allErrors.length} component(s) failed metadata extraction:\n${detail}${trailer}`,
-    );
+    throw new Error(`${allErrors.length} component(s) failed metadata extraction:\n${detail}`);
   });
 });
 
@@ -79,14 +60,12 @@ describe('extraction', () => {
 
 describe('enumeration', () => {
   test('no extras — extracted ids are all known to the enumerator', () => {
-    if (skipIfExtractionErrors()) return;
     const extractedIds = new Set(allMetadata.map((m) => m.id));
     const extras = [...extractedIds].filter((id) => !discoveredIds.has(id));
     expect(extras).toEqual([]);
   });
 
   test('no missing — every discovered id was extracted', () => {
-    if (skipIfExtractionErrors()) return;
     const extractedIds = new Set(allMetadata.map((m) => m.id));
     const missing = [...discoveredIds].filter((id) => !extractedIds.has(id));
     expect(missing).toEqual([]);
@@ -99,7 +78,6 @@ describe('enumeration', () => {
 
 describe('category membership', () => {
   test('every component category is in the closed set', () => {
-    if (skipIfExtractionErrors()) return;
     const valid = new Set<string>(Object.keys(categories));
     const violations = allMetadata
       .filter((m) => !valid.has(m.category))
@@ -114,7 +92,6 @@ describe('category membership', () => {
 
 describe('status membership', () => {
   test('every component status is in the closed set', () => {
-    if (skipIfExtractionErrors()) return;
     const valid = new Set<string>(Object.keys(statusLevels));
     const violations = allMetadata
       .filter((m) => !valid.has(m.status))
@@ -129,7 +106,6 @@ describe('status membership', () => {
 
 describe('related ids', () => {
   test('every related id resolves to a known component', () => {
-    if (skipIfExtractionErrors()) return;
     const violations: string[] = [];
     for (const meta of allMetadata) {
       for (const relatedId of meta.related) {
@@ -142,7 +118,6 @@ describe('related ids', () => {
   });
 
   test('no PascalCase ids appear in related arrays', () => {
-    if (skipIfExtractionErrors()) return;
     const violations: string[] = [];
     for (const meta of allMetadata) {
       for (const relatedId of meta.related) {
@@ -161,7 +136,6 @@ describe('related ids', () => {
 
 describe('purpose uniqueness', () => {
   test('no two components share the same purpose string', () => {
-    if (skipIfExtractionErrors()) return;
     const seen = new Map<string, string>(); // normalised purpose → first component id
     const violations: string[] = [];
     for (const meta of allMetadata) {
@@ -183,7 +157,6 @@ describe('purpose uniqueness', () => {
 
 describe('overlap families', () => {
   test('every family has at least two members', () => {
-    if (skipIfExtractionErrors()) return;
     const violations = Object.entries(overlapFamilies)
       .filter(([, members]) => members.length < 2)
       .map(([name]) => `family '${name}' has fewer than 2 members`);
@@ -191,7 +164,6 @@ describe('overlap families', () => {
   });
 
   test('every family member id is a known component', () => {
-    if (skipIfExtractionErrors()) return;
     const violations: string[] = [];
     for (const [familyName, members] of Object.entries(overlapFamilies)) {
       for (const memberId of members) {
@@ -204,7 +176,6 @@ describe('overlap families', () => {
   });
 
   test('every family member mentions at least one sibling in useWhen or avoidWhen', () => {
-    if (skipIfExtractionErrors()) return;
     const metadataById = new Map(allMetadata.map((m) => [m.id, m]));
     const violations: string[] = [];
     for (const [familyName, members] of Object.entries(overlapFamilies)) {
@@ -235,7 +206,6 @@ describe('overlap families', () => {
 
 describe('length budgets', () => {
   test('purpose does not exceed 200 characters', () => {
-    if (skipIfExtractionErrors()) return;
     const violations = allMetadata
       .filter((m) => m.purpose.length > 200)
       .map((m) => `${m.id}: purpose is ${m.purpose.length} chars`);
@@ -243,7 +213,6 @@ describe('length budgets', () => {
   });
 
   test('each useWhen entry does not exceed 140 characters', () => {
-    if (skipIfExtractionErrors()) return;
     const violations: string[] = [];
     for (const meta of allMetadata) {
       for (const entry of meta.useWhen) {
@@ -258,7 +227,6 @@ describe('length budgets', () => {
   });
 
   test('each avoidWhen reason does not exceed 140 characters', () => {
-    if (skipIfExtractionErrors()) return;
     const violations: string[] = [];
     for (const meta of allMetadata) {
       for (const entry of meta.avoidWhen) {
@@ -273,7 +241,6 @@ describe('length budgets', () => {
   });
 
   test('each avoidWhen alternative is a known kebab-case component id', () => {
-    if (skipIfExtractionErrors()) return;
     const knownIds = new Set(allMetadata.map((m) => m.id));
     const violations: string[] = [];
     for (const meta of allMetadata) {
@@ -299,7 +266,6 @@ describe('manifest size budget', () => {
   // payload, so it gets its own looser budget rather than inflating this one —
   // otherwise guidance prose could quietly grow to fill a combined limit.
   test('each component serializes its guidance fields to at most 1024 bytes', () => {
-    if (skipIfExtractionErrors()) return;
     const violations: string[] = [];
     for (const meta of allMetadata) {
       const entry = {
@@ -324,7 +290,6 @@ describe('manifest size budget', () => {
   });
 
   test('each component a11y block serializes to at most 2048 bytes', () => {
-    if (skipIfExtractionErrors()) return;
     const violations: string[] = [];
     for (const meta of allMetadata) {
       if (meta.a11y === undefined) continue;
@@ -351,9 +316,9 @@ describe('required constraints', () => {
     const { existsSync } = await import('node:fs');
     const { join } = await import('node:path');
     const componentsRoot = join(import.meta.dir, 'components');
-    // discoverDirectoryComponents tracks which ids are experimental — we need
+    // discoverComponents tracks which ids are experimental — we need
     // that flag to resolve the path correctly for experimental components.
-    const components = await discoverDirectoryComponents();
+    const components = await discoverComponents();
     const byId = new Map(components.map((c) => [c.name, c]));
 
     const missing: string[] = [];

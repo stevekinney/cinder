@@ -22,7 +22,8 @@
   const sortedPeople = $derived.by(() => {
     const activeSort = sort;
     if (!activeSort) return people;
-    return [...people].sort((a, b) => {
+    const sortedPeopleCopy = [...people];
+    sortedPeopleCopy.sort((a, b) => {
       const key = activeSort.column as keyof Person;
       const aValue = a[key];
       const bValue = b[key];
@@ -32,6 +33,7 @@
           : String(aValue).localeCompare(String(bValue));
       return activeSort.direction === 'ascending' ? comparison : -comparison;
     });
+    return sortedPeopleCopy;
   });
 
   const allSelected = $derived(people.every((person) => selectedIds.has(person.id)));

@@ -66,10 +66,14 @@ function toolResultMessage(
             action: {
               type: 'approval' as const,
               message: 'Approve this action?',
-              risk: 'low' as const,
-              operation: { kind: 'command' as const, command: 'test-command', argsPreview: {} },
+              risk: 'high' as const,
+              operation: {
+                kind: 'command' as const,
+                command: 'echo approval',
+                argsPreview: { ok: true },
+              },
               policyVersion: 'test-policy',
-              idempotencyKey: 'groups-approval-1',
+              idempotencyKey: 'test-approval',
             },
           }
         : {}),
@@ -167,6 +171,25 @@ describe('useChatMessageGroups paired tool-result filtering', () => {
     const groups = useChatMessageGroups({ getMessages: () => conversation });
 
     expect(groups.renderRows.map((row) => row.type)).toEqual(['date', 'message', 'message']);
+  });
+
+  test('explicit ungrouped tool calls replace the action-required default', () => {
+    const conversation = [
+      toolUseMessage('call-a', 'call-a'),
+      toolResultMessage('result-a', 'call-a', 'action_required'),
+      toolUseMessage('call-b', 'call-b'),
+    ];
+    const groups = useChatMessageGroups({
+      getMessages: () => conversation,
+      getRenderOptions: () => ({ ungroupedToolCallIds: new Set(['call-b']) }),
+    });
+
+    expect(groups.actionRequiredToolCallIds).toEqual(new Set(['call-a']));
+    expect(groups.renderRows.map((row) => row.type)).toEqual([
+      'date',
+      'tool-call-group',
+      'message',
+    ]);
   });
 
   test('render rows add unread and typing state without mutating message order', () => {

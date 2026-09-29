@@ -14,6 +14,10 @@
 
 import type { Locator, Page } from '@playwright/test';
 
+export type FrameCallbackEvaluator = {
+  evaluate(callback: () => Promise<void>): Promise<void>;
+};
+
 /**
  * Wait for the render frame after keyboard focus changes before sampling paint.
  *
@@ -21,7 +25,7 @@ import type { Locator, Page } from '@playwright/test';
  * but can expose the previous cascade's computed outline until the next render
  * frame. This is one render-boundary synchronization, not polling or a retry.
  */
-export async function waitForFocusStyleFrame(target: Locator): Promise<void> {
+export async function waitForFocusStyleFrame(target: FrameCallbackEvaluator): Promise<void> {
   await target.evaluate(
     () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
   );
@@ -62,9 +66,10 @@ export async function tabUntilFocused(
  */
 export async function resolvedTokenColor(target: Locator, token: string): Promise<string> {
   return target.evaluate((element, tokenName) => {
-    const value = getComputedStyle(element as HTMLElement)
-      .getPropertyValue(tokenName)
-      .trim();
+    if (!(element instanceof HTMLElement)) {
+      throw new Error('resolvedTokenColor: target element must be an HTMLElement.');
+    }
+    const value = getComputedStyle(element).getPropertyValue(tokenName).trim();
     if (value === '') {
       throw new Error(
         `resolvedTokenColor: custom property "${tokenName}" is unset on the target element`,

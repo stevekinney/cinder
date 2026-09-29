@@ -36,21 +36,18 @@ export function stringify(value: unknown, indent: number = 2): string {
 
   try {
     const serializedValue = JSON.stringify(value, null, indent);
-    if (serializedValue !== undefined) return serializedValue;
-    return typeof value === 'number' || typeof value === 'boolean' || typeof value === 'symbol'
-      ? String(value)
-      : '[Unserializable value]';
+    return serializedValue ?? fallbackString(value);
   } catch {
-    if (
-      typeof value === 'number' ||
-      typeof value === 'boolean' ||
-      typeof value === 'bigint' ||
-      typeof value === 'symbol'
-    ) {
-      return String(value);
-    }
-    return '[Unserializable value]';
+    return fallbackString(value);
   }
+}
+
+function fallbackString(value: unknown): string {
+  return isPrimitive(value) ? String(value) : '[Unserializable value]';
+}
+
+function isPrimitive(value: unknown): value is number | boolean | bigint | symbol {
+  return ['number', 'boolean', 'bigint', 'symbol'].includes(typeof value);
 }
 
 /**

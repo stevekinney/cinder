@@ -1,14 +1,12 @@
 # TransferList
 
-TransferList renders one compact multiselect listbox for assigning items from a
-fixed pool to a selected set. The count and selected state stay visible in the
-same surface.
+TransferList renders one compact multiselect listbox for assigning items from a fixed pool to a selected set. The count and selected state stay visible in the same surface.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import { TransferList } from '@lostgradient/cinder/transfer-list';
+  import { TransferList } from '@lostgradient/cinder';
 
   const items = [
     { id: 'read', label: 'Read' },
@@ -41,7 +39,6 @@ same surface.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

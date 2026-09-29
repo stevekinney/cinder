@@ -33,29 +33,21 @@
  */
 
 import { describe, expect, test } from 'bun:test';
-import { Window } from 'happy-dom';
 
-import { renderThenHydrate } from '../../../test/hydrate.ts';
+import { prepareSvelteServerSource, renderThenHydrate } from '@lostgradient/testing';
 
-type TestMarkdownSegment =
-  | { kind: 'html'; html: string }
-  | { kind: 'node'; node: unknown }
-  | { kind: 'element'; tag: string; children: TestMarkdownSegment[] };
-
-const markdownPreviewModule = (await import('./markdown-preview.svelte')) as unknown as {
-  default: typeof import('./markdown-preview.svelte').default;
-  segmentRenderedMarkdown: (html: string, ownerDocument: Document) => TestMarkdownSegment[];
-};
+const markdownPreviewModule = await import('./markdown-preview.svelte');
 const { default: MarkdownPreview, segmentRenderedMarkdown } = markdownPreviewModule;
 
 const sourcePath = new URL('./markdown-preview.svelte', import.meta.url).pathname;
 
+await prepareSvelteServerSource(sourcePath);
+
 describe('Chat markdown-preview SSR contract', () => {
   test('preserves ancestors while extracting nested override placeholders', () => {
-    const window = new Window();
     const segments = segmentRenderedMarkdown(
       '<blockquote><p>Before</p><cinder-markdown-node data-cinder-markdown-kind="table" data-cinder-markdown-index="4"><table><tbody><tr><td>Cell</td></tr></tbody></table></cinder-markdown-node></blockquote>',
-      window.document as unknown as Document,
+      document,
     );
 
     expect(segments).toHaveLength(1);
@@ -80,7 +72,7 @@ describe('Chat markdown-preview SSR contract', () => {
       );
       expect(result.ssrHtml).toContain('<p>hello world</p>');
     } finally {
-      result.cleanup();
+      await result.cleanup();
     }
   });
 
@@ -97,7 +89,7 @@ describe('Chat markdown-preview SSR contract', () => {
       expect(result.ssrHtml).toContain('<p>**bold**</p>');
       expect(result.ssrHtml).not.toContain('<strong>');
     } finally {
-      result.cleanup();
+      await result.cleanup();
     }
   });
 
@@ -114,7 +106,7 @@ describe('Chat markdown-preview SSR contract', () => {
       expect(result.ssrHtml).toContain('&lt;img src=x onError=alert(1)>');
       expect(result.ssrHtml).not.toContain('<img src=x onError=alert(1)>');
     } finally {
-      result.cleanup();
+      await result.cleanup();
     }
   });
 
@@ -129,7 +121,7 @@ describe('Chat markdown-preview SSR contract', () => {
     try {
       expect(result.warnings).toEqual([]);
     } finally {
-      result.cleanup();
+      await result.cleanup();
     }
   });
 });

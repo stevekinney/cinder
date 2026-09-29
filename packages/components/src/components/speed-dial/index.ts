@@ -5,7 +5,7 @@ import SpeedDialRoot from './speed-dial.svelte';
 /**
  * `SpeedDial` is the parent compound component and namespace exposing the
  * action leaf as `SpeedDial.Action`. The leaf remains importable individually
- * from `@lostgradient/cinder/speed-dial-action`.
+ * from `@lostgradient/cinder`.
  */
 const SpeedDial = Object.assign(SpeedDialRoot, {
   Action: SpeedDialAction,

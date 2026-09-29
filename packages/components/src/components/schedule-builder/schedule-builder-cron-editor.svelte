@@ -1,9 +1,9 @@
 <script lang="ts">
   import Input from '../input/input.svelte';
-  import Grid from '@lostgradient/cinder/grid';
+  import { default as Grid } from '../grid/index.ts';
+  import { ChevronDown } from '../icons/index.ts';
   import NumberInput from '../number-input/number-input.svelte';
   import Select from '../select/select.svelte';
-  import { ChevronDown } from '@lostgradient/cinder/icons';
   import { CRON_FIELDS, validateCronField } from './schedule-builder.utilities.ts';
   import { cronExpressionForEditor, type CronEditor } from './schedule-builder-cron-editor.ts';
 

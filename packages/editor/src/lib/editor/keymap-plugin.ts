@@ -1,3 +1,4 @@
+import * as utilities from '@milkdown/kit/utils';
 /**
  * Keyboard shortcuts plugin for the Milkdown editor.
  *
@@ -9,7 +10,7 @@ import type { MilkdownPlugin } from '@milkdown/ctx';
 import type { Command, EditorState } from '@milkdown/kit/prose/state';
 import type { EditorView } from '@milkdown/kit/prose/view';
 
-type ShortcutRuntime = {
+export type ShortcutRuntime = {
   $shortcut: typeof import('@milkdown/kit/utils').$shortcut;
   callCommand: typeof import('@milkdown/kit/utils').callCommand;
   toggleStrongCommand: typeof import('@milkdown/kit/preset/commonmark').toggleStrongCommand;
@@ -34,6 +35,11 @@ type ShortcutRuntime = {
   undoCommand: typeof import('@milkdown/kit/plugin/history').undoCommand;
   redoCommand: typeof import('@milkdown/kit/plugin/history').redoCommand;
 };
+type KeymapCommandRuntime = {
+  [Key in Exclude<keyof ShortcutRuntime, '$shortcut' | 'callCommand'>]: {
+    key: string | ShortcutRuntime[Key]['key'];
+  };
+};
 
 let shortcutRuntime: ShortcutRuntime | null = null;
 let shortcutRuntimePromise: Promise<ShortcutRuntime> | null = null;
@@ -42,8 +48,7 @@ async function resolveShortcutRuntime(): Promise<ShortcutRuntime> {
   if (shortcutRuntime) return shortcutRuntime;
 
   shortcutRuntimePromise ??= (async () => {
-    const [utilities, commonmark, gfm, history] = await Promise.all([
-      import('@milkdown/kit/utils'),
+    const [commonmark, gfm, history] = await Promise.all([
       import('@milkdown/kit/preset/commonmark'),
       import('@milkdown/kit/preset/gfm'),
       import('@milkdown/kit/plugin/history'),
@@ -81,7 +86,7 @@ export interface EditorKeymapOptions {
   /** Called when Mod-k (link shortcut) is pressed */
   onlinkshortcut?: () => void;
   /** Called when Ctrl-Alt-c (comment shortcut) is pressed (DEP-47) */
-  oncommentshortcut?: () => void;
+  onCommentShortcut?: () => void;
 }
 
 /**
@@ -190,7 +195,7 @@ type CommandCaller = (
  * @internal — not part of the package's public surface (see `index.ts`).
  */
 export function createKeymapBindings(
-  runtime: ShortcutRuntime,
+  runtime: KeymapCommandRuntime,
   call: CommandCaller,
   options: EditorKeymapOptions = {},
 ): Record<string, Command> {
@@ -265,9 +270,9 @@ export function createKeymapBindings(
     };
   }
 
-  if (options.oncommentshortcut) {
+  if (options.onCommentShortcut) {
     bindings['Ctrl-Alt-c'] = () => {
-      options.oncommentshortcut?.();
+      options.onCommentShortcut?.();
       return true;
     };
   }

@@ -8,6 +8,10 @@ import type {
   RunStepTimelineEntry,
 } from './run-step-timeline.types.ts';
 
+function assertNever(value: never): never {
+  throw new Error(`Unexpected exhaustive value: ${String(value)}`);
+}
+
 /**
  * Relocate resolved compensation steps immediately after the subtree of the
  * sibling they reverse. Unresolved, self-referential, and cyclic links retain
@@ -98,6 +102,8 @@ export function statusDotStatus(status: RunStepStatus): StatusDotStatus {
       return 'neutral';
     case 'pending':
       return 'pending';
+    default:
+      return assertNever(status);
   }
 }
 
@@ -122,6 +128,8 @@ export function statusLabel(status: RunStepStatus): string {
       return 'Retrying';
     case 'waiting_approval':
       return 'Waiting approval';
+    default:
+      return assertNever(status);
   }
 }
 
@@ -145,6 +153,8 @@ export function badgeVariant(status: RunStepStatus): RunStepBadgeVariant {
       return 'neutral';
     case 'pending':
       return 'neutral';
+    default:
+      return assertNever(status);
   }
 }
 
@@ -206,6 +216,8 @@ export function laneOutcomeLabel(outcome: RunStepBranchLaneOutcome): string {
       return 'Lost';
     case 'settled':
       return 'Settled';
+    default:
+      return assertNever(outcome);
   }
 }
 
@@ -218,6 +230,8 @@ export function laneOutcomeBadgeVariant(outcome: RunStepBranchLaneOutcome): RunS
       return 'neutral';
     case 'settled':
       return 'info';
+    default:
+      return assertNever(outcome);
   }
 }
 

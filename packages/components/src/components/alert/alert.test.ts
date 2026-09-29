@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
 // reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
@@ -113,7 +113,10 @@ describe('Alert rendering', () => {
     const { container } = render(Alert, {
       props: { dismissible: true, children: emptySnippet },
     });
-    const button = container.querySelector('.cinder-alert__dismiss') as HTMLButtonElement;
+    const button = requiredInstance(
+      container.querySelector('.cinder-alert__dismiss'),
+      HTMLButtonElement,
+    );
     expect(button).not.toBeNull();
 
     await fireEvent.click(button);
@@ -132,7 +135,10 @@ describe('Alert rendering', () => {
         children: emptySnippet,
       },
     });
-    const button = container.querySelector('.cinder-alert__dismiss') as HTMLButtonElement;
+    const button = requiredInstance(
+      container.querySelector('.cinder-alert__dismiss'),
+      HTMLButtonElement,
+    );
     await fireEvent.click(button);
 
     expect(callCount).toBe(1);
@@ -173,11 +179,9 @@ describe('Alert rendering', () => {
     // P6-C2 locks Alert as the live-region notification: the role must stay
     // "alert" and must never become "status" (or any other live-region role).
     // `role` is omitted from AlertProps, but a consumer can still escape the type
-    // (`as never`), so the component scrubs it from rest and spreads the filtered
-    // rest before role="alert".
-    const { container } = render(Alert, {
-      props: { role: 'status', children: emptySnippet } as never,
-    });
+    // through a spread object, so the component scrubs it from rest.
+    const spreadProperties = { role: 'status', children: emptySnippet };
+    const { container } = render(Alert, { props: spreadProperties });
     const root = container.querySelector('.cinder-alert');
     expect(root?.getAttribute('role')).toBe('alert');
     expect(root?.hasAttribute('aria-live')).toBe(false);
@@ -186,11 +190,9 @@ describe('Alert rendering', () => {
   test('a consumer-supplied aria-live is stripped so it cannot fight the implicit assertive role', () => {
     // role="alert" implies aria-live="assertive". A consumer aria-live="polite"
     // would silently downgrade the announcement urgency, so it is scrubbed.
-    // `aria-live` is omitted from AlertProps; `as never` simulates a consumer
-    // escaping the type system.
-    const { container } = render(Alert, {
-      props: { 'aria-live': 'polite', children: emptySnippet } as never,
-    });
+    // A spread object can carry omitted attributes into the runtime.
+    const spreadProperties = { 'aria-live': 'polite', children: emptySnippet };
+    const { container } = render(Alert, { props: spreadProperties });
     const root = container.querySelector('.cinder-alert');
     expect(root?.getAttribute('role')).toBe('alert');
     expect(root?.hasAttribute('aria-live')).toBe(false);
@@ -201,13 +203,12 @@ describe('Alert rendering', () => {
     // would override the implicit value and fragment announcements. aria-relevant
     // modifies what changes are announced. Both are scrubbed to prevent the
     // consumer from undermining the assertive live region.
-    const { container } = render(Alert, {
-      props: {
-        'aria-atomic': 'false',
-        'aria-relevant': 'additions',
-        children: emptySnippet,
-      } as never,
-    });
+    const spreadProperties = {
+      'aria-atomic': 'false',
+      'aria-relevant': 'additions',
+      children: emptySnippet,
+    };
+    const { container } = render(Alert, { props: spreadProperties });
     const root = container.querySelector('.cinder-alert');
     expect(root?.hasAttribute('aria-atomic')).toBe(false);
     expect(root?.hasAttribute('aria-relevant')).toBe(false);
@@ -272,7 +273,10 @@ describe('Alert dismiss focus management', () => {
     container.after(after);
 
     try {
-      const button = container.querySelector('.cinder-alert__dismiss') as HTMLButtonElement;
+      const button = requiredInstance(
+        container.querySelector('.cinder-alert__dismiss'),
+        HTMLButtonElement,
+      );
       button.focus();
       expect(document.activeElement).toBe(button);
       await fireEvent.click(button);
@@ -304,7 +308,10 @@ describe('Alert dismiss focus management', () => {
     });
 
     try {
-      const button = container.querySelector('.cinder-alert__dismiss') as HTMLButtonElement;
+      const button = requiredInstance(
+        container.querySelector('.cinder-alert__dismiss'),
+        HTMLButtonElement,
+      );
       button.focus();
       expect(document.activeElement).toBe(button);
       await fireEvent.click(button);

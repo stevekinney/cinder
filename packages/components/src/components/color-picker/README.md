@@ -6,7 +6,7 @@ Full-featured input for selecting a color via hue, saturation, lightness, and al
 
 ```svelte
 <script lang="ts">
-  import ColorPicker from '@lostgradient/cinder/color-picker';
+  import { ColorPicker } from '@lostgradient/cinder';
 </script>
 
 <ColorPicker />
@@ -36,7 +36,6 @@ Full-featured input for selecting a color via hue, saturation, lightness, and al
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

@@ -1,8 +1,8 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
 
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import { injectStrippedStyles } from '../../test/css.ts';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
 // reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
@@ -21,10 +21,10 @@ const { resolveMaximumLength } = await import('../textarea-count.ts');
 // assertions fail to compile if a future change re-widens (or further narrows) them.
 type TextareaProps = import('./textarea.types.ts').TextareaProps;
 type Exact<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
-const _requiredIsBoolean: Exact<TextareaProps['required'], boolean | undefined> = true;
-const _maxlengthIsNumber: Exact<TextareaProps['maxlength'], number | undefined> = true;
-void _requiredIsBoolean;
-void _maxlengthIsNumber;
+const requiredIsBoolean: Exact<TextareaProps['required'], boolean | undefined> = true;
+const maxlengthIsNumber: Exact<TextareaProps['maxlength'], number | undefined> = true;
+void requiredIsBoolean;
+void maxlengthIsNumber;
 
 function idsIn(container: Element): string[] {
   return Array.from(container.querySelectorAll('[id]'), (element) => element.id);
@@ -106,7 +106,7 @@ describe('Textarea', () => {
 
   test('on user input, bound value updates', async () => {
     const { container } = render(Textarea, { props: { id: 'live', value: '' } });
-    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    const textarea = requiredInstance(container.querySelector('textarea'), HTMLTextAreaElement);
     expect(textarea).not.toBeNull();
     await fireEvent.input(textarea, { target: { value: 'hello world' } });
     expect(textarea.value).toBe('hello world');
@@ -120,7 +120,7 @@ describe('Textarea', () => {
 
   test('required prop is reflected on the native attribute without aria-required', () => {
     const { container } = render(Textarea, { props: { id: 'req', required: true } });
-    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    const textarea = requiredInstance(container.querySelector('textarea'), HTMLTextAreaElement);
     expect(textarea.required).toBe(true);
     expect(textarea.hasAttribute('aria-required')).toBe(false);
   });
@@ -238,7 +238,7 @@ describe('Textarea — character count', () => {
     const { container } = render(Textarea, {
       props: { id: 'live-count', countVisible: true, maxlength: 100, value: '' },
     });
-    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    const textarea = requiredInstance(container.querySelector('textarea'), HTMLTextAreaElement);
     const countElement = container.querySelector('#live-count-count');
     expect(countElement?.textContent?.trim()).toBe('0/100');
     await fireEvent.input(textarea, { target: { value: 'hello' } });
@@ -328,7 +328,7 @@ describe('Textarea — character count', () => {
     const { container } = render(Textarea, {
       props: { id: 'unbound', countVisible: true, maxlength: 100, value: 'hi' },
     });
-    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    const textarea = requiredInstance(container.querySelector('textarea'), HTMLTextAreaElement);
     const countElement = container.querySelector('#unbound-count');
     expect(countElement?.textContent?.trim()).toBe('2/100');
 
@@ -354,7 +354,7 @@ describe('Textarea context inheritance from FormField', () => {
       },
     });
 
-    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    const textarea = requiredInstance(container.querySelector('textarea'), HTMLTextAreaElement);
     expect(textarea.getAttribute('aria-describedby')).toBe(
       'ctx-textarea-description ctx-textarea-error',
     );
@@ -375,7 +375,7 @@ describe('Textarea context inheritance from FormField', () => {
       },
     });
 
-    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    const textarea = requiredInstance(container.querySelector('textarea'), HTMLTextAreaElement);
     expect(textarea.getAttribute('aria-describedby')).toBe(
       'ctx-textarea-textarea-description ctx-textarea-textarea-error ctx-textarea-description ctx-textarea-error',
     );
@@ -400,7 +400,7 @@ describe('Textarea context inheritance from FormField', () => {
       },
     });
 
-    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    const textarea = requiredInstance(container.querySelector('textarea'), HTMLTextAreaElement);
     expect(textarea.disabled).toBe(false);
   });
 });

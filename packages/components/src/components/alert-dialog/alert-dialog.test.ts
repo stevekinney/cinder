@@ -1,8 +1,8 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { _resetEscapeStack, _resetScrollLock } from '../../_internal/overlay.ts';
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
+import { resetEscapeStack, resetScrollLock } from '../../_internal/overlay.ts';
 
 setupHappyDom();
 
@@ -39,8 +39,8 @@ const { default: AlertDialog } = await import('./alert-dialog.svelte');
 afterEach(() => {
   cleanup();
   document.body.replaceChildren();
-  _resetScrollLock();
-  _resetEscapeStack();
+  resetScrollLock();
+  resetEscapeStack();
 });
 
 describe('AlertDialog', () => {
@@ -86,7 +86,7 @@ describe('AlertDialog', () => {
       candidate.textContent?.includes('Sign in'),
     );
     expect(button?.autofocus).toBe(true);
-    await fireEvent.click(button as HTMLButtonElement);
+    await fireEvent.click(requiredInstance(button, HTMLButtonElement));
     expect(openValue).toBe(false);
     expect(callbackSawOpen).toBe(false);
   });
@@ -107,7 +107,7 @@ describe('AlertDialog', () => {
       },
     });
 
-    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const dialog = requiredInstance(container.querySelector('dialog'), HTMLDialogElement);
     const cancelEvent = new Event('cancel', { cancelable: true });
     await fireEvent(dialog, cancelEvent);
     await fireEvent.click(dialog);
@@ -139,7 +139,7 @@ describe('AlertDialog', () => {
     const cancelButton = Array.from(container.querySelectorAll('button')).find((candidate) =>
       candidate.textContent?.includes('Cancel'),
     );
-    await fireEvent.click(cancelButton as HTMLButtonElement);
+    await fireEvent.click(requiredInstance(cancelButton, HTMLButtonElement));
     expect(cancelCount).toBe(1);
     expect(openValue).toBe(false);
   });
@@ -250,7 +250,7 @@ describe('AlertDialog', () => {
       },
     });
 
-    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const dialog = requiredInstance(container.querySelector('dialog'), HTMLDialogElement);
     const cancelEvent = new Event('cancel', { cancelable: true });
     await fireEvent(dialog, cancelEvent);
     expect(cancelEvent.defaultPrevented).toBe(true);
@@ -273,7 +273,7 @@ describe('AlertDialog', () => {
       },
     });
 
-    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const dialog = requiredInstance(container.querySelector('dialog'), HTMLDialogElement);
     await fireEvent.click(dialog);
     expect(openValue).toBe(true);
   });

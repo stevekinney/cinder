@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { createRawSnippet } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -41,7 +41,7 @@ describe('ModalRegion', () => {
     expect(api).toBeDefined();
     unmount();
 
-    await expect(api!.confirm({ title: 'Confirm action' })).resolves.toBe(false);
+    expect(await api!.confirm({ title: 'Confirm action' })).toBe(false);
   });
 
   test('exposes dedicated title and scoped custom-content controls', () => {
@@ -51,13 +51,7 @@ describe('ModalRegion', () => {
   });
 
   test('canonical example consumes modal context and opens a confirmation', () => {
-    const example = readFileSync(
-      new URL(
-        '../../../../playground/src/examples/modal-region/basic.example.svelte',
-        import.meta.url,
-      ),
-      'utf8',
-    );
+    const example = readFileSync(new URL('./modal-region.examples.json', import.meta.url), 'utf8');
     expect(example).toContain('useModal()');
     expect(example).toContain('modal.confirm(');
   });

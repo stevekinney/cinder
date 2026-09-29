@@ -2,7 +2,7 @@
 import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 

@@ -2,7 +2,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { compileModule } from 'svelte/compiler';
 
-import { setupHappyDom } from '../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import {
   applyAnchoredOverlayMaxBlockSize,
   getAnchoredOverlayAvailableHeightStyle,
@@ -36,7 +36,7 @@ class BoundaryResizeObserver implements ResizeObserver {
   }
 
   trigger(target: Element): void {
-    this.callback([{ target } as ResizeObserverEntry], this as unknown as ResizeObserver);
+    this.callback([{ target } as ResizeObserverEntry], this);
   }
 }
 
@@ -288,7 +288,7 @@ describe('anchored overlay placement locking', () => {
   // These tests drive that second recompute directly by replaying the callback
   // `autoUpdate` was handed, which is the same path a real resize takes.
   function replayPositioningUpdate(): Promise<void> {
-    const update = autoUpdateSpy.mock.calls[0]?.[2] as (() => void | Promise<void>) | undefined;
+    const update = autoUpdateSpy.mock.calls[0]?.[2];
     if (update === undefined) {
       throw new Error('autoUpdate was never called, so there is no update callback to replay');
     }
@@ -297,15 +297,13 @@ describe('anchored overlay placement locking', () => {
 
   function middlewareNames(callIndex: number): string[] {
     const options = computePositionSpy.mock.calls[callIndex]?.[2] as
-      | { middleware?: Array<{ name?: string }> }
-      | undefined;
+      { middleware?: Array<{ name?: string }> } | undefined;
     return (options?.middleware ?? []).map((entry) => entry.name ?? '');
   }
 
   function requestedPlacement(callIndex: number): string | undefined {
     const options = computePositionSpy.mock.calls[callIndex]?.[2] as
-      | { placement?: string }
-      | undefined;
+      { placement?: string } | undefined;
     return options?.placement;
   }
 

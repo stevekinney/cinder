@@ -1,9 +1,8 @@
 /// <reference lib="dom" />
 
-import type { Locator } from '@playwright/test';
 import { describe, expect, test } from 'bun:test';
 
-import { waitForFocusStyleFrame } from './focus-ring.ts';
+import { type FrameCallbackEvaluator, waitForFocusStyleFrame } from './focus-ring.ts';
 
 describe('waitForFocusStyleFrame', () => {
   test('settles on exactly the next animation frame', async () => {
@@ -20,7 +19,7 @@ describe('waitForFocusStyleFrame', () => {
 
     const target = {
       evaluate: async (callback: () => Promise<void>) => callback(),
-    } as unknown as Locator;
+    } satisfies FrameCallbackEvaluator;
 
     try {
       const result = waitForFocusStyleFrame(target).then(() => {

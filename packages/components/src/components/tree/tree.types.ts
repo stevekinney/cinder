@@ -2,6 +2,7 @@ import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 import type { FlattenedTreeDataItem, TreeDataItem } from '../../_internal/tree-data.ts';
 import type { TreeReorderTarget } from '../../_internal/tree-drag-controller.svelte.ts';
+import type { DataAttributes, WithoutDataAttributes } from '../../_internal/union-props.ts';
 /** Selection model for a Tree. */
 export type TreeSelectionMode = 'none' | 'single' | 'multiple';
 /** Selection behavior for multiple-selection trees. */
@@ -30,15 +31,26 @@ export type TreeVirtualizedItemRenderState = {
   selected: boolean;
   focused: boolean;
 };
-type TreeSharedProps = Omit<
-  HTMLAttributes<HTMLDivElement>,
-  | 'children'
-  | 'class'
-  | 'role'
-  | 'tabindex'
-  | 'aria-label'
-  | 'aria-labelledby'
-  | 'aria-multiselectable'
+// COR-239: keyof Props became too complex for TypeScript to represent (TS2590) once a consumer
+// type-checked this published declaration under `skipLibCheck: false` — even a single, unvarying
+// `HTMLAttributes<HTMLDivElement>`-derived base still carries the `data-*` index signature, and
+// intersecting it with this file's snippet-vs-virtualized union was enough to trigger it (no
+// per-arm attribute-interface split was needed for the defect to appear here). Fix: strip
+// `data-*` from the base (`WithoutDataAttributes` below) and restore it via a single
+// non-distributed `DataAttributes` intersected once on `TreeProps`. See
+// `src/_internal/union-props.ts` for the full mechanism. No prop was added, removed, widened, or
+// narrowed — arbitrary `data-*` props are still accepted, exactly as before.
+type TreeSharedProps = WithoutDataAttributes<
+  Omit<
+    HTMLAttributes<HTMLDivElement>,
+    | 'children'
+    | 'class'
+    | 'role'
+    | 'tabindex'
+    | 'aria-label'
+    | 'aria-labelledby'
+    | 'aria-multiselectable'
+  >
 > & {
   /** Selection model. Default: 'none'. */
   selectionMode?: TreeSelectionMode;
@@ -52,7 +64,15 @@ type TreeSharedProps = Omit<
   expandedIds?: string[];
   /** Typed programmatic handle. Use `bind:ref` to receive it. */
   ref?: TreeRef | undefined;
-  /** Estimated row height for virtualized Tree rows. Default: 36. */
+  /**
+   * Estimated row height for virtualized Tree rows, used before a row is
+   * measured and as the fallback while none of its content has mounted yet.
+   * Default: 36.
+   *
+   * Rows are genuinely variable-height: the virtualized row carries no imposed
+   * `block-size`, so a row whose content renders taller than this estimate is
+   * measured and accommodated rather than clipped to it.
+   */
   virtualizationEstimatedRowHeight?: number;
   /** Extra rows rendered before and after the viewport. Default: 4. */
   virtualizationOverscan?: number;
@@ -87,23 +107,31 @@ type TreeSharedProps = Omit<
   selectionControls?: Snippet;
 };
 
-type TreeSnippetProps = {
-  /** Tree items (snippet). Required when virtualized is false or omitted; mutually exclusive with items. */
-  children: Snippet;
-  /** Use the data-driven virtualized render path for large trees. Default: false. */
-  virtualized?: false | undefined;
-  /** Data-driven Tree items. Required when virtualized is true; mutually exclusive with children. */
-  items?: never;
-};
-
-type TreeVirtualizedProps = {
-  /** Use the data-driven virtualized render path for large trees. */
-  virtualized: true;
-  /** Data-driven Tree items. Required when virtualized is true; mutually exclusive with children. */
-  items: readonly TreeDataItem[];
-  /** Virtualized trees render from `items` rather than snippet children. */
-  children?: never;
-};
-
-/** Props for the Tree component. */
-export type TreeProps = TreeSharedProps & (TreeSnippetProps | TreeVirtualizedProps);
+// The snippet-vs-virtualized discriminant below is intentionally written as an INLINE union
+// rather than through separately-named types (this file previously had `TreeSnippetProps` and
+// `TreeVirtualizedProps` as their own named aliases). Even with `data-*` stripped from
+// `TreeSharedProps` above, naming these two small, non-generic arms was measured to reintroduce
+// TS2590 once the full fifteen-component baseline is checked together — a named alias to a
+// union member, used alongside a large attribute type, is itself expensive here; the identical
+// shapes written inline are not. See `src/_internal/union-props.ts` and card.types.ts for the
+// general mechanism and a fuller writeup.
+export type TreeProps = TreeSharedProps &
+  DataAttributes &
+  (
+    | {
+        /** Tree items (snippet). Required when virtualized is false or omitted; mutually exclusive with items. */
+        children: Snippet;
+        /** Use the data-driven virtualized render path for large trees. Default: false. */
+        virtualized?: false | undefined;
+        /** Data-driven Tree items. Required when virtualized is true; mutually exclusive with children. */
+        items?: never;
+      }
+    | {
+        /** Use the data-driven virtualized render path for large trees. */
+        virtualized: true;
+        /** Data-driven Tree items. Required when virtualized is true; mutually exclusive with children. */
+        items: readonly TreeDataItem[];
+        /** Virtualized trees render from `items` rather than snippet children. */
+        children?: never;
+      }
+  );

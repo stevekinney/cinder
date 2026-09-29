@@ -17,8 +17,8 @@ Applied filters are displayed as removable chips. A visually-hidden live region 
 
 ```svelte
 <script lang="ts">
-  import { FilterBar } from '@lostgradient/cinder/filter-bar';
-  import type { AppliedFilter, FacetDefinition } from '@lostgradient/cinder/filter-bar';
+  import { FilterBar } from '@lostgradient/cinder';
+  import type { AppliedFilter, FacetDefinition } from '@lostgradient/cinder';
 
   const facets: FacetDefinition[] = [
     {
@@ -87,8 +87,8 @@ Use `type: 'custom'` with a `control` snippet for any facet that cannot be expre
 
 ```svelte
 <script lang="ts">
-  import { FilterBar } from '@lostgradient/cinder/filter-bar';
-  import type { FacetDefinition } from '@lostgradient/cinder/filter-bar';
+  import { FilterBar } from '@lostgradient/cinder';
+  import type { FacetDefinition } from '@lostgradient/cinder';
 </script>
 
 {#snippet dateRangeControl({
@@ -141,7 +141,6 @@ Use `type: 'custom'` with a `control` snippet for any facet that cannot be expre
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

@@ -1,0 +1,676 @@
+/* ---------------------------------------------------------------------- */
+/* Shared utilities (this track only — do not reuse the bare `weft-mono`/  */
+/* `weft-id`/`weft-panel`/`weft-callout`/`weft-stat-card` names; those are */
+/* generic enough that another track's stylesheet could define its own,   */
+/* so every one here is `weft-workers-`-prefixed to avoid a cross-track   */
+/* collision when every track's CSS file loads into the same page).       */
+/* ---------------------------------------------------------------------- */
+
+.weft-workers-mono {
+  font-family: var(--cinder-font-mono);
+  font-size: var(--cinder-text-xs);
+}
+
+.weft-workers-id {
+  font-family: var(--cinder-font-mono);
+  font-size: var(--cinder-text-sm);
+}
+
+.weft-workers-id-link {
+  color: var(--cinder-accent-text);
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .weft-workers-id-link:hover {
+    text-decoration: underline;
+  }
+}
+
+.weft-workers-panel {
+  background: var(--cinder-surface-raised);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-lg);
+  overflow: hidden;
+}
+
+.weft-workers-panel__header {
+  padding: 11px 15px;
+  border-bottom: 1px solid var(--cinder-border-muted);
+  font-size: var(--cinder-text-sm);
+  font-weight: 600;
+}
+
+.weft-workers-callout {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 15px;
+  border-radius: var(--cinder-radius-lg);
+  border: 1px solid;
+  font-size: var(--cinder-text-sm);
+}
+
+.weft-workers-callout--warning {
+  background: var(--cinder-color-warning-bg);
+  border-color: var(--cinder-color-warning-border);
+  color: var(--cinder-color-warning-fg);
+}
+
+.weft-workers-callout--danger {
+  background: var(--cinder-color-danger-bg);
+  border-color: var(--cinder-color-danger-border);
+  color: var(--cinder-color-danger-fg);
+}
+
+.weft-workers-stat-card {
+  background: var(--cinder-surface-raised);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-lg);
+  padding: 13px 15px;
+  min-width: 0;
+}
+
+.weft-workers-stat-card__label {
+  display: block;
+  font-size: var(--cinder-text-2xs);
+  color: var(--cinder-text-subtle);
+  margin-bottom: 4px;
+}
+
+.weft-workers-stat-card__value {
+  font-size: var(--cinder-text-2xl);
+  font-weight: 600;
+  font-family: var(--cinder-font-mono);
+}
+
+.weft-workers-stat-card__value--warning {
+  color: var(--cinder-color-warning-fg);
+}
+
+.weft-workers-stat-card__value-secondary {
+  color: var(--cinder-text-disabled);
+  font-size: var(--cinder-text-base);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Route shell                                                            */
+/* ---------------------------------------------------------------------- */
+
+.weft-workers-route {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.weft-workers-route__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.weft-workers-route__title {
+  margin: 0;
+  font-size: var(--cinder-text-xl);
+  font-weight: 600;
+}
+
+.weft-workers-route__live {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.weft-workers-route__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-3, 0.75rem);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Fleet overview (T5.1)                                                  */
+/* ---------------------------------------------------------------------- */
+
+.weft-fleet-view {
+  max-width: 72rem;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.weft-fleet-view__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.weft-fleet-view__section-header {
+  font-size: var(--cinder-text-sm);
+  font-weight: 600;
+}
+
+.weft-deployment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.weft-deployment-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  background: var(--cinder-surface-raised);
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-lg);
+  padding: 13px 16px;
+}
+
+.weft-deployment-row__identity {
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+}
+
+.weft-deployment-row__name {
+  font-size: var(--cinder-text-sm);
+  font-weight: 600;
+}
+
+.weft-deployment-row__meta {
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-subtle);
+  font-family: var(--cinder-font-mono);
+}
+
+.weft-deployment-row__count {
+  margin-inline-start: auto;
+  font-size: var(--cinder-text-sm);
+  font-family: var(--cinder-font-mono);
+  color: var(--cinder-text-muted);
+}
+
+.weft-deployment-row__actions {
+  display: flex;
+  gap: 6px;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Worker list / detail (T5.2)                                            */
+/* ---------------------------------------------------------------------- */
+
+.weft-worker-meter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.weft-worker-meter__value {
+  flex: none;
+}
+
+.weft-worker-meter .weft-worker-meter__meter {
+  flex: 1;
+  min-width: 40px;
+}
+
+.weft-heartbeat {
+  font-weight: 500;
+}
+
+.weft-worker-detail {
+  max-width: 56rem;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.weft-worker-detail__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.weft-worker-detail__actions {
+  margin-inline-start: auto;
+}
+
+.weft-worker-detail__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.weft-worker-detail__activities {
+  padding: 12px 15px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.weft-worker-manifest-panel,
+.weft-manifest-diagnostics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-3, 12px);
+  min-width: 0;
+}
+
+.weft-worker-manifest-panel__heading-row,
+.weft-manifest-diagnostics__heading-row {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-2, 8px);
+  flex-wrap: wrap;
+}
+
+.weft-worker-manifest-panel__heading-row h2,
+.weft-manifest-diagnostics__heading-row h2,
+.weft-manifest-diagnostics h3 {
+  margin: 0;
+  font-size: var(--cinder-text-sm);
+  font-weight: 600;
+}
+
+.weft-worker-manifest-panel__identity,
+.weft-worker-manifest-panel__note {
+  padding: 12px 15px;
+}
+
+.weft-worker-manifest-panel__note {
+  margin: 0;
+  color: var(--cinder-text-subtle);
+  font-size: var(--cinder-text-xs);
+}
+
+.weft-worker-manifest-panel__capabilities {
+  margin: 0;
+  padding: 0 15px 12px;
+}
+
+.weft-worker-manifest-panel__capabilities > div {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) minmax(0, 2fr);
+  gap: 12px;
+  padding-block: 6px;
+}
+
+.weft-worker-manifest-panel__capabilities dt {
+  font-weight: 600;
+}
+
+.weft-worker-manifest-panel__capabilities dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.weft-manifest-diagnostics__summary {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text-subtle);
+}
+
+.weft-manifest-diagnostics__note {
+  margin: 0;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text-subtle);
+}
+
+.weft-manifest-comparison-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.weft-manifest-comparison-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-lg);
+  padding: 12px 15px;
+  background: var(--cinder-surface-raised);
+}
+
+.weft-manifest-comparison-row__title,
+.weft-manifest-comparison-row__workers {
+  display: block;
+}
+
+.weft-manifest-comparison-row__title {
+  font-family: var(--cinder-font-mono);
+  font-size: var(--cinder-text-sm);
+  font-weight: 600;
+}
+
+.weft-manifest-comparison-row__workers {
+  color: var(--cinder-text-subtle);
+  font-size: var(--cinder-text-xs);
+}
+
+.weft-manifest-diagnostics__accepted summary {
+  cursor: pointer;
+  font-size: var(--cinder-text-sm);
+  font-weight: 600;
+}
+
+.weft-manifest-diagnostics__accepted ul {
+  padding-inline-start: 1.25rem;
+}
+
+.weft-manifest-diagnostics__accepted li {
+  display: grid;
+  grid-template-columns: minmax(7rem, auto) minmax(0, 1fr);
+  gap: 12px;
+  padding-block: 4px;
+}
+
+.weft-manifest-diagnostics__accepted code {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 480px) {
+  .weft-worker-manifest-panel__capabilities > div,
+  .weft-manifest-diagnostics__accepted li {
+    grid-template-columns: 1fr;
+    gap: 3px;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Task queues (T5.3)                                                     */
+/* ---------------------------------------------------------------------- */
+
+.weft-queue-detail {
+  max-width: 58rem;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.weft-queue-detail__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.weft-queue-detail__name {
+  font-size: var(--cinder-text-lg);
+  font-weight: 600;
+}
+
+.weft-queue-detail__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.weft-queue-detail__no-workers {
+  padding: 15px;
+  margin: 0;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text-subtle);
+}
+
+.weft-dead-letter-panel {
+  flex-direction: column;
+  padding: 14px 16px;
+}
+
+.weft-dead-letter-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+}
+
+.weft-dead-letter-panel__description {
+  margin: 8px 0 11px;
+  font-size: var(--cinder-text-xs);
+}
+
+.weft-dead-letter-panel__empty {
+  margin: 0;
+  font-size: var(--cinder-text-sm);
+}
+
+.weft-dead-letter-panel__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.weft-dead-letter-panel__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.weft-dead-letter-panel__activity {
+  flex: 1;
+  min-width: 80px;
+  font-size: var(--cinder-text-xs);
+}
+
+.weft-queue-workers-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.weft-queue-workers-list__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 15px;
+  border-bottom: 1px solid var(--cinder-border-muted);
+}
+
+.weft-queue-workers-list__row:last-child {
+  border-bottom: 0;
+}
+
+.weft-queue-workers-list__inflight {
+  margin-inline-start: auto;
+  color: var(--cinder-text-subtle);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Diagnostics (T5.4)                                                     */
+/* ---------------------------------------------------------------------- */
+
+.weft-diagnostics-view {
+  max-width: 56rem;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.weft-diagnostic-card__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.weft-diagnostic-card__kind {
+  font-size: var(--cinder-text-sm);
+  font-weight: 600;
+}
+
+.weft-diagnostic-card__meta {
+  margin-inline-start: auto;
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-subtle);
+}
+
+.weft-diagnostic-card__guidance {
+  margin: 0;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text-muted);
+  line-height: 1.55;
+}
+
+.weft-diagnostic-card__evidence {
+  margin: 8px 0 0;
+  padding-inline-start: 18px;
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-subtle);
+}
+
+.weft-diagnostic-card--warning {
+  background: var(--cinder-color-warning-bg);
+  border: 1px solid var(--cinder-color-warning-border);
+  border-radius: var(--cinder-radius-lg);
+  padding: 14px 16px;
+}
+
+.weft-diagnostic-card--danger {
+  background: var(--cinder-color-danger-bg);
+  border: 1px solid var(--cinder-color-danger-border);
+  border-radius: var(--cinder-radius-lg);
+  padding: 14px 16px;
+}
+
+.weft-task-ledger-detail {
+  max-width: 72rem;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.weft-task-ledger-detail__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.weft-task-ledger-detail__header h2,
+.weft-task-ledger-detail__grid h3 {
+  margin: 0;
+}
+
+.weft-task-ledger-detail__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Drain dialog                                                           */
+/* ---------------------------------------------------------------------- */
+
+.weft-drain-dialog__description {
+  margin: 0 0 16px;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text-muted);
+}
+
+.weft-drain-dialog__target {
+  font-family: var(--cinder-font-mono);
+  color: var(--cinder-text);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Dashboard card                                                         */
+/* ---------------------------------------------------------------------- */
+
+.weft-workers-card-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.weft-workers-card__stats {
+  display: flex;
+  gap: 16px;
+  padding: 12px 15px;
+}
+
+.weft-workers-card__diagnostics {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 0 15px 12px;
+}
+
+.weft-workers-card__skeleton {
+  padding: 12px 15px;
+}
+
+.weft-workers-card__error {
+  margin: 0;
+  padding: 12px 15px;
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-color-danger-fg);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Responsive — PROJECT-BRIEF binding rules: no page-level horizontal      */
+/* scroll ever (wide tables scroll inside their own container via         */
+/* Cinder Table's `scrollable`); stat/grid layouts collapse; density       */
+/* stays (operator console, not a marketing site).                        */
+/* ---------------------------------------------------------------------- */
+
+@media (max-width: 47.99rem) {
+  .weft-workers-route__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .weft-fleet-view__stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .weft-deployment-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .weft-deployment-row__count {
+    margin-inline-start: 0;
+  }
+
+  .weft-deployment-row__actions {
+    width: 100%;
+  }
+
+  .weft-worker-detail__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .weft-worker-detail__actions {
+    margin-inline-start: 0;
+    width: 100%;
+  }
+}
+
+@media (max-width: 23.4rem) {
+  .weft-fleet-view__stats {
+    grid-template-columns: 1fr;
+  }
+}

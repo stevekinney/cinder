@@ -146,9 +146,9 @@
     }
 
     root
-      .querySelectorAll<
-        HTMLElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-      >('input, select, textarea, button, fieldset, output, option, optgroup, [name]')
+      .querySelectorAll<HTMLElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>(
+        'input, select, textarea, button, fieldset, output, option, optgroup, [name]',
+      )
       .forEach((element) => {
         element.removeAttribute('name');
       });
@@ -258,7 +258,7 @@
   onfocusout={clearManualResumeRequestAfterFocusLeaves}
   onpointerleave={clearManualResumeRequestAfterPointerLeaves}
 >
-  <!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard users need to focus the viewport to scroll reduced-motion content.) -->
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex (Reduced-motion mode exposes native overflow scrolling, which needs a keyboard focus target.) -->
   <div
     class="cinder-marquee__viewport"
     role="group"

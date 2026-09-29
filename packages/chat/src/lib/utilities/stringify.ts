@@ -37,20 +37,16 @@ export function stringify(value: unknown, indent: number = 2): string {
   try {
     const serializedValue = JSON.stringify(value, null, indent);
     if (serializedValue !== undefined) return serializedValue;
-    return typeof value === 'number' || typeof value === 'boolean' || typeof value === 'symbol'
-      ? String(value)
-      : '[Unserializable value]';
+    return stringifyScalarFallback(value);
   } catch {
-    if (
-      typeof value === 'number' ||
-      typeof value === 'boolean' ||
-      typeof value === 'bigint' ||
-      typeof value === 'symbol'
-    ) {
-      return String(value);
-    }
-    return '[Unserializable value]';
+    return typeof value === 'bigint' ? String(value) : stringifyScalarFallback(value);
   }
+}
+
+function stringifyScalarFallback(value: unknown): string {
+  return typeof value === 'number' || typeof value === 'boolean' || typeof value === 'symbol'
+    ? String(value)
+    : '[Unserializable value]';
 }
 
 /**

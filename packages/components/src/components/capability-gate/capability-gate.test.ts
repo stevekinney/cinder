@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -29,8 +29,12 @@ function actionsSnippet(onPrimary?: () => void) {
     render: () =>
       `<div><button type="button" class="test-primary">Allow access</button><a href="/settings" class="test-fallback">Go to settings</a><button type="button" class="test-dismiss">Dismiss</button></div>`,
     setup(node) {
-      const primary = (node as HTMLElement).querySelector<HTMLButtonElement>('.test-primary');
-      const dismiss = (node as HTMLElement).querySelector<HTMLButtonElement>('.test-dismiss');
+      const primary = requiredInstance(node, HTMLElement).querySelector<HTMLButtonElement>(
+        '.test-primary',
+      );
+      const dismiss = requiredInstance(node, HTMLElement).querySelector<HTMLButtonElement>(
+        '.test-dismiss',
+      );
       primary?.addEventListener('click', () => onPrimary?.());
       dismiss?.addEventListener('click', () => getArgs().dismiss());
     },
@@ -264,7 +268,7 @@ describe('CapabilityGate', () => {
     const dismiss = container.querySelector<HTMLButtonElement>('.test-dismiss');
     dismiss?.focus();
     expect(document.activeElement).toBe(dismiss);
-    await fireEvent.click(dismiss as HTMLButtonElement);
+    await fireEvent.click(requiredInstance(dismiss, HTMLButtonElement));
     // Gate is gone and focus is no longer stranded on the detached button.
     expect(container.querySelector('.cinder-capability-gate')).toBeNull();
     expect(document.activeElement).not.toBe(dismiss);

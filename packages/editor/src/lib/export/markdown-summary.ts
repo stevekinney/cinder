@@ -10,15 +10,10 @@
  * - Clear structure: Direct edits vs comments requiring action
  */
 
-import { computeLineDiff } from '@lostgradient/markdown/diff/line-diff';
 import type { PersistedThread, ReviewState } from '../comments/types.js';
+import { generateChangesSection } from './markdown-summary-changes.js';
 import { normalizeDocument } from './normalize-document.js';
-import {
-  buildSourceLineMapCached,
-  identitySourceLineMap,
-  mapNormalizedLineNumber,
-  type SourceLineMap,
-} from './source-line-map.js';
+import { buildSourceLineMapCached, identitySourceLineMap } from './source-line-map.js';
 import type { MarkdownSummaryOptions, MarkdownSummaryResult } from './types.js';
 
 /**
@@ -56,79 +51,24 @@ export function generateMarkdownSummary(
   } = options;
 
   const sections: string[] = [];
-  let changeCount = 0;
-  let threadCount = 0;
-
-  // Document Changes Section
   const originalContent = state.original ?? '';
   const currentContent = state.content;
-
-  // Normalize both inputs the same way generateUnifiedDiff does, so the two
-  // exports agree about whether an edit happened. Without this,
-  // computeLineDiff runs on raw strings with no CRLF handling and no
-  // front-matter awareness, and can disagree with generateUnifiedDiff about
-  // documents that are semantically identical.
-  //
-  // Deliberately NOT mirroring generateUnifiedDiff's own normalizeInputs:
-  // false branch here, which still folds CRLF to LF even with normalization
-  // "off" — a pre-existing wrinkle in that function, not a contract this new
-  // option needs to inherit. `normalizeInputs: false` promises a raw,
-  // verbatim comparison (see MarkdownSummaryOptions' doc comment); honoring
-  // that for CRLF as well as Markdown canonicalization is what makes the
-  // option's own contract true rather than only true for some formatting
-  // differences and not others.
   const original = normalizeInputs ? normalizeDocument(originalContent) : originalContent;
   const current = normalizeInputs ? normalizeDocument(currentContent) : currentContent;
-
-  if (original !== current) {
-    // `### Lines X-Y` below is computed against `original` -- the
-    // *normalized* document -- but reported to the caller as a line number
-    // in their own `state.original`. Normalization can change the line
-    // count (collapsed blank runs, a dropped front-matter separator, a
-    // folded Setext underline), so map back to source before rendering the
-    // heading (cinder#1324). `normalizeInputs: false` needs no mapping:
-    // `original` above is the caller's own text, so the identity map is
-    // exact.
-    //
-    // `buildSourceLineMapCached`, not the raw builder, for the same reason
-    // `unified-diff.ts` uses it: `ReviewEditor`'s hidden `formSummary` input
-    // is a `$derived` value, so this runs on every content edit whenever
-    // the component has a `name`. Caching by the exact `(source,
-    // normalized)` pair also means this and `generateUnifiedDiff`'s own
-    // `originalLineMap` -- built from the identical `originalContent`/
-    // `original` pair when both hidden inputs derive off the same edit --
-    // share one cached result instead of each rebuilding it independently.
-    const originalLineMap = normalizeInputs
-      ? buildSourceLineMapCached(originalContent.replace(/\r\n?/g, '\n'), original)
-      : identitySourceLineMap(original);
-    const changesSection = generateChangesSection(original, current, contextLines, originalLineMap);
-    if (changesSection.markdown) {
-      sections.push(changesSection.markdown);
-      changeCount = changesSection.changeCount;
-    }
-  }
-
-  // Comment Threads Section - only include threads with visible (non-deleted) comments
-  const visibleThreads = state.threads.filter((thread) => {
-    return thread.comments.some((comment) => !comment.deletedAt);
+  const changeCount = appendChangeSection(
+    sections,
+    originalContent,
+    original,
+    current,
+    normalizeInputs,
+    contextLines,
+  );
+  const threadCount = appendThreadSection(sections, state.threads, {
+    includeTimestamps,
+    includeAuthorIds,
   });
-
-  if (visibleThreads.length > 0) {
-    const threadsSection = generateThreadsSection(visibleThreads, {
-      includeTimestamps,
-      includeAuthorIds,
-    });
-    sections.push(threadsSection.markdown);
-    threadCount = threadsSection.threadCount;
-  }
-
-  // Build final output
-  let markdown: string;
-  if (sections.length === 0) {
-    markdown = 'No changes or feedback to report.';
-  } else {
-    markdown = sections.join('\n');
-  }
+  const markdown =
+    sections.length === 0 ? 'No changes or feedback to report.' : sections.join('\n');
 
   return {
     markdown,
@@ -139,134 +79,54 @@ export function generateMarkdownSummary(
   };
 }
 
-/**
- * Generate the document changes section.
- */
-function generateChangesSection(
+function getVisibleThreads(threads: PersistedThread[]): PersistedThread[] {
+  return threads.filter((thread) => thread.comments.some((comment) => !comment.deletedAt));
+}
+
+function appendChangeSection(
+  sections: string[],
+  originalContent: string,
   original: string,
   current: string,
+  normalizeInputs: boolean,
   contextLines: number,
-  originalLineMap: SourceLineMap,
+): number {
+  const section = buildChangesSection(
+    originalContent,
+    original,
+    current,
+    normalizeInputs,
+    contextLines,
+  );
+  if (!section.markdown) return 0;
+  sections.push(section.markdown);
+  return section.changeCount;
+}
+
+function appendThreadSection(
+  sections: string[],
+  threads: PersistedThread[],
+  options: { includeTimestamps: boolean; includeAuthorIds: boolean },
+): number {
+  const visibleThreads = getVisibleThreads(threads);
+  if (visibleThreads.length === 0) return 0;
+  const section = generateThreadsSection(visibleThreads, options);
+  sections.push(section.markdown);
+  return section.threadCount;
+}
+
+function buildChangesSection(
+  originalContent: string,
+  original: string,
+  current: string,
+  normalizeInputs: boolean,
+  contextLines: number,
 ): { markdown: string; changeCount: number } {
-  const lineDiffs = computeLineDiff(original, current);
-
-  // Find change ranges
-  const changeRanges: { start: number; end: number }[] = [];
-  let currentRange: { start: number; end: number } | null = null;
-
-  for (let i = 0; i < lineDiffs.length; i++) {
-    const diff = lineDiffs[i];
-    if (!diff) continue;
-
-    const isChange = diff.type !== 'same';
-
-    if (isChange) {
-      if (currentRange === null) {
-        currentRange = { start: i, end: i };
-      } else {
-        currentRange.end = i;
-      }
-    } else if (currentRange !== null) {
-      // Check if we should merge with next change (within context distance)
-      const nextChangeIndex = lineDiffs.findIndex((d, idx) => idx > i && d.type !== 'same');
-      if (nextChangeIndex !== -1 && nextChangeIndex - currentRange.end <= contextLines * 2 + 1) {
-        // Continue the current range
-        continue;
-      }
-      changeRanges.push(currentRange);
-      currentRange = null;
-    }
-  }
-
-  if (currentRange !== null) {
-    changeRanges.push(currentRange);
-  }
-
-  if (changeRanges.length === 0) {
-    return { markdown: '', changeCount: 0 };
-  }
-
-  const lines: string[] = ['## Changes Made\n'];
-  lines.push('The following edits were made to the document:\n');
-  let changeCount = 0;
-
-  for (const range of changeRanges) {
-    // Add context before
-    const contextStart = Math.max(0, range.start - contextLines);
-    const contextEnd = Math.min(lineDiffs.length - 1, range.end + contextLines);
-
-    // Calculate the normalized-space original line number (1-based) that
-    // `contextStart` starts at, by counting how many original-side lines
-    // precede it -- same technique `buildHunk` in unified-diff.ts uses.
-    let normalizedOriginalLineNumber = 1;
-
-    for (let i = 0; i < contextStart; i++) {
-      const diff = lineDiffs[i];
-      if (!diff) continue;
-
-      if (diff.type === 'same' || diff.type === 'removed' || diff.type === 'modified') {
-        normalizedOriginalLineNumber++;
-      }
-    }
-
-    const startNormalizedLine = normalizedOriginalLineNumber;
-
-    // Find the *last* original-side line displayed in this range (not just
-    // a count): with a collapsed run inside the display range, "start +
-    // count - 1" arithmetic in normalized-space would still be wrong once
-    // mapped back to source, since normalized-space and source-space counts
-    // can differ within the same range (cinder#1324).
-    let originalLinesInDisplayRange = 0;
-    let endNormalizedLine = startNormalizedLine;
-    let runningNormalizedLine = startNormalizedLine;
-    for (let i = contextStart; i <= contextEnd; i++) {
-      const diff = lineDiffs[i];
-      if (!diff) continue;
-
-      if (diff.type === 'same' || diff.type === 'removed' || diff.type === 'modified') {
-        originalLinesInDisplayRange++;
-        endNormalizedLine = runningNormalizedLine;
-        runningNormalizedLine++;
-      }
-    }
-
-    const startOriginalLine = mapNormalizedLineNumber(originalLineMap, startNormalizedLine);
-    const endOriginalLine =
-      originalLinesInDisplayRange > 0
-        ? mapNormalizedLineNumber(originalLineMap, endNormalizedLine)
-        : startOriginalLine;
-
-    lines.push(`### Lines ${startOriginalLine}-${endOriginalLine}\n`);
-    lines.push('```diff');
-
-    for (let i = contextStart; i <= contextEnd; i++) {
-      const diff = lineDiffs[i];
-      if (!diff) continue;
-
-      switch (diff.type) {
-        case 'same':
-          lines.push(` ${diff.text}`);
-          break;
-        case 'added':
-          lines.push(`+${diff.text}`);
-          changeCount++;
-          break;
-        case 'removed':
-          lines.push(`-${diff.text}`);
-          changeCount++;
-          break;
-        case 'modified':
-          lines.push(`-${diff.oldText}`);
-          lines.push(`+${diff.newText}`);
-          changeCount++;
-          break;
-      }
-    }
-
-    lines.push('```\n');
-  }
-
-  return { markdown: lines.join('\n'), changeCount };
+  if (original === current) return { markdown: '', changeCount: 0 };
+  const lineMap = normalizeInputs
+    ? buildSourceLineMapCached(originalContent.replace(/\r\n?/g, '\n'), original)
+    : identitySourceLineMap(original);
+  return generateChangesSection(original, current, contextLines, lineMap);
 }
 
 /**

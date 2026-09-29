@@ -24,6 +24,7 @@ import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { afterEach, describe, expect, test } from 'bun:test';
+import type { Component } from 'svelte';
 import { compile } from 'svelte/compiler';
 
 import type { VirtualListRowContext } from './virtual-list.types.ts';
@@ -32,15 +33,34 @@ const sourcePath = new URL('./virtual-list.svelte', import.meta.url).pathname;
 
 type EventRow = { id: string; label: string };
 
+function isComponent(value: unknown): value is Component<Record<string, unknown>> {
+  return typeof value === 'function';
+}
+
 const rows: EventRow[] = Array.from({ length: 500 }, (_, index) => ({
   id: `row-${index}`,
   label: `Row ${index}`,
 }));
 
-const originalResizeObserver = globalThis.ResizeObserver;
+const originalDocumentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
+const originalWindowDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'window');
+const originalResizeObserverDescriptor = Object.getOwnPropertyDescriptor(
+  globalThis,
+  'ResizeObserver',
+);
+
+function restoreGlobalProperty(
+  property: 'document' | 'window' | 'ResizeObserver',
+  descriptor: PropertyDescriptor | undefined,
+): void {
+  if (descriptor) Object.defineProperty(globalThis, property, descriptor);
+  else Reflect.deleteProperty(globalThis, property);
+}
 
 afterEach(() => {
-  globalThis.ResizeObserver = originalResizeObserver;
+  restoreGlobalProperty('document', originalDocumentDescriptor);
+  restoreGlobalProperty('window', originalWindowDescriptor);
+  restoreGlobalProperty('ResizeObserver', originalResizeObserverDescriptor);
 });
 
 /**
@@ -85,25 +105,24 @@ async function renderComponentToServerHtml(props: Record<string, unknown>): Prom
       render: () => `<span>${getItem().label}</span>`,
     }));
 
-    const originalDocument = globalThis.document;
-    const originalWindow = globalThis.window;
-    globalThis.document = undefined as unknown as Document;
-    globalThis.window = undefined as unknown as Window & typeof globalThis;
-    globalThis.ResizeObserver = throwingResizeObserver as unknown as typeof ResizeObserver;
+    Object.defineProperty(globalThis, 'document', { configurable: true, value: undefined });
+    Object.defineProperty(globalThis, 'window', { configurable: true, value: undefined });
+    Object.defineProperty(globalThis, 'ResizeObserver', {
+      configurable: true,
+      value: throwingResizeObserver,
+    });
 
     try {
-      const { body } = render(
-        ssrModule.default as import('svelte').Component<Record<string, unknown>>,
-        { props: { ...props, row } },
-      );
+      if (!isComponent(ssrModule.default)) throw new TypeError('Expected compiled component');
+      const { body } = render(ssrModule.default, { props: { ...props, row } });
       return body;
     } finally {
-      globalThis.document = originalDocument;
-      globalThis.window = originalWindow;
-      globalThis.ResizeObserver = originalResizeObserver;
+      restoreGlobalProperty('document', originalDocumentDescriptor);
+      restoreGlobalProperty('window', originalWindowDescriptor);
+      restoreGlobalProperty('ResizeObserver', originalResizeObserverDescriptor);
     }
   } finally {
-    void rm(tempFile, { force: true }).catch(() => {});
+    await rm(tempFile, { force: true });
   }
 }
 
@@ -148,6 +167,26 @@ describe('VirtualList SSR contract', () => {
     });
 
     expect(html).toContain('block-size:20000px');
+  });
+
+  test('renders the windowScroll path without touching window or measuring height', async () => {
+    // windowScroll's own measurement — document offset, window.innerHeight — lives
+    // entirely inside `$effect`s and the window `resize`/`scroll` listeners, none of
+    // which run during SSR (see the module doc comment above). Reaching the
+    // assertions at all, with both `document` and `window` nulled for the render,
+    // proves this prop introduces no server-side `window` access either.
+    const html = await renderComponentToServerHtml({
+      items: rows,
+      itemHeight: 40,
+      windowScroll: true,
+      'aria-label': 'Rows',
+    });
+
+    expect(html).toContain('cinder-virtual-list');
+    expect(html).toContain('data-cinder-window-scroll="true"');
+    // `height` is ignored under this mode, down to the custom property that
+    // would otherwise carry it never being written.
+    expect(html).not.toContain('--cinder-virtual-list-height');
   });
 
   test('emits no measured row heights in dynamic-size mode', async () => {

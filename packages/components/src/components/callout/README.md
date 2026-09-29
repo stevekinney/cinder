@@ -6,7 +6,7 @@ Inline highlight block for tips, warnings, or contextual notes within content fl
 
 ```svelte
 <script lang="ts">
-  import Callout from '@lostgradient/cinder/callout';
+  import { Callout } from '@lostgradient/cinder';
 </script>
 
 <Callout title="Note">
@@ -34,7 +34,6 @@ Inline highlight block for tips, warnings, or contextual notes within content fl
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

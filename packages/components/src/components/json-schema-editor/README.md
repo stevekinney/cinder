@@ -6,8 +6,8 @@ Multi-view editor for authoring JSON Schema documents with form, raw JSON, and d
 
 ```svelte
 <script lang="ts">
-  import JsonSchemaEditor from '@lostgradient/cinder/json-schema-editor';
-  import type { JsonSchemaValue } from '@lostgradient/cinder/json-schema-editor';
+  import { JsonSchemaEditor } from '@lostgradient/cinder';
+  import type { JsonSchemaValue } from '@lostgradient/cinder';
 
   let schema = $state<JsonSchemaValue | string>({ type: 'string' });
 </script>
@@ -76,7 +76,6 @@ Pass `defaultSchema` when the editor should own changes after initialization. Om
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

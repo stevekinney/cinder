@@ -1,57 +1,15 @@
-// @ts-nocheck -- migrated commentary assertions use runtime-verified fixture indexing.
+import { requiredValue } from '@lostgradient/testing';
 import { describe, expect, test } from 'bun:test';
-import type { Comment, CommentAnchor, Thread } from './types.js';
+import type { Thread } from './types.ts';
+import { createTestComment, createTestThread } from './updates-test-fixtures.ts';
 import {
   addComment,
   addThread,
-  deleteComment,
   deleteThread,
   getVisibleComments,
   isCommentVisible,
-  restoreComment,
   updateComment,
-} from './updates.js';
-
-// ============================================================================
-// Test Fixtures
-// ============================================================================
-
-function createTestAnchor(overrides?: Partial<CommentAnchor>): CommentAnchor {
-  return {
-    quote: 'test quote',
-    prefix: 'prefix ',
-    suffix: ' suffix',
-    from: 10,
-    to: 20,
-    status: 'anchored',
-    ...overrides,
-  };
-}
-
-function createTestComment(overrides?: Partial<Comment>): Comment {
-  return {
-    id: 'comment-1',
-    threadId: 'thread-1',
-    authorId: 'user-1',
-    body: 'Test comment',
-    createdAt: '2024-01-01T00:00:00.000Z',
-    ...overrides,
-  };
-}
-
-function createTestThread(overrides?: Partial<Thread>): Thread {
-  return {
-    id: 'thread-1',
-    anchor: createTestAnchor(),
-    comments: [createTestComment()],
-    createdAt: '2024-01-01T00:00:00.000Z',
-    ...overrides,
-  };
-}
-
-// ============================================================================
-// Visibility Helpers
-// ============================================================================
+} from './updates.ts';
 
 describe('isCommentVisible', () => {
   test('returns true for non-deleted comment', () => {
@@ -112,7 +70,7 @@ describe('addThread', () => {
     const newThread = createTestThread({ id: 'thread-2' });
     const result = addThread([existing], newThread);
     expect(result.threads).toHaveLength(2);
-    expect(result.threads[1].id).toBe('thread-2');
+    expect(requiredValue(result.threads[1]).id).toBe('thread-2');
     expect(result.changed).toBe(true);
   });
 
@@ -128,7 +86,7 @@ describe('deleteThread', () => {
     const threads = [createTestThread({ id: 'thread-1' }), createTestThread({ id: 'thread-2' })];
     const result = deleteThread(threads, 'thread-1');
     expect(result.threads).toHaveLength(1);
-    expect(result.threads[0].id).toBe('thread-2');
+    expect(requiredValue(result.threads[0]).id).toBe('thread-2');
     expect(result.changed).toBe(true);
   });
 
@@ -156,8 +114,8 @@ describe('addComment', () => {
     const threads = [createTestThread({ id: 'thread-1', comments: [] })];
     const comment = createTestComment({ id: 'new-comment' });
     const result = addComment(threads, 'thread-1', comment);
-    expect(result.threads[0].comments).toHaveLength(1);
-    expect(result.threads[0].comments[0].id).toBe('new-comment');
+    expect(requiredValue(result.threads[0]).comments).toHaveLength(1);
+    expect(requiredValue(requiredValue(result.threads[0]).comments[0]).id).toBe('new-comment');
     expect(result.changed).toBe(true);
     expect(result.value?.comment).toBe(comment);
   });
@@ -176,9 +134,9 @@ describe('addComment', () => {
     const threads = [createTestThread({ id: 'thread-1', comments: [existingComment] })];
     const newComment = createTestComment({ id: 'new' });
     const result = addComment(threads, 'thread-1', newComment);
-    expect(result.threads[0].comments).toHaveLength(2);
-    expect(result.threads[0].comments[0].id).toBe('existing');
-    expect(result.threads[0].comments[1].id).toBe('new');
+    expect(requiredValue(result.threads[0]).comments).toHaveLength(2);
+    expect(requiredValue(requiredValue(result.threads[0]).comments[0]).id).toBe('existing');
+    expect(requiredValue(requiredValue(result.threads[0]).comments[1]).id).toBe('new');
   });
 });
 
@@ -195,9 +153,11 @@ describe('updateComment', () => {
       mentions: ['alice'],
       editedAt: '2024-01-02T00:00:00.000Z',
     });
-    expect(result.threads[0].comments[0].body).toBe('Updated body');
-    expect(result.threads[0].comments[0].mentions).toEqual(['alice']);
-    expect(result.threads[0].comments[0].editedAt).toBe('2024-01-02T00:00:00.000Z');
+    expect(requiredValue(requiredValue(result.threads[0]).comments[0]).body).toBe('Updated body');
+    expect(requiredValue(requiredValue(result.threads[0]).comments[0]).mentions).toEqual(['alice']);
+    expect(requiredValue(requiredValue(result.threads[0]).comments[0]).editedAt).toBe(
+      '2024-01-02T00:00:00.000Z',
+    );
     expect(result.changed).toBe(true);
   });
 
@@ -236,176 +196,6 @@ describe('updateComment', () => {
   });
 });
 
-describe('deleteComment', () => {
-  describe('soft delete', () => {
-    test('sets deletedAt timestamp', () => {
-      const threads = [
-        createTestThread({
-          id: 'thread-1',
-          comments: [createTestComment({ id: 'comment-1' })],
-        }),
-      ];
-      const result = deleteComment(threads, 'thread-1', 'comment-1', {
-        soft: true,
-        deletedAt: '2024-01-02T00:00:00.000Z',
-      });
-      expect(result.threads[0].comments[0].deletedAt).toBe('2024-01-02T00:00:00.000Z');
-      expect(result.threads[0].comments).toHaveLength(1);
-      expect(result.changed).toBe(true);
-    });
-
-    test('returns unchanged when already deleted', () => {
-      const threads = [
-        createTestThread({
-          id: 'thread-1',
-          comments: [createTestComment({ id: 'comment-1', deletedAt: '2024-01-02T00:00:00.000Z' })],
-        }),
-      ];
-      const result = deleteComment(threads, 'thread-1', 'comment-1', {
-        soft: true,
-        deletedAt: '2024-01-03T00:00:00.000Z',
-      });
-      expect(result.changed).toBe(false);
-    });
-
-    // Regression: CommentDeleteEvent is `{ threadId, commentId, soft }` — no
-    // deletedAt — so the obvious consumer wiring omits it. deleteComment used to
-    // bail in that case, silently no-opping the primary deletion path while
-    // ReviewEditor had already announced "Comment deleted" to screen readers.
-    test('stamps the current time when a soft delete omits deletedAt', () => {
-      const threads = [
-        createTestThread({
-          id: 'thread-1',
-          comments: [createTestComment({ id: 'comment-1' })],
-        }),
-      ];
-      const before = Date.now();
-      const result = deleteComment(threads, 'thread-1', 'comment-1', { soft: true });
-      const after = Date.now();
-
-      expect(result.changed).toBe(true);
-      const { deletedAt } = result.threads[0].comments[0];
-      expect(typeof deletedAt).toBe('string');
-      // Stamped by the reducer, so assert it is a real ISO instant from this moment.
-      expect(deletedAt).toBe(new Date(deletedAt as string).toISOString());
-      const stamped = Date.parse(deletedAt as string);
-      expect(stamped).toBeGreaterThanOrEqual(before);
-      expect(stamped).toBeLessThanOrEqual(after);
-
-      // The comment stays in the array but drops out of the visible set.
-      expect(result.threads[0].comments).toHaveLength(1);
-      expect(getVisibleComments(result.threads[0])).toHaveLength(0);
-    });
-
-    test('an explicit deletedAt still wins over the stamped default', () => {
-      const threads = [
-        createTestThread({
-          id: 'thread-1',
-          comments: [createTestComment({ id: 'comment-1' })],
-        }),
-      ];
-      const result = deleteComment(threads, 'thread-1', 'comment-1', {
-        soft: true,
-        deletedAt: '2020-01-01T00:00:00.000Z',
-      });
-      expect(result.threads[0].comments[0].deletedAt).toBe('2020-01-01T00:00:00.000Z');
-    });
-
-    test('still returns unchanged for an already-deleted comment when deletedAt is omitted', () => {
-      const threads = [
-        createTestThread({
-          id: 'thread-1',
-          comments: [createTestComment({ id: 'comment-1', deletedAt: '2024-01-02T00:00:00.000Z' })],
-        }),
-      ];
-      const result = deleteComment(threads, 'thread-1', 'comment-1', { soft: true });
-      expect(result.changed).toBe(false);
-      expect(result.threads).toBe(threads);
-      expect(result.threads[0].comments[0].deletedAt).toBe('2024-01-02T00:00:00.000Z');
-    });
-  });
-
-  describe('hard delete', () => {
-    test('removes comment from array', () => {
-      const threads = [
-        createTestThread({
-          id: 'thread-1',
-          comments: [createTestComment({ id: 'c1' }), createTestComment({ id: 'c2' })],
-        }),
-      ];
-      const result = deleteComment(threads, 'thread-1', 'c1', { soft: false });
-      expect(result.threads[0].comments).toHaveLength(1);
-      expect(result.threads[0].comments[0].id).toBe('c2');
-      expect(result.changed).toBe(true);
-    });
-
-    test('can hard delete already soft-deleted comment', () => {
-      const threads = [
-        createTestThread({
-          id: 'thread-1',
-          comments: [createTestComment({ id: 'comment-1', deletedAt: '2024-01-02T00:00:00.000Z' })],
-        }),
-      ];
-      const result = deleteComment(threads, 'thread-1', 'comment-1', { soft: false });
-      expect(result.threads[0].comments).toHaveLength(0);
-      expect(result.changed).toBe(true);
-    });
-  });
-
-  test('returns unchanged when thread not found', () => {
-    const threads = [createTestThread({ id: 'thread-1' })];
-    const result = deleteComment(threads, 'nonexistent', 'comment-1', { soft: true });
-    expect(result.changed).toBe(false);
-  });
-
-  test('returns unchanged when comment not found', () => {
-    const threads = [createTestThread({ id: 'thread-1' })];
-    const result = deleteComment(threads, 'thread-1', 'nonexistent', { soft: true });
-    expect(result.changed).toBe(false);
-  });
-});
-
-describe('restoreComment', () => {
-  test('removes deletedAt from soft-deleted comment', () => {
-    const threads = [
-      createTestThread({
-        id: 'thread-1',
-        comments: [createTestComment({ id: 'comment-1', deletedAt: '2024-01-02T00:00:00.000Z' })],
-      }),
-    ];
-    const result = restoreComment(threads, 'thread-1', 'comment-1');
-    expect(result.threads[0].comments[0].deletedAt).toBeUndefined();
-    expect(result.changed).toBe(true);
-  });
-
-  test('returns unchanged when comment is not deleted', () => {
-    const threads = [
-      createTestThread({
-        id: 'thread-1',
-        comments: [createTestComment({ id: 'comment-1' })],
-      }),
-    ];
-    const result = restoreComment(threads, 'thread-1', 'comment-1');
-    expect(result.changed).toBe(false);
-  });
-
-  test('returns unchanged when thread not found', () => {
-    const threads = [createTestThread({ id: 'thread-1' })];
-    const result = restoreComment(threads, 'nonexistent', 'comment-1');
-    expect(result.changed).toBe(false);
-  });
-
-  test('returns unchanged when comment not found', () => {
-    const threads = [createTestThread({ id: 'thread-1' })];
-    const result = restoreComment(threads, 'thread-1', 'nonexistent');
-    expect(result.changed).toBe(false);
-  });
-});
-
-// ============================================================================
-// Immutability Checks
-// ============================================================================
-
 describe('immutability', () => {
   test('addThread returns new array', () => {
     const original: Thread[] = [];
@@ -423,7 +213,7 @@ describe('immutability', () => {
     const original = [createTestThread({ id: 'thread-1', comments: [] })];
     const result = addComment(original, 'thread-1', createTestComment());
     expect(result.threads[0]).not.toBe(original[0]);
-    expect(result.threads[0].comments).not.toBe(original[0].comments);
+    expect(requiredValue(result.threads[0]).comments).not.toBe(requiredValue(original[0]).comments);
   });
 
   test('updateComment returns new comment object', () => {
@@ -437,6 +227,8 @@ describe('immutability', () => {
       body: 'Updated',
       editedAt: '2024-01-02T00:00:00.000Z',
     });
-    expect(result.threads[0].comments[0]).not.toBe(original[0].comments[0]);
+    expect(requiredValue(result.threads[0]).comments[0]).not.toBe(
+      requiredValue(original[0]).comments[0],
+    );
   });
 });

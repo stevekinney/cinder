@@ -58,6 +58,11 @@ const schema = {
       type: 'string',
       description: 'Extra class names merged with `.cinder-slider`.',
     },
+    headerVisible: {
+      type: 'boolean',
+      description:
+        "Whether the header row renders the visible label span. Default `true`.\nHides only the label — the visible value text always stays, with no\nlayout gap left behind — and never affects the thumbs' accessible\nnames, which come from `label` regardless.\n\nThis composes with, rather than replaces, the automatic label\nsuppression a Slider already performs inside `<FormField>` (the field\nowns the label there via `aria-labelledby`, so Slider's own label span\nis omitted independent of this prop). Setting `headerVisible={false}`\ninside a FormField is a no-op for the label — it's already hidden —\nbut still governs the value span the same way it does standalone.",
+    },
     mode: {
       enum: ['single', 'range'],
       description:
@@ -68,6 +73,12 @@ const schema = {
   required: ['label'],
   metadata: {
     unsupportedProps: [
+      {
+        name: 'displayValue',
+        reason: 'function-or-snippet',
+        description:
+          'Formats the visible value text shown in the header. Replaces only the\nvalue display — the `valueText` ARIA formatter is untouched. Absent a\nformatter, the value renders with the current unit-based formatting.',
+      },
       {
         name: 'onValueChange',
         reason: 'function-or-snippet',

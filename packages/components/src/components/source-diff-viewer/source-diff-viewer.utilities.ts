@@ -3,9 +3,11 @@ import {
   isGitBinaryNoticeMetadata,
 } from './source-diff-viewer.binary-notice.ts';
 import { createParsedGitFile } from './source-diff-viewer.git-header-parser.ts';
+import { getSourceDiffFileLabel } from './source-diff-viewer.labels.ts';
 import { parseGitFileSidePath } from './source-diff-viewer.path-normalization.ts';
 import type {
   SourceDiffFile,
+  SourceDiffFileDescriptor,
   SourceDiffHunk,
   SourceDiffLine,
   SourceDiffLineKind,
@@ -23,6 +25,29 @@ type HunkLineResult = {
   lineWasRendered: boolean;
 };
 
+/**
+ * Total addition/removal rows recognized per file, indexed by `fileOccurrence`,
+ * counted regardless of `maxLines` rendering. Threaded through the hunk-line
+ * readers so descriptors can report a file's true changed-line count even when
+ * every one of its rows was cut by the display cap.
+ */
+type ChangedLineCounts = number[];
+
+/**
+ * Assigns `fileOccurrence` in patch-encounter order, independent of `maxLines`
+ * rendering. Mutated by reference so occurrence numbers stay stable whether or
+ * not a given file's content survives the display cap (see the standalone
+ * recursive-diff-metadata branch, which can recognize a file without ever
+ * pushing it into the working `files` array).
+ */
+type FileOccurrenceCounter = { next: number };
+
+function nextFileOccurrence(counter: FileOccurrenceCounter): number {
+  const value = counter.next;
+  counter.next += 1;
+  return value;
+}
+
 const DEFAULT_MAX_LINES = 1000;
 const HUNK_HEADER_PATTERN = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 
@@ -33,20 +58,82 @@ function createFile(header: string | null = null): SourceDiffFile {
     header,
     metadata: [],
     hunks: [],
+    fileOccurrence: 0,
   };
 }
 
-function startFile(files: SourceDiffFile[], header: string | null = null): SourceDiffFile {
+function startFile(
+  files: SourceDiffFile[],
+  counter: FileOccurrenceCounter,
+  header: string | null = null,
+): SourceDiffFile {
   const file = createFile(header);
+  file.fileOccurrence = nextFileOccurrence(counter);
   files.push(file);
   return file;
 }
 
-function ensureFile(files: SourceDiffFile[], header: string | null = null): SourceDiffFile {
-  return files[files.length - 1] ?? startFile(files, header);
+function pushGitFile(
+  files: SourceDiffFile[],
+  counter: FileOccurrenceCounter,
+  rawLine: string,
+): SourceDiffFile {
+  const file = createParsedGitFile(rawLine);
+  file.fileOccurrence = nextFileOccurrence(counter);
+  files.push(file);
+  return file;
 }
 
-function ensureFileForOldHeader(files: SourceDiffFile[]): SourceDiffFile {
+function bumpChangedLineCount(counts: ChangedLineCounts, fileOccurrence: number): void {
+  counts[fileOccurrence] = (counts[fileOccurrence] ?? 0) + 1;
+}
+
+function buildFileDescriptors(
+  files: SourceDiffFile[],
+  changedLineCounts: ChangedLineCounts,
+): SourceDiffFileDescriptor[] {
+  return files.map((file) => ({
+    fileOccurrence: file.fileOccurrence,
+    oldPath: file.oldPath,
+    newPath: file.newPath,
+    header: file.header,
+    label: getSourceDiffFileLabel(file),
+    hunkCount: file.hunks.length,
+    changedLineCount: changedLineCounts[file.fileOccurrence] ?? 0,
+    fullyTruncated: !fileHasRenderedContent(file),
+  }));
+}
+
+/** Builds the descriptor for a standalone recursive-diff-metadata entry that
+ * was recognized but never pushed into `files` because it fell past `maxLines`. */
+function createUnrenderedStandaloneDescriptor(
+  header: string,
+  fileOccurrence: number,
+): SourceDiffFileDescriptor {
+  return {
+    fileOccurrence,
+    oldPath: null,
+    newPath: null,
+    header,
+    label: header,
+    hunkCount: 0,
+    changedLineCount: 0,
+    fullyTruncated: true,
+  };
+}
+
+function ensureFile(
+  files: SourceDiffFile[],
+  counter: FileOccurrenceCounter,
+  header: string | null = null,
+): SourceDiffFile {
+  return files[files.length - 1] ?? startFile(files, counter, header);
+}
+
+function ensureFileForOldHeader(
+  files: SourceDiffFile[],
+  counter: FileOccurrenceCounter,
+): SourceDiffFile {
   const current = files[files.length - 1];
   if (
     current &&
@@ -57,7 +144,7 @@ function ensureFileForOldHeader(files: SourceDiffFile[]): SourceDiffFile {
     return current;
   }
 
-  return startFile(files);
+  return startFile(files, counter);
 }
 
 function hunkHasRenderedContent(hunk: SourceDiffHunk): boolean {
@@ -137,14 +224,15 @@ function createHunkMetadataLine(
 
 function pushMetadata(
   files: SourceDiffFile[],
+  counter: FileOccurrenceCounter,
   rawLine: string,
   renderedLineCount: number,
   maxLines: number,
 ): { renderedLineCount: number; lineWasRendered: boolean } {
-  applyFileMetadata(ensureFile(files), rawLine);
+  applyFileMetadata(ensureFile(files, counter), rawLine);
 
   if (renderedLineCount < maxLines) {
-    ensureFile(files).metadata.push(rawLine);
+    ensureFile(files, counter).metadata.push(rawLine);
     return { renderedLineCount: renderedLineCount + 1, lineWasRendered: true };
   }
 
@@ -177,8 +265,13 @@ function readHunkLine(
   renderedLineCount: number,
   maxLines: number,
   previousHunkDiffLineWasRendered: boolean,
+  changedLineCounts: ChangedLineCounts,
+  fileOccurrence: number,
 ): HunkLineResult {
   const line = readRawHunkLine(rawLine, cursor);
+  if (line && (line.kind === 'addition' || line.kind === 'removal')) {
+    bumpChangedLineCount(changedLineCounts, fileOccurrence);
+  }
   if (!line) {
     const shouldPreserveMetadata = previousHunkDiffLineWasRendered || hunk.lines.length === 0;
     if (shouldPreserveMetadata && renderedLineCount < maxLines) {
@@ -227,6 +320,7 @@ function createEmptyParseResult(): SourceDiffParseResult {
     totalLineCount: 0,
     renderedLineCount: 0,
     truncated: false,
+    descriptors: [],
   };
 }
 
@@ -245,6 +339,7 @@ function createHunk(header: string): { hunk: SourceDiffHunk; cursor: HunkCursor 
       newStart,
       newCount,
       lines: [],
+      hunkOccurrence: 0,
     },
     cursor: {
       oldLineNumber: oldStart,
@@ -328,6 +423,9 @@ export function parseUnifiedPatch(
   options: { maxLines?: number } = {},
 ): SourceDiffParseResult {
   const files: SourceDiffFile[] = [];
+  const changedLineCounts: ChangedLineCounts = [];
+  const unrenderedStandaloneDescriptors: SourceDiffFileDescriptor[] = [];
+  const fileOccurrenceCounter: FileOccurrenceCounter = { next: 0 };
   const maxLines = positiveInteger(options.maxLines);
   let currentHunk: SourceDiffHunk | null = null;
   let currentCursor: HunkCursor | null = null;
@@ -360,7 +458,7 @@ export function parseUnifiedPatch(
     if (line === '' && files.length === 0) continue;
 
     if (line.startsWith('diff --git ')) {
-      files.push(createParsedGitFile(line));
+      pushGitFile(files, fileOccurrenceCounter, line);
       currentHunk = null;
       currentCursor = null;
       previousHunkDiffLineWasRendered = false;
@@ -368,7 +466,7 @@ export function parseUnifiedPatch(
     }
 
     if (line.startsWith('diff ')) {
-      startFile(files, line);
+      startFile(files, fileOccurrenceCounter, line);
       currentHunk = null;
       currentCursor = null;
       previousHunkDiffLineWasRendered = false;
@@ -390,9 +488,16 @@ export function parseUnifiedPatch(
       !shouldKeepAsGitMetadata
     ) {
       totalLineCount += 1;
+      const standaloneOccurrence = nextFileOccurrence(fileOccurrenceCounter);
       if (renderedLineCount < maxLines) {
-        startFile(files, line);
+        const file = createFile(line);
+        file.fileOccurrence = standaloneOccurrence;
+        files.push(file);
         renderedLineCount += 1;
+      } else {
+        unrenderedStandaloneDescriptors.push(
+          createUnrenderedStandaloneDescriptor(line, standaloneOccurrence),
+        );
       }
       currentHunk = null;
       currentCursor = null;
@@ -420,6 +525,8 @@ export function parseUnifiedPatch(
         renderedLineCount,
         maxLines,
         previousHunkDiffLineWasRendered,
+        changedLineCounts,
+        files[files.length - 1]?.fileOccurrence ?? files.length - 1,
       );
       renderedLineCount = result.renderedLineCount;
       if (result.lineWasRead) {
@@ -441,6 +548,8 @@ export function parseUnifiedPatch(
         renderedLineCount,
         maxLines,
         previousHunkDiffLineWasRendered,
+        changedLineCounts,
+        files[files.length - 1]?.fileOccurrence ?? files.length - 1,
       );
       renderedLineCount = result.renderedLineCount;
       if (result.lineWasRead) {
@@ -459,7 +568,7 @@ export function parseUnifiedPatch(
         nextNextNextNextLine,
       )
     ) {
-      startFile(files, line);
+      startFile(files, fileOccurrenceCounter, line);
       currentHunk = null;
       currentCursor = null;
       previousHunkDiffLineWasRendered = false;
@@ -467,7 +576,7 @@ export function parseUnifiedPatch(
     }
 
     if (line.startsWith('--- ')) {
-      const file = ensureFileForOldHeader(files);
+      const file = ensureFileForOldHeader(files, fileOccurrenceCounter);
       file.oldPath = parseGitFileSidePath(file, line.slice(4), file.oldPath);
       currentHunk = null;
       currentCursor = null;
@@ -476,7 +585,7 @@ export function parseUnifiedPatch(
     }
 
     if (line.startsWith('+++ ')) {
-      const file = ensureFile(files);
+      const file = ensureFile(files, fileOccurrenceCounter);
       file.newPath = parseGitFileSidePath(file, line.slice(4), file.newPath);
       currentHunk = null;
       currentCursor = null;
@@ -485,8 +594,9 @@ export function parseUnifiedPatch(
     }
 
     if (line.startsWith('@@ ')) {
-      const file = ensureFile(files);
+      const file = ensureFile(files, fileOccurrenceCounter);
       const { hunk, cursor } = createHunk(line);
+      hunk.hunkOccurrence = file.hunks.length;
       file.hunks.push(hunk);
       currentHunk = hunk;
       currentCursor = cursor;
@@ -510,7 +620,7 @@ export function parseUnifiedPatch(
     }
 
     if (!currentHunk || !currentCursor) {
-      const result = pushMetadata(files, line, renderedLineCount, maxLines);
+      const result = pushMetadata(files, fileOccurrenceCounter, line, renderedLineCount, maxLines);
       renderedLineCount = result.renderedLineCount;
       totalLineCount += 1;
       continue;
@@ -523,6 +633,8 @@ export function parseUnifiedPatch(
       renderedLineCount,
       maxLines,
       previousHunkDiffLineWasRendered,
+      changedLineCounts,
+      files[files.length - 1]?.fileOccurrence ?? files.length - 1,
     );
     renderedLineCount = result.renderedLineCount;
     if (result.lineWasRead) {
@@ -533,10 +645,16 @@ export function parseUnifiedPatch(
 
   if (files.length === 0 && totalLineCount === 0) return createEmptyParseResult();
 
+  const descriptors = [
+    ...buildFileDescriptors(files, changedLineCounts),
+    ...unrenderedStandaloneDescriptors,
+  ].sort((a, b) => a.fileOccurrence - b.fileOccurrence);
+
   return {
     files: pruneFiles(files),
     totalLineCount,
     renderedLineCount,
     truncated: renderedLineCount < totalLineCount,
+    descriptors,
   };
 }

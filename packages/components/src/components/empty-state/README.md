@@ -6,8 +6,8 @@ Placeholder layout for zero-data views, with optional illustration, heading, and
 
 ```svelte
 <script lang="ts">
-  import Button from '@lostgradient/cinder/button';
-  import EmptyState from '@lostgradient/cinder/empty-state';
+  import { Button } from '@lostgradient/cinder';
+  import { EmptyState } from '@lostgradient/cinder';
 </script>
 
 <EmptyState title="No results found" description="Try adjusting your filters or search query.">
@@ -37,7 +37,6 @@ Placeholder layout for zero-data views, with optional illustration, heading, and
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

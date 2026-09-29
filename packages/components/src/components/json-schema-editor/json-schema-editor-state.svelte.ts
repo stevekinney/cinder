@@ -567,7 +567,7 @@ export function createEditorState(options: CreateEditorStateOptions) {
       const value = parsed.value;
       if (typeof value !== 'boolean' && !isPlainRecord(value)) return false;
 
-      const schema = value as JsonSchemaValue;
+      const schema = value;
       const draft = detectActiveDraft(schema);
 
       // Clear the previous compile result before announcing 'pending' — its

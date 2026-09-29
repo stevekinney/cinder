@@ -1,3 +1,4 @@
+import { stripPositions } from './strip-positions.js';
 /**
  * Unit tests for AST utility functions.
  *
@@ -12,7 +13,6 @@ import {
   diffAsts,
   normalize,
   roundTrip,
-  stripPositions,
   validatePositions,
 } from './ast.js';
 import { parseOrThrow } from './parser.js';
@@ -31,8 +31,8 @@ describe('astEquals', () => {
     const ast2 = parseOrThrow('\n\n# Hello'); // Newlines create different positions
 
     // Verify positions are actually different
-    expect(ast1.children[0].position?.start.line).toBe(1);
-    expect(ast2.children[0].position?.start.line).toBe(3);
+    expect(ast1.children[0]!.position?.start.line).toBe(1);
+    expect(ast2.children[0]!.position?.start.line).toBe(3);
 
     // astEquals should return true because it ignores position data
     expect(astEquals(ast1, ast2)).toBe(true);
@@ -59,12 +59,12 @@ describe('stripPositions', () => {
 
     // Original has positions
     expect(ast.position).toBeDefined();
-    expect(ast.children[0].position).toBeDefined();
+    expect(ast.children[0]!.position).toBeDefined();
 
     // Stripped does not
     const stripped = stripPositions(ast);
     expect(stripped.position).toBeUndefined();
-    expect(stripped.children[0].position).toBeUndefined();
+    expect(stripped.children[0]!.position).toBeUndefined();
   });
 
   it('preserves all other properties', () => {
@@ -72,12 +72,12 @@ describe('stripPositions', () => {
     const stripped = stripPositions(ast);
 
     expect(stripped.type).toBe('root');
-    expect(stripped.children[0].type).toBe('heading');
+    expect(stripped.children[0]!.type).toBe('heading');
 
-    const heading = stripped.children[0];
+    const heading = stripped.children[0]!;
     if (heading.type === 'heading') {
       expect(heading.depth).toBe(1);
-      expect(heading.children[0].type).toBe('text');
+      expect(heading.children[0]!.type).toBe('text');
     }
   });
 
@@ -243,13 +243,13 @@ describe('position preservation', () => {
     const markdown = '# Hello';
     const ast = parseOrThrow(markdown);
 
-    expect(ast.children[0].position?.start).toEqual({
+    expect(ast.children[0]!.position?.start).toEqual({
       line: 1,
       column: 1,
       offset: 0,
     });
 
-    expect(ast.children[0].position?.end).toEqual({
+    expect(ast.children[0]!.position?.end).toEqual({
       line: 1,
       column: 8,
       offset: 7,
@@ -261,10 +261,10 @@ describe('position preservation', () => {
     const ast = parseOrThrow(markdown);
 
     // First paragraph
-    expect(ast.children[0].position?.start.line).toBe(1);
+    expect(ast.children[0]!.position?.start.line).toBe(1);
 
     // Second paragraph
-    expect(ast.children[1].position?.start.line).toBe(3);
+    expect(ast.children[1]!.position?.start.line).toBe(3);
   });
 });
 

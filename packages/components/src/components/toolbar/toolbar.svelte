@@ -21,7 +21,7 @@
 
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
-  import { getFocusableIndex, handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
+  import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
   import { useMutationObserver } from '../../utilities/use-mutation-observer.svelte.ts';
   import type { ToolbarProps } from './toolbar.types.ts';
 
@@ -156,7 +156,16 @@
     return firstLegend ? !firstLegend.contains(element) : true;
   }
 
-  function isEligibleToolbarItem(
+  function isDisabledToolbarItem(element: HTMLElement): boolean {
+    if (element.hasAttribute('disabled')) return true;
+    if (element.getAttribute('aria-disabled') === 'true') return true;
+    if ('disabled' in element && typeof (element as HTMLButtonElement).disabled === 'boolean') {
+      if ((element as HTMLButtonElement).disabled) return true;
+    }
+    return isDisabledByFieldset(element);
+  }
+
+  function isToolbarItemCandidate(
     element: HTMLElement,
     hiddenCache: Map<Element, boolean> = new Map(),
   ): boolean {
@@ -165,14 +174,9 @@
     if (isHiddenInput(element)) return false;
     if (element.hasAttribute('hidden')) return false;
     if (element.getAttribute('aria-hidden') === 'true') return false;
-    if (element.getAttribute('aria-disabled') === 'true') return false;
-    if ('disabled' in element && typeof (element as HTMLButtonElement).disabled === 'boolean') {
-      if ((element as HTMLButtonElement).disabled) return false;
-    }
-    if (element.closest('[hidden],[aria-hidden=\"true\"],[data-cinder-toolbar-exclude]'))
+    if (element.closest('[hidden],[aria-hidden="true"],[data-cinder-toolbar-exclude]'))
       return false;
     if (element.closest('[inert]')) return false;
-    if (isDisabledByFieldset(element)) return false;
     if (isCssHidden(element, hiddenCache)) return false;
     const authoredTabIndex = element.getAttribute('tabindex');
     if (
@@ -189,16 +193,16 @@
     if (!rootElement) return [];
     const hiddenCache = new Map<Element, boolean>();
     return Array.from(rootElement.querySelectorAll<HTMLElement>(focusableSelector)).filter(
-      (element) => isEligibleToolbarItem(element, hiddenCache),
+      (element) => isToolbarItemCandidate(element, hiddenCache),
     );
   }
 
   function getActiveIndex(items: HTMLElement[], preferredItem: HTMLElement | null): number {
     if (preferredItem) {
       const preferredIndex = items.indexOf(preferredItem);
-      if (preferredIndex >= 0) return preferredIndex;
+      if (preferredIndex >= 0 && !isDisabledToolbarItem(preferredItem)) return preferredIndex;
     }
-    return getFocusableIndex(-1, items.length);
+    return items.findIndex((item) => !isDisabledToolbarItem(item));
   }
 
   function restoreDepartedItems(nextItems: HTMLElement[]): void {
@@ -260,12 +264,19 @@
     if (!isEditableTarget(target)) return false;
     const currentIndex = getCurrentToolbarIndex(target);
     if (currentIndex < 0) return false;
-    const nextIndex =
-      currentIndex < toolbarItems.length - 1
-        ? currentIndex + 1
-        : currentIndex > 0
-          ? currentIndex - 1
-          : -1;
+    const forwardIndex = toolbarItems.findIndex(
+      (item, index) => index > currentIndex && !isDisabledToolbarItem(item),
+    );
+    let nextIndex = forwardIndex;
+    if (nextIndex < 0) {
+      for (let index = currentIndex - 1; index >= 0; index -= 1) {
+        const item = toolbarItems[index];
+        if (item && !isDisabledToolbarItem(item)) {
+          nextIndex = index;
+          break;
+        }
+      }
+    }
     if (nextIndex < 0) return false;
     moveFocus(nextIndex, nextIndex > currentIndex ? 'start' : 'end');
     return true;
@@ -320,6 +331,10 @@
     const nextIndex = handleRovingKeydown(event, currentIndex, toolbarItems.length, {
       horizontal,
       vertical: !horizontal,
+      isDisabled: (index) => {
+        const item = toolbarItems[index];
+        return item === undefined || isDisabledToolbarItem(item);
+      },
     });
     if (nextIndex === null || nextIndex === currentIndex) return;
 
@@ -335,7 +350,7 @@
     consumerOnFocusIn?.(event as FocusEvent & { currentTarget: EventTarget & HTMLDivElement });
     if (!isHTMLElement(event.target)) return;
     const target = event.target.closest<HTMLElement>(focusableSelector);
-    if (!target || !isEligibleToolbarItem(target)) return;
+    if (!target || !isToolbarItemCandidate(target) || isDisabledToolbarItem(target)) return;
     syncToolbarItems(target);
   }
 

@@ -9,8 +9,10 @@
    * @tag spreadsheet
    * @useWhen Rendering interactive tabular data that will need grid behavior such as selection, virtualization, resizing, or editing.
    * @useWhen You need role=grid semantics instead of native table semantics.
+   * @useWhen You need inline cell editing backed by Cinder's own Input, with commit/cancel keyboard behavior handled for you.
+   * @useWhen You need opt-in pointer- and keyboard-driven column resizing or reordering (`resizableColumns` / `reorderableColumns`).
+   * @useWhen You need opt-in toolbar search/zoom controls, or `zoom` scaling row/header height, column width, and text.
    * @avoidWhen You only need a semantic read-only table — use DataTable or the Table family instead.
-   * @avoidWhen You need resize handles, drag-to-reorder controls, or editing today — DataGrid does not provide them yet.
    * @related data-table, table
    */
   export type {
@@ -20,6 +22,7 @@
     DataGridColumnPinning,
     DataGridColumnSizing,
     DataGridDensity,
+    DataGridEditType,
     DataGridProps,
     DataGridSelectionMode,
     DataGridSelectionModel,
@@ -28,22 +31,61 @@
     DataGridSortModel,
     DataGridSortModelItem,
   } from './data-grid.types.ts';
+  export { parseDelimitedText, resolveDelimitedTextColumnKeys } from './parse-delimited-text.ts';
+  export type {
+    DelimitedTextRow,
+    ParseDelimitedTextOptions,
+    ParsedDelimitedText,
+  } from './parse-delimited-text.ts';
 </script>
 
 <script lang="ts" generics="TRow">
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
 
+  import ChevronLeft from 'lucide-svelte/icons/chevron-left';
+  import ChevronRight from 'lucide-svelte/icons/chevron-right';
+  import ZoomIn from 'lucide-svelte/icons/zoom-in';
+  import ZoomOut from 'lucide-svelte/icons/zoom-out';
   import { classNames } from '../../utilities/class-names.ts';
   import { copyToClipboard } from '../../utilities/clipboard.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
+  import Button from '../button/button.svelte';
+  import Input from '../input/input.svelte';
+  import SearchField from '../search-field/search-field.svelte';
+  import Toolbar from '../toolbar/toolbar.svelte';
+  import ToolbarGroup from '../toolbar/toolbar-group.svelte';
+  import ToolbarSpacer from '../toolbar/toolbar-spacer.svelte';
   import {
     DataGridColumnModel,
     getDataGridColumnValue,
     type ResolvedDataGridColumn,
   } from './_internal/column-model.svelte.ts';
-  import type { DataGridCellCoordinate } from './_internal/geometry.ts';
-  import { dataGridKeyToAction } from './_internal/keyboard-model.ts';
+  import {
+    DataGridEditModel,
+    resolveDataGridEditCommitValue,
+    resolveDataGridEditType,
+    type DataGridEditCellIdentity,
+  } from './_internal/edit-model.svelte.ts';
+  import { getCellCoordinateKey, type DataGridCellCoordinate } from './_internal/geometry.ts';
+  import {
+    getKeyboardResizedColumnWidth,
+    getPointerResizedColumnWidth,
+    moveColumnKeyWithinPinGroup,
+    reorderColumnKeyBeforeOrAfter,
+  } from './_internal/column-interaction-model.ts';
+  import {
+    dataGridKeyToAction,
+    getAdjacentCellIndex,
+    isPrintableCharacterKeydown,
+  } from './_internal/keyboard-model.ts';
+  import {
+    formatDataGridSearchStatus,
+    getDataGridSearchMatchKey,
+    getDataGridSearchMatches,
+    getNextDataGridSearchMatchIndex,
+    type DataGridSearchMatch,
+  } from './_internal/search-model.ts';
   import { DataGridSelectionModel as InternalDataGridSelectionModel } from './_internal/selection-model.svelte.ts';
   import {
     getActiveDataGridSortModel,
@@ -52,6 +94,8 @@
   } from './_internal/sort-model.ts';
   import { DataGridVirtualizationAdapter } from './_internal/virtualization-adapter.svelte.ts';
   import type {
+    DataGridColumnPin,
+    DataGridColumnSizing,
     DataGridProps,
     DataGridSelectionModel,
     DataGridSortModelItem,
@@ -69,6 +113,10 @@
   ].join(',');
 
   const defaultVirtualRowHeight = 44;
+  const minZoomPercent = 50;
+  const maxZoomPercent = 200;
+  const defaultZoomPercent = 100;
+  const zoomStepPercent = 10;
 
   let {
     rows,
@@ -79,29 +127,84 @@
     virtualizeRows = false,
     virtualizeColumns = false,
     rowHeight,
-    columnOrder,
-    columnSizing,
+    resizableColumns = false,
+    reorderableColumns = false,
+    columnOrder = $bindable<readonly string[] | undefined>(undefined),
+    onColumnOrderChange,
+    columnSizing = $bindable<DataGridColumnSizing | undefined>(undefined),
+    onColumnSizingChange,
     columnPinning,
     selectionMode = 'none',
     selectionModel = $bindable<DataGridSelectionModel | undefined>(undefined),
     onSelectionModelChange,
     sortModel = $bindable([]),
     onSortModelChange,
+    onCellEdit,
     rowClass,
     getRowAriaLabel,
+    search = false,
+    zoom = $bindable(100),
+    onZoomChange,
+    zoomControls = false,
     class: className,
+    id: consumerId,
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
     onkeydown: consumerOnKeydown,
     ...rest
   }: DataGridProps<TRow> = $props();
 
+  // Live-updating widths from an in-progress pointer resize drag (COR-1131),
+  // keyed by column key. Merged over `columnSizing` for rendering only —
+  // the drag commits into `columnSizing`/`onColumnSizingChange` on
+  // pointerup, mirroring the rest of DataGrid's controlled-prop contract.
+  let liveColumnWidths = $state<Record<string, number>>({});
+  const effectiveColumnSizing = $derived.by(() => {
+    if (Object.keys(liveColumnWidths).length === 0) return columnSizing;
+    return { ...columnSizing, ...liveColumnWidths };
+  });
+
   const columnModel = new DataGridColumnModel<TRow>({
     columns: () => columns,
     columnOrder: () => columnOrder,
-    columnSizing: () => columnSizing,
+    columnSizing: () => effectiveColumnSizing,
     columnPinning: () => columnPinning,
   });
+
+  const headerInteractionEnabled = $derived(
+    resizableColumns === true || reorderableColumns === true,
+  );
+  let headerFocusColumnKey = $state<string | undefined>();
+
+  type ColumnResizeDragState = {
+    pointerId: number;
+    columnKey: string;
+    startClientX: number;
+    startWidth: number;
+    minWidth: number;
+    maxWidth: number | undefined;
+  };
+  let resizeDragState = $state<ColumnResizeDragState | undefined>();
+
+  type HeaderCellRect = {
+    key: string;
+    pin: DataGridColumnPin | undefined;
+    left: number;
+    right: number;
+  };
+  type ColumnDragState = {
+    pointerId: number;
+    draggedKey: string;
+    pin: DataGridColumnPin | undefined;
+    targetKey: string | undefined;
+    dropSide: 'before' | 'after' | undefined;
+    rects: readonly HeaderCellRect[];
+  };
+  let reorderPointerDownState = $state<
+    { pointerId: number; columnKey: string; startClientX: number; startClientY: number } | undefined
+  >();
+  let columnDragState = $state<ColumnDragState | undefined>();
+  const columnDragThresholdPx = 4;
 
   let liveRegionMessage = $state('');
   let renderedLiveRegionMessage = $state('');
@@ -146,6 +249,20 @@
   const shouldWarnVirtualRowHeightFallback = $derived(
     virtualizeRows && !isValidVirtualRowHeight(rowHeight),
   );
+  // --- Zoom (COR-1139) ---------------------------------------------------
+  //
+  // `zoomScale` (`resolvedZoomPercent / 100`) is the single multiplier every
+  // rendered pixel dimension — row height, column width, and (through the
+  // `--_cinder-data-grid-zoom-scale` CSS variable below) header height and
+  // cell text size — is scaled by. `columnModel`'s own widths stay in
+  // unscaled base pixels throughout (see its module comment); `zoomScale`
+  // is only ever applied at render/measurement call sites, never folded
+  // into `columnSizing` or `columnModel`, so a resize keeps reporting base
+  // widths no matter the current zoom level.
+  const resolvedZoomPercent = $derived(resolveZoomPercent(zoom));
+  const shouldWarnInvalidZoom = $derived(zoom !== undefined && !isFiniteZoomValue(zoom));
+  const zoomScale = $derived(resolvedZoomPercent / 100);
+  const scaledRowHeight = $derived(resolvedRowHeight * zoomScale);
   const shouldVirtualizeRows = $derived(virtualizeRows && sortedKeyedRows.length > 0);
   const shouldVirtualizeColumns = $derived(
     virtualizeColumns &&
@@ -159,16 +276,36 @@
     getScrollElement: () => gridElement ?? null,
     getRowCount: () => sortedKeyedRows.length,
     getRowKey: (index) => sortedKeyedRows[index]?.rowKey ?? index,
-    getRowHeight: () => resolvedRowHeight,
+    getRowHeight: () => scaledRowHeight,
     getColumnCount: () => columnModel.unpinnedColumns.length,
     getColumnKey: (index) => columnModel.unpinnedColumns[index]?.key ?? index,
-    getColumnWidth: (index) => columnModel.unpinnedColumns[index]?.width ?? 150,
+    getColumnWidth: (index) => (columnModel.unpinnedColumns[index]?.width ?? 150) * zoomScale,
     getOverscan: () => 5,
-    getInitialHeight: () => resolvedRowHeight * 10,
+    getInitialHeight: () => scaledRowHeight * 10,
     getInitialWidth: () => measuredGridWidth ?? 1_000,
     getScrollPaddingStart: () => getHeaderHeight(),
-    getScrollPaddingInlineStart: () => columnModel.leftPinnedWidth,
-    getScrollPaddingInlineEnd: () => columnModel.rightPinnedWidth,
+    getScrollPaddingInlineStart: () => columnModel.leftPinnedWidth * zoomScale,
+    getScrollPaddingInlineEnd: () => columnModel.rightPinnedWidth * zoomScale,
+  });
+  // Keeps the column virtualizer's own measured sizes in sync with resolved
+  // column widths (COR-1131). `@tanstack/virtual-core` only recomputes an
+  // item's cached size on an explicit resize call, so a controlled
+  // `columnSizing` update or a pointer/keyboard resize would otherwise
+  // leave the virtualized column tracks and total width stale even though
+  // the resized cell's own CSS width is already correct.
+  //
+  // Gated on `shouldVirtualizeColumns`: `resizeColumn()` subscribes to the
+  // underlying `@tanstack/virtual-core` virtualizer, which lazily creates
+  // both virtualizers and attaches their `ResizeObserver`/scroll listeners
+  // on first subscription. Running this unconditionally would force that
+  // eager setup on every DataGrid, including ones that never enable
+  // `virtualizeColumns`, breaking the "renders exactly as before" contract
+  // for grids that haven't opted in.
+  $effect(() => {
+    if (!shouldVirtualizeColumns) return;
+    columnModel.unpinnedColumns.forEach((column, index) => {
+      rowVirtualizer.resizeColumn(index, column.width * zoomScale);
+    });
   });
   const observeHeaderSize: Attachment<HTMLElement> = (node) => {
     if (typeof ResizeObserver === 'undefined') return;
@@ -201,11 +338,22 @@
   };
   const delegateBodyEvents: Attachment<HTMLElement> = (node) => {
     node.addEventListener('click', handleBodyClick);
+    node.addEventListener('dblclick', handleBodyDoubleClick);
     node.addEventListener('keydown', handleBodyKeydown);
     return () => {
       node.removeEventListener('click', handleBodyClick);
+      node.removeEventListener('dblclick', handleBodyDoubleClick);
       node.removeEventListener('keydown', handleBodyKeydown);
     };
+  };
+  const focusEditingInput: Attachment<HTMLInputElement> = (node) => {
+    node.focus();
+    const cursorPosition = node.value.length;
+    try {
+      node.setSelectionRange(cursorPosition, cursorPosition);
+    } catch {
+      // Selection ranges aren't supported for every input `type` (e.g. "number").
+    }
   };
   const virtualRows = $derived(rowVirtualizer.virtualRows);
   const virtualColumns = $derived(rowVirtualizer.virtualColumns);
@@ -218,7 +366,9 @@
   });
   const gridContentWidth = $derived(
     shouldVirtualizeColumns
-      ? columnModel.leftPinnedWidth + rowVirtualizer.totalWidth + columnModel.rightPinnedWidth
+      ? columnModel.leftPinnedWidth * zoomScale +
+          rowVirtualizer.totalWidth +
+          columnModel.rightPinnedWidth * zoomScale
       : undefined,
   );
   const shouldShowColumnOverflowShadow = $derived(
@@ -228,15 +378,15 @@
   );
   const gridTemplateColumns = $derived.by(() => {
     if (!shouldVirtualizeColumns) {
-      return columnModel.renderColumns.map((column) => `${column.width}px`).join(' ');
+      return columnModel.renderColumns.map((column) => `${column.width * zoomScale}px`).join(' ');
     }
 
     return [
-      ...columnModel.leftPinnedColumns.map((column) => `${column.width}px`),
+      ...columnModel.leftPinnedColumns.map((column) => `${column.width * zoomScale}px`),
       `${virtualColumnLeadingSpacer}px`,
       ...virtualColumns.map((item) => `${item.size}px`),
       `${virtualColumnTrailingSpacer}px`,
-      ...columnModel.rightPinnedColumns.map((column) => `${column.width}px`),
+      ...columnModel.rightPinnedColumns.map((column) => `${column.width * zoomScale}px`),
     ].join(' ');
   });
   const renderedColumns = $derived.by(() => {
@@ -253,13 +403,37 @@
       ...columnModel.rightPinnedColumns,
     ];
   });
+  // `aria-colindex` must reflect each column's 1-based position in the
+  // *actual visual left-to-right order* — pinned-left, then unpinned, then
+  // pinned-right — for the full column set, matching `aria-colcount`
+  // (`columnModel.orderedColumns.length`). That's exactly what
+  // `columnModel.renderColumns`' own `renderIndex` already is, since it's
+  // built from the same pin-grouped concatenation. `renderedColumns` above
+  // is different: when `virtualizeColumns` is on, it's cut down to only the
+  // currently-visible unpinned columns, so a virtualized column's own
+  // `renderIndex` there would be stale (a position among *visible* columns,
+  // not the full set). Looking each column's index up in this map instead
+  // of reading `renderIndex` directly off the (possibly virtualized-filtered)
+  // rendered column keeps `aria-colindex` correct in both cases, and also
+  // fixes it for a non-virtualized grid whose `columns`/`columnOrder` don't
+  // already declare pinned columns adjacent to their pin group.
+  const ariaColIndexByColumnKey = $derived.by(() => {
+    const indexByKey = new Map<string, number>();
+    for (const column of columnModel.renderColumns) {
+      indexByKey.set(column.key, column.renderIndex);
+    }
+    return indexByKey;
+  });
+  function getAriaColIndex(column: ResolvedDataGridColumn<TRow>): number | undefined {
+    return ariaColIndexByColumnKey.get(column.key);
+  }
   const renderedRows = $derived.by(() => {
     if (!shouldVirtualizeRows) {
       return sortedKeyedRows.map((keyedRow, visualRowIndex) => ({
         keyedRow,
         visualRowIndex,
         start: 0,
-        size: resolvedRowHeight,
+        size: scaledRowHeight,
         virtualized: false,
       }));
     }
@@ -294,12 +468,20 @@
   const rowDomIds = $derived(sortedKeyedRows.map((row) => row.rowDomId));
   const columnKeys = $derived(columnModel.renderColumns.map((column) => column.key));
   const gridId = $props.id();
+  // The grid root only needs a real, renderable `id` when something outside
+  // it must reference it — today, only the search toolbar's
+  // `aria-controls` (COR-1134). An explicit consumer `id` always wins;
+  // otherwise a grid that hasn't opted into `search` renders with no `id`
+  // attribute at all, exactly as it did before this feature existed.
+  const resolvedGridId = $derived(consumerId ?? (search ? gridId : undefined));
   let requestedActiveRowIndex = $state(0);
   let requestedActiveColumnKey = $state<string | undefined>();
   const selectionState = new InternalDataGridSelectionModel({
     rowIds: () => rowDomIds,
     columnKeys: () => columnKeys,
   });
+  const editModel = new DataGridEditModel();
+  let suppressNextEditBlur = false;
   const activeRowIndex = $derived(
     sortedKeyedRows.length > 0 ? Math.min(requestedActiveRowIndex, sortedKeyedRows.length - 1) : 0,
   );
@@ -317,9 +499,11 @@
   const activeColumnKey = $derived(columnModel.renderColumns[activeColumnIndex]?.key);
   const canExposeActiveCell = $derived(!(shouldVirtualizeRows && typeof window === 'undefined'));
   const activeCellId = $derived(
-    canExposeActiveCell && activeRowDomId !== undefined && firstColumnKey !== undefined
-      ? getCellId(activeRowDomId, activeColumnKey ?? firstColumnKey)
-      : undefined,
+    headerFocusColumnKey !== undefined
+      ? getHeaderCellId(headerFocusColumnKey)
+      : canExposeActiveCell && activeRowDomId !== undefined && firstColumnKey !== undefined
+        ? getCellId(activeRowDomId, activeColumnKey ?? firstColumnKey)
+        : undefined,
   );
   const activeCellCoordinates = $derived(
     activeRowDomId !== undefined && activeColumnKey !== undefined
@@ -339,6 +523,177 @@
       : undefined,
   );
 
+  // --- Search (COR-1134–COR-1138) ---------------------------------------
+  //
+  // `searchQuery` is the SearchField's live, every-keystroke value.
+  // `debouncedSearchQuery` only catches up 300ms after typing stops (see the
+  // gated $effect below), and every derived value that scans cells —
+  // `searchMatches` — reads the debounced value, not the live one, which is
+  // what keeps matching from recomputing (and re-highlighting, and
+  // rescanning every cell) on every keystroke.
+  const searchFieldId = `${gridId}-search`;
+  let searchQuery = $state('');
+  let debouncedSearchQuery = $state('');
+  let currentSearchMatchIndex = $state<number | undefined>();
+  // Plain (non-reactive) bookkeeping for the settle effect below — see its
+  // comment for why these must not be `$state`.
+  let previousDebouncedSearchQuery: string | undefined;
+  let currentSearchMatchTrackedKey: string | undefined;
+
+  // Shared by both toolbar groups (`search` and `zoomControls`) — whichever
+  // are enabled render inside the same single `<Toolbar>` (COR-1140).
+  const toolbarAriaLabel = $derived(
+    resolvedAriaLabel ? `${resolvedAriaLabel} toolbar` : 'Grid toolbar',
+  );
+  const searchFieldAriaLabel = $derived(
+    resolvedAriaLabel ? `Search ${resolvedAriaLabel}` : 'Search',
+  );
+
+  // --- Toolbar counts and zoom controls (COR-1140) -----------------------
+  //
+  // Counts use the current row count and the current *visible* column
+  // count (`columnModel.renderColumns`, i.e. every column DataGrid is
+  // actually rendering — left-pinned, unpinned, and right-pinned together
+  // — not the raw `columns` prop length, which would ignore column-model
+  // resolution).
+  const toolbarRowCount = $derived(rows.length);
+  const toolbarColumnCount = $derived(columnModel.renderColumns.length);
+  const toolbarCountsText = $derived(
+    `${toolbarRowCount} ${toolbarRowCount === 1 ? 'row' : 'rows'}, ${toolbarColumnCount} ${toolbarColumnCount === 1 ? 'column' : 'columns'}`,
+  );
+  const canZoomOut = $derived(resolvedZoomPercent > minZoomPercent);
+  const canZoomIn = $derived(resolvedZoomPercent < maxZoomPercent);
+
+  // Explicitly re-checks `search` (not just relying on callers gating reads)
+  // so nothing here ever calls a column's `getValue` while search is off,
+  // no matter what else changes (COR-1136).
+  const searchMatches = $derived.by((): readonly DataGridSearchMatch[] => {
+    if (!search) return [];
+    return getDataGridSearchMatches(
+      sortedKeyedRows,
+      columnModel.renderColumns,
+      debouncedSearchQuery,
+    );
+  });
+  const searchMatchKeys = $derived.by(
+    () => new Set(searchMatches.map((match) => getDataGridSearchMatchKey(match))),
+  );
+  const currentSearchMatch = $derived(
+    currentSearchMatchIndex !== undefined ? searchMatches[currentSearchMatchIndex] : undefined,
+  );
+  const currentSearchMatchKey = $derived(
+    currentSearchMatch ? getDataGridSearchMatchKey(currentSearchMatch) : undefined,
+  );
+  // Blank until a search has actually run — "No matches" before the user
+  // has typed anything would read as a false negative, not an empty state.
+  const searchStatusText = $derived(
+    debouncedSearchQuery.trim() === ''
+      ? ''
+      : formatDataGridSearchStatus(currentSearchMatchIndex, searchMatches.length),
+  );
+
+  // Debounce: gated on `search` so a non-search grid never starts this timer
+  // (COR-1136). Re-runs on every `searchQuery` change, clearing the previous
+  // pending timeout first — the same setTimeout+cleanup shape the existing
+  // live-region effect below uses.
+  $effect(() => {
+    if (!search) return;
+    const query = searchQuery;
+    const timeoutId = setTimeout(() => {
+      debouncedSearchQuery = query;
+    }, 300);
+    return () => clearTimeout(timeoutId);
+  });
+
+  // Sets both the reactive current-match index and the plain tracked key
+  // the effect below uses to re-find "the same match" across a recompute
+  // that isn't a new search.
+  function setCurrentSearchMatch(
+    index: number | undefined,
+    matches: readonly DataGridSearchMatch[],
+  ): void {
+    currentSearchMatchIndex = index;
+    const match = index !== undefined ? matches[index] : undefined;
+    currentSearchMatchTrackedKey = match ? getDataGridSearchMatchKey(match) : undefined;
+  }
+
+  // Once the debounced query *actually settles on a new value*, jump to
+  // (and announce) the first match — that's the only case that should move
+  // the active cell or speak through the live region. `searchMatches` can
+  // also recompute for reasons that have nothing to do with the user
+  // typing — an edit commit or a sort changes row/column order — and this
+  // effect still re-fires then (it reads `searchMatches`), but it must not
+  // react the same way: re-jumping the active cell and re-announcing on
+  // every unrelated data change would silently steal the user's place
+  // mid-navigation (e.g. hop back to match 1 of 12 because someone edited
+  // an unrelated cell three rows away). So on that path it only relocates
+  // the *same* logical match (by `rowId`/`columnKey`, since its array
+  // index may have moved) to keep the current-match highlight accurate,
+  // and falls back to no current match if that exact cell stopped
+  // matching — never picking a new one on the user's behalf.
+  //
+  // The `announce()` calls below are wrapped in `untrack()`. `announce`
+  // does `liveRegionAnnouncementSequence += 1`, a read-then-write of that
+  // same piece of state; called directly inside this effect, the read half
+  // makes the effect depend on the very value its write half just changed,
+  // which is exactly Svelte's effect_update_depth_exceeded ("an effect
+  // reads and writes the same piece of state") — an infinite self-retrigger.
+  // `untrack()` keeps the write but stops that read from being recorded as
+  // one of this effect's dependencies. The resize/reorder call sites for
+  // the same `announce()` don't need this because they run from keydown
+  // handlers, not from inside a tracked `$effect`.
+  $effect(() => {
+    if (!search) return;
+    const query = debouncedSearchQuery;
+    const matches = searchMatches;
+    const isNewSearch = query !== previousDebouncedSearchQuery;
+    previousDebouncedSearchQuery = query;
+
+    if (query.trim() === '') {
+      setCurrentSearchMatch(undefined, matches);
+      return;
+    }
+
+    if (!isNewSearch) {
+      const trackedIndex = currentSearchMatchTrackedKey
+        ? matches.findIndex(
+            (match) => getDataGridSearchMatchKey(match) === currentSearchMatchTrackedKey,
+          )
+        : -1;
+      setCurrentSearchMatch(trackedIndex >= 0 ? trackedIndex : undefined, matches);
+      return;
+    }
+
+    if (matches.length === 0) {
+      setCurrentSearchMatch(undefined, matches);
+      untrack(() => announce('No matches'));
+      return;
+    }
+    setCurrentSearchMatch(0, matches);
+    const firstMatch = matches[0];
+    if (firstMatch) moveActiveCell(firstMatch.rowIndex, firstMatch.columnIndex);
+    untrack(() => announce(formatDataGridSearchStatus(0, matches.length)));
+  });
+
+  function goToSearchMatch(direction: 1 | -1): void {
+    if (!search || searchMatches.length === 0) return;
+    const nextIndex = getNextDataGridSearchMatchIndex(
+      currentSearchMatchIndex,
+      searchMatches.length,
+      direction,
+    );
+    setCurrentSearchMatch(nextIndex, searchMatches);
+    const match = nextIndex !== undefined ? searchMatches[nextIndex] : undefined;
+    if (match) moveActiveCell(match.rowIndex, match.columnIndex);
+    announce(formatDataGridSearchStatus(nextIndex, searchMatches.length));
+  }
+
+  function handleSearchFieldKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    goToSearchMatch(event.shiftKey ? -1 : 1);
+  }
+
   let hasWarnedNoLabel = false;
   let warnedDuplicateRowIdsSignature: string | undefined;
   let previousActiveCellId: string | undefined;
@@ -354,6 +709,7 @@
   let liveRegionTimeoutId: ReturnType<typeof setTimeout> | undefined;
   let liveRegionVersion = 0;
   let warnedVirtualRowHeightFallback = false;
+  let warnedInvalidZoom = false;
 
   $effect(() => {
     if (!resolvedAriaLabel && !resolvedAriaLabelledBy && !hasWarnedNoLabel) {
@@ -385,6 +741,15 @@
     warnedVirtualRowHeightFallback = true;
     devWarn(
       '[cinder-data-grid] DataGrid row virtualization is using the default rowHeight of 44px. Pass a positive finite rowHeight to match your row layout.',
+    );
+  });
+
+  $effect(() => {
+    if (!shouldWarnInvalidZoom || warnedInvalidZoom) return;
+
+    warnedInvalidZoom = true;
+    devWarn(
+      `[cinder-data-grid] DataGrid zoom must be a finite number; received ${JSON.stringify(zoom)}. Falling back to ${defaultZoomPercent}.`,
     );
   });
 
@@ -483,6 +848,7 @@
     if (!isInitialSelectionReconciliation && !didSelectionGeometryChange) return;
 
     selectionState.reconcile(activeCellCoordinates);
+    editModel.reconcile(rowDomIds, columnKeys);
     if (!didSelectionGeometryChange) return;
 
     syncRequestedActiveCell();
@@ -513,6 +879,10 @@
     return `${gridId}-cell-r-${toDomIdSegment(rowId)}-c-${toDomIdSegment(columnKey)}`;
   }
 
+  function getHeaderCellId(columnKey: string): string {
+    return `${gridId}-header-c-${toDomIdSegment(columnKey)}`;
+  }
+
   function toDomIdSegment(value: string): string {
     const segment = Array.from(value, (character) => character.codePointAt(0)?.toString(16) ?? '0');
     return segment.length > 0 ? segment.join('_') : 'empty';
@@ -524,6 +894,20 @@
 
   function resolveVirtualRowHeight(value: number | undefined): number {
     return isValidVirtualRowHeight(value) ? value : defaultVirtualRowHeight;
+  }
+
+  function isFiniteZoomValue(value: number | undefined): value is number {
+    return typeof value === 'number' && Number.isFinite(value);
+  }
+
+  // A finite value out of `[minZoomPercent, maxZoomPercent]` is clamped
+  // into range (the way column resize clamps to `minWidth`/`maxWidth`); a
+  // non-finite value (`NaN`, `Infinity`, …) is invalid and falls back to
+  // `defaultZoomPercent`, the same dev-warn-and-fall-back pattern
+  // `resolveVirtualRowHeight` uses for `rowHeight`.
+  function resolveZoomPercent(value: number | undefined): number {
+    if (!isFiniteZoomValue(value)) return defaultZoomPercent;
+    return Math.min(Math.max(value, minZoomPercent), maxZoomPercent);
   }
 
   function formatDataGridValue(value: unknown): string {
@@ -544,14 +928,18 @@
 
   function getCellStyle(column: ResolvedDataGridColumn<TRow>): string {
     const customProperties = [
-      `--_cinder-data-grid-column-width: ${column.width}px`,
+      `--_cinder-data-grid-column-width: ${column.width * zoomScale}px`,
       `grid-column: ${getCellGridColumn(column)}`,
     ];
     if (column.pin === 'left') {
-      customProperties.push(`--_cinder-data-grid-pin-left-offset: ${column.pinOffset}px`);
+      customProperties.push(
+        `--_cinder-data-grid-pin-left-offset: ${column.pinOffset * zoomScale}px`,
+      );
     }
     if (column.pin === 'right') {
-      customProperties.push(`--_cinder-data-grid-pin-right-offset: ${column.pinOffset}px`);
+      customProperties.push(
+        `--_cinder-data-grid-pin-right-offset: ${column.pinOffset * zoomScale}px`,
+      );
     }
     return customProperties.join('; ');
   }
@@ -605,12 +993,333 @@
     return `sorted ${sortItem.direction}, priority ${sortPriority}`;
   }
 
-  function handleColumnHeaderClick(column: ResolvedDataGridColumn<TRow>, event: MouseEvent): void {
+  function handleColumnHeaderClick(
+    column: ResolvedDataGridColumn<TRow>,
+    event: { shiftKey: boolean },
+  ): void {
     if (!column.sortable) return;
 
     const nextSortModel = getNextDataGridSortModel(activeSortModel, column.key, event.shiftKey);
     sortModel = nextSortModel;
     onSortModelChange?.(nextSortModel);
+  }
+
+  function getColumnHeaderLabel(column: ResolvedDataGridColumn<TRow>): string {
+    return typeof column.header === 'string' ? column.header : column.key;
+  }
+
+  function canResizeColumn(column: ResolvedDataGridColumn<TRow>): boolean {
+    return resizableColumns === true && column.resizable !== false;
+  }
+
+  function commitColumnWidth(columnKey: string, width: number): void {
+    const nextSizing: DataGridColumnSizing = { ...columnSizing, [columnKey]: width };
+    columnSizing = nextSizing;
+    onColumnSizingChange?.(nextSizing);
+  }
+
+  function commitColumnOrder(nextOrder: readonly string[]): void {
+    columnOrder = nextOrder;
+    onColumnOrderChange?.(nextOrder);
+  }
+
+  function announce(message: string): void {
+    liveRegionMessage = message;
+    liveRegionAnnouncementSequence += 1;
+  }
+
+  // --- Zoom controls (COR-1140) ------------------------------------------
+
+  function setZoom(nextZoomPercent: number): void {
+    const clampedZoomPercent = resolveZoomPercent(nextZoomPercent);
+    if (clampedZoomPercent === resolvedZoomPercent) return;
+
+    zoom = clampedZoomPercent;
+    onZoomChange?.(clampedZoomPercent);
+    announce(`Zoom ${clampedZoomPercent}%`);
+  }
+
+  function stepZoom(direction: 1 | -1): void {
+    setZoom(resolvedZoomPercent + direction * zoomStepPercent);
+  }
+
+  // --- Pointer resize (COR-1131) ---------------------------------------
+
+  function handleResizeHandlePointerDown(
+    event: PointerEvent,
+    column: ResolvedDataGridColumn<TRow>,
+  ): void {
+    event.stopPropagation();
+    event.preventDefault();
+    (event.currentTarget as Element).setPointerCapture(event.pointerId);
+    resizeDragState = {
+      pointerId: event.pointerId,
+      columnKey: column.key,
+      startClientX: event.clientX,
+      startWidth: column.width,
+      minWidth: column.minWidth,
+      maxWidth: column.maxWidth,
+    };
+  }
+
+  function handleResizeHandlePointerMove(event: PointerEvent): void {
+    if (!resizeDragState || event.pointerId !== resizeDragState.pointerId) return;
+    event.preventDefault();
+    const rawDeltaX = event.clientX - resizeDragState.startClientX;
+    const deltaX = isRightToLeft ? -rawDeltaX : rawDeltaX;
+    // `resizeDragState.startWidth` and the column's min/max are unscaled
+    // base pixels (COR-1139) but `deltaX` is a screen-pixel pointer delta —
+    // at zoom !== 100% the handle itself renders `zoomScale` px on screen
+    // per base px, so dividing here keeps the handle tracking the pointer
+    // one-to-one instead of the column growing/shrinking faster or slower
+    // than the drag.
+    const nextWidth = getPointerResizedColumnWidth(
+      resizeDragState.startWidth,
+      deltaX / zoomScale,
+      resizeDragState.minWidth,
+      resizeDragState.maxWidth,
+    );
+    liveColumnWidths = { [resizeDragState.columnKey]: nextWidth };
+  }
+
+  function handleResizeHandlePointerUp(event: PointerEvent): void {
+    if (!resizeDragState || event.pointerId !== resizeDragState.pointerId) return;
+    const { columnKey, startWidth } = resizeDragState;
+    const finalWidth = liveColumnWidths[columnKey] ?? startWidth;
+    resizeDragState = undefined;
+    liveColumnWidths = {};
+    if (finalWidth !== startWidth) commitColumnWidth(columnKey, finalWidth);
+    // Setting `headerFocusColumnKey` alone only moves `aria-activedescendant`
+    // — that relationship only means anything to AT while the grid itself
+    // has real DOM focus (COR-1145). A pointer-only resize (no prior cell
+    // click) would otherwise finish with `aria-activedescendant` pointing at
+    // the header while focus was still wherever it started (often nowhere),
+    // silently breaking both the announcement and subsequent keyboard input.
+    if (headerInteractionEnabled) {
+      headerFocusColumnKey = columnKey;
+      gridElement?.focus({ preventScroll: true });
+    }
+  }
+
+  // --- Pointer reorder (COR-1132) ---------------------------------------
+
+  function getHeaderCellRects(): HeaderCellRect[] {
+    if (!headerElement) return [];
+    const cells = headerElement.querySelectorAll<HTMLElement>('.cinder-data-grid__header-cell');
+    return Array.from(cells).flatMap((cell) => {
+      const key = cell.dataset['cinderColumnKey'];
+      if (key === undefined) return [];
+      const rect = cell.getBoundingClientRect();
+      const pin = columnModel.renderColumns.find((column) => column.key === key)?.pin;
+      return [{ key, pin, left: rect.left, right: rect.right }];
+    });
+  }
+
+  function updateColumnDragTarget(clientX: number): void {
+    if (!columnDragState) return;
+    const candidates = columnDragState.rects.filter(
+      (rect) => rect.pin === columnDragState?.pin && rect.key !== columnDragState?.draggedKey,
+    );
+    if (candidates.length === 0) {
+      columnDragState = { ...columnDragState, targetKey: undefined, dropSide: undefined };
+      return;
+    }
+
+    let closest = candidates[0]!;
+    let closestDistance = Math.abs(clientX - (closest.left + closest.right) / 2);
+    for (const rect of candidates) {
+      const distance = Math.abs(clientX - (rect.left + rect.right) / 2);
+      if (distance < closestDistance) {
+        closest = rect;
+        closestDistance = distance;
+      }
+    }
+
+    const midpoint = (closest.left + closest.right) / 2;
+    // `dropSide` names the resulting *array-order* position ('before' or
+    // 'after' `closest.key`), which `reorderColumnKeyBeforeOrAfter` expects.
+    // In RTL, the first key in that array renders at the physical *right*,
+    // so a pointer physically left of the target's midpoint lands *after*
+    // it in order — the mirror image of LTR. Without this, a right-to-left
+    // drag would land the dropped column on the opposite side from where
+    // the pointer visually is, inverted the same way pointer-resize's delta
+    // would be without its own RTL adjustment.
+    const isPhysicallyBeforeMidpoint = clientX < midpoint;
+    const dropSide: 'before' | 'after' = isRightToLeft
+      ? isPhysicallyBeforeMidpoint
+        ? 'after'
+        : 'before'
+      : isPhysicallyBeforeMidpoint
+        ? 'before'
+        : 'after';
+    columnDragState = { ...columnDragState, targetKey: closest.key, dropSide };
+  }
+
+  function handleHeaderCellPointerDown(
+    event: PointerEvent,
+    column: ResolvedDataGridColumn<TRow>,
+  ): void {
+    if (!reorderableColumns) return;
+    if (
+      event.target instanceof Element &&
+      event.target.closest('.cinder-data-grid__resize-handle')
+    ) {
+      return;
+    }
+    reorderPointerDownState = {
+      pointerId: event.pointerId,
+      columnKey: column.key,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+    };
+  }
+
+  function handleHeaderCellPointerMove(event: PointerEvent): void {
+    if (columnDragState && columnDragState.pointerId === event.pointerId) {
+      event.preventDefault();
+      updateColumnDragTarget(event.clientX);
+      return;
+    }
+
+    if (!reorderPointerDownState || reorderPointerDownState.pointerId !== event.pointerId) return;
+
+    const deltaX = event.clientX - reorderPointerDownState.startClientX;
+    const deltaY = event.clientY - reorderPointerDownState.startClientY;
+    if (Math.abs(deltaX) < columnDragThresholdPx && Math.abs(deltaY) < columnDragThresholdPx)
+      return;
+
+    const draggedColumn = columnModel.renderColumns.find(
+      (column) => column.key === reorderPointerDownState?.columnKey,
+    );
+    reorderPointerDownState = undefined;
+    if (!draggedColumn) return;
+
+    event.preventDefault();
+    (event.currentTarget as Element).setPointerCapture(event.pointerId);
+    columnDragState = {
+      pointerId: event.pointerId,
+      draggedKey: draggedColumn.key,
+      pin: draggedColumn.pin,
+      targetKey: undefined,
+      dropSide: undefined,
+      rects: getHeaderCellRects(),
+    };
+    updateColumnDragTarget(event.clientX);
+  }
+
+  function handleHeaderCellPointerUp(event: PointerEvent): void {
+    if (reorderPointerDownState?.pointerId === event.pointerId) reorderPointerDownState = undefined;
+    if (!columnDragState || columnDragState.pointerId !== event.pointerId) return;
+
+    const { draggedKey, targetKey, dropSide } = columnDragState;
+    columnDragState = undefined;
+    if (targetKey === undefined || dropSide === undefined) return;
+
+    const orderedKeys = columnModel.orderedColumns.map((column) => column.key);
+    const pinByKey = new Map(columnModel.orderedColumns.map((column) => [column.key, column.pin]));
+    const nextOrder = reorderColumnKeyBeforeOrAfter(
+      orderedKeys,
+      pinByKey,
+      draggedKey,
+      targetKey,
+      dropSide,
+    );
+    if (!nextOrder) return;
+
+    commitColumnOrder(nextOrder);
+    // See the matching comment in `handleResizeHandlePointerUp` — a
+    // pointer-only reorder needs the same real-focus fix so
+    // `aria-activedescendant` is live and keyboard input keeps working
+    // immediately after the drop (COR-1145).
+    if (headerInteractionEnabled) {
+      headerFocusColumnKey = draggedKey;
+      gridElement?.focus({ preventScroll: true });
+    }
+  }
+
+  // --- Keyboard resize and reorder (COR-1133) ---------------------------
+
+  function enterHeaderFocus(columnKey: string | undefined): void {
+    if (columnKey === undefined) return;
+    headerFocusColumnKey = columnKey;
+  }
+
+  function moveHeaderFocus(direction: 1 | -1): void {
+    const headerColumns = columnModel.renderColumns;
+    const index = headerColumns.findIndex((column) => column.key === headerFocusColumnKey);
+    if (index < 0) return;
+    const nextIndex = Math.min(Math.max(index + direction, 0), headerColumns.length - 1);
+    headerFocusColumnKey = headerColumns[nextIndex]?.key;
+  }
+
+  function resizeHeaderColumn(column: ResolvedDataGridColumn<TRow>, direction: 1 | -1): void {
+    const nextWidth = getKeyboardResizedColumnWidth(
+      column.width,
+      direction,
+      column.minWidth,
+      column.maxWidth,
+    );
+    if (nextWidth === column.width) return;
+    commitColumnWidth(column.key, nextWidth);
+    announce(`${getColumnHeaderLabel(column)} column resized to ${Math.round(nextWidth)} pixels`);
+  }
+
+  function moveHeaderColumn(column: ResolvedDataGridColumn<TRow>, direction: 1 | -1): void {
+    const orderedKeys = columnModel.orderedColumns.map((candidate) => candidate.key);
+    const pinByKey = new Map(
+      columnModel.orderedColumns.map((candidate) => [candidate.key, candidate.pin]),
+    );
+    const nextOrder = moveColumnKeyWithinPinGroup(orderedKeys, pinByKey, column.key, direction);
+    if (!nextOrder) return;
+
+    commitColumnOrder(nextOrder);
+    const groupKeys = nextOrder.filter((key) => pinByKey.get(key) === column.pin);
+    const position = groupKeys.indexOf(column.key) + 1;
+    announce(`${getColumnHeaderLabel(column)} column moved to position ${position}`);
+  }
+
+  function handleHeaderFocusKeydown(event: KeyboardEvent): void {
+    const column = columnModel.renderColumns.find(
+      (candidate) => candidate.key === headerFocusColumnKey,
+    );
+    if (!column) {
+      headerFocusColumnKey = undefined;
+      return;
+    }
+
+    if (event.key === 'ArrowDown' || event.key === 'Escape') {
+      event.preventDefault();
+      headerFocusColumnKey = undefined;
+      return;
+    }
+
+    if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      const direction: 1 | -1 = event.key === 'ArrowRight' ? 1 : -1;
+      const isCommand = event.ctrlKey || event.metaKey;
+
+      if (event.shiftKey && isCommand) {
+        if (!reorderableColumns) return;
+        event.preventDefault();
+        moveHeaderColumn(column, direction);
+        return;
+      }
+
+      if (event.shiftKey) {
+        if (!resizableColumns || !canResizeColumn(column)) return;
+        event.preventDefault();
+        resizeHeaderColumn(column, direction);
+        return;
+      }
+
+      event.preventDefault();
+      moveHeaderFocus(direction);
+      return;
+    }
+
+    if ((event.key === 'Enter' || event.key === ' ') && column.sortable) {
+      event.preventDefault();
+      handleColumnHeaderClick(column, event);
+    }
   }
 
   function getCellCoordinate(
@@ -761,7 +1470,8 @@
   ): DataGridCellCoordinate[] {
     const rowIndexes = new Map(rowDomIds.map((rowId, index) => [rowId, index]));
     const columnIndexes = new Map(columnKeys.map((columnKey, index) => [columnKey, index]));
-    return [...cells].sort((left, right) => {
+    const sortedCells = [...cells];
+    sortedCells.sort((left, right) => {
       const leftRowIndex = rowIndexes.get(left.rowId) ?? Number.POSITIVE_INFINITY;
       const rightRowIndex = rowIndexes.get(right.rowId) ?? Number.POSITIVE_INFINITY;
       if (leftRowIndex !== rightRowIndex) return leftRowIndex - rightRowIndex;
@@ -770,6 +1480,7 @@
       const rightColumnIndex = columnIndexes.get(right.columnKey) ?? Number.POSITIVE_INFINITY;
       return leftColumnIndex - rightColumnIndex;
     });
+    return sortedCells;
   }
 
   function handleCellClick(
@@ -779,6 +1490,7 @@
     columnKey: string,
     rowIndex: number,
   ): void {
+    headerFocusColumnKey = undefined;
     requestedActiveRowIndex = rowIndex;
     requestedActiveColumnKey = columnKey;
     selectionState.setActiveCell(
@@ -793,6 +1505,12 @@
     const cell = getCellEventDetail(event);
     if (!cell) return;
     handleCellClick(event, cell.rowId, cell.rowDomId, cell.columnKey, cell.rowIndex);
+  }
+
+  function handleBodyDoubleClick(event: MouseEvent): void {
+    const cell = getCellEventDetail(event);
+    if (!cell) return;
+    beginEditCell(cell.rowDomId, cell.columnKey);
   }
 
   function handleCellKeydown(
@@ -848,6 +1566,99 @@
     };
   }
 
+  function getEditingInputId(cell: DataGridEditCellIdentity): string {
+    return `${getCellId(cell.rowKey, cell.columnKey)}-editor`;
+  }
+
+  function beginEditCell(rowKey: string, columnKey: string, initialDraft?: string): void {
+    if (editModel.editingCell) return;
+    const column = columnModel.renderColumns.find((item) => item.key === columnKey);
+    if (!column?.editable) return;
+    const rowRecord = keyedRows.find((item) => item.rowKey === rowKey);
+    if (!rowRecord) return;
+
+    const value = getDataGridColumnValue(rowRecord.row, column);
+    const draft = initialDraft ?? formatDataGridValue(value);
+    editModel.begin({ rowKey, columnKey }, draft, value);
+  }
+
+  function endEditing(refocusGrid: boolean): void {
+    suppressNextEditBlur = true;
+    if (refocusGrid) gridElement?.focus({ preventScroll: true });
+    editModel.end();
+  }
+
+  function cancelEdit(): void {
+    if (!editModel.editingCell) return;
+    endEditing(true);
+  }
+
+  function commitEdit(options: {
+    refocusGrid: boolean;
+    moveToNextRow?: boolean;
+    moveTabDirection?: number;
+  }): void {
+    const cell = editModel.editingCell;
+    if (!cell) return;
+
+    const rowRecord = keyedRows.find((item) => item.rowKey === cell.rowKey);
+    const column = columnModel.renderColumns.find((item) => item.key === cell.columnKey);
+    if (rowRecord && column) {
+      const editType = resolveDataGridEditType(column.editType, editModel.originalValue);
+      const result = resolveDataGridEditCommitValue(editType, editModel.draftValue);
+      if (result.committed) onCellEdit?.(rowRecord.row, column.key, result.value);
+    }
+
+    const rowIndex = sortedKeyedRows.findIndex((item) => item.rowKey === cell.rowKey);
+    const columnIndex = columnModel.renderColumns.findIndex((item) => item.key === cell.columnKey);
+    if (options.moveToNextRow && rowIndex >= 0 && columnIndex >= 0) {
+      moveActiveCell(rowIndex + 1, columnIndex);
+    } else if (options.moveTabDirection !== undefined && rowIndex >= 0 && columnIndex >= 0) {
+      const target = getAdjacentCellIndex(
+        rowIndex,
+        columnIndex,
+        columnModel.renderColumns.length,
+        sortedKeyedRows.length,
+        options.moveTabDirection,
+      );
+      if (target) moveActiveCell(target.rowIndex, target.columnIndex);
+    }
+
+    endEditing(options.refocusGrid);
+  }
+
+  function handleEditInputBlur(cell: DataGridEditCellIdentity): void {
+    if (suppressNextEditBlur) {
+      suppressNextEditBlur = false;
+      return;
+    }
+    if (!editModel.isEditing(cell)) return;
+    commitEdit({ refocusGrid: false });
+  }
+
+  function handleEditingKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      cancelEdit();
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      event.stopPropagation();
+      commitEdit({ refocusGrid: true, moveToNextRow: true });
+      return;
+    }
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      event.stopPropagation();
+      commitEdit({ refocusGrid: true, moveTabDirection: event.shiftKey ? -1 : 1 });
+    }
+    // Every other key (arrows, Home/End, PageUp/PageDown, printable
+    // characters, ...) is intentionally left alone so it reaches the
+    // editing Input's own text cursor instead of grid navigation.
+  }
+
   function handleKeydown(event: KeyboardEvent): void {
     if (consumerOnKeydown) {
       (consumerOnKeydown as (event: KeyboardEvent) => void)(event);
@@ -856,9 +1667,47 @@
     if (event.target instanceof Element && event.target.closest('.cinder-data-grid__sort-button')) {
       return;
     }
+
+    if (editModel.editingCell) {
+      handleEditingKeydown(event);
+      return;
+    }
+
     if (isInteractiveEventTarget(event)) return;
 
+    if (headerFocusColumnKey !== undefined) {
+      handleHeaderFocusKeydown(event);
+      return;
+    }
+
     if (sortedKeyedRows.length === 0 || columnModel.renderColumns.length === 0) return;
+
+    const activeColumn = columnModel.renderColumns[activeColumnIndex];
+    if (activeColumn?.editable && activeRowDomId !== undefined) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        beginEditCell(activeRowDomId, activeColumn.key);
+        return;
+      }
+      if (isPrintableCharacterKeydown(event)) {
+        event.preventDefault();
+        beginEditCell(activeRowDomId, activeColumn.key, event.key);
+        return;
+      }
+    }
+
+    if (
+      headerInteractionEnabled &&
+      event.key === 'ArrowUp' &&
+      !event.shiftKey &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      activeRowIndex === 0
+    ) {
+      event.preventDefault();
+      enterHeaderFocus(activeColumnKey);
+      return;
+    }
 
     const action = dataGridKeyToAction(event, {
       activeRowIndex,
@@ -909,9 +1758,67 @@
   }
 </script>
 
+{#if search || zoomControls}
+  <Toolbar class="cinder-data-grid__toolbar" aria-label={toolbarAriaLabel}>
+    {#if search}
+      <ToolbarGroup class="cinder-data-grid__toolbar-search-group">
+        <SearchField
+          id={searchFieldId}
+          bind:value={searchQuery}
+          placeholder="Search"
+          aria-label={searchFieldAriaLabel}
+          aria-controls={resolvedGridId}
+          onkeydown={handleSearchFieldKeydown}
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          aria-label="Previous match"
+          disabled={searchMatches.length === 0}
+          onclick={() => goToSearchMatch(-1)}><ChevronLeft aria-hidden="true" /></Button
+        >
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          aria-label="Next match"
+          disabled={searchMatches.length === 0}
+          onclick={() => goToSearchMatch(1)}><ChevronRight aria-hidden="true" /></Button
+        >
+        <span class="cinder-data-grid__search-status">{searchStatusText}</span>
+      </ToolbarGroup>
+    {/if}
+    {#if zoomControls}
+      <ToolbarGroup class="cinder-data-grid__toolbar-zoom-group">
+        <span class="cinder-data-grid__toolbar-counts">{toolbarCountsText}</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          aria-label="Zoom out"
+          disabled={!canZoomOut}
+          onclick={() => stepZoom(-1)}><ZoomOut aria-hidden="true" /></Button
+        >
+        <span class="cinder-data-grid__zoom-level">{resolvedZoomPercent}%</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          iconOnly
+          aria-label="Zoom in"
+          disabled={!canZoomIn}
+          onclick={() => stepZoom(1)}><ZoomIn aria-hidden="true" /></Button
+        >
+      </ToolbarGroup>
+    {/if}
+    <ToolbarSpacer />
+  </Toolbar>
+{/if}
+
 <div
   {...rest}
   bind:this={gridElement}
+  id={resolvedGridId}
   class={classNames('cinder-data-grid', className)}
   role="grid"
   aria-rowcount={rows.length + 1}
@@ -931,6 +1838,7 @@
   style:--_cinder-data-grid-content-width={gridContentWidth === undefined
     ? undefined
     : `${gridContentWidth}px`}
+  style:--_cinder-data-grid-zoom-scale={zoomScale}
   {@attach rowVirtualizer.mountScrollContainer}
   {@attach observeGridSize}
 >
@@ -945,14 +1853,26 @@
       {@const sortItem = getColumnSortModelItem(column.key)}
       {@const sortPriority = getColumnSortPriority(column.key)}
       <div
+        id={getHeaderCellId(column.key)}
         class="cinder-data-grid__header-cell"
         role="columnheader"
-        aria-colindex={column.colIndex}
+        tabindex="-1"
+        aria-colindex={getAriaColIndex(column)}
         aria-sort={column.sortable ? getHeaderAriaSort(column, sortItem) : undefined}
         data-cinder-pin={column.pin}
         data-cinder-sortable={column.sortable ? 'true' : undefined}
         data-cinder-sort-direction={sortItem?.direction}
+        data-cinder-column-key={column.key}
+        data-cinder-header-active={headerFocusColumnKey === column.key ? 'true' : undefined}
+        data-cinder-drag-source={columnDragState?.draggedKey === column.key ? 'true' : undefined}
+        data-cinder-drop-indicator={columnDragState?.targetKey === column.key
+          ? columnDragState.dropSide
+          : undefined}
         style={getCellStyle(column)}
+        onpointerdown={(event) => handleHeaderCellPointerDown(event, column)}
+        onpointermove={handleHeaderCellPointerMove}
+        onpointerup={handleHeaderCellPointerUp}
+        onpointercancel={handleHeaderCellPointerUp}
       >
         {#if column.sortable}
           <button
@@ -985,6 +1905,24 @@
           {@render column.header()}
         {:else}
           {column.header}
+        {/if}
+        {#if canResizeColumn(column)}
+          <div
+            class="cinder-data-grid__resize-handle"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label={`Resize ${getColumnHeaderLabel(column)} column`}
+            aria-valuenow={Math.round(column.width)}
+            aria-valuemin={Math.round(column.minWidth)}
+            aria-valuemax={Number.isFinite(column.maxWidth)
+              ? Math.round(column.maxWidth ?? 0)
+              : undefined}
+            data-cinder-resize-handle
+            onpointerdown={(event) => handleResizeHandlePointerDown(event, column)}
+            onpointermove={handleResizeHandlePointerMove}
+            onpointerup={handleResizeHandlePointerUp}
+            onpointercancel={handleResizeHandlePointerUp}
+          ></div>
         {/if}
       </div>
     {/each}
@@ -1019,25 +1957,50 @@
           {@const cellCoordinates = { rowId: rowDomId, columnKey: column.key }}
           {@const isSelectedCell = selectionState.isCellSelected(cellCoordinates)}
           {@const isAnchorCell = selectionState.isAnchorCell(cellCoordinates)}
+          {@const editCellIdentity = { rowKey: rowDomId, columnKey: column.key }}
+          {@const isEditingCell = editModel.isEditing(editCellIdentity)}
+          {@const isSearchMatchCell =
+            search && searchMatchKeys.has(getCellCoordinateKey(cellCoordinates))}
+          {@const isCurrentSearchMatchCell =
+            search && currentSearchMatchKey === getCellCoordinateKey(cellCoordinates)}
           <div
             id={cellId}
-            class="cinder-data-grid__cell"
+            class={classNames(
+              'cinder-data-grid__cell',
+              isSearchMatchCell && 'cinder-data-grid__cell--search-match',
+              isCurrentSearchMatchCell && 'cinder-data-grid__cell--search-match-current',
+            )}
             role={column.rowHeader ? 'rowheader' : 'gridcell'}
-            aria-colindex={column.colIndex}
+            aria-colindex={getAriaColIndex(column)}
             aria-selected={isSelectedCell ? 'true' : undefined}
             tabindex="-1"
             data-cinder-pin={column.pin}
             data-cinder-active={activeCellId === cellId ? 'true' : undefined}
             data-cinder-selected={isSelectedCell ? '' : undefined}
             data-cinder-anchor={isAnchorCell ? 'true' : undefined}
+            data-cinder-editable={column.editable ? 'true' : undefined}
+            data-cinder-editing={isEditingCell ? 'true' : undefined}
+            data-cinder-search-match={isSearchMatchCell ? '' : undefined}
+            data-cinder-search-match-current={isCurrentSearchMatchCell ? '' : undefined}
             data-cinder-row-id={rowId}
             data-cinder-row-dom-id={rowDomId}
             data-cinder-column-key={column.key}
             data-cinder-row-index={rowIndex}
             style={getCellStyle(column)}
           >
-            {#if column.cell}
-              {@render column.cell({ row, value, editing: false })}
+            {#if isEditingCell && !column.cell}
+              {@const editType = resolveDataGridEditType(column.editType, editModel.originalValue)}
+              <Input
+                id={getEditingInputId(editCellIdentity)}
+                type={editType}
+                bind:value={editModel.draftValue}
+                inputAttachment={focusEditingInput}
+                class="cinder-data-grid__cell-editor-input"
+                aria-label={typeof column.header === 'string' ? column.header : undefined}
+                onblur={() => handleEditInputBlur(editCellIdentity)}
+              />
+            {:else if column.cell}
+              {@render column.cell({ row, value, editing: isEditingCell })}
             {:else}
               {formatDataGridValue(value)}
             {/if}

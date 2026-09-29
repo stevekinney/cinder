@@ -12,7 +12,7 @@
  * The dark-theme triple background sits ~8 oklch-L points lighter than the
  * surface synthesized here (28% vs 20% L), exceeding the 0.02 ΔL audit
  * threshold. Switching to the triples would shift every soft surface in dark
- * mode. See docs/css-audit/status-triple-equivalence.md for the full table. This
+ * mode. See documentation/css-audit/status-triple-equivalence.md for the full table. This
  * partial intentionally preserves the synthesized values exactly — reconciling
  * with the triples is separate, screenshot-gated visual work.
  *

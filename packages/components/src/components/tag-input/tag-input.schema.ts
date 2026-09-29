@@ -139,7 +139,7 @@ const schema = {
         name: 'delimiter',
         reason: 'unknown-shape',
         description:
-          'Key that commits the current input into a tag. Enter always commits separately.',
+          "Key that commits the current input into a tag. Enter always commits\nseparately. Defaults to `','`. (`string | RegExp` is not expressible\nin JSON Schema, so this default only appears here in prose—the\n`@default` tag has no effect on an opaque prop's generated Default\ncell.)",
       },
       {
         name: 'onblur',

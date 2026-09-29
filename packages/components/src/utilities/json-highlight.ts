@@ -16,9 +16,23 @@
  * it in `<pre>` so headed and headerless code blocks share container styling.
  */
 
-const KEYWORD_NULL = 'null';
-const KEYWORD_TRUE = 'true';
-const KEYWORD_FALSE = 'false';
+const KEYWORDS = [
+  { value: 'true', kind: 'boolean' },
+  { value: 'false', kind: 'boolean' },
+  { value: 'null', kind: 'null' },
+];
+type PunctuationCharacter = '{' | '[' | '}' | ']' | ',' | ':';
+
+function isPunctuationCharacter(character: string): character is PunctuationCharacter {
+  return (
+    character === '{' ||
+    character === '[' ||
+    character === '}' ||
+    character === ']' ||
+    character === ',' ||
+    character === ':'
+  );
+}
 
 // Only escape characters that are syntactically meaningful in HTML *text*
 // content. The double-quote needs escaping only inside attribute values, and
@@ -72,96 +86,66 @@ function readNumberLiteral(source: string, startIndex: number): string {
 function tokenize(source: string): string {
   let output = '';
   let index = 0;
-  let pendingKey = false; // tracks whether the next string is an object key
+  let pendingKey = false;
   const openerStack: Array<'{' | '['> = [];
 
   while (index < source.length) {
     const character = source[index];
     if (character === undefined) break;
-
-    if (character === ' ' || character === '\t' || character === '\n' || character === '\r') {
+    if (/^[ \t\n\r]$/.test(character)) {
       output += escapeHtml(character);
       index += 1;
-      continue;
-    }
-
-    if (character === '{') {
-      output += span('punctuation', '{');
-      openerStack.push('{');
-      pendingKey = true;
-      index += 1;
-      continue;
-    }
-
-    if (character === '[') {
-      output += span('punctuation', '[');
-      openerStack.push('[');
-      pendingKey = false;
-      index += 1;
-      continue;
-    }
-
-    if (character === '}' || character === ']') {
+    } else if (isPunctuationCharacter(character)) {
       output += span('punctuation', character);
-      openerStack.pop();
+      pendingKey = updateContainerState(character, openerStack, pendingKey);
       index += 1;
-      continue;
+    } else {
+      const token = readValueToken(source, index, character, pendingKey);
+      output += token.markup;
+      index += token.value.length;
     }
-
-    if (character === ',') {
-      output += span('punctuation', ',');
-      pendingKey = openerStack[openerStack.length - 1] === '{';
-      index += 1;
-      continue;
-    }
-
-    if (character === ':') {
-      output += span('punctuation', ':');
-      pendingKey = false; // values follow the colon
-      index += 1;
-      continue;
-    }
-
-    if (character === '"') {
-      const literal = readStringLiteral(source, index);
-      output += span(pendingKey ? 'key' : 'string', literal);
-      index += literal.length;
-      // After a key string, the next non-whitespace must be `:` and then a value.
-      // After a value string, the next non-whitespace is `,` or a closing bracket.
-      // pendingKey will be reset by `:` (to false) and by `,` (recomputed).
-      continue;
-    }
-
-    if (character === '-' || (character >= '0' && character <= '9')) {
-      const literal = readNumberLiteral(source, index);
-      output += span('number', literal);
-      index += literal.length;
-      continue;
-    }
-
-    if (source.startsWith(KEYWORD_TRUE, index)) {
-      output += span('boolean', KEYWORD_TRUE);
-      index += KEYWORD_TRUE.length;
-      continue;
-    }
-
-    if (source.startsWith(KEYWORD_FALSE, index)) {
-      output += span('boolean', KEYWORD_FALSE);
-      index += KEYWORD_FALSE.length;
-      continue;
-    }
-
-    if (source.startsWith(KEYWORD_NULL, index)) {
-      output += span('null', KEYWORD_NULL);
-      index += KEYWORD_NULL.length;
-      continue;
-    }
-
-    output += escapeHtml(character);
-    index += 1;
   }
-
   return `<code class="cinder-json">${output}</code>`;
+}
+
+function updateContainerState(
+  character: PunctuationCharacter,
+  openerStack: Array<'{' | '['>,
+  pendingKey: boolean,
+): boolean {
+  switch (character) {
+    case '{':
+    case '[':
+      openerStack.push(character);
+      return character === '{';
+    case '}':
+    case ']':
+      openerStack.pop();
+      return pendingKey;
+    case ',':
+      return openerStack[openerStack.length - 1] === '{';
+    case ':':
+      return false;
+  }
+}
+
+function readValueToken(
+  source: string,
+  index: number,
+  character: string,
+  pendingKey: boolean,
+): { value: string; markup: string } {
+  if (character === '"') {
+    const value = readStringLiteral(source, index);
+    return { value, markup: span(pendingKey ? 'key' : 'string', value) };
+  }
+  if (character === '-' || (character >= '0' && character <= '9')) {
+    const value = readNumberLiteral(source, index);
+    return { value, markup: span('number', value) };
+  }
+  const keyword = KEYWORDS.find(({ value }) => source.startsWith(value, index));
+  if (keyword) return { value: keyword.value, markup: span(keyword.kind, keyword.value) };
+  return { value: character, markup: escapeHtml(character) };
 }
 
 export const jsonHighlightInternalsForTesting = { tokenize };

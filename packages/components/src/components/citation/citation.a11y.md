@@ -1,7 +1,6 @@
 # Citation design and accessibility review
 
-This record documents the design and accessibility review for the inline source
-marker and its Popover disclosure.
+This record documents the design and accessibility review for the inline source marker and its Popover disclosure.
 
 ## Design review (required)
 
@@ -13,9 +12,7 @@ marker and its Popover disclosure.
 
 ## Novel interaction accessibility review
 
-A novel interaction model includes a new disclosure or keyboard pattern,
-entering or leaving the top layer, or making previously static content
-interactive.
+A novel interaction model includes a new disclosure or keyboard pattern, entering or leaving the top layer, or making previously static content interactive.
 
 - Applies: Yes—the marker opens a rich Popover disclosure and the disclosure contains interactive source links and pagination controls.
 - Reviewer: Cinder maintainers
@@ -23,10 +20,7 @@ interactive.
 
 ### Focus management
 
-Focus enters the marker through normal document order. Popover opens on activation and
-keeps the marker as the trigger; Escape and pointer/focus exit dismiss the card.
-Focus returns to the marker after dismissal, and removing the trigger safely
-unmounts the card.
+Focus enters the marker through normal document order. Popover opens on activation and keeps the marker as the trigger; Escape and pointer/focus exit dismiss the card. Focus returns to the marker after dismissal, and removing the trigger safely unmounts the card.
 
 ### Keyboard matrix
 
@@ -39,9 +33,4 @@ unmounts the card.
 
 ### Assistive-technology announcements
 
-The marker is a button named “Sources (N)” and exposes the Popover through the
-existing Popover trigger semantics. Source details use native headings,
-paragraphs, and links. The current-page text is polite live text (“N of M”);
-disabled previous/next buttons communicate pagination bounds. Verified against
-keyboard navigation and the browser accessibility tree in Chromium with the
-default light and dark themes.
+The marker is a button named “Sources (N)” and exposes the Popover through the existing Popover trigger semantics. Source details use native headings, paragraphs, and links. The current-page text is polite live text (“N of M”); disabled previous/next buttons communicate pagination bounds. Verified against keyboard navigation and the browser accessibility tree in Chromium with the default light and dark themes.

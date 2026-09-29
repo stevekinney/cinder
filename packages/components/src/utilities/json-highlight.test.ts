@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 
-import { highlightJson, jsonHighlightInternalsForTesting } from './json-highlight.ts';
+import {
+  highlightJson,
+  highlightJsonValidated,
+  jsonHighlightInternalsForTesting,
+} from './json-highlight.ts';
 
 describe('highlightJson — valid JSON', () => {
   test('object: keys, strings, separators each get a token span', () => {
@@ -132,5 +136,23 @@ describe('highlightJson — HTML escaping', () => {
   test('ampersand in keys is escaped to &amp;', () => {
     const html = highlightJson('{"a&b": 1}');
     expect(html).toContain('cinder-json-token-key">"a&amp;b"');
+  });
+});
+
+describe('highlightJsonValidated', () => {
+  test('tokenizes already-validated JSON the same way highlightJson does', () => {
+    const html = highlightJsonValidated('{"status": "ok"}');
+    expect(html).toContain('cinder-json-token-key">"status"');
+    expect(html).toContain('cinder-json-token-string">"ok"');
+    expect(html).toBe(highlightJson('{"status": "ok"}'));
+  });
+
+  test('skips the JSON.parse validation step highlightJson performs', () => {
+    // The caller is asserting the source is already valid JSON — unlike
+    // highlightJson, this never falls back to a plain escaped <code> block,
+    // even for input that JSON.parse would actually accept.
+    expect(highlightJsonValidated('null')).toBe(
+      '<code class="cinder-json"><span class="cinder-json-token cinder-json-token-null">null</span></code>',
+    );
   });
 });

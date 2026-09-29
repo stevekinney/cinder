@@ -27,7 +27,7 @@ export type TableOfContentsProps = Omit<
    * Explicit TOC items. When provided, this source wins.
    * If omitted, headings are derived from `target` + `headingSelector`.
    */
-  items?: TableOfContentsItem[];
+  items?: TableOfContentsItem[] | undefined;
   /**
    * Target heading container for derived mode.
    * Accepts a CSS selector string or an HTMLElement.

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import SpeedDial from '../speed-dial/index.ts';
+  import { SpeedDial } from '../speed-dial/index.ts';
   import type { SpeedDialActionLabelPlacement } from './speed-dial-action.types.ts';
 
   let {

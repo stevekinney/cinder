@@ -8,7 +8,7 @@
 
 ```svelte
 <script lang="ts">
-  import Citation from '@lostgradient/cinder/citation';
+  import { Citation } from '@lostgradient/cinder';
 </script>
 
 <Citation sources={[{ label: 'Component metadata guide', url: '/docs/components' }]} />
@@ -31,9 +31,7 @@
 
 <!-- generated:authoring:start -->
 
-Before publishing this component, complete the live
-[component authoring pre-flight](../../../AGENTS.md#component-authoring-pre-flight).
-
+Before publishing this component, complete the live [component authoring pre-flight](../../../README.md#component-authoring-checklist).
 <!-- generated:authoring:end -->
 
 ## CSS Variables
@@ -41,7 +39,6 @@ Before publishing this component, complete the live
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

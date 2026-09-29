@@ -29,7 +29,7 @@ export class KanbanBoardColumnReorder<Card> {
     this.#options = options;
   }
 
-  cancelColumnLift(columnTitle: string | undefined = undefined): void {
+  cancelColumnLift(columnTitle?: string): void {
     this.liftedKey = null;
     this.targetIndex = null;
     if (columnTitle) this.#options.announce(`${columnTitle} column move cancelled.`);

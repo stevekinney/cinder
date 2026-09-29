@@ -33,8 +33,7 @@ export type SchemaFormStateOptions = {
 };
 
 export type SchemaFormSubmitCandidate =
-  | { ok: true; value: unknown }
-  | { ok: false; issues: SchemaFormValidationIssue[] };
+  { ok: true; value: unknown } | { ok: false; issues: SchemaFormValidationIssue[] };
 
 /**
  * Owns every path-keyed piece of SchemaForm's mutable editing state: the

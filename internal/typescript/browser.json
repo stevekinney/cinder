@@ -1,0 +1,24 @@
+{
+  "extends": "./base.json",
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": [],
+    "customConditions": ["browser", "svelte"]
+  },
+  "exclude": [
+    "${configDir}/node_modules",
+    "${configDir}/coverage",
+    "${configDir}/src/**/*.test.*",
+    "${configDir}/src/**/*.spec.*",
+    "${configDir}/src/**/*.test-d.ts",
+    "${configDir}/src/**/*.type-test.ts",
+    "${configDir}/src/**/*.playwright.ts",
+    "${configDir}/src/**/*-test-*.ts",
+    "${configDir}/src/**/*.test-support.ts",
+    "${configDir}/src/**/test/**",
+    "${configDir}/src/**/tests/**",
+    "${configDir}/src/**/__tests__/**",
+    "${configDir}/src/**/__fixtures__/**",
+    "${configDir}/src/**/__test-helpers__/**"
+  ]
+}

@@ -152,79 +152,56 @@ export const CONTRACT: Record<string, ComponentContract> = {
     ],
   },
 
+  // COR-239: ButtonProps was `ButtonOnlyProps | LinkButtonProps` (each arm a TSTypeReference to
+  // its own named alias), which the AST-only checker below already treated as `unresolvable` —
+  // it validated arm *count* only, never these per-arm `props`. Restructuring ButtonProps to
+  // `SharedHtmlAttributes & DataAttributes & PadUnion<ButtonDiscriminant> & { ...cinder props }`
+  // (see button.types.ts) to avoid TS2590 makes it a genuine `TSIntersectionType`, so this
+  // contract now checks real, previously-unchecked ground: the cinder-specific props inlined as
+  // the intersection's trailing literal. The href/button discriminant itself (and icon-only
+  // naming/visual constraints) is covered by `scripts/consumer-strict-types.ts` instead, which
+  // can actually assign object literals against the type — this AST-only checker cannot.
   button: {
-    kind: 'union',
-    arms: [
-      {
-        kind: 'intersection',
-        html_attrs: 'HTMLButtonAttributes',
-        props: {
-          variant: { optional: true, type_kind: 'TSUnionType', default: L('secondary') },
-          size: { optional: true, type_kind: 'TSUnionType', default: L('md') },
-          fullWidth: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
-          loading: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
-          class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
-        },
-        snippets: { children: s0(true) },
-      },
-      {
-        kind: 'intersection',
-        html_attrs: 'HTMLAnchorAttributes',
-        props: {
-          variant: { optional: true, type_kind: 'TSUnionType', default: L('secondary') },
-          size: { optional: true, type_kind: 'TSUnionType', default: L('md') },
-          fullWidth: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
-          loading: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
-          class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
-          href: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
-        },
-        snippets: { children: s0(true) },
-      },
-    ],
+    kind: 'intersection',
+    html_attrs: 'HTMLAttributes',
+    props: {
+      variant: { optional: true, type_kind: 'TSTypeReference', default: L('secondary') },
+      size: { optional: true, type_kind: 'TSTypeReference', default: L('md') },
+      fullWidth: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
+      loading: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
+      class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
+    },
+    snippets: { children: s0(true) },
   },
 
+  // COR-239: CardProps was `CardPlain | CardWithHeader | CardWithTitle` (each arm a
+  // TSTypeReference to its own named alias), which the AST-only checker below already treated
+  // as `unresolvable` — it validated arm *count* only, never these per-arm `props`.
+  // Restructuring CardProps to `SharedHtmlAttributes & DataAttributes & PadUnion<CardDiscriminant>
+  // & { ...cinder props }` (see card.types.ts) to avoid TS2590 makes it a genuine
+  // `TSIntersectionType`, so this contract now checks real, previously-unchecked ground: the
+  // cinder-specific props inlined as the intersection's trailing literal. The header/title
+  // exclusivity and div/anchor/button discriminant are covered by
+  // `scripts/consumer-strict-types.ts` instead, which can actually assign object literals
+  // against the type — this AST-only checker cannot.
   card: {
-    kind: 'union',
-    arms: [
-      {
-        kind: 'intersection',
-        html_attrs: 'HTMLAttributes',
-        props: {
-          class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
-          variant: { optional: true, type_kind: 'TSTypeReference', default: L('card') },
-          bodyTone: { optional: true, type_kind: 'TSTypeReference', default: L('default') },
-          footerTone: { optional: true, type_kind: 'TSTypeReference', default: L('default') },
-          edgeToEdgeOnMobile: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
-        },
-        snippets: { children: s0(false), footer: s0(true) },
-      },
-      {
-        kind: 'intersection',
-        html_attrs: 'HTMLAttributes',
-        props: {
-          class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
-          variant: { optional: true, type_kind: 'TSTypeReference', default: L('card') },
-          bodyTone: { optional: true, type_kind: 'TSTypeReference', default: L('default') },
-          footerTone: { optional: true, type_kind: 'TSTypeReference', default: L('default') },
-          edgeToEdgeOnMobile: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
-        },
-        snippets: { header: s0(false), children: s0(false), footer: s0(true) },
-      },
-      {
-        kind: 'intersection',
-        html_attrs: 'HTMLAttributes',
-        props: {
-          title: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
-          description: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
-          class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
-          variant: { optional: true, type_kind: 'TSTypeReference', default: L('card') },
-          bodyTone: { optional: true, type_kind: 'TSTypeReference', default: L('default') },
-          footerTone: { optional: true, type_kind: 'TSTypeReference', default: L('default') },
-          edgeToEdgeOnMobile: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
-        },
-        snippets: { children: s0(false), footer: s0(true) },
-      },
-    ],
+    kind: 'intersection',
+    html_attrs: 'HTMLAttributes',
+    props: {
+      class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
+      variant: { optional: true, type_kind: 'TSTypeReference', default: L('card') },
+      elevation: { optional: true, type_kind: 'TSTypeReference', default: NO_DEFAULT },
+      tone: { optional: true, type_kind: 'TSTypeReference', default: NO_DEFAULT },
+      bodyTone: { optional: true, type_kind: 'TSTypeReference', default: L('default') },
+      footerTone: { optional: true, type_kind: 'TSTypeReference', default: L('default') },
+      edgeToEdgeOnMobile: { optional: true, type_kind: 'TSBooleanKeyword', default: L(false) },
+      padding: { optional: true, type_kind: 'TSTypeReference', default: NO_DEFAULT },
+    },
+    // `children` is required in every real CardDiscriminant arm, but that discriminant lives
+    // inside `PadUnion<...>`, not this flat literal, so the AST checker can't see it here —
+    // marked optional so it isn't flagged as missing; the real requirement is enforced by
+    // `scripts/consumer-strict-types.ts`'s `card-union-positive`/`card-union-negative` fixtures.
+    snippets: { children: s0(true), footer: s0(true), header: s0(true) },
   },
 
   'data-list': {
@@ -240,34 +217,21 @@ export const CONTRACT: Record<string, ComponentContract> = {
     },
   },
 
+  // COR-239: DropdownProps was `LegacyDropdownProps | CompoundDropdownProps` (each arm a
+  // TSTypeReference to its own named alias), which the AST-only checker below already treated
+  // as `unresolvable` — it validated arm *count* only, never these per-arm `props`.
+  // Restructuring DropdownProps to `SharedHtmlAttributes & DataAttributes &
+  // PadUnion<DropdownDiscriminant> & { class?: string }` (see dropdown.types.ts) to avoid TS2590
+  // makes it a genuine `TSIntersectionType`, so this contract now checks the one prop that
+  // survives as a flat literal member; `open`/`id`/`placement`/`trigger`/`children` all live
+  // inside the discriminant now and are covered by `scripts/consumer-strict-types.ts` instead.
   dropdown: {
-    kind: 'union',
-    arms: [
-      {
-        kind: 'intersection',
-        html_attrs: 'HTMLAttributes',
-        props: {
-          open: { optional: false, type_kind: 'TSBooleanKeyword', default: B(false) },
-          placement: { optional: true, type_kind: 'TSTypeReference', default: L('bottom-start') },
-          class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
-        },
-        snippets: {
-          trigger: s0(false),
-          children: s0(false),
-        },
-      },
-      {
-        kind: 'intersection',
-        html_attrs: 'HTMLAttributes',
-        props: {
-          id: { optional: false, type_kind: 'TSStringKeyword', default: REQUIRED },
-          class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
-        },
-        snippets: {
-          children: s0(true),
-        },
-      },
-    ],
+    kind: 'intersection',
+    html_attrs: 'HTMLAttributes',
+    props: {
+      class: { optional: true, type_kind: 'TSStringKeyword', default: L(undefined) },
+    },
+    snippets: {},
   },
 
   'empty-state': {
@@ -410,16 +374,26 @@ export const CONTRACT: Record<string, ComponentContract> = {
     },
   },
 
+  // COR-239: NavigationItemProps was `LinkArm | ButtonArm` (each arm a TSTypeReference to its
+  // own named alias), which the AST-only checker below already treated as `unresolvable` — it
+  // validated arm *count* only, never real props. Restructuring NavigationItemProps to
+  // `NavigationItemSharedHtmlAttributes & DataAttributes & PadUnion<LinkExtra | ButtonExtra> &
+  // { ...cinder props }` (see navigation-item.types.ts) to avoid TS2590 makes it a genuine
+  // `TSIntersectionType`, so this contract now checks real, previously-unchecked ground: the
+  // cinder-specific props inlined as the intersection's trailing literal. The href/button
+  // discriminant itself is covered by `scripts/consumer-strict-types.ts` instead, which can
+  // actually assign object literals against the type — this AST-only checker cannot.
   'navigation-item': {
-    // NavigationItemProps = LinkArm | ButtonArm where arms are named type aliases.
-    // The AST-only test cannot resolve named type references into their member shapes —
-    // that requires ts-morph (Phase 4). We verify only that the Props is a union of
-    // the correct arity (2 arms). Per-arm prop names are validated in Phase 4.
-    kind: 'union',
-    arms: [
-      { kind: 'literal', props: {}, snippets: {} }, // LinkArm placeholder
-      { kind: 'literal', props: {}, snippets: {} }, // ButtonArm placeholder
-    ],
+    kind: 'intersection',
+    html_attrs: 'HTMLAttributes',
+    props: {
+      active: { optional: true, type_kind: 'TSBooleanKeyword', default: NO_DEFAULT },
+      disabled: { optional: true, type_kind: 'TSBooleanKeyword', default: NO_DEFAULT },
+      current: { optional: true, type_kind: 'TSUnionType', default: NO_DEFAULT },
+      class: { optional: true, type_kind: 'TSStringKeyword', default: NO_DEFAULT },
+      variant: { optional: true, type_kind: 'TSUnionType', default: L('horizontal') },
+    },
+    snippets: { children: s0(false) },
   },
 
   pagination: {

@@ -42,7 +42,8 @@ export {
 export type { DiffWithFrontMatterResult } from './frontmatter.js';
 
 // Line-level diff (DEP-42)
-export { computeLineDiff, computeWordChanges, getDiffStats, groupIntoHunks } from './line-diff.js';
+export { getDiffStats } from './line-diff-stats.js';
+export { computeLineDiff, computeWordChanges, groupIntoHunks } from './line-diff.js';
 export type { DiffHunk, LineDiff, LineDiffStats, WordChange } from './line-diff.js';
 
 // Types

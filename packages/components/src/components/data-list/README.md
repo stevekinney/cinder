@@ -1,22 +1,15 @@
 # DataList
 
-A semantic list container (`<ul role="list">`) for a homogeneous collection of
-records. DataList owns the list element, the list reset, and the empty state; it
-delegates row chrome (padding, dividers, density) to the row primitive. Each
-record is rendered through the `children` snippet, which **must** render an
-`<li>` — [`StackedListItem`](../stacked-list-item/README.md) is the recommended
-row.
+A semantic list container (`<ul role="list">`) for a homogeneous collection of records. DataList owns the list element, the list reset, and the empty state; it delegates row chrome (padding, dividers, density) to the row primitive. Each record is rendered through the `children` snippet, which **must** render an `<li>` — [`StackedListItem`](../stacked-list-item/README.md) is the recommended row.
 
-Reach for DataList when you have a vertical list of like records. For key–value
-metadata about a single entity use [`DescriptionList`](../description-list/README.md);
-for tabular rows and columns use [`Table`](../table/README.md).
+Reach for DataList when you have a vertical list of like records. For key–value metadata about a single entity use [`DescriptionList`](../description-list/README.md); for tabular rows and columns use [`Table`](../table/README.md).
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import { DataList } from '@lostgradient/cinder/data-list';
-  import { StackedListItem } from '@lostgradient/cinder/stacked-list-item';
+  import { DataList } from '@lostgradient/cinder';
+  import { StackedListItem } from '@lostgradient/cinder';
 
   const members = [
     { id: 'a', name: 'Alice Chen', role: 'Engineer' },
@@ -37,9 +30,7 @@ for tabular rows and columns use [`Table`](../table/README.md).
 </DataList>
 ```
 
-A list-level `density` is inherited by every `StackedListItem` row that does not
-set its own `density` prop. The `empty` snippet renders inside a component-owned
-`<li class="cinder-data-list-empty">`, so it needs no inline styling.
+A list-level `density` is inherited by every `StackedListItem` row that does not set its own `density` prop. The `empty` snippet renders inside a component-owned `<li class="cinder-data-list-empty">`, so it needs no inline styling.
 
 ## Props
 
@@ -61,7 +52,6 @@ set its own `density` prop. The `empty` snippet renders inside a component-owned
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

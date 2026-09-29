@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 import type { ComponentProps } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -13,21 +13,21 @@ const { default: ColorFieldFormFixture } =
   await import('../../test/fixtures/color-field-form-fixture.svelte');
 const { default: ColorFieldFormFieldFixture } =
   await import('../../test/fixtures/color-field-form-field-fixture.svelte');
-const { _resetEscapeStack } = await import('../../_internal/overlay.ts');
+const { resetEscapeStack } = await import('../../_internal/overlay.ts');
 
 afterEach(() => {
   cleanup();
-  _resetEscapeStack();
+  resetEscapeStack();
   // Rendering the fixture into the default container avoids the happy-dom
   // detached-child teardown failure that showed up when these tests mounted
   // standalone forms under document.body.
   document.body.replaceChildren();
 });
 
-function q<T extends Element = HTMLElement>(root: ParentNode, selector: string): T {
-  const element = root.querySelector(selector);
+function q<T extends Element>(root: ParentNode, selector: string, _expectedType?: T): T {
+  const element = root.querySelector<T>(selector);
   if (!element) throw new Error(`Selector not found: ${selector}`);
-  return element as T;
+  return element;
 }
 
 function renderColorFieldFormFixture(props: ComponentProps<typeof ColorFieldFormFixture>) {
@@ -53,9 +53,9 @@ describe('ColorField — color picker trigger', () => {
   test('composes picker dependencies through public component entries', async () => {
     const source = await Bun.file(new URL('./color-field.svelte', import.meta.url)).text();
 
-    expect(source).toContain("from '@lostgradient/cinder/button'");
-    expect(source).toContain("from '@lostgradient/cinder/color-picker'");
-    expect(source).toContain("from '@lostgradient/cinder/popover'");
+    expect(source).toContain("from '../button/index.ts';");
+    expect(source).toContain("from '../color-picker/index.ts';");
+    expect(source).toContain("from '../popover/index.ts';");
     expect(source).not.toContain("from '../button/button.svelte'");
     expect(source).not.toContain("from '../color-picker/color-picker.svelte'");
     expect(source).not.toContain("from '../popover/popover.svelte'");
@@ -276,9 +276,7 @@ describe('ColorField — invalid input', () => {
 
     // Parent removes the custom message entirely — falls back to the
     // generated default.
-    await rerender({ id: 'color', errorMessage: undefined } as unknown as Parameters<
-      typeof rerender
-    >[0]);
+    await rerender({ id: 'color', errorMessage: undefined });
     await tick();
     const errorText = container.querySelector('.cinder-input-field__error')?.textContent ?? '';
     expect(errorText).not.toContain('Try a hex code like #336699.');
@@ -327,7 +325,10 @@ describe('ColorField — invalid input', () => {
     // The draft must NOT have been silently committed.
     expect(onValueChange).not.toHaveBeenCalled();
     expect(input.value).toBe('#ff0000');
-    const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    const hidden = requiredInstance(
+      container.querySelector('input[type="hidden"]'),
+      HTMLInputElement,
+    );
     expect(hidden.value).toBe('');
 
     // Only the next real commit (blur) actually seeds/emits it.
@@ -589,7 +590,10 @@ describe('ColorField — no commit during typing', () => {
     await tick();
     expect(onValueChange).not.toHaveBeenCalled();
 
-    const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    const hidden = requiredInstance(
+      container.querySelector('input[type="hidden"]'),
+      HTMLInputElement,
+    );
     expect(hidden.value).toBe('');
 
     // Only the next commit (blur) actually seeds/emits it.
@@ -1101,7 +1105,7 @@ describe('ColorField — Enter-clear sync regression', () => {
     const onsubmit = mock<(event: SubmitEvent) => void>((event) => event.preventDefault());
     let hiddenAtSubmit: string | undefined;
     const onsubmitCapture: (event: SubmitEvent) => void = (event) => {
-      const target = event.target as HTMLFormElement;
+      const target = requiredInstance(event.target, HTMLFormElement);
       const mirror = target.querySelector<HTMLInputElement>('input[type="hidden"][name="c"]');
       hiddenAtSubmit = mirror?.value;
       onsubmit(event);

@@ -25,18 +25,11 @@ Opinionated conversation surface bundling message list, composer, attachments, a
 </div>
 ```
 
-> [!IMPORTANT] Chat needs a definite-height ancestor
-> Chat's root element fills its parent (`height: 100%`). Place it inside an
-> ancestor with a resolved height—a fixed height, a flex or grid cell, or
-> `height: 100dvh`—or the message viewport collapses and Chat renders as a
-> small card instead of filling its space. See [Layout and sizing](#layout-and-sizing).
+> [!IMPORTANT] Chat needs a definite-height ancestor Chat's root element fills its parent (`height: 100%`). Place it inside an ancestor with a resolved height—a fixed height, a flex or grid cell, or `height: 100dvh`—or the message viewport collapses and Chat renders as a small card instead of filling its space. See [Layout and sizing](#layout-and-sizing).
 
 ## Adapter-driven streaming
 
-`ChatAdapter.sendMessage` deliberately stays a `Promise<void>` command. The
-adapter owns the conversation snapshot, while `Chat` owns the transient visual
-stream buffer. Pair the public streaming builders with the imperative instance
-methods so both surfaces advance together:
+`ChatAdapter.sendMessage` deliberately stays a `Promise<void>` command. The adapter owns the conversation snapshot, while `Chat` owns the transient visual stream buffer. Pair the public streaming builders with the imperative instance methods so both surfaces advance together:
 
 ```svelte
 <script lang="ts">
@@ -96,19 +89,11 @@ methods so both surfaces advance together:
 />
 ```
 
-The assistant placeholder must exist before `beginStreaming`; update the same
-snapshot for each token, finalize it before `endStreaming`, and cancel it when
-the backend fails. The package's Adapter-driven streaming example uses a
-complete finite stream without assuming a particular model provider.
+The assistant placeholder must exist before `beginStreaming`; update the same snapshot for each token, finalize it before `endStreaming`, and cancel it when the backend fails. The package's Adapter-driven streaming example uses a complete finite stream without assuming a particular model provider.
 
 ### Failed delivery and retry
 
-`ChatAdapter.sendMessage` receives a `MessageInput`, not a persisted `Message`,
-so it has no message ID. Append the optimistic user message to the
-authoritative snapshot first and retain the generated ID. Chat awaits adapter
-commands and reports rejected commands through `onadaptererror`; adapter
-implementations should mark delivery status and then rethrow so Chat can handle
-the error consistently:
+`ChatAdapter.sendMessage` receives a `MessageInput`, not a persisted `Message`, so it has no message ID. Append the optimistic user message to the authoritative snapshot first and retain the generated ID. Chat awaits adapter commands and reports rejected commands through `onAdapterError`; adapter implementations should mark delivery status and then rethrow so Chat can handle the error consistently:
 
 ```ts
 import {
@@ -126,24 +111,16 @@ async sendMessage(message, attachments) {
     conversation = clearMessageDeliveryStatus(conversation, messageId);
   } catch (error) {
     conversation = markMessageDeliveryFailed(conversation, messageId);
-    throw error; // rethrow so Chat routes it to onadaptererror
+    throw error; // rethrow so Chat routes it to onAdapterError
   }
 }
 ```
 
-The helpers immutably set or clear the transient `_deliveryStatus` metadata
-used by Chat's failed-message label and Retry button. Apply the same pair around
-`retryMessage` and `editMessage` resends; the successful attempt clears the
-marker.
+The helpers immutably set or clear the transient `_deliveryStatus` metadata used by Chat's failed-message label and Retry button. Apply the same pair around `retryMessage` and `editMessage` resends; the successful attempt clears the marker.
 
 ### Edit and resend
 
-`ChatAdapter.editMessage` hands you the edited message's ID and new content;
-the superseded branch (the old reply, any tool calls after it) should be
-discarded before the edited content is re-sent. `rewindBeforeMessage` performs
-exactly that cut — it drops the named message and everything after it in the
-transcript, keeps tool-call/tool-result pairs atomic, and renumbers positions —
-so an edit flow never assembles `ids`/`messages`/`updatedAt` by hand:
+`ChatAdapter.editMessage` hands you the edited message's ID and new content; the superseded branch (the old reply, any tool calls after it) should be discarded before the edited content is re-sent. `rewindBeforeMessage` performs exactly that cut — it drops the named message and everything after it in the transcript, keeps tool-call/tool-result pairs atomic, and renumbers positions — so an edit flow never assembles `ids`/`messages`/`updatedAt` by hand:
 
 ```ts
 import { appendUserMessage, rewindBeforeMessage } from '@lostgradient/chat';
@@ -155,15 +132,11 @@ async editMessage({ messageId, content }) {
 }
 ```
 
-`rewindBeforePosition` is the position-keyed form, and both accept a
-`RewindOptions` bag (`preserveToolPairs: false` cuts strictly at the boundary,
-leaving a straddled tool call pending).
+`rewindBeforePosition` is the position-keyed form, and both accept a `RewindOptions` bag (`preserveToolPairs: false` cuts strictly at the boundary, leaving a straddled tool call pending).
 
 ### Transcript mutation and query helpers
 
-`@lostgradient/chat` re-exports Conversationalist's canonical transcript
-mutation and query helpers so consumers never hand-walk `conversation.ids` /
-`conversation.messages` or import `conversationalist` directly:
+`@lostgradient/chat` re-exports Conversationalist's canonical transcript mutation and query helpers so consumers never hand-walk `conversation.ids` / `conversation.messages` or import `conversationalist` directly:
 
 ```ts
 import {
@@ -195,61 +168,23 @@ conversation = replaceToolResult(conversation, toolCallId, {
 });
 ```
 
-`updateMessage`, `removeMessage`, `setMessageHidden`, and `replaceToolResult`
-are no-ops—they return the original history unchanged—when given an unknown
-message or tool-call identifier, so callers do not need to guard against a
-stale ID.
+`updateMessage`, `removeMessage`, `setMessageHidden`, and `replaceToolResult` are no-ops—they return the original history unchanged—when given an unknown message or tool-call identifier, so callers do not need to guard against a stale ID.
 
-`getMessages(conversation, { includeHidden? })` returns the ordered,
-non-hidden messages Chat renders (pass `includeHidden: true` to include hidden
-ones too). `getUnresolvedToolApprovals(conversation)` finds every
-`tool-result` message still parked on `outcome: 'action_required'` with a
-pending `action`—the transcript-level source of truth for "does this
-conversation have an approval waiting," independent of any UI-only
-approved/denied state. `findToolResultMessage(conversation, toolCallId)` locates
-the `tool-result` message for a given tool-call ID, which `replaceToolResult`
-needs. Both query helpers accept the same `{ includeHidden? }` option as
-`getMessages`.
+`getMessages(conversation, { includeHidden? })` returns the ordered, non-hidden messages Chat renders (pass `includeHidden: true` to include hidden ones too). `getUnresolvedToolApprovals(conversation)` finds every `tool-result` message still parked on `outcome: 'action_required'` with a pending `action`—the transcript-level source of truth for "does this conversation have an approval waiting," independent of any UI-only approved/denied state. `findToolResultMessage(conversation, toolCallId)` locates the `tool-result` message for a given tool-call ID, which `replaceToolResult` needs. Both query helpers accept the same `{ includeHidden? }` option as `getMessages`.
 
-> [!WARNING] `ChatAdapter.subscribe` runs inside Chat's own effect
-> Chat opens `subscribe` from inside its internal mount `$effect`, so a
-> synchronous `$state` write inside `subscribe` can throw
-> `effect_update_depth_exceeded`. Defer it with `queueMicrotask` or `tick()`.
-> The same applies if `subscribe` replays a buffered event by calling a handler
-> (`onMessage`, `onTypingChange`, etc.) synchronously before returning — defer
-> the CALL to the handler itself, not just any write of your own, since
-> `onTypingChange`/`onReadReceipt` write Chat's own internal state before your
-> code runs at all. See the `ChatAdapter.subscribe` and `ChatPushHandlers`
-> JSDoc for the full explanation and working examples.
+> [!WARNING] `ChatAdapter.subscribe` runs inside Chat's own effect Chat opens `subscribe` from inside its internal mount `$effect`, so a synchronous `$state` write inside `subscribe` can throw `effect_update_depth_exceeded`. Defer it with `queueMicrotask` or `tick()`. The same applies if `subscribe` replays a buffered event by calling a handler (`onMessage`, `onTypingChange`, etc.) synchronously before returning — defer the CALL to the handler itself, not just any write of your own, since `onTypingChange`/`onReadReceipt` write Chat's own internal state before your code runs at all. See the `ChatAdapter.subscribe` and `ChatPushHandlers` JSDoc for the full explanation and working examples.
 
 ## Conversation data contract
 
-Chat declares `@lostgradient/cinder` and `svelte` as peer dependencies — host
-applications install those alongside `@lostgradient/chat`. `conversationalist`
-(and its own `zod` dependency) is an implementation detail Chat owns: it
-ships as a regular dependency of `@lostgradient/chat` and installs
-automatically, so using Chat never requires a host application to add or
-version-pick it. Import the conversation types, builders,
-`CURRENT_SCHEMA_VERSION`, and `isJSONValue` from `@lostgradient/chat` rather
-than importing `conversationalist` yourself. An application that uses
-`conversationalist` APIs beyond what Chat re-exports may still depend on it
-directly — that is supported, it just is not something Chat requires.
+Chat declares `@lostgradient/cinder` and `svelte` as peer dependencies — host applications install those alongside `@lostgradient/chat`. `conversationalist` (and its own `zod` dependency) is an implementation detail Chat owns: it ships as a regular dependency of `@lostgradient/chat` and installs automatically, so using Chat never requires a host application to add or version-pick it. Import the conversation types, builders, `CURRENT_SCHEMA_VERSION`, and `isJSONValue` from `@lostgradient/chat` rather than importing `conversationalist` yourself. An application that uses `conversationalist` APIs beyond what Chat re-exports may still depend on it directly — that is supported, it just is not something Chat requires.
 
-The exported schema version comes from the `conversationalist` version Chat
-depends on. Histories produced by an older compatible schema can render
-as-is; a newer schema causes Chat to emit a console warning and requires
-upgrading `@lostgradient/chat` before relying on that history.
+The exported schema version comes from the `conversationalist` version Chat depends on. Histories produced by an older compatible schema can render as-is; a newer schema causes Chat to emit a console warning and requires upgrading `@lostgradient/chat` before relying on that history.
 
 ## Layout and sizing
 
-Chat's root (`.chat-container`) is `height: 100%`. When no ancestor on the
-chain resolves to a definite height, that `100%` resolves against `auto` and
-Chat collapses to the intrinsic height of its empty state plus composer. There
-is no browser error: it just silently shrinks to a small card. Give Chat a
-sized ancestor with one of the three patterns below.
+Chat's outer layout element is `height: 100%`. When no ancestor on the chain resolves to a definite height, that `100%` resolves against `auto` and Chat collapses to the intrinsic height of its empty state plus composer. There is no browser error: it just silently shrinks to a small card. Give Chat a sized ancestor with one of the three patterns below.
 
-**Fixed-height container.** The simplest option—wrap Chat in an element with
-an explicit height. This is what every example in this component uses.
+**Fixed-height container.** The simplest option—wrap Chat in an element with an explicit height. This is what every example in this component uses.
 
 ```svelte
 <div style="height: 34rem;">
@@ -257,10 +192,7 @@ an explicit height. This is what every example in this component uses.
 </div>
 ```
 
-**Full-viewport flex column.** For an app shell where Chat should fill the
-remaining space, give the column a definite height and let the Chat cell
-`flex: 1` with `min-height: 0` (so it can shrink below its content and scroll
-internally rather than overflowing the page).
+**Full-viewport flex column.** For an app shell where Chat should fill the remaining space, give the column a definite height and let the Chat cell `flex: 1` with `min-height: 0` (so it can shrink below its content and scroll internally rather than overflowing the page).
 
 ```svelte
 <div class="chat-page">
@@ -275,7 +207,7 @@ internally rather than overflowing the page).
     height: 100dvh;
   }
 
-  /* `:global` because the class lands on Chat's own root element. */
+  /* `:global` because the class lands on Chat's own outer layout element. */
   .chat-page :global(.chat-page-surface) {
     flex: 1;
     min-height: 0;
@@ -283,10 +215,7 @@ internally rather than overflowing the page).
 </style>
 ```
 
-**Grid cell.** The same shape works in a grid: give the container a resolved
-track (`grid-template-rows: auto 1fr`), place Chat in the `1fr` row, and keep
-`min-height: 0` on the Chat cell so it can shrink and scroll internally instead
-of overflowing the page.
+**Grid cell.** The same shape works in a grid: give the container a resolved track (`grid-template-rows: auto 1fr`), place Chat in the `1fr` row, and keep `min-height: 0` on the Chat cell so it can shrink and scroll internally instead of overflowing the page.
 
 ```svelte
 <div class="chat-grid">
@@ -309,8 +238,7 @@ of overflowing the page.
 
 ## Building composer overlays
 
-Slash-command, mention, and autocomplete overlays should use Chat's composer
-API instead of querying `.chat-input-editor` directly.
+Slash-command, mention, and autocomplete overlays should use Chat's composer API instead of querying `.chat-input-editor` directly.
 
 Use `bind:this` to read or control the composer:
 
@@ -325,7 +253,7 @@ Use `bind:this` to read or control the composer:
   bind:this={chat}
   id="assistant-chat"
   {conversation}
-  oncomposerinput={(value) => updateOverlayQuery(value)}
+  onComposerInput={(value) => updateOverlayQuery(value)}
   oncomposerkeydown={(event) => {
     if (!overlayOpen) return;
 
@@ -337,23 +265,11 @@ Use `bind:this` to read or control the composer:
 />
 ```
 
-`getComposerValue()` returns the current plain-text value, `clearInput()`
-clears it, and `getEditorElement()` returns the textarea element (or `null`
-before mount and after teardown) for overlay anchoring and focus management.
-`insertAtRange({ start, end }, text)` replaces that composer range without a
-synthetic DOM event, focuses the textarea, and places the caret after the
-inserted text. It uses native `HTMLTextAreaElement.setRangeText()` boundaries:
-out-of-bounds indexes are clamped and a reversed range throws a `DOMException`.
-Calls before mount or after teardown are safe no-ops.
+`getComposerValue()` returns the current plain-text value, `clearInput()` clears it, and `getEditorElement()` returns the textarea element (or `null` before mount and after teardown) for overlay anchoring and focus management. `insertAtRange({ start, end }, text)` replaces that composer range without a synthetic DOM event, focuses the textarea, and places the caret after the inserted text. It uses native `HTMLTextAreaElement.setRangeText()` boundaries: out-of-bounds indexes are clamped and a reversed range throws a `DOMException`. Calls before mount or after teardown are safe no-ops.
 
-`oncomposerkeydown` runs before Chat's internal Enter-to-send handling for
-normal composer keydowns. If the callback calls `event.preventDefault()`, Chat
-skips its internal key handling for that event. Chat does not call the hook
-during IME composition, so Enter can still confirm the active candidate instead
-of sending or being consumed by an overlay.
+`oncomposerkeydown` runs before Chat's internal Enter-to-send handling for normal composer keydowns. If the callback calls `event.preventDefault()`, Chat skips its internal key handling for that event. Chat does not call the hook during IME composition, so Enter can still confirm the active candidate instead of sending or being consumed by an overlay.
 
-For ARIA combobox patterns, pass textarea-specific attributes through the
-composer-prefixed props:
+For ARIA combobox patterns, pass textarea-specific attributes through the composer-prefixed props:
 
 ```svelte
 <Chat
@@ -369,10 +285,7 @@ composer-prefixed props:
 
 ## Announcing custom action-required rows
 
-Chat owns always-rendered polite and assertive live regions outside the
-`role="log"` timeline. If you render action-required UI through a custom `row`
-or `messagePart` snippet, announce it through Chat instead of mounting another
-`aria-live` region inside the log:
+Chat owns always-rendered polite and assertive live regions outside the `role="log"` timeline. If you render action-required UI through a custom `row` or `messagePart` snippet, announce it through Chat instead of mounting another `aria-live` region inside the log:
 
 ```svelte
 <script lang="ts">
@@ -394,60 +307,38 @@ Use the default polite channel for non-urgent status updates:
 chat?.announce('Attachment scan finished.');
 ```
 
-Consumer announcements clear after a short interval so Chat's own history,
-unread, typing, and tool-approval announcements can continue to flow.
-Built-in tool-approval rows keep precedence on the assertive channel. If a
-consumer assertive announcement races with Chat's derived
-`Action required: ...` tool-approval announcement, Chat announces the built-in
-tool approval and drops the consumer assertive text to avoid double output.
+Consumer announcements clear after a short interval so Chat's own history, unread, typing, and tool-approval announcements can continue to flow. Built-in tool-approval rows keep precedence on the assertive channel. If a consumer assertive announcement races with Chat's derived `Action required: ...` tool-approval announcement, Chat announces the built-in tool approval and drops the consumer assertive text to avoid double output.
 
 ## Per-row snippet context
 
-`row`, `messageActions`, and `messageStatus` receive the same
-`ChatRowContext`. The context contains the message that owns the visible row and
-optional resolved `toolCallPair` and `artifact` values:
+`row`, `messageActions`, and `messageStatus` receive the same `ChatRowContext`. The context contains the message that owns the visible row and optional resolved `toolCallPair` and `artifact` values. When a row has `cinder:artifact` metadata, Chat renders an always-visible `Open artifact: <title>` row action and opens the built-in artifact panel by default:
 
 ```svelte
 <script lang="ts">
-  import {
-    ArtifactViewer,
-    Chat,
-    ChatArtifactLayout,
-    type ChatArtifact,
-    type ChatRowContext,
-  } from '@lostgradient/chat';
-  import { Button } from '@lostgradient/cinder/button';
+  import { Chat, type ChatRowContext, type ResolvedChatArtifact } from '@lostgradient/chat';
+  import { Button } from '@lostgradient/cinder';
 
-  let selectedArtifact = $state<ChatArtifact | undefined>();
+  let selectedArtifact = $state<ResolvedChatArtifact | undefined>();
 </script>
 
-<ChatArtifactLayout
-  open={selectedArtifact !== undefined}
-  panelTitle={selectedArtifact?.title}
-  onClose={() => (selectedArtifact = undefined)}
+<Chat
+  id="assistant-chat"
+  {conversation}
+  onArtifactOpen={(artifact) => (selectedArtifact = artifact)}
 >
-  <Chat id="assistant-chat" {conversation}>
-    {#snippet messageActions({ artifact }: ChatRowContext)}
-      {#if artifact}
-        <Button size="xs" variant="ghost" onclick={() => (selectedArtifact = artifact)}>
-          Open artifact
-        </Button>
-      {/if}
-    {/snippet}
-  </Chat>
-
-  {#snippet panel()}
-    {#if selectedArtifact}
-      <ArtifactViewer {...selectedArtifact} />
+  {#snippet messageActions({ artifact }: ChatRowContext)}
+    {#if artifact}
+      <Button size="xs" variant="ghost" onclick={() => (selectedArtifact = artifact)}>
+        Track externally
+      </Button>
     {/if}
   {/snippet}
-</ChatArtifactLayout>
+</Chat>
 ```
 
-`messageActions` is rendered in the same action row as Chat's built-in copy
-and edit controls. For native buttons, add the shared
-`chat-message-action-button` class to opt into the action-row sizing, focus,
-hover, and touch styles:
+`onArtifactOpen` is an ownership override: when supplied, Chat calls it with the resolved artifact and does not open the internal panel. Omit it to use Chat's built-in `ChatArtifactLayout`, `ArtifactPanel`, and `ArtifactViewer` composition. The resolved artifact keeps the raw descriptor fields and adds `id` from the source message plus a normalized non-empty `title` (`Artifact` when metadata is blank).
+
+`messageActions` is rendered in the same hover/focus action row as Chat's built-in copy and edit controls. Artifact actions are separate persistent row actions. For native buttons in `messageActions`, add the shared `chat-message-action-button` class to opt into the action-row sizing, focus, hover, and touch styles:
 
 ```svelte
 <script lang="ts">
@@ -461,17 +352,9 @@ hover, and touch styles:
 {/snippet}
 ```
 
-The class is intentionally opt-in so consumers can use their own button
-component or visual treatment without Chat overriding it. Cinder `Button`
-instances already provide their own complete styling and do not need this
-class.
+The class is intentionally opt-in so consumers can use their own button component or visual treatment without Chat overriding it. Cinder `Button` instances already provide their own complete styling and do not need this class.
 
-A paired `tool-result` message does not render a second visible row and does not
-invoke the snippets separately. Chat folds that result into the corresponding
-tool-call row's `toolCallPair` and resolves `cinder:artifact` metadata from the
-folded result into `artifact`. Metadata on the visible message takes precedence.
-Ordinary rows and unpaired tool-result rows resolve their own artifact metadata,
-so consumers do not need an external message lookup or a hand-rolled type guard.
+A paired `tool-result` message does not render a second visible row and does not invoke the snippets separately. Chat folds that result into the corresponding tool-call row's `toolCallPair` and resolves `cinder:artifact` metadata from the folded result into `artifact`. Metadata on the visible message takes precedence. Ordinary rows and unpaired tool-result rows resolve their own artifact metadata, so consumers do not need an external message lookup or a hand-rolled type guard. Artifact identity always comes from the source message id, so duplicate titles and duplicate content remain independent.
 
 ## Guidance
 
@@ -487,11 +370,7 @@ so consumers do not need an external message lookup or a hand-rolled type guard.
 
 ## Attachment serialization
 
-When `capabilities.attachments` is enabled, `onsubmit` receives ready
-`ChatAttachment[]` values. Use `serializeChatAttachment()` or
-`serializeChatAttachments()` from `@lostgradient/chat` to convert those
-files into transportable base64 payloads without spreading the full byte array
-onto the JavaScript stack.
+When `capabilities.attachments` is enabled, `onSubmit` receives ready `ChatAttachment[]` values. Use `serializeChatAttachment()` or `serializeChatAttachments()` from `@lostgradient/chat` to convert those files into transportable base64 payloads without spreading the full byte array onto the JavaScript stack.
 
 ```ts
 import { serializeChatAttachments } from '@lostgradient/chat';
@@ -510,10 +389,7 @@ type SerializedChatAttachment = {
 };
 ```
 
-The output is intentionally the base64 source payload for conversationalist's
-proposed `DocumentContent` bridge in `stevekinney/agent-bureau#153`. A consumer
-can wrap it as `{ type: 'document', name, mimeType, source: { kind: 'base64',
-data: content } }` when adding composer attachments to conversation state.
+The output is intentionally the base64 source payload for conversationalist's proposed `DocumentContent` bridge in `stevekinney/agent-bureau#153`. A consumer can wrap it as `{ type: 'document', name, mimeType, source: { kind: 'base64', data: content } }` when adding composer attachments to conversation state.
 
 ## Props
 
@@ -523,7 +399,7 @@ data: content } }` when adding composer attachments to conversation state.
 | ---------------------------------- | ---------------------------------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `atBottom`                         | `boolean`                                      | no       | —       | Whether the message viewport is scrolled to the bottom. Bindable; updated automatically as the user scrolls. Default `true`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `bottomThreshold`                  | `number`                                       | no       | —       | Distance in pixels from the bottom of the scroll viewport within which the chat is considered "at bottom" and will auto-scroll on new messages. Default `150`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `class`                            | `string`                                       | no       | —       | Additional class name merged onto the `.chat-container` root element.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `class`                            | `string`                                       | no       | —       | Additional class name merged onto the outer Chat layout element.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `composerAriaActiveDescendant`     | `string`                                       | no       | —       | `aria-activedescendant` passed to the composer textarea for overlays such as slash-command menus.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `composerAriaAutocomplete`         | `"none"` \| `"inline"` \| `"list"` \| `"both"` | no       | —       | `aria-autocomplete` passed to the composer textarea for overlays such as slash-command menus.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `composerAriaControls`             | `string`                                       | no       | —       | `aria-controls` passed to the composer textarea for overlays such as slash-command menus.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
@@ -547,7 +423,7 @@ data: content } }` when adding composer attachments to conversation state.
 | `virtualizationInitialHeight`      | `number`                                       | no       | —       | Initial virtualized viewport height used before measurement. Default `640`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `virtualizationOverscan`           | `number`                                       | no       | —       | Number of extra virtual rows rendered before and after the viewport. Default `3`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `virtualized`                      | `boolean`                                      | no       | —       | Use the virtualized message render path for long transcripts. The complete `ConversationHistory` remains unchanged; only the DOM window is reduced. Default `false`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `adapter`                          | `(opaque)`                                     | no       | —       | Optional command/transport boundary around `conversation`. Its methods take precedence over the matching callback props (e.g. `sendMessage` over `onsubmit`); omit it and Chat behaves exactly as with plain callbacks. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `adapter`                          | `(opaque)`                                     | no       | —       | Optional command/transport boundary around `conversation`. Its methods take precedence over the matching callback props (e.g. `sendMessage` over `onSubmit`); omit it and Chat behaves exactly as with plain callbacks. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `capabilities`                     | `(opaque)`                                     | no       | —       | Feature-capability flags. Pass a `ChatCapabilities` object to enable or disable individual Chat features (attachments, search, copy, editing, retry) as a group rather than as five separate boolean props. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `conversation`                     | `(opaque)`                                     | yes      | —       | The conversation transcript to render. Pass a {@link ConversationHistory} snapshot; consumers holding a stateful conversation object pass its current snapshot (e.g. `conversation.current`). Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `empty`                            | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
@@ -559,33 +435,33 @@ data: content } }` when adding composer attachments to conversation state.
 | `messageStatus`                    | `(opaque)`                                     | no       | —       | Status rendered for a visible message row. Receives the same {@link ChatRowContext} as `messageActions` and `row`, including resolved tool pairs and artifact metadata. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `messageSteps`                     | `(opaque)`                                     | no       | —       | Override or supplement the step list for a message. Called per-message; return an array to show step indicators, `undefined` to fall back to `message.metadata['cinder:steps']`. An empty array suppresses steps. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `messageSuggestions`               | `(opaque)`                                     | no       | —       | Override or supplement the suggestion list for a message. Called per-message; return an array of label strings to show suggestion chips, `undefined` to fall back to `message.metadata['cinder:suggestions']`. An empty array suppresses suggestions. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                        |
-| `onadaptererror`                   | `(opaque)`                                     | no       | —       | Called when an adapter command fails — either a rejected promise or a synchronous throw from the method. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `onapprove`                        | `(opaque)`                                     | no       | —       | Called when the user approves an action-required tool call. The consumer is responsible for updating its transcript (e.g. calling conversationalist to unblock the pending tool) and triggering a new generation. When an adapter is also wired, Chat calls `adapter.approveToolCall(toolCallId)` first and then this callback. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                              |
-| `onattachmentadd`                  | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `onattachmentfailure`              | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `onattachmentremove`               | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `onAdapterError`                   | `(opaque)`                                     | no       | —       | Called when an adapter command fails — either a rejected promise or a synchronous throw from the method. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `onArtifactOpen`                   | `(opaque)`                                     | no       | —       | Overrides Chat's built-in artifact panel. When supplied, Chat calls this once with the resolved artifact and does not open its local panel. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `onApprovalResolve`                | `(opaque)`                                     | no       | —       | Called when the user resolves an action-required approval. The complete resolution payload is forwarded unchanged. When an adapter is also wired, Chat calls `adapter.resolveToolApproval(toolCallId, resolution)` first and uses this callback only when the adapter does not implement that method. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                        |
+| `onAttachmentAdd`                  | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `onAttachmentFailure`              | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `onAttachmentRemove`               | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `oncomposerblur`                   | `(opaque)`                                     | no       | —       | Called when focus leaves the composer textarea. Overlay primitives can use this to dismiss without preventing native focus movement. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `oncomposerinput`                  | `(opaque)`                                     | no       | —       | Called with the composer's current plain-text value after user input or `insertAtRange()`. The optional event exposes the textarea for composer-bound overlays without reaching into `.chat-input-editor` DOM directly; programmatic range insertion omits the event. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                        |
+| `onComposerInput`                  | `(opaque)`                                     | no       | —       | Called with the composer's current plain-text value after user input or `insertAtRange()`. The optional event exposes the textarea for composer-bound overlays without reaching into `.chat-input-editor` DOM directly; programmatic range insertion omits the event. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                        |
 | `oncomposerkeydown`                | `(opaque)`                                     | no       | —       | Called before Chat's internal composer key handling when a keydown originates from the composer textarea. Call `event.preventDefault()` to let an overlay consume Arrow keys, Enter, or Escape before Enter-to-send. Chat does not call this hook during IME composition, so Enter can still confirm the active candidate instead of sending. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                |
 | `oncomposerselectionchange`        | `(opaque)`                                     | no       | —       | Called after pointer or selection activity may have moved the composer caret without changing text. Overlay primitives can resync their active token from the textarea selection. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `ondeny`                           | `(opaque)`                                     | no       | —       | Called when the user denies an action-required tool call. When an adapter is also wired, Chat calls `adapter.denyToolCall(toolCallId)` first and then this callback. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `onedit`                           | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `onEdit`                           | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `onExpandedChange`                 | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `onjumptolatest`                   | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `onJumpToLatest`                   | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `onLoadHistory`                    | `(opaque)`                                     | no       | —       | Called when the explicit history trigger is activated. The consumer prepends compatible messages into `conversation`. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `onpushmessage`                    | `(opaque)`                                     | no       | —       | Forwarded from the adapter's real-time `onMessage` push (consumer owns the transcript). Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| `onreadreceipt`                    | `(opaque)`                                     | no       | —       | Forwarded from the adapter's real-time `onReadReceipt` push. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `onretry`                          | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `onrollback`                       | `(opaque)`                                     | no       | —       | Commits a confirmed transcript rollback to immediately before the selected user message. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| `onscrollstatechange`              | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `onstopgenerating`                 | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `onsubmit`                         | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `onPushMessage`                    | `(opaque)`                                     | no       | —       | Forwarded from the adapter's real-time `onMessage` push (consumer owns the transcript). Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `onReadReceipt`                    | `(opaque)`                                     | no       | —       | Forwarded from the adapter's real-time `onReadReceipt` push. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `onRetry`                          | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `onRollback`                       | `(opaque)`                                     | no       | —       | Commits a confirmed transcript rollback to immediately before the selected user message. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `onScrollStateChange`              | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `onStopGenerating`                 | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `onSubmit`                         | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `onSuggestionSelect`               | `(opaque)`                                     | no       | —       | Called when the user selects a suggestion chip. The label string is passed back. The consumer is responsible for submitting it as a new user message. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `ontypingchange`                   | `(opaque)`                                     | no       | —       | Forwarded from the adapter's real-time `onTypingChange` push. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `onunreadindicatorchange`          | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `readReceipts`                     | `(opaque)`                                     | no       | —       | Per-message read receipt state. Out-of-band UI state — NOT stored on `Message`. Pass a `Map` keyed by message id with a {@link ReadReceipt} value; the component renders a receipt badge on USER messages only. While defined, including as an empty `Map`, this prop determines the visible receipts instead of adapter-derived state. Adapter events still call `onreadreceipt`, and their derived state may continue accumulating and become visible if this prop later becomes `undefined`. Omit the prop or pass `undefined` to show adapter-derived state. Default `undefined` (no receipts shown until adapter state is available). Not expressible in JSON Schema; see the component types for the signature.   |
+| `onTypingChange`                   | `(opaque)`                                     | no       | —       | Forwarded from the adapter's real-time `onTypingChange` participant snapshot push. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `onUnreadIndicatorChange`          | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `readReceipts`                     | `(opaque)`                                     | no       | —       | Per-message read receipt state. Out-of-band UI state — NOT stored on `Message`. Pass a `Map` keyed by message id with a {@link ReadReceipt} value; the component renders a receipt badge on USER messages only. While defined, including as an empty `Map`, this prop determines the visible receipts instead of adapter-derived state. Adapter events still call `onReadReceipt`, and their derived state may continue accumulating and become visible if this prop later becomes `undefined`. Omit the prop or pass `undefined` to show adapter-derived state. Default `undefined` (no receipts shown until adapter state is available). Not expressible in JSON Schema; see the component types for the signature.   |
 | `row`                              | `(opaque)`                                     | no       | —       | Full-row override. Renders an entire message row; receives the shared row context and a `renderDefault` snippet for the built-in row (inversion of control), so a consumer can wrap or fully replace specific rows. Paired tool results are folded into the visible tool-call row's `toolCallPair`, with validated `cinder:artifact` metadata available as `artifact`. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                       |
-| `typingParticipants`               | `(opaque)`                                     | no       | —       | Participants who are currently typing. Out-of-band UI state — NOT stored on `Message`. Pass an array of {@link TypingParticipant} objects; the component renders a per-participant typing indicator above the input. While defined, including as an empty array, this prop determines the visible indicator instead of adapter-derived state. Adapter events still call `ontypingchange`, and their derived state may continue updating and become visible if this prop later becomes `undefined`. Omit the prop or pass `undefined` to show adapter-derived state. Default `undefined` (indicator hidden until adapter state is available). Not expressible in JSON Schema; see the component types for the signature. |
+| `typingParticipants`               | `(opaque)`                                     | no       | —       | Participants who are currently typing. Out-of-band UI state — NOT stored on `Message`. Pass an array of {@link TypingParticipant} objects; the component renders a per-participant typing indicator above the input. While defined, including as an empty array, this prop determines the visible indicator instead of adapter-derived state. Adapter events still call `onTypingChange`, and their derived state may continue updating and become visible if this prop later becomes `undefined`. Omit the prop or pass `undefined` to show adapter-derived state. Default `undefined` (indicator hidden until adapter state is available). Not expressible in JSON Schema; see the component types for the signature. |
 | `viewportAttachment`               | `(opaque)`                                     | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 <!-- generated:props:end -->
@@ -600,6 +476,7 @@ data: content } }` when adding composer attachments to conversation state.
 - `--cinder-text-lg`
 - `--cinder-text-sm`
 - `--cinder-text-xs`
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

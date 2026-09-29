@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "scope": "all",
+  "reviewTitle": "Review feedback",
+  "reviewNote": "",
+  "totals": {
+    "records": 1,
+    "messageBodies": 1,
+    "open": 1,
+    "resolved": 0,
+    "outdated": 1
+  },
+  "records": [
+    {
+      "recordKind": "diff",
+      "exportId": "[\"diff\",\"comment-on-removed\"]",
+      "commentId": "comment-on-removed",
+      "targetId": "gone",
+      "current": false,
+      "targetKind": "source",
+      "targetLabel": "src/deleted.ts",
+      "repositoryLabel": null,
+      "baseRevisionLabel": null,
+      "headRevisionLabel": null,
+      "snapshotId": "e33b1fe45e4c434d678ac8e09c0cd66000b1e87c0f702602319a672271ec28d8",
+      "fileOccurrence": 0,
+      "oldPath": null,
+      "newPath": null,
+      "anchor": {
+        "kind": "file"
+      },
+      "rawMapping": {
+        "status": "exact"
+      },
+      "body": "This whole file is being removed; please confirm nothing depends on it.",
+      "resolved": false,
+      "outdated": true,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ]
+}

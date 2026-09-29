@@ -15,7 +15,7 @@
  * representation (sRGB channels 0-255, alpha 0-1); `formatColor` turns that
  * canonical representation into a CSS color string in one of five output
  * formats (`hex`, `rgb`, `hsl`, `hwb`, `oklch`) per the CIN-104 ruling
- * recorded in `docs/decisions/color-value-format.md`.
+ * recorded in `documentation/decisions/color-value-format.md`.
  *
  * Alpha policy: each format canonicalizes alpha to its own emitted
  * precision BEFORE deciding whether to keep the alpha suffix — so "opaque"
@@ -90,10 +90,12 @@ function isRoundTripArtifact(parsed: Oklch, direct: Rgb): boolean {
   const byteG = Math.round(Math.max(0, Math.min(1, direct.g ?? 0)) * 255);
   const byteB = Math.round(Math.max(0, Math.min(1, direct.b ?? 0)) * 255);
   const reOklch = toOklchConverter({ mode: 'rgb', r: byteR / 255, g: byteG / 255, b: byteB / 255 });
+  const parsedChannels = roundedOklchChannels(parsed);
+  const emittedChannels = roundedOklchChannels(reOklch);
   return (
-    roundTo((parsed.l ?? 0) * 100, 3) === roundTo((reOklch.l ?? 0) * 100, 3) &&
-    roundTo(parsed.c ?? 0, 5) === roundTo(reOklch.c ?? 0, 5) &&
-    roundTo(parsed.h ?? 0, 2) === roundTo(reOklch.h ?? 0, 2)
+    parsedChannels.l === emittedChannels.l &&
+    parsedChannels.c === emittedChannels.c &&
+    parsedChannels.h === emittedChannels.h
   );
 }
 
@@ -204,22 +206,28 @@ export function formatColor(parts: RgbaComponents, format: ColorOutputFormat): s
     return `rgb(${r} ${g} ${b}${alphaSuffix})`;
   }
 
-  if (format === 'hsl') {
-    const hsl = toHslConverter(rgbColor);
-    const h = roundTo(hsl.h ?? 0, 2);
-    const s = roundTo((hsl.s ?? 0) * 100, 2);
-    const l = roundTo((hsl.l ?? 0) * 100, 2);
-    return `hsl(${h} ${s}% ${l}%${alphaSuffix})`;
-  }
+  if (format === 'hsl') return formatHsl(rgbColor, alphaSuffix);
+  if (format === 'hwb') return formatHwb(rgbColor, alphaSuffix);
+  return formatOklch(rgbColor, alphaSuffix);
+}
 
-  if (format === 'hwb') {
-    const hwb = toHwbConverter(rgbColor);
-    const h = roundTo(hwb.h ?? 0, 2);
-    const w = roundTo((hwb.w ?? 0) * 100, 2);
-    const b = roundTo((hwb.b ?? 0) * 100, 2);
-    return `hwb(${h} ${w}% ${b}%${alphaSuffix})`;
-  }
+function formatHsl(rgbColor: Rgb, alphaSuffix: string): string {
+  const hsl = toHslConverter(rgbColor);
+  const h = roundTo(hsl.h ?? 0, 2);
+  const s = roundTo((hsl.s ?? 0) * 100, 2);
+  const l = roundTo((hsl.l ?? 0) * 100, 2);
+  return `hsl(${h} ${s}% ${l}%${alphaSuffix})`;
+}
 
+function formatHwb(rgbColor: Rgb, alphaSuffix: string): string {
+  const hwb = toHwbConverter(rgbColor);
+  const h = roundTo(hwb.h ?? 0, 2);
+  const w = roundTo((hwb.w ?? 0) * 100, 2);
+  const b = roundTo((hwb.b ?? 0) * 100, 2);
+  return `hwb(${h} ${w}% ${b}%${alphaSuffix})`;
+}
+
+function roundedOklchChannels(oklch: Oklch): { l: number; c: number; h: number } {
   // oklch. Lightness at 2 decimals (percentage) / chroma at 4 decimals was
   // not enough precision to round-trip every sRGB byte value — e.g.
   // #00b8c1 emitted oklch(71.19% 0.121 201.02), which parses to a
@@ -228,10 +236,15 @@ export function formatColor(parts: RgbaComponents, format: ColorOutputFormat): s
   // lightness and 5 for chroma is the precision verified (by an exhaustive
   // sweep over sRGB byte triples, plus the cited #00b8c1 case) to make
   // parse -> emit a fixed point for every sRGB byte value.
-  const oklch = toOklchConverter(rgbColor);
-  const l = roundTo((oklch.l ?? 0) * 100, 3);
-  const c = roundTo(oklch.c ?? 0, 5);
-  const h = roundTo(oklch.h ?? 0, 2);
+  return {
+    l: roundTo((oklch.l ?? 0) * 100, 3),
+    c: roundTo(oklch.c ?? 0, 5),
+    h: roundTo(oklch.h ?? 0, 2),
+  };
+}
+
+function formatOklch(rgbColor: Rgb, alphaSuffix: string): string {
+  const { l, c, h } = roundedOklchChannels(toOklchConverter(rgbColor));
   return `oklch(${l}% ${c} ${h}${alphaSuffix})`;
 }
 
@@ -295,7 +308,14 @@ export function parseCssColor(input: string): RgbaComponents | null {
   const trimmed = input.trim();
   if (!matchesAcceptedSyntax(trimmed)) return null;
 
-  const parsed = parse(trimmed);
+  let parsed: ReturnType<typeof parse>;
+  try {
+    parsed = parse(trimmed);
+  } catch {
+    // Invalid numeric dimensions can make Culori's tokenizer throw instead
+    // of returning undefined. They remain invalid user input at this boundary.
+    return null;
+  }
   if (parsed === undefined || !ACCEPTED_PARSE_MODES.has(parsed.mode)) return null;
 
   if (parsed.mode === 'oklch') {

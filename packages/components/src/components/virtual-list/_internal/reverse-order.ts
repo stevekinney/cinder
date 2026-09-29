@@ -142,5 +142,9 @@ export function shouldPinToEnd(options: {
       return options.isAtEnd;
     case 'none':
       return false;
+    default:
+      // `satisfies never` keeps the exhaustiveness check without a block whose closing
+      // line can never run after the throw.
+      throw new TypeError(`Unsupported reverse pin mode: ${String(options.mode satisfies never)}`);
   }
 }

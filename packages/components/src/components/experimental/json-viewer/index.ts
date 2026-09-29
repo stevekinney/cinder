@@ -4,7 +4,9 @@
 // component was promoted to stable. This shim re-exports the new location so
 // existing imports keep resolving during the deprecation window, and warns
 // once (dev only) so consumers migrate before the alias is removed in the
-// next major. Generated/managed by scripts/generate-exports.ts.
+// next major. Kept in corvidae (restored for COR-1196, since published cinder
+// exports this subpath); its exports entry comes from
+// scripts/mirror/cinder/generate-exports.ts's DEPRECATED_EXPERIMENTAL_ALIASES.
 
 import { devWarn } from '../../../utilities/dev-warn.ts';
 import JsonViewerComponent from '../../json-viewer/index.ts';

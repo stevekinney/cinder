@@ -2,8 +2,12 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
-import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
+import {
+  expectNoLeakedTimers,
+  requiredInstance,
+  setupHappyDom,
+  trackTimers,
+} from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -51,7 +55,10 @@ describe('ContextMenuTrigger', () => {
 
   test('a contextmenu event on the trigger opens the menu', async () => {
     const { container } = render(Harness);
-    const region = container.querySelector('.cinder-context-menu-trigger') as HTMLElement;
+    const region = requiredInstance(
+      container.querySelector('.cinder-context-menu-trigger'),
+      HTMLElement,
+    );
     expect(document.body.querySelector('[role="menu"]')).toBeNull();
 
     await fireEvent.contextMenu(region, { clientX: 12, clientY: 18 });
@@ -73,11 +80,17 @@ describe('ContextMenuTrigger', () => {
     // Fire from a genuinely keyboard-reachable element: the trigger wrapper has no
     // tabindex/role of its own, so a real keyboard user focuses the focusable child
     // (the button) and the Shift+F10 keydown bubbles up to the trigger's handler.
-    const triggerButton = container.querySelector('.context-menu-button') as HTMLElement;
+    const triggerButton = requiredInstance(
+      container.querySelector('.context-menu-button'),
+      HTMLElement,
+    );
     triggerButton.focus();
     expect(document.activeElement).toBe(triggerButton);
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'F10', shiftKey: true });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'F10',
+      shiftKey: true,
+    });
 
     const menu = await screen.findByRole('menu');
     expect(menu).not.toBeNull();
@@ -86,7 +99,10 @@ describe('ContextMenuTrigger', () => {
 
   test('trigger advertises a menu popup without an aria-expanded the role-less div cannot carry', async () => {
     const { container } = render(Harness);
-    const region = container.querySelector('.cinder-context-menu-trigger') as HTMLElement;
+    const region = requiredInstance(
+      container.querySelector('.cinder-context-menu-trigger'),
+      HTMLElement,
+    );
 
     // aria-haspopup is globally allowed and correctly advertises the menu popup.
     expect(region.getAttribute('aria-haspopup')).toBe('menu');
@@ -113,7 +129,10 @@ describe('ContextMenuTrigger', () => {
     const timers = trackTimers();
     try {
       const { container, unmount } = render(Harness, { longPressDelay: 60_000 });
-      const region = container.querySelector('.cinder-context-menu-trigger') as HTMLElement;
+      const region = requiredInstance(
+        container.querySelector('.cinder-context-menu-trigger'),
+        HTMLElement,
+      );
 
       // A touch pointerdown is the exact event that schedules longPressTimer
       // (handlePointerdown guards on event.pointerType === 'touch').

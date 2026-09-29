@@ -9,14 +9,11 @@
  * (no DOM required).
  */
 
-import type { PlaceholderCandidate } from '@lostgradient/markdown/templates/types';
+import type { PlaceholderCandidate } from '@lostgradient/markdown';
 import { Schema } from '@milkdown/kit/prose/model';
 import { describe, expect, it } from 'bun:test';
 
-import {
-  buildInvalidTokenDecorations,
-  textOffsetToDocumentPosition,
-} from './template-invalid-decoration-plugin.js';
+import { buildInvalidTokenDecorations } from './template-invalid-decoration-plugin.js';
 
 // ---------------------------------------------------------------------------
 // Test schema — minimal ProseMirror schema sufficient for document creation.
@@ -42,13 +39,47 @@ const schema = new Schema({
         return [`h${node.attrs['level']}`, 0];
       },
     },
+    code_block: {
+      content: 'text*',
+      group: 'block',
+      code: true,
+      marks: '',
+      toDOM() {
+        return ['pre', ['code', 0]];
+      },
+    },
+    hard_break: {
+      inline: true,
+      group: 'inline',
+      selectable: false,
+      toDOM() {
+        return ['br'];
+      },
+    },
     text: { group: 'inline' },
   },
   marks: {
+    link: {
+      attrs: { href: {} },
+      toDOM(mark) {
+        return ['a', { href: String(mark.attrs['href']) }, 0];
+      },
+    },
     strong: {
       parseDOM: [{ tag: 'strong' }],
       toDOM() {
         return ['strong', 0];
+      },
+    },
+    emphasis: {
+      toDOM() {
+        return ['em', 0];
+      },
+    },
+    inlineCode: {
+      code: true,
+      toDOM() {
+        return ['code', 0];
       },
     },
   },
@@ -61,11 +92,7 @@ const schema = new Schema({
 const DEFAULT_INVALID_CLASS = 'template-placeholder-invalid';
 
 function makeCandidates(...paths: string[]): PlaceholderCandidate[] {
-  return paths.map((path) => ({
-    path,
-    description: undefined,
-    valueKind: 'string' as const,
-  }));
+  return paths.map((path) => ({ path, types: ['string'] }));
 }
 
 /**
@@ -74,74 +101,115 @@ function makeCandidates(...paths: string[]): PlaceholderCandidate[] {
  * ProseMirror's `Decoration.inline()` stores attributes on `decoration.type.attrs`.
  */
 function getDecorationAttributes(decoration: unknown): Record<string, string> {
-  return (decoration as any).type.attrs;
+  if (!decoration || typeof decoration !== 'object') throw new Error('Missing decoration');
+  const type = Reflect.get(decoration, 'type');
+  const attributes = type && typeof type === 'object' ? Reflect.get(type, 'attrs') : undefined;
+  if (!attributes || typeof attributes !== 'object')
+    throw new Error('Missing decoration attributes');
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(attributes)) {
+    if (typeof value !== 'string') throw new Error('Invalid decoration attributes');
+    result[key] = value;
+  }
+  return result;
 }
 
 // ---------------------------------------------------------------------------
-// textOffsetToDocumentPosition
+// Per-run scanning (COR-526)
 // ---------------------------------------------------------------------------
 
-describe('textOffsetToDocumentPosition', () => {
-  it('maps offset 0 to the start of the block content (blockPosition + 1)', () => {
-    const paragraph = schema.node('paragraph', null, [schema.text('hello')]);
-    // In a real doc the paragraph might be at position 0; its content starts at 1.
-    const blockPosition = 0;
+describe('buildInvalidTokenDecorations per-run scanning', () => {
+  function reasons(doc: ReturnType<typeof schema.node>, candidates: PlaceholderCandidate[]) {
+    return buildInvalidTokenDecorations(doc, candidates, DEFAULT_INVALID_CLASS).map(
+      (decoration) => ({
+        from: decoration.from,
+        to: decoration.to,
+        reason: getDecorationAttributes(decoration)['data-placeholder-validation-reason'],
+      }),
+    );
+  }
 
-    expect(textOffsetToDocumentPosition(paragraph, blockPosition, 0)).toBe(1);
+  it('decorates a token inside one marked run at its exact range', () => {
+    // "a " plain (positions 1-2), then "{{nope}}" bold (positions 3-10).
+    const doc = schema.node('doc', null, [
+      schema.node('paragraph', null, [
+        schema.text('a '),
+        schema.text('{{nope}}', [schema.mark('strong')]),
+      ]),
+    ]);
+
+    expect(reasons(doc, [])).toEqual([{ from: 3, to: 11, reason: 'unknown_placeholder' }]);
   });
 
-  it('maps offset equal to text length to the end of the text', () => {
-    const paragraph = schema.node('paragraph', null, [schema.text('hello')]);
-    const blockPosition = 0;
+  it('never joins text across a mark boundary into one token', () => {
+    // "{{" plain + "known" bold + "}}" plain: each run is scanned alone, so
+    // only the unclosed "{{" is reported and "known" is never validated.
+    const doc = schema.node('doc', null, [
+      schema.node('paragraph', null, [
+        schema.text('{{'),
+        schema.text('known', [schema.mark('strong')]),
+        schema.text('}}'),
+      ]),
+    ]);
 
-    // offset 5 is one-past-end, but the function should still produce a valid position.
-    expect(textOffsetToDocumentPosition(paragraph, blockPosition, 5)).toBe(6);
+    expect(reasons(doc, makeCandidates('known'))).toEqual([
+      { from: 1, to: 3, reason: 'malformed_token' },
+    ]);
   });
 
-  it('maps an intermediate offset correctly', () => {
-    const paragraph = schema.node('paragraph', null, [schema.text('hello')]);
-    const blockPosition = 0;
+  it('reports the emphasis-split form of {{_meta_}} as a malformed opener, not a token', () => {
+    // Loading the Markdown `{{_meta_}}` produces "{{" + emphasis("meta") + "}}".
+    const doc = schema.node('doc', null, [
+      schema.node('paragraph', null, [
+        schema.text('{{'),
+        schema.text('meta', [schema.mark('emphasis')]),
+        schema.text('}}'),
+      ]),
+    ]);
 
-    // offset 3 => position 4 (blockPos 0 + 1 + childOffset 0 + textOffset 3)
-    expect(textOffsetToDocumentPosition(paragraph, blockPosition, 3)).toBe(4);
+    expect(reasons(doc, makeCandidates('_meta_'))).toEqual([
+      { from: 1, to: 3, reason: 'malformed_token' },
+    ]);
   });
 
-  it('accounts for non-zero block position', () => {
-    const paragraph = schema.node('paragraph', null, [schema.text('hello')]);
-    const blockPosition = 10;
+  it('decorates a token after a hard break at its exact range', () => {
+    // "ab" (1-2), hard break (3), "{{nope}}" (4-11).
+    const doc = schema.node('doc', null, [
+      schema.node('paragraph', null, [
+        schema.text('ab'),
+        schema.node('hard_break'),
+        schema.text('{{nope}}'),
+      ]),
+    ]);
 
-    // offset 2 => 10 + 1 + 0 + 2 = 13
-    expect(textOffsetToDocumentPosition(paragraph, blockPosition, 2)).toBe(13);
+    expect(reasons(doc, [])).toEqual([{ from: 4, to: 12, reason: 'unknown_placeholder' }]);
   });
 
-  it('maps correctly across multiple text nodes (split by marks)', () => {
-    // "helloworld" split into two text nodes: "hello" (plain) + "world" (strong)
-    const plainText = schema.text('hello');
-    const strongText = schema.text('world', [schema.mark('strong')]);
-    const paragraph = schema.node('paragraph', null, [plainText, strongText]);
-    const blockPosition = 0;
+  it('decorates a token in link label text and never scans the link target', () => {
+    const link = schema.mark('link', { href: 'https://example.com/{{target}}' });
+    // "see " (1-4), then "{{nope}}" as the link label (5-12).
+    const doc = schema.node('doc', null, [
+      schema.node('paragraph', null, [schema.text('see '), schema.text('{{nope}}', [link])]),
+    ]);
 
-    // offset 0 => in first text node at char 0 => blockPos + 1 + childOffset(0) + 0 = 1
-    expect(textOffsetToDocumentPosition(paragraph, blockPosition, 0)).toBe(1);
-
-    // offset 4 => in first text node at char 4 => blockPos + 1 + 0 + 4 = 5
-    expect(textOffsetToDocumentPosition(paragraph, blockPosition, 4)).toBe(5);
-
-    // offset 5 => first char of second text node. childOffset for second text node
-    // in ProseMirror is 5 (the length of "hello"). localOffset = 5 - 5 = 0.
-    // result = 0 + 1 + 5 + 0 = 6
-    expect(textOffsetToDocumentPosition(paragraph, blockPosition, 5)).toBe(6);
-
-    // offset 8 => "wor|ld" => childOffset 5, localOffset 3 => 0 + 1 + 5 + 3 = 9
-    expect(textOffsetToDocumentPosition(paragraph, blockPosition, 8)).toBe(9);
+    expect(reasons(doc, [])).toEqual([{ from: 5, to: 13, reason: 'unknown_placeholder' }]);
   });
 
-  it('returns start of block content for an empty block', () => {
-    const paragraph = schema.node('paragraph', null, []);
-    const blockPosition = 0;
+  it('does not scan inline code or code blocks', () => {
+    const doc = schema.node('doc', null, [
+      schema.node('paragraph', null, [schema.text('{{nope}}', [schema.mark('inlineCode')])]),
+      schema.node('code_block', null, [schema.text('{{nope}}')]),
+    ]);
 
-    // No children, so the default (blockPosition + 1) is returned.
-    expect(textOffsetToDocumentPosition(paragraph, blockPosition, 0)).toBe(1);
+    expect(reasons(doc, [])).toEqual([]);
+  });
+
+  it('reports blocked paths with their own reason', () => {
+    const doc = schema.node('doc', null, [
+      schema.node('paragraph', null, [schema.text('{{user.__proto__}}')]),
+    ]);
+
+    expect(reasons(doc, [])).toEqual([{ from: 1, to: 19, reason: 'blocked_path' }]);
   });
 });
 

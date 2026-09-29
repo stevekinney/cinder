@@ -1,5 +1,3 @@
-@import '@lostgradient/cinder/command-menu/styles';
-
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-command-menu.chat-composer-popover {

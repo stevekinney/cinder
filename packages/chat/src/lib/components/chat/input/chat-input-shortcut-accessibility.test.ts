@@ -13,13 +13,10 @@ describe('ChatInput — shortcut accessibility', () => {
     expect(chatInputSource).not.toContain('../../markdown-editor/markdown-editor.svelte');
   });
 
-  test('derives a shortcut description id separate from the visible hint id', () => {
-    // Must have both hintId and shortcutDescriptionId derived
+  test('derives a shortcut description id without a permanent visual hint', () => {
     expect(chatInputSource).toMatch(/shortcutDescriptionId\s*=\s*\$derived/);
-    expect(chatInputSource).toMatch(/hintId\s*=\s*\$derived/);
-    // The two ids must be different (different suffix)
     expect(chatInputSource).toMatch(/shortcut-description/);
-    expect(chatInputSource).toMatch(/`\$\{id\}-hint`/);
+    expect(chatInputSource).not.toContain('chat-input-hint');
   });
 
   test('renders a visually hidden shortcut description element', () => {
@@ -55,8 +52,13 @@ describe('ChatInput — shortcut accessibility', () => {
     expect(textareaMatch?.[0]).toMatch(/aria-describedby=\{shortcutDescriptionId\}/);
   });
 
-  test('keycap rule sets an explicit color', () => {
-    // .chat-input-hint kbd must have an explicit color declaration
-    expect(chatInputSource).toMatch(/\.chat-input-hint\s+kbd\s*\{[^}]*color:/s);
+  test('uses Cinder Tooltip for contextual send guidance', () => {
+    expect(chatInputSource).toContain('import { ArrowUp, Paperclip, Square, Tooltip, X, Button }');
+    expect(chatInputSource).toContain("'Wait for attachments'");
+    expect(chatInputSource).toContain("'Add a message or attachment'");
+    expect(chatInputSource).toContain("'Stop generating'");
+    expect(chatInputSource).toContain("'Send (Command or Control + Enter)'");
+    expect(chatInputSource).toContain("'Send message'");
+    expect(chatInputSource).toContain("'Send (Enter)'");
   });
 });

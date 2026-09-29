@@ -4,6 +4,23 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    title: {
+      type: 'string',
+      description: "Primary heading text rendered inside the card's header region.",
+    },
+    headingLevel: {
+      enum: [2, 3, 4, 5, 6],
+      description:
+        'Heading level for the generated title. Defaults to `3`. Set this so the\ncard title nests correctly within the surrounding document outline.',
+    },
+    description: {
+      type: 'string',
+      description: 'Optional subheading rendered as a paragraph below the title inside the header.',
+    },
+    href: {
+      type: 'string',
+      description: 'Destination URL that makes the entire card an anchor.',
+    },
     class: {
       type: 'string',
       description: 'Custom class merged with `.cinder-card`.',
@@ -38,23 +55,6 @@ const schema = {
       description:
         'Body padding. `none` leaves header and footer padding intact while making body content flush with the card edges.',
     },
-    title: {
-      type: 'string',
-      description: "Primary heading text rendered inside the card's header region.",
-    },
-    href: {
-      type: 'string',
-      description: 'Destination URL that makes the entire card an anchor.',
-    },
-    headingLevel: {
-      enum: [2, 3, 4, 5, 6],
-      description:
-        'Heading level for the generated title. Defaults to `3`. Set this so the\ncard title nests correctly within the surrounding document outline.',
-    },
-    description: {
-      type: 'string',
-      description: 'Optional subheading rendered as a paragraph below the title inside the header.',
-    },
   },
   additionalProperties: false,
   metadata: {
@@ -63,6 +63,7 @@ const schema = {
         name: 'children',
         reason: 'function-or-snippet',
         required: true,
+        description: 'Basic card with no generated header.',
       },
       {
         name: 'footer',
@@ -71,11 +72,16 @@ const schema = {
       {
         name: 'header',
         reason: 'function-or-snippet',
+        description: 'Card with a custom header snippet — full control over header content.',
       },
       {
         name: 'onclick',
         reason: 'function-or-snippet',
         description: 'Click handler that makes the entire card a button.',
+      },
+      {
+        name: 'type',
+        reason: 'unknown-shape',
       },
     ],
   },

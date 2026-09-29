@@ -6,7 +6,7 @@ Inline text link with consistent focus ring and underline behavior.
 
 ```svelte
 <script lang="ts">
-  import Link from '@lostgradient/cinder/link';
+  import { Link } from '@lostgradient/cinder';
 </script>
 
 <!-- Links inside a text block must stay distinguishable without relying on color
@@ -63,7 +63,6 @@ Inline text link with consistent focus ring and underline behavior.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

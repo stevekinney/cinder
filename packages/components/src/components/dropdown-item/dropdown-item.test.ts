@@ -1,8 +1,8 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
-import { createRawSnippet } from 'svelte';
+import { createRawSnippet, flushSync } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -22,7 +22,7 @@ afterEach(() => {
 
 async function openMenu() {
   const result = render(Fixture);
-  await fireEvent.click(result.container.querySelector('.trigger') as HTMLElement);
+  await fireEvent.click(requiredInstance(result.container.querySelector('.trigger'), HTMLElement));
   await waitFor(() => expect(document.body.querySelector('[role="menu"]')).not.toBeNull());
   return { ...result, container: document.body };
 }
@@ -47,20 +47,25 @@ describe('DropdownItem', () => {
 
   test('clicking an item invokes its onclick and closes the menu', async () => {
     const { container } = await openMenu();
-    await fireEvent.click(container.querySelector('[role="menuitem"]') as HTMLElement);
+    await fireEvent.click(
+      requiredInstance(container.querySelector('[role="menuitem"]'), HTMLElement),
+    );
     expect(container.querySelector('output')?.textContent).toBe('copy');
-    await waitFor(() => expect(container.querySelector('[role="menu"]')).toBeNull());
+    flushSync();
+    expect(container.querySelector('[role="menu"]')?.outerHTML ?? null).toBeNull();
   });
 
   test('button has tabindex=-1 for roving-focus compatibility', async () => {
     const { container } = await openMenu();
-    const item = container.querySelector('[role="menuitem"]') as HTMLElement;
+    const item = requiredInstance(container.querySelector('[role="menuitem"]'), HTMLElement);
     expect(item.getAttribute('tabindex')).toBe('-1');
   });
 
   test('menuitemradio rows expose aria-checked state', async () => {
     const result = render(RadioFixture);
-    await fireEvent.click(result.container.querySelector('.trigger') as HTMLElement);
+    await fireEvent.click(
+      requiredInstance(result.container.querySelector('.trigger'), HTMLElement),
+    );
     await waitFor(() => expect(document.body.querySelector('[role="menu"]')).not.toBeNull());
     const container = document.body;
     const radioItems = Array.from(container.querySelectorAll('[role="menuitemradio"]'));
@@ -72,7 +77,7 @@ describe('DropdownItem', () => {
 
   test('keydown Enter/Space does not synthesize a click (no double-fire)', async () => {
     const { container } = await openMenu();
-    const item = container.querySelector('[role="menuitem"]') as HTMLElement;
+    const item = requiredInstance(container.querySelector('[role="menuitem"]'), HTMLElement);
     item.focus();
 
     // Fire multiple keydown events as would happen when a key is held — a
@@ -97,7 +102,7 @@ describe('DropdownItem', () => {
 
 async function openPolyMenu() {
   const result = render(PolyFixture);
-  await fireEvent.click(result.container.querySelector('.trigger') as HTMLElement);
+  await fireEvent.click(requiredInstance(result.container.querySelector('.trigger'), HTMLElement));
   await waitFor(() => expect(document.body.querySelector('[role="menu"]')).not.toBeNull());
   return { ...result, container: document.body };
 }
@@ -135,19 +140,21 @@ describe('DropdownItem — polymorphism', () => {
   test('clicking a link item invokes onclick and closes the menu', async () => {
     const { container } = await openPolyMenu();
     const items = container.querySelectorAll('[role="menuitem"]');
-    const linkItem = items[0] as HTMLElement;
+    const linkItem = requiredInstance(items[0], HTMLElement);
     await fireEvent.click(linkItem);
     expect(container.querySelector('output')?.textContent).toBe('link');
-    await waitFor(() => expect(container.querySelector('[role="menu"]')).toBeNull());
+    flushSync();
+    expect(container.querySelector('[role="menu"]')?.outerHTML ?? null).toBeNull();
   });
 
   test('clicking a submit item invokes onclick and closes the menu', async () => {
     const { container } = await openPolyMenu();
     const items = container.querySelectorAll('[role="menuitem"]');
-    const submitItem = items[1] as HTMLElement;
+    const submitItem = requiredInstance(items[1], HTMLElement);
     await fireEvent.click(submitItem);
     expect(container.querySelector('output')?.textContent).toBe('submit');
-    await waitFor(() => expect(container.querySelector('[role="menu"]')).toBeNull());
+    flushSync();
+    expect(container.querySelector('[role="menu"]')?.outerHTML ?? null).toBeNull();
   });
 
   test('Space activates a link item (matching button-row keyboard behavior)', async () => {
@@ -155,7 +162,7 @@ describe('DropdownItem — polymorphism', () => {
     // pattern requires both. The component translates Space into activation.
     const { container } = await openPolyMenu();
     const items = container.querySelectorAll('[role="menuitem"]');
-    const linkItem = items[0] as HTMLElement;
+    const linkItem = requiredInstance(items[0], HTMLElement);
     const event = await fireEvent.keyDown(linkItem, { key: ' ' });
     // Space is consumed (no page scroll) and the link is activated.
     expect(event).toBe(false); // fireEvent returns false when preventDefault was called
@@ -167,7 +174,7 @@ describe('DropdownItem — polymorphism', () => {
     // consumer-provided onkeydown (it is part of the public HTMLAttributes surface).
     const { container } = await openPolyMenu();
     const items = container.querySelectorAll('[role="menuitem"]');
-    const linkItem = items[0] as HTMLElement;
+    const linkItem = requiredInstance(items[0], HTMLElement);
     await fireEvent.keyDown(linkItem, { key: 'ArrowRight' });
     const keyOutput = container.querySelector('[data-testid="last-link-key"]');
     expect(keyOutput?.textContent).toBe('ArrowRight');
@@ -176,7 +183,7 @@ describe('DropdownItem — polymorphism', () => {
   test('disabled link item blocks its onclick and does not close the menu', async () => {
     const { container } = await openPolyMenu();
     const items = container.querySelectorAll('[role="menuitem"]');
-    const disabledLink = items[2] as HTMLElement;
+    const disabledLink = requiredInstance(items[2], HTMLElement);
     expect(disabledLink?.getAttribute('aria-disabled')).toBe('true');
     await fireEvent.click(disabledLink);
     // onclick was blocked

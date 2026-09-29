@@ -3,8 +3,8 @@ import * as matchers from '@testing-library/jest-dom/matchers';
 import { describe, expect, spyOn, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import { stripCinderComponentsLayer } from '../../test/css.ts';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 
 // Extend Bun's expect with @testing-library/jest-dom matchers (e.g. toBeDisabled, toBeVisible).
 // The cast to `Parameters<typeof expect.extend>[0]` satisfies Bun's extend signature while
@@ -60,7 +60,10 @@ describe('Select', () => {
     const { container } = render(Select, {
       props: { id: 'no-value-select', options: defaultOptions },
     });
-    const selectEl = container.querySelector('select#no-value-select') as HTMLSelectElement;
+    const selectEl = requiredInstance(
+      container.querySelector('select#no-value-select'),
+      HTMLSelectElement,
+    );
     expect(selectEl).not.toBeNull();
     expect(Array.from(selectEl.querySelectorAll('option')).length).toBe(3);
     // Native <select> with no explicit selection reports the first option's value.
@@ -71,7 +74,7 @@ describe('Select', () => {
     const { container } = render(Select, {
       props: { id: 'test-select', value: 'b', options: defaultOptions },
     });
-    const selectEl = container.querySelector('select') as HTMLSelectElement;
+    const selectEl = requiredInstance(container.querySelector('select'), HTMLSelectElement);
     expect(selectEl.value).toBe('b');
   });
 
@@ -79,7 +82,7 @@ describe('Select', () => {
     const { container } = render(Select, {
       props: { id: 'test-select', value: 'a', options: defaultOptions, disabled: true },
     });
-    const selectEl = container.querySelector('select') as HTMLSelectElement;
+    const selectEl = requiredInstance(container.querySelector('select'), HTMLSelectElement);
     // toBeDisabled() from @testing-library/jest-dom checks the native disabled attribute.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (expect(selectEl) as any).toBeDisabled();
@@ -114,7 +117,7 @@ describe('Select', () => {
     const { container } = render(Select, {
       props: { id: 'test-select', value: 'a', options: defaultOptions },
     });
-    const selectEl = container.querySelector('select') as HTMLSelectElement;
+    const selectEl = requiredInstance(container.querySelector('select'), HTMLSelectElement);
     await fireEvent.change(selectEl, { target: { value: 'c' } });
     expect(selectEl.value).toBe('c');
   });
@@ -142,7 +145,10 @@ describe('Select', () => {
       const { container } = render(Select, {
         props: { id: 'unmatched-select', value: 'missing', options: defaultOptions },
       });
-      const selectEl = container.querySelector('select#unmatched-select') as HTMLSelectElement;
+      const selectEl = requiredInstance(
+        container.querySelector('select#unmatched-select'),
+        HTMLSelectElement,
+      );
       expect(selectEl).not.toBeNull();
       expect(selectEl.selectedIndex).toBe(-1);
       expect(warnSpy).toHaveBeenCalledWith(
@@ -319,7 +325,7 @@ describe('Select context inheritance from FormField', () => {
       },
     });
 
-    const select = container.querySelector('select') as HTMLSelectElement;
+    const select = requiredInstance(container.querySelector('select'), HTMLSelectElement);
     expect(select.getAttribute('aria-describedby')).toBe('ctx-select-description ctx-select-error');
     expect(select.getAttribute('aria-invalid')).toBe('true');
     expect(select.required).toBe(true);
@@ -339,7 +345,7 @@ describe('Select context inheritance from FormField', () => {
       },
     });
 
-    const select = container.querySelector('select') as HTMLSelectElement;
+    const select = requiredInstance(container.querySelector('select'), HTMLSelectElement);
     expect(select.getAttribute('aria-describedby')).toBe(
       'ctx-select-select-description ctx-select-select-error ctx-select-description ctx-select-error',
     );
@@ -366,7 +372,7 @@ describe('Select context inheritance from FormField', () => {
       },
     });
 
-    const select = container.querySelector('select') as HTMLSelectElement;
+    const select = requiredInstance(container.querySelector('select'), HTMLSelectElement);
     expect(select.required).toBe(false);
     expect(select.disabled).toBe(false);
   });

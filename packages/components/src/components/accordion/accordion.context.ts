@@ -9,7 +9,7 @@ export type { AccordionContext };
  * is a programmer error, not a supported state.
  */
 const [getAccordionContext, setAccordionContext] = strictStableContext<AccordionContext>(
-  '@lostgradient/cinder/accordion/context',
+  '@lostgradient/cinder',
   'AccordionItem must be rendered inside an Accordion',
 );
 

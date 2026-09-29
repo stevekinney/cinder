@@ -1,18 +1,15 @@
 /**
- * The EXPORTED `createAnchorManager` (`@lostgradient/editor/review-editor`)
- * against the orphan-preservation contract in `shared/anchor-types.ts`.
+ * The exported `createAnchorManager` (`@lostgradient/editor`) against the
+ * orphan-preservation contract in `shared/anchor-types.ts`.
  *
- * This manager is experimental and the component does not delegate to it, but it
- * is a shipped, typed, importable API — and it used to be the one path that
- * still DELETED a thread whose quote had gone missing, which is exactly the
- * data loss cinder#1284 was about. These tests pin it to the same contract the
- * inline implementation follows: every thread survives a re-anchoring pass, and
- * one that cannot be placed comes out `orphaned` rather than dropped.
+ * The component delegates its anchor lifecycle to this manager. These tests
+ * pin the shared contract: every thread survives a re-anchoring pass, and one
+ * that cannot be placed comes out `orphaned` rather than being dropped.
  */
 
-import type { EditorView } from '@milkdown/kit/prose/view';
 import { describe, expect, test } from 'bun:test';
 import { Schema } from 'prosemirror-model';
+import { EditorState, type Transaction } from 'prosemirror-state';
 // `$effect.root` is a rune, and a plain `.test.ts` is not compiled by the
 // Svelte plugin (its filter is `\.svelte\.(js|ts)$`), so the rune is unusable
 // here. It compiles to `effect_root`, which `svelte/internal/client` exports
@@ -21,9 +18,9 @@ import { Schema } from 'prosemirror-model';
 import { effect_root as untypedEffectRoot } from 'svelte/internal/client';
 
 import type { AnchorUpdate, PersistedThread, ReviewState, Thread } from '../../comments/index.ts';
-import { createAnchorManager } from './review-editor-anchors.svelte.ts';
+import { createAnchorManager, reanchorPersistedThread } from './review-editor-anchors.svelte.ts';
 
-const effectRoot = untypedEffectRoot as (run: () => void) => () => void;
+const effectRoot = (run: () => void): (() => void) => untypedEffectRoot(run);
 
 const schema = new Schema({
   nodes: {
@@ -40,22 +37,13 @@ function createDoc(text: string) {
 }
 
 function createFakeView(text: string) {
-  const dispatched: unknown[] = [];
+  const dispatched: Transaction[] = [];
   const view = {
-    state: {
-      doc: createDoc(text),
-      get tr() {
-        return {
-          setMeta(key: unknown, value: unknown) {
-            return { key, value };
-          },
-        };
-      },
-    },
-    dispatch(transaction: unknown) {
+    state: EditorState.create({ schema, doc: createDoc(text) }),
+    dispatch(transaction: Transaction) {
       dispatched.push(transaction);
     },
-  } as unknown as EditorView;
+  };
 
   return { view, dispatched };
 }
@@ -85,6 +73,9 @@ interface Harness {
   threads: () => Thread[];
 }
 
+const noopAttemptReanchoring = (): void => {};
+const noopHandleAnchorsUpdate = (_updates: AnchorUpdate[]): void => {};
+
 /**
  * `createAnchorManager` calls `$effect`, so it has to be constructed inside an
  * effect root or Svelte throws `effect_orphan`.
@@ -92,8 +83,8 @@ interface Harness {
 function createHarness(state: ReviewState, documentText = DOCUMENT_TEXT): Harness {
   const { view } = createFakeView(documentText);
   let threads: Thread[] = [];
-  let attemptReanchoring: () => void = () => {};
-  let handleAnchorsUpdate: (updates: AnchorUpdate[]) => void = () => {};
+  let attemptReanchoring: () => void = noopAttemptReanchoring;
+  let handleAnchorsUpdate: (updates: AnchorUpdate[]) => void = noopHandleAnchorsUpdate;
 
   const destroy = effectRoot(() => {
     const manager = createAnchorManager({
@@ -123,7 +114,7 @@ function createHarness(state: ReviewState, documentText = DOCUMENT_TEXT): Harnes
   };
 }
 
-describe('createAnchorManager (exported, experimental) vs. orphan preservation', () => {
+describe('createAnchorManager orphan preservation', () => {
   test('keeps a thread whose quote is absent, marked orphaned', () => {
     const state: ReviewState = {
       schemaVersion: 4,
@@ -241,6 +232,43 @@ describe('createAnchorManager (exported, experimental) vs. orphan preservation',
     } finally {
       harness.destroy();
     }
+  });
+
+  test('restores front-matter anchors in document coordinates', () => {
+    const state: ReviewState = {
+      schemaVersion: 4,
+      content: `---\ntitle: Example\n---\n${DOCUMENT_TEXT}`,
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      threads: [persistedThread('thread-front-matter', { quote: 'quick brown fox' })],
+    };
+    const harness = createHarness(state);
+    try {
+      harness.attemptReanchoring();
+
+      const anchor = harness.threads()[0]?.anchor;
+      expect(anchor?.status).toBe('anchored');
+      expect(anchor?.from).toBeGreaterThan(DOCUMENT_TEXT.indexOf('quick brown fox'));
+      expect(anchor?.lastKnownOffset).toBeGreaterThan(0);
+    } finally {
+      harness.destroy();
+    }
+  });
+
+  test('keeps a found quote when its position cannot be mapped', () => {
+    const thread = persistedThread('thread-unmappable', { quote: 'quick brown fox' });
+    const restored = reanchorPersistedThread(
+      thread,
+      DOCUMENT_TEXT,
+      0,
+      createDoc(DOCUMENT_TEXT),
+      () => null,
+    );
+
+    expect(restored.id).toBe('thread-unmappable');
+    expect(restored.anchor.status).toBe('orphaned');
+    expect(restored.anchor.quote).toBe('quick brown fox');
+    expect(restored.anchor.from).toBe(0);
+    expect(restored.anchor.to).toBe(0);
   });
 
   // The plugin reports orphaning through `onAnchorsUpdate` during LIVE editing,

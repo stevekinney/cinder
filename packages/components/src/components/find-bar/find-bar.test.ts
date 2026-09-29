@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import { afterEach, describe, expect, jest, mock, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: FindBar } = await import('./find-bar.svelte');
@@ -46,7 +46,7 @@ describe('FindBar', () => {
       debounceMs: 1,
       onQueryChange,
     });
-    const input = container.querySelector('input') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
 
     await fireEvent.input(input, { target: { value: 'new query' } });
     expect(container.querySelector('[role="status"]')?.textContent).toBe('');
@@ -62,7 +62,7 @@ describe('FindBar', () => {
       debounceMs: 10,
       onQueryChange,
     });
-    const input = container.querySelector('input') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
 
     await fireEvent.input(input, { target: { value: 'user query' } });
     await rerender({ value: 'programmatic replacement', debounceMs: 10, onQueryChange });
@@ -101,7 +101,7 @@ describe('FindBar', () => {
       onNext,
       onPrevious,
     });
-    const input = container.querySelector('input') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
 
     await fireEvent.keyDown(input, { key: 'Enter' });
     await fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
@@ -111,7 +111,7 @@ describe('FindBar', () => {
 
   test('preserves native Enter behavior when no navigation callback is available', () => {
     const { container } = render(FindBar, { value: 'query', matchCount: 2 });
-    const input = container.querySelector('input') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
     const event = new KeyboardEvent('keydown', {
       bubbles: true,
       cancelable: true,
@@ -131,7 +131,7 @@ describe('FindBar', () => {
       matchCount: 2,
       onNext,
     });
-    const input = container.querySelector('input') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
     const shiftEnter = new KeyboardEvent('keydown', {
       bubbles: true,
       cancelable: true,
@@ -150,7 +150,10 @@ describe('FindBar', () => {
       matchCount: 2,
       onPrevious,
     });
-    const secondInput = secondRender.container.querySelector('input') as HTMLInputElement;
+    const secondInput = requiredInstance(
+      secondRender.container.querySelector('input'),
+      HTMLInputElement,
+    );
     const plainEnter = new KeyboardEvent('keydown', {
       bubbles: true,
       cancelable: true,
@@ -166,7 +169,7 @@ describe('FindBar', () => {
   test('does not navigate when the query is ineligible', async () => {
     const onNext = mock(() => {});
     const { container } = render(FindBar, { onNext, minQueryLength: 3, matchCount: 2 });
-    const input = container.querySelector('input') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
     await fireEvent.input(input, { target: { value: 'ab' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
     expect(onNext).not.toHaveBeenCalled();
@@ -176,7 +179,7 @@ describe('FindBar', () => {
     jest.useFakeTimers();
     const onQueryChange = mock(() => {});
     const { container } = render(FindBar, { onQueryChange, minQueryLength: 3, debounceMs: 1 });
-    const input = container.querySelector('input') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
     await fireEvent.input(input, { target: { value: 'abcd' } });
     jest.advanceTimersByTime(1);
     await fireEvent.input(input, { target: { value: 'ab' } });

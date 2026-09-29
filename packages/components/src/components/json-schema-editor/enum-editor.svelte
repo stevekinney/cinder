@@ -25,8 +25,8 @@
 
 <script lang="ts">
   import { onDestroy, tick } from 'svelte';
-  import Button from '@lostgradient/cinder/button';
-  import Input from '@lostgradient/cinder/input';
+  import { default as Button } from '../button/index.ts';
+  import { default as Input } from '../input/index.ts';
 
   let {
     idPrefix,
@@ -138,8 +138,9 @@
     if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
     if (value !== null && typeof value === 'object') {
       const object = value as Record<string, unknown>;
-      return `{${Object.keys(object)
-        .sort()
+      const keys = Object.keys(object);
+      keys.sort();
+      return `{${keys
         .map((key) => `${JSON.stringify(key)}:${canonicalJson(object[key])}`)
         .join(',')}}`;
     }

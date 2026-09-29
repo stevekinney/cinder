@@ -27,7 +27,7 @@
 </script>
 
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import ChevronRight from 'lucide-svelte/icons/chevron-right';
 
   import { getLocaleContext } from '../../_internal/locale-context.ts';
@@ -80,9 +80,23 @@
   const rootId = $derived(providedId ?? generatedId);
 
   let rootElement = $state<HTMLDivElement | null>(null);
-  let activeMenuIndex = $state(0);
-  let openMenuIndex = $state<number | null>(null);
+  // Open/active identity is stored by menu.id (not array index) so it survives
+  // `menus` prop reordering, insertion, and removal. Index is derived from
+  // these ids only at DOM-navigation boundaries (keyboard/pointer handlers,
+  // template attribute checks) — see indexOfId below.
+  let activeMenuId = $state<string | null>(untrack(() => menus[0]?.id ?? null));
+  let openMenuId = $state<string | null>(null);
   let openSubmenuKey = $state<string | null>(null);
+  // The `menus` array from the last time the reconciliation effect below ran,
+  // used to find a removed/disabled active menu's former neighbors when its
+  // own former index is no longer available from the current array.
+  let priorMenus: readonly MenuBarMenu[] = untrack(() => menus);
+  // Whether focus was inside the active menu's trigger or popup immediately
+  // before the current `menus` update patches the DOM, captured in
+  // `$effect.pre` below. The reconciliation `$effect` runs after the DOM
+  // patch, by which point a removed trigger/popup node has already lost
+  // focus, so this can't be recomputed there.
+  let focusWasInsideActiveMenuBeforePatch = false;
   let initialFocus = $state<'first' | 'last' | 'none' | undefined>(undefined);
   let directionRevision = $state(0);
   let suppressSubmenuFocusOpen = false;
@@ -98,7 +112,7 @@
     providedDirection === 'auto' ? rootElement : (rootElement?.parentElement ?? rootElement),
   );
   const resolvedDirection = $derived.by(() => {
-    directionRevision;
+    void directionRevision;
     return providedDirection === 'rtl' || providedDirection === 'ltr'
       ? providedDirection
       : resolveTextDirection(directionElement, localeContext?.direction);
@@ -133,46 +147,121 @@
     menus.map((menu, index) => ({ menu, index })).filter(({ menu }) => !menu.disabled),
   );
 
-  $effect(() => {
-    const firstEnabledIndex = enabledIndexes[0]?.index ?? -1;
-    if (firstEnabledIndex === -1) {
-      activeMenuIndex = -1;
-      openMenuIndex = null;
-      openSubmenuKey = null;
-    } else if (!menus[activeMenuIndex] || menus[activeMenuIndex]?.disabled) {
-      activeMenuIndex = firstEnabledIndex;
-    }
-  });
+  function indexOfId(menuId: string | null): number {
+    return menuId === null ? -1 : menus.findIndex((menu) => menu.id === menuId);
+  }
 
   function ancestryKey(...parts: Array<number | string>): string {
     return [rootId, ...parts].map((part) => String(part).replaceAll(/\s+/g, '-')).join('-');
   }
 
-  function topLevelTriggerId(index: number, menu: MenuBarMenu): string {
-    return ancestryKey('menu', index, menu.id, 'trigger');
+  function topLevelTriggerId(menuId: string): string {
+    return ancestryKey('menu', menuId, 'trigger');
   }
 
-  function topLevelMenuId(index: number, menu: MenuBarMenu): string {
-    return ancestryKey('menu', index, menu.id, 'menu');
+  function topLevelMenuId(menuId: string): string {
+    return ancestryKey('menu', menuId, 'menu');
   }
 
-  function submenuTriggerId(
-    menuIndex: number,
-    menu: MenuBarMenu,
-    entryIndex: number,
-    submenu: MenuBarSubmenu,
-  ): string {
-    return ancestryKey('menu', menuIndex, menu.id, 'submenu', entryIndex, submenu.id, 'trigger');
+  function submenuTriggerId(menuId: string, submenuId: string): string {
+    return ancestryKey('menu', menuId, 'submenu', submenuId, 'trigger');
   }
 
-  function submenuMenuId(
-    menuIndex: number,
-    menu: MenuBarMenu,
-    entryIndex: number,
-    submenu: MenuBarSubmenu,
-  ): string {
-    return ancestryKey('menu', menuIndex, menu.id, 'submenu', entryIndex, submenu.id, 'menu');
+  function submenuMenuId(menuId: string, submenuId: string): string {
+    return ancestryKey('menu', menuId, 'submenu', submenuId, 'menu');
   }
+
+  // Every popup registered under a given top-level menu id: its own dropdown
+  // menu plus any submenu popups nested under it (portaled elsewhere in the
+  // DOM, but still tracked in menuElements by their ancestry-keyed id).
+  function menuElementsForMenu(menuId: string): HTMLElement[] {
+    const ownMenuElement = menuElements.get(topLevelMenuId(menuId));
+    const submenuPrefix = `${ancestryKey('menu', menuId, 'submenu')}-`;
+    const submenuElements = Array.from(menuElements.entries())
+      .filter(([key]) => key.startsWith(submenuPrefix))
+      .map(([, element]) => element);
+    return ownMenuElement ? [ownMenuElement, ...submenuElements] : submenuElements;
+  }
+
+  function isElementInsideMenu(menuId: string, element: Element | null): boolean {
+    if (!element) return false;
+    const trigger = findElementById(topLevelTriggerId(menuId));
+    if (trigger && (trigger === element || trigger.contains(element))) return true;
+    return menuElementsForMenu(menuId).some(
+      (popup) => popup === element || popup.contains(element),
+    );
+  }
+
+  // Snapshot whether focus sits inside the active menu's trigger or popup
+  // BEFORE this `menus` update patches the DOM. By the time the reconciliation
+  // `$effect` below runs, a removed trigger/popup node has already been torn
+  // down and may have already lost focus, so this can't be recomputed there.
+  $effect.pre(() => {
+    void menus;
+    focusWasInsideActiveMenuBeforePatch =
+      activeMenuId !== null && isElementInsideMenu(activeMenuId, menuRoot()?.activeElement ?? null);
+  });
+
+  // Reconciles active/open identity against the current `menus` prop. Kept as
+  // a single effect (rather than split by concern) so there is exactly one
+  // writer of activeMenuId/openMenuId per reactive pass — two effects each
+  // reacting to `menus` and both assigning these could race within the same
+  // flush.
+  $effect(() => {
+    const currentMenus = menus;
+    const previousMenus = priorMenus;
+    priorMenus = currentMenus;
+
+    const firstEnabledId = enabledIndexes[0]?.menu.id ?? null;
+
+    if (firstEnabledId === null) {
+      // Nothing enabled remains: close everything and clear the active id so
+      // no trigger renders tabindex="0". Focus is never forced anywhere.
+      activeMenuId = null;
+      openMenuId = null;
+      openSubmenuKey = null;
+      return;
+    }
+
+    const activeMenu =
+      activeMenuId === null ? undefined : currentMenus.find((menu) => menu.id === activeMenuId);
+    if (activeMenu && !activeMenu.disabled) return;
+
+    const removedMenuId = activeMenuId;
+    const wasOpen = openMenuId !== null;
+    openMenuId = null;
+    openSubmenuKey = null;
+
+    if (!wasOpen || removedMenuId === null) {
+      // Active-but-unopened menu removed/disabled: unchanged behavior, fall
+      // back to the first enabled menu with no focus move.
+      activeMenuId = firstEnabledId;
+      return;
+    }
+
+    const formerIndex = previousMenus.findIndex((menu) => menu.id === removedMenuId);
+    const isStillEnabled = (menuId: string) => {
+      const menu = currentMenus.find((entry) => entry.id === menuId);
+      return menu !== undefined && !menu.disabled;
+    };
+    let replacementId: string | null = null;
+    if (formerIndex !== -1) {
+      for (let offset = 1; replacementId === null && offset < previousMenus.length; offset += 1) {
+        const forward = previousMenus[formerIndex + offset];
+        if (forward && isStillEnabled(forward.id)) replacementId = forward.id;
+      }
+      for (let offset = 1; replacementId === null && offset < previousMenus.length; offset += 1) {
+        const backward = previousMenus[formerIndex - offset];
+        if (backward && isStillEnabled(backward.id)) replacementId = backward.id;
+      }
+    }
+    activeMenuId = replacementId ?? firstEnabledId;
+
+    if (focusWasInsideActiveMenuBeforePatch) {
+      const focusTargetId = activeMenuId;
+      void tick().then(() => focusTopLevelTrigger(focusTargetId));
+    }
+  });
 
   type MenuRoot = Pick<Document, 'activeElement'> & Pick<ParentNode, 'querySelector'>;
 
@@ -207,13 +296,13 @@
     focusElement(id);
     void tick().then(() => {
       suppressSubmenuFocusOpen = false;
+      return undefined;
     });
   }
 
-  function focusTopLevelTrigger(index: number): void {
-    const menu = menus[index];
-    if (!menu) return;
-    focusElement(topLevelTriggerId(index, menu));
+  function focusTopLevelTrigger(menuId: string | null): void {
+    if (menuId === null) return;
+    focusElement(topLevelTriggerId(menuId));
   }
 
   function nextEnabledMenuIndex(currentIndex: number, direction: -1 | 1): number {
@@ -236,12 +325,12 @@
     return enabledIndexes.at(-1)?.index ?? -1;
   }
 
-  function openMenu(index: number, focus: 'first' | 'last' = 'first'): void {
-    const menu = menus[index];
+  function openMenu(menuId: string, focus: 'first' | 'last' = 'first'): void {
+    const menu = menus.find((entry) => entry.id === menuId);
     if (!menu || menu.disabled) return;
     typeaheadBuffer.reset();
-    activeMenuIndex = index;
-    openMenuIndex = index;
+    activeMenuId = menuId;
+    openMenuId = menuId;
     openSubmenuKey = null;
     initialFocus = focus;
   }
@@ -254,14 +343,14 @@
   function closeAll(): void {
     clearSubmenuCloseTimer();
     typeaheadBuffer.reset();
-    openMenuIndex = null;
+    openMenuId = null;
     openSubmenuKey = null;
     initialFocus = undefined;
   }
 
-  function closeMenuAndFocusTrigger(index: number): void {
+  function closeMenuAndFocusTrigger(menuId: string): void {
     closeAll();
-    void tick().then(() => focusTopLevelTrigger(index));
+    void tick().then(() => focusTopLevelTrigger(menuId));
   }
 
   function labelParts(menu: MenuBarMenu): { before: string; key: string; after: string } | null {
@@ -288,8 +377,7 @@
     menuId: string;
     anchorElement: () => HTMLElement | null;
     fallbackPlacement?:
-      | DropdownContext['fallbackPlacement']
-      | (() => DropdownContext['fallbackPlacement']);
+      DropdownContext['fallbackPlacement'] | (() => DropdownContext['fallbackPlacement']);
     isOpen: () => boolean;
     close: () => void;
     focusTrigger: () => void;
@@ -323,18 +411,16 @@
     };
   }
 
-  function submenuDirection(submenuTriggerId: string): 'ltr' | 'rtl' | undefined {
-    return resolveTextDirection(findElementById(submenuTriggerId), resolvedDirection);
+  function submenuDirection(triggerId: string): 'ltr' | 'rtl' | undefined {
+    return resolveTextDirection(findElementById(triggerId), resolvedDirection);
   }
 
-  function submenuFallbackPlacement(
-    submenuTriggerId: string,
-  ): DropdownContext['fallbackPlacement'] {
-    return submenuDirection(submenuTriggerId) === 'rtl' ? 'left-start' : 'right-start';
+  function submenuFallbackPlacement(triggerId: string): DropdownContext['fallbackPlacement'] {
+    return submenuDirection(triggerId) === 'rtl' ? 'left-start' : 'right-start';
   }
 
-  function submenuOpenArrow(submenuTriggerId: string): 'ArrowLeft' | 'ArrowRight' {
-    return submenuDirection(submenuTriggerId) === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
+  function submenuOpenArrow(triggerId: string): 'ArrowLeft' | 'ArrowRight' {
+    return submenuDirection(triggerId) === 'rtl' ? 'ArrowLeft' : 'ArrowRight';
   }
 
   function makeMenuRegister(menuId: string): (element: HTMLElement | null) => void {
@@ -540,29 +626,35 @@
     return false;
   }
 
-  function handleTriggerKeydown(event: KeyboardEvent, index: number): void {
+  function handleTriggerKeydown(event: KeyboardEvent, menuId: string): void {
+    // Keyboard navigation is a DOM-navigation boundary: derive the current
+    // position from the id here, rather than storing index anywhere.
+    const index = indexOfId(menuId);
+
     if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
       event.preventDefault();
       const nextIndex = nextEnabledMenuIndex(index, horizontalArrowDirection(event.key));
-      if (nextIndex === -1) return;
-      activeMenuIndex = nextIndex;
-      focusTopLevelTrigger(nextIndex);
-      if (openMenuIndex !== null) openMenu(nextIndex);
+      const nextId = menus[nextIndex]?.id;
+      if (nextIndex === -1 || nextId === undefined) return;
+      activeMenuId = nextId;
+      focusTopLevelTrigger(nextId);
+      if (openMenuId !== null) openMenu(nextId);
       return;
     }
 
     if (event.key === 'Home' || event.key === 'End') {
       event.preventDefault();
       const nextIndex = event.key === 'Home' ? firstEnabledMenuIndex() : lastEnabledMenuIndex();
-      if (nextIndex === -1) return;
-      activeMenuIndex = nextIndex;
-      focusTopLevelTrigger(nextIndex);
+      const nextId = menus[nextIndex]?.id;
+      if (nextIndex === -1 || nextId === undefined) return;
+      activeMenuId = nextId;
+      focusTopLevelTrigger(nextId);
       return;
     }
 
     if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      openMenu(index, 'first');
+      openMenu(menuId, 'first');
       return;
     }
 
@@ -581,7 +673,7 @@
     if (
       event.key === 'Escape' &&
       !event.defaultPrevented &&
-      (openMenuIndex !== null || openSubmenuKey !== null)
+      (openMenuId !== null || openSubmenuKey !== null)
     ) {
       event.preventDefault();
       closeAll();
@@ -590,7 +682,7 @@
 
     if (event.key === 'ArrowUp') {
       event.preventDefault();
-      openMenu(index, 'last');
+      openMenu(menuId, 'last');
     }
   }
 
@@ -608,16 +700,16 @@
       event.key.length === 1
     ) {
       const accessKey = event.key.toLocaleLowerCase();
-      const index = menus.findIndex(
+      const matchedMenu = menus.find(
         (menu) => !menu.disabled && menu.accessKey?.toLocaleLowerCase() === accessKey,
       );
-      if (index === -1) return;
+      if (!matchedMenu) return;
       event.preventDefault();
-      openMenu(index, 'first');
+      openMenu(matchedMenu.id, 'first');
       return;
     }
 
-    if (openMenuIndex !== null && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
+    if (openMenuId !== null && (event.key === 'ArrowRight' || event.key === 'ArrowLeft')) {
       const target = event.target instanceof HTMLElement ? event.target : null;
       const submenuMenu = target?.closest<HTMLElement>('.cinder-menu-bar__submenu-menu');
       if (submenuMenu) {
@@ -637,10 +729,11 @@
         } else {
           event.preventDefault();
           const nextIndex = nextEnabledMenuIndex(
-            openMenuIndex,
+            indexOfId(openMenuId),
             horizontalArrowDirection(event.key),
           );
-          if (nextIndex !== -1) openMenu(nextIndex, 'first');
+          const nextId = menus[nextIndex]?.id;
+          if (nextId !== undefined) openMenu(nextId, 'first');
         }
         return;
       }
@@ -650,8 +743,12 @@
         if (menu && handleMenuTypeahead(event, menu)) return;
 
         event.preventDefault();
-        const nextIndex = nextEnabledMenuIndex(openMenuIndex, horizontalArrowDirection(event.key));
-        if (nextIndex !== -1) openMenu(nextIndex, 'first');
+        const nextIndex = nextEnabledMenuIndex(
+          indexOfId(openMenuId),
+          horizontalArrowDirection(event.key),
+        );
+        const nextId = menus[nextIndex]?.id;
+        if (nextId !== undefined) openMenu(nextId, 'first');
       }
     } else {
       const target = event.target instanceof HTMLElement ? event.target : null;
@@ -668,11 +765,12 @@
 
   function handleDocumentFocusin(event: FocusEvent): void {
     if (!rootElement || !(event.target instanceof Node)) return;
-    if (openMenuIndex === null && openSubmenuKey === null) return;
+    if (openMenuId === null && openSubmenuKey === null) return;
     void tick().then(() => {
       if (document.activeElement && rootElement?.contains(document.activeElement)) return;
       if (document.activeElement && isInsideOpenMenu(document.activeElement)) return;
       closeAll();
+      return undefined;
     });
   }
 
@@ -703,9 +801,9 @@
   aria-orientation="horizontal"
   onkeydown={handleRootKeydown}
 >
-  {#each menus as menu, menuIndex (ancestryKey('menu', menuIndex, menu.id))}
-    {@const triggerId = topLevelTriggerId(menuIndex, menu)}
-    {@const menuId = topLevelMenuId(menuIndex, menu)}
+  {#each menus as menu (menu.id)}
+    {@const triggerId = topLevelTriggerId(menu.id)}
+    {@const menuId = topLevelMenuId(menu.id)}
     {@const parts = labelParts(menu)}
     <div class="cinder-menu-bar__menu">
       <button
@@ -715,19 +813,19 @@
         role="menuitem"
         aria-label={menu.label}
         aria-haspopup="menu"
-        aria-expanded={openMenuIndex === menuIndex ? 'true' : 'false'}
+        aria-expanded={openMenuId === menu.id ? 'true' : 'false'}
         aria-controls={menuId}
         aria-disabled={menu.disabled ? 'true' : undefined}
         disabled={menu.disabled}
-        tabindex={!menu.disabled && activeMenuIndex === menuIndex ? 0 : -1}
-        data-cinder-state={openMenuIndex === menuIndex ? 'open' : 'closed'}
-        onkeydown={(event) => handleTriggerKeydown(event, menuIndex)}
+        tabindex={!menu.disabled && activeMenuId === menu.id ? 0 : -1}
+        data-cinder-state={openMenuId === menu.id ? 'open' : 'closed'}
+        onkeydown={(event) => handleTriggerKeydown(event, menu.id)}
         onclick={() => {
-          if (openMenuIndex === menuIndex) closeAll();
-          else openMenu(menuIndex);
+          if (openMenuId === menu.id) closeAll();
+          else openMenu(menu.id);
         }}
         onpointerenter={() => {
-          if (openMenuIndex !== null) openMenu(menuIndex);
+          if (openMenuId !== null) openMenu(menu.id);
         }}
       >
         {#if parts}
@@ -742,20 +840,20 @@
           menuId,
           anchorElement: () => findElementById(triggerId),
           fallbackPlacement: 'bottom-start',
-          isOpen: () => openMenuIndex === menuIndex,
-          close: () => closeMenuAndFocusTrigger(menuIndex),
-          focusTrigger: () => focusTopLevelTrigger(menuIndex),
+          isOpen: () => openMenuId === menu.id,
+          close: () => closeMenuAndFocusTrigger(menu.id),
+          focusTrigger: () => focusTopLevelTrigger(menu.id),
         })}
         registerMenu={makeMenuRegister(menuId)}
         registerTrigger={() => {}}
         setOpen={(open) => {
-          if (open) openMenu(menuIndex);
+          if (open) openMenu(menu.id);
           else closeAll();
         }}
       >
         <DropdownMenu class="cinder-menu-bar__dropdown-menu" aria-labelledby={triggerId}>
           <div class="cinder-menu-bar__dropdown-scroll" role="presentation">
-            {#each menu.items as entry, entryIndex (ancestryKey('menu', menuIndex, menu.id, entryIndex, entry.id))}
+            {#each menu.items as entry (entry.id)}
               {#if isItem(entry)}
                 <DropdownItem
                   variant={entry.variant ?? 'default'}
@@ -778,8 +876,8 @@
                   {/if}
                 </DropdownItem>
               {:else if isSubmenu(entry)}
-                {@const submenuKey = submenuMenuId(menuIndex, menu, entryIndex, entry)}
-                {@const submenuTrigger = submenuTriggerId(menuIndex, menu, entryIndex, entry)}
+                {@const submenuKey = submenuMenuId(menu.id, entry.id)}
+                {@const submenuTrigger = submenuTriggerId(menu.id, entry.id)}
                 <div
                   class="cinder-menu-bar__submenu"
                   role="presentation"
@@ -812,7 +910,7 @@
                     }}
                     onpointerenter={() => {
                       clearSubmenuCloseTimer();
-                      if (openMenuIndex === menuIndex && !entry.disabled)
+                      if (openMenuId === menu.id && !entry.disabled)
                         openSubmenu(submenuKey, 'none');
                     }}
                     onpointerout={(event) =>
@@ -848,7 +946,7 @@
                       anchorElement: () => findElementById(submenuTrigger),
                       fallbackPlacement: () => submenuFallbackPlacement(submenuTrigger),
                       isOpen: () => openSubmenuKey === submenuKey,
-                      close: () => closeMenuAndFocusTrigger(menuIndex),
+                      close: () => closeMenuAndFocusTrigger(menu.id),
                       focusTrigger: () => focusSubmenuTriggerAfterClose(submenuTrigger),
                     })}
                     registerMenu={makeMenuRegister(submenuKey)}
@@ -874,7 +972,7 @@
                       onmouseleave={(event) =>
                         handleSubmenuPointerOut(event, submenuKey, submenuTrigger)}
                     >
-                      {#each entry.items as submenuEntry, submenuEntryIndex (ancestryKey('submenu', submenuKey, submenuEntryIndex, submenuEntry.id))}
+                      {#each entry.items as submenuEntry (submenuEntry.id)}
                         {#if isItem(submenuEntry)}
                           <DropdownItem
                             variant={submenuEntry.variant ?? 'default'}

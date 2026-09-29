@@ -327,14 +327,14 @@
   "shadow.small": {
     "$value": [
       {
-        "color": { "colorSpace": "oklch", "components": [1, 0, 0], "alpha": 0.09 },
+        "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.09 },
         "offsetX": { "value": 0, "unit": "px" },
         "offsetY": { "value": 1, "unit": "px" },
         "blur": { "value": 2, "unit": "px" },
         "spread": { "value": 0, "unit": "px" }
       },
       {
-        "color": { "colorSpace": "oklch", "components": [1, 0, 0], "alpha": 0.05 },
+        "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.05 },
         "offsetX": { "value": 0, "unit": "px" },
         "offsetY": { "value": 1, "unit": "px" },
         "blur": { "value": 1, "unit": "px" },
@@ -354,14 +354,14 @@
   "shadow.medium": {
     "$value": [
       {
-        "color": { "colorSpace": "oklch", "components": [1, 0, 0], "alpha": 0.09 },
+        "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.09 },
         "offsetX": { "value": 0, "unit": "px" },
         "offsetY": { "value": 4, "unit": "px" },
         "blur": { "value": 6, "unit": "px" },
         "spread": { "value": -1, "unit": "px" }
       },
       {
-        "color": { "colorSpace": "oklch", "components": [1, 0, 0], "alpha": 0.06 },
+        "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.06 },
         "offsetX": { "value": 0, "unit": "px" },
         "offsetY": { "value": 2, "unit": "px" },
         "blur": { "value": 4, "unit": "px" },
@@ -381,14 +381,14 @@
   "shadow.large": {
     "$value": [
       {
-        "color": { "colorSpace": "oklch", "components": [1, 0, 0], "alpha": 0.11 },
+        "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.11 },
         "offsetX": { "value": 0, "unit": "px" },
         "offsetY": { "value": 10, "unit": "px" },
         "blur": { "value": 15, "unit": "px" },
         "spread": { "value": -3, "unit": "px" }
       },
       {
-        "color": { "colorSpace": "oklch", "components": [1, 0, 0], "alpha": 0.07 },
+        "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.07 },
         "offsetX": { "value": 0, "unit": "px" },
         "offsetY": { "value": 4, "unit": "px" },
         "blur": { "value": 6, "unit": "px" },

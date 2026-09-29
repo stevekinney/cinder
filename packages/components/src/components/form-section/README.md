@@ -6,9 +6,9 @@ Groups related form fields under a heading with optional description and layout 
 
 ```svelte
 <script lang="ts">
-  import FormField from '@lostgradient/cinder/form-field';
-  import FormSection from '@lostgradient/cinder/form-section';
-  import Input from '@lostgradient/cinder/input';
+  import { FormField } from '@lostgradient/cinder';
+  import { FormSection } from '@lostgradient/cinder';
+  import { Input } from '@lostgradient/cinder';
   let street = $state('');
   let city = $state('');
   let postalCode = $state('');
@@ -53,7 +53,6 @@ Groups related form fields under a heading with optional description and layout 
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

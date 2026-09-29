@@ -80,7 +80,6 @@
     | { kind: 'programmatic'; target: number; source: CarouselProgrammaticSource };
 
   let isHovered = $state(false);
-  let hasFocusWithin = $state(false);
   let userPaused = $state(false);
   let motion = $state<CarouselMotion>({ kind: 'idle' });
   // `motion = {...}` always writes a fresh object, so an unconditional
@@ -109,6 +108,7 @@
   let nativeScrollEndTimer: ReturnType<typeof setTimeout> | null = null;
   let scrollFrame: number | null = null;
   let cachedViewportInlineSize = 0;
+  let rotationPointerPaused: boolean | null = null;
 
   const clampedLength = $derived(slides.length);
   const initialSlideId = untrack(
@@ -149,7 +149,6 @@
       autoplayInterval > 0 &&
       !reducedMotion.current &&
       !isHovered &&
-      !hasFocusWithin &&
       activePointerIds.size === 0 &&
       motion.kind !== 'user' &&
       !userPaused,
@@ -242,6 +241,7 @@
     consumerOnKeydown?.(event as KeyboardEvent & { currentTarget: EventTarget & HTMLElement });
     if (event.defaultPrevented) return;
     if (clampedLength < 2) return;
+    if (!shouldHandleCarouselShortcut(event)) return;
     if (event.key === 'ArrowLeft') {
       event.preventDefault();
       focusCarouselRoot(event);
@@ -265,6 +265,42 @@
       focusCarouselRoot(event);
       goTo(clampedLength - 1, undefined, 'keyboard');
     }
+  }
+
+  function shouldHandleCarouselShortcut(event: KeyboardEvent): boolean {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return false;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return false;
+    const root = event.currentTarget;
+    if (!(root instanceof HTMLElement)) return false;
+    const target = event.target;
+    if (target === root || target === viewportElement) return true;
+    if (!(target instanceof Element) || !root.contains(target)) return false;
+    if (isEditableKeyTarget(target)) return false;
+    if (isCarouselOwnedControl(target)) return true;
+    return !isNestedKeyboardWidget(target);
+  }
+
+  function isEditableKeyTarget(target: Element): boolean {
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement
+    ) {
+      return true;
+    }
+    if (target instanceof HTMLElement && target.isContentEditable) return true;
+    return target.closest('[contenteditable]:not([contenteditable="false"])') !== null;
+  }
+
+  function isCarouselOwnedControl(target: Element): boolean {
+    return target.closest('.cinder-carousel__control, .cinder-carousel__dot') !== null;
+  }
+
+  function isNestedKeyboardWidget(target: Element): boolean {
+    const widget = target.closest(
+      'button, input, select, textarea, [role="button"], [role="checkbox"], [role="combobox"], [role="grid"], [role="listbox"], [role="menu"], [role="menubar"], [role="menuitem"], [role="option"], [role="radio"], [role="scrollbar"], [role="searchbox"], [role="slider"], [role="spinbutton"], [role="switch"], [role="tab"], [role="textbox"], [role="tree"], [tabindex]:not([tabindex="-1"])',
+    );
+    return widget !== null && widget !== viewportElement;
   }
 
   function focusCarouselRoot(event: KeyboardEvent): void {
@@ -295,16 +331,34 @@
 
   function onFocusIn(event: FocusEvent) {
     consumerOnFocusIn?.(event as FocusEvent & { currentTarget: EventTarget & HTMLElement });
-    hasFocusWithin = true;
+    if (
+      event.relatedTarget instanceof Node &&
+      event.currentTarget instanceof HTMLElement &&
+      event.currentTarget.contains(event.relatedTarget)
+    ) {
+      return;
+    }
+    if (autoplay) userPaused = true;
   }
 
   function onFocusOut(event: FocusEvent) {
     consumerOnFocusOut?.(event as FocusEvent & { currentTarget: EventTarget & HTMLElement });
-    const nextFocus = event.relatedTarget;
-    if (nextFocus instanceof Node && event.currentTarget instanceof HTMLElement) {
-      if (event.currentTarget.contains(nextFocus)) return;
-    }
-    hasFocusWithin = false;
+  }
+
+  function onRotationControlPointerDown(event: PointerEvent): void {
+    // Preserve the action before pointer focus pauses rotation in any browser.
+    rotationPointerPaused = event.button === 0 ? !userPaused : null;
+  }
+
+  function onRotationControlPointerCancel(): void {
+    rotationPointerPaused = null;
+  }
+
+  function onRotationControlClick(event: MouseEvent): void {
+    // Keyboard activation has no pointer action, including after a canceled press.
+    userPaused =
+      event.detail > 0 && rotationPointerPaused !== null ? rotationPointerPaused : !userPaused;
+    rotationPointerPaused = null;
   }
 
   function initialSlideOrder(index: number): number {
@@ -465,13 +519,13 @@
     if (motion.kind === 'user') scheduleNativeScrollEnd();
   }
 
-  function handleSettle(): void {
+  function handleSettle(force = false): void {
     if (nativeScrollEndTimer !== null) {
       clearTimeout(nativeScrollEndTimer);
       nativeScrollEndTimer = null;
     }
     if (activePointerIds.size > 0) return;
-    if (motion.kind !== 'user') return;
+    if (!force && motion.kind !== 'user') return;
     setMotion({ kind: 'idle' });
     if (viewportElement === null) return;
 
@@ -508,9 +562,9 @@
   // Unconditional variant of the debounce above, for settle paths that don't
   // guarantee a resulting scroll (and therefore can't rely on `scrollend`
   // ever firing) — a cancelled gesture with no scroll delta is the case.
-  function scheduleFallbackSettle(): void {
+  function scheduleFallbackSettle(force = false): void {
     if (nativeScrollEndTimer !== null) clearTimeout(nativeScrollEndTimer);
-    nativeScrollEndTimer = setTimeout(handleSettle, 100);
+    nativeScrollEndTimer = setTimeout(() => handleSettle(force), 100);
   }
 
   function onPointerDown(event: PointerEvent): void {
@@ -542,27 +596,27 @@
   function onWindowBlur(): void {
     const hadPointers = activePointerIds.size > 0;
     const wasUserMotion = motion.kind === 'user';
+    const wasProgrammaticMotion = motion.kind === 'programmatic';
     activePointerIds.clear();
     removePointerEndListeners();
     // Same reasoning as the pointercancel path: blur can interrupt a drag
     // before any scroll has actually happened, so `scrollend` isn't
     // guaranteed to ever fire.
-    if (wasUserMotion) scheduleFallbackSettle();
+    if (hadPointers && !wasUserMotion && !wasProgrammaticMotion) {
+      observedActiveIndex = currentIndex;
+      setMotion({ kind: 'user', source: 'touch' });
+    }
+    if (wasUserMotion || (hadPointers && !wasProgrammaticMotion))
+      scheduleFallbackSettle(hadPointers);
     // Only relinquish programmatic/autoplay ownership if blur is actually
     // ending a tracked pointer interaction. An unrelated blur (e.g. focusing
     // browser chrome while a dot or autoplay transition is animating) must
     // not cancel that in-flight destination, or a subsequent intermediate
     // scroll event gets misread as native input and overwrites activeIndex.
-    if (hadPointers && motion.kind === 'programmatic') {
+    if (hadPointers && wasProgrammaticMotion) {
       setMotion({ kind: 'idle' });
     }
   }
-
-  $effect(() => {
-    if (typeof window === 'undefined') return;
-    window.addEventListener('blur', onWindowBlur);
-    return () => window.removeEventListener('blur', onWindowBlur);
-  });
 
   onDestroy(() => {
     removePointerEndListeners();
@@ -642,8 +696,9 @@
   $effect(() => {
     const viewport = viewportElement;
     if (viewport === null || !('onscrollend' in viewport)) return;
-    viewport.addEventListener('scrollend', handleSettle);
-    return () => viewport.removeEventListener('scrollend', handleSettle);
+    const handleScrollEnd = () => handleSettle();
+    viewport.addEventListener('scrollend', handleScrollEnd);
+    return () => viewport.removeEventListener('scrollend', handleScrollEnd);
   });
 
   $effect(() => {
@@ -656,14 +711,14 @@
   });
 </script>
 
-<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<svelte:window onblur={onWindowBlur} />
+
 <section
   {...rest}
   class={classNames('cinder-carousel', className)}
   aria-roledescription="carousel"
   aria-label={label}
   aria-describedby={description ? descriptionId : undefined}
-  tabindex="0"
   data-cinder-align={align === 'center' ? 'center' : undefined}
   style:--cinder-carousel-slide-size={resolvedSlideSize}
   style:--cinder-carousel-gap={isMultiView ? gap : undefined}
@@ -672,6 +727,7 @@
   onmouseleave={onMouseLeave}
   onfocusin={onFocusIn}
   onfocusout={onFocusOut}
+  tabindex="-1"
 >
   {#if description}
     <p id={descriptionId} class="cinder-carousel__sr-only">{description}</p>
@@ -686,7 +742,22 @@
     {liveAnnouncement}
   </p>
 
-  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+  {#if autoplay && !reducedMotion.current}
+    <button
+      type="button"
+      class="cinder-carousel__control cinder-carousel__control--pause"
+      aria-label={userPaused
+        ? (controlLabels?.play ?? 'Play carousel rotation')
+        : (controlLabels?.pause ?? 'Pause carousel rotation')}
+      onpointerdown={onRotationControlPointerDown}
+      onpointercancel={onRotationControlPointerCancel}
+      onclick={onRotationControlClick}
+    >
+      {userPaused ? (controlLabels?.play ?? 'Play') : (controlLabels?.pause ?? 'Pause')}
+    </button>
+  {/if}
+
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex (native scroll viewport must be keyboard reachable for carousel slide shortcuts) -->
   <div
     class="cinder-carousel__viewport"
     role="group"
@@ -777,17 +848,6 @@
         {controlLabels?.next ?? 'Next'}
       </button>
     </div>
-
-    {#if autoplay && !reducedMotion.current}
-      <button
-        type="button"
-        class="cinder-carousel__control cinder-carousel__control--pause"
-        aria-pressed={userPaused}
-        onclick={() => (userPaused = !userPaused)}
-      >
-        {userPaused ? (controlLabels?.play ?? 'Play') : (controlLabels?.pause ?? 'Pause')}
-      </button>
-    {/if}
 
     {#if resolvedIndicators === 'dots'}
       <div

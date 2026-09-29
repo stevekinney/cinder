@@ -6,7 +6,7 @@ Multi-value dropdown that presents checkbox options inside an anchored floating 
 
 ```svelte
 <script lang="ts">
-  import MultiSelect from '@lostgradient/cinder/multi-select';
+  import { MultiSelect } from '@lostgradient/cinder';
 
   const items = [
     { id: 'apple', label: 'Apple' },
@@ -54,7 +54,6 @@ Multi-value dropdown that presents checkbox options inside an anchored floating 
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

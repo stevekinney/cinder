@@ -6,9 +6,14 @@ const schema = {
   properties: {
     value: {
       type: 'string',
+      description: "Current query text. Bindable. Defaults to `''`.",
+      default: '',
     },
     activeIndex: {
       type: 'number',
+      description:
+        "Index of the active match within the host-provided results. Bindable,\nbut not input-only: the component resets it to `0` itself whenever the\nuser edits the query. Whenever `matchCount` is non-`null`, an effect\nalso clamps this value into `[0, matchCount - 1]` (normalizing to `0`\nat `matchCount === 0`, where that range is otherwise empty)—and\nbecause that effect reads `activeIndex` too, it clamps just as\nimmediately if a host assigns an out-of-range `activeIndex` on its\nown, not only when `matchCount` itself changes. An assigned\n`Infinity`/`-Infinity` is clamped normally to the maximum/`0`; a\ndirectly assigned `NaN` is the one value the clamp\n(`Math.min(Math.max(…))`) passes through unchanged. A parent binding\nthis prop should expect it to be overwritten in every case except an\nassigned `NaN`, not treat it as a preserved selection, and should not\nassign `NaN` itself—but see `matchCount` for how *its* value, not\n`activeIndex`'s, being invalid changes this picture. Defaults to `0`.",
+      default: 0,
     },
     matchCount: {
       anyOf: [
@@ -19,18 +24,30 @@ const schema = {
           type: 'null',
         },
       ],
+      description:
+        "Number of matches for the current query, or `null` when the host has\nnot searched yet. Bindable—the component resets it to `null` itself\nwhenever the user starts a new search, so bind it rather than mirror\n`onQueryChange` manually to stay in sync with that reset. The\n`activeIndex` clamp assumes this is a finite, non-negative integer\nwhen not `null`, and there is no rounding anywhere in it (no\n`Math.floor`), so an invalid value doesn't fail uniformly: at\n`matchCount <= 1` (negative, `0`, or a fraction like `0.5`),\n`Math.max(0, matchCount - 1)` is `0`, so a finite `activeIndex`\nnormalizes to `0`; at a fraction above `1` (e.g. `1.5`), that same\nexpression is itself fractional (`0.5`), so `activeIndex` clamps to\nthat fraction instead of an integer; `NaN` propagates, overwriting\neven a finite `activeIndex` with `NaN`; and `Infinity` effectively\ndisables the clamp's upper bound, so an out-of-range `activeIndex`\npasses through unclamped rather than being normalized. Defaults to\n`null`.",
+      default: null,
     },
     minQueryLength: {
       type: 'number',
+      description:
+        "Minimum trimmed query length before the host should search—eligibility\nis checked against `value.trim().length`, not `value.length`, so\nwhitespace-only or whitespace-padded input doesn't count toward it\n(e.g. `' a '` stays ineligible at `minQueryLength={3}`). Defaults to\n`3`.",
+      default: 3,
     },
     debounceMs: {
       type: 'number',
+      description:
+        "Debounce interval, in milliseconds, before `onQueryChange` fires for\nan eligible query. Does not apply to the synchronous `''` notification\n`onQueryChange` sends when a previously eligible query shrinks below\n`minQueryLength`—see that prop. Defaults to `250`.",
+      default: 250,
     },
     label: {
       type: 'string',
+      description: "Accessible label for the find controls. Defaults to `'Find'`.",
+      default: 'Find',
     },
     class: {
       type: 'string',
+      description: "Additional class merged with the component's root class.",
     },
   },
   additionalProperties: false,
@@ -39,18 +56,23 @@ const schema = {
       {
         name: 'onDismiss',
         reason: 'function-or-snippet',
+        description: 'Called when the user dismisses the find bar.',
       },
       {
         name: 'onNext',
         reason: 'function-or-snippet',
+        description: 'Called when the user requests the next match.',
       },
       {
         name: 'onPrevious',
         reason: 'function-or-snippet',
+        description: 'Called when the user requests the previous match.',
       },
       {
         name: 'onQueryChange',
         reason: 'function-or-snippet',
+        description:
+          "Called with the debounced query text once user typing (the `input`\nevent) reaches `minQueryLength`. Also called immediately with `''`,\nbypassing the debounce, the moment a previously eligible query shrinks\nbelow `minQueryLength`—handle the empty-string case as a synchronous\nreset, not just the debounced value. Only that ineligible-transition\ncase is notified when triggered externally: assigning an eligible\n`value` via `bind:value`, or lowering `minQueryLength` so the current\n`value` becomes eligible, does not itself call this callback—a host\nthat restores or sets `value` programmatically must trigger its own\nsearch rather than rely on this firing. Exception: if the user typed\nan ineligible query and a debounce timer is already pending when\n`minQueryLength` is lowered enough to make that in-flight query\neligible, the pending timer is not canceled or re-evaluated against\nthe new threshold at the moment it changes—it still fires against the\nlive `minQueryLength` when its debounce elapses, which can call this\nwith the query the user typed before the threshold changed.",
       },
     ],
   },

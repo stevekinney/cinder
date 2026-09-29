@@ -99,69 +99,41 @@ function extractText(element: Element): string {
  * @returns The parsed hast element
  */
 function parseShikiHtml(html: string): Element {
-  // Shiki outputs: <pre class="..." style="..." tabindex="0"><code>...</code></pre>
-  // We need to extract the pre element's attributes and the code content
-
-  // Extract pre tag attributes
-  const preMatch = html.match(/<pre([^>]*)>/);
-  const preAttrs = preMatch?.[1] ?? '';
-
-  // Extract classes
-  const classMatch = preAttrs.match(/class="([^"]*)"/);
-  const className = classMatch?.[1]?.split(/\s+/) ?? [];
-
-  // Extract style (for Shiki's inline styles)
-  const styleMatch = preAttrs.match(/style="([^"]*)"/);
-  const style = styleMatch?.[1];
-
-  // Extract data-language attribute
-  const langMatch = preAttrs.match(/data-language="([^"]*)"/);
-  const dataLanguage = langMatch?.[1];
-
-  // Extract tabindex
-  const tabindexMatch = preAttrs.match(/tabindex="([^"]*)"/);
-  const tabindex = tabindexMatch?.[1];
-
-  // Extract the inner content (between <pre...> and </pre>)
-  const innerMatch = html.match(/<pre[^>]*>([\s\S]*)<\/pre>/);
-  const innerHtml = innerMatch?.[1] ?? '';
-
-  // Parse the inner code element
+  const preAttrs = html.match(/<pre([^>]*)>/)?.[1] ?? '';
+  const innerHtml = html.match(/<pre[^>]*>([\s\S]*)<\/pre>/)?.[1] ?? '';
   const codeMatch = innerHtml.match(/<code([^>]*)>([\s\S]*)<\/code>/);
   const codeAttrs = codeMatch?.[1] ?? '';
   const codeContent = codeMatch?.[2] ?? innerHtml;
-
-  // Extract code classes
-  const codeClassMatch = codeAttrs.match(/class="([^"]*)"/);
-  const codeClassName = codeClassMatch?.[1]?.split(/\s+/) ?? [];
-
-  // Parse the highlighted spans within the code
-  const codeChildren = parseSpans(codeContent);
-
-  // Build the code element
   const codeElement: Element = {
     type: 'element',
     tagName: 'code',
-    properties: {
-      className: codeClassName.length > 0 ? codeClassName : undefined,
-    },
-    children: codeChildren,
+    properties: { className: splitAttribute(codeAttrs, 'class') },
+    children: parseSpans(codeContent),
   };
-
-  // Build the pre element
-  const preElement: Element = {
+  return {
     type: 'element',
     tagName: 'pre',
     properties: {
-      className: className.length > 0 ? className : undefined,
-      style: style || undefined,
-      dataLanguage: dataLanguage || undefined,
-      tabIndex: tabindex ? parseInt(tabindex, 10) : undefined,
+      className: splitAttribute(preAttrs, 'class'),
+      style: getAttribute(preAttrs, 'style'),
+      dataLanguage: getAttribute(preAttrs, 'data-language'),
+      tabIndex: parseTabIndex(getAttribute(preAttrs, 'tabindex')),
     },
     children: [codeElement],
   };
+}
 
-  return preElement;
+function getAttribute(attributes: string, name: string): string | undefined {
+  return attributes.match(new RegExp(`${name}="([^"]*)"`))?.[1];
+}
+
+function splitAttribute(attributes: string, name: string): string[] | undefined {
+  const value = getAttribute(attributes, name);
+  return value ? value.split(/\s+/) : undefined;
+}
+
+function parseTabIndex(value: string | undefined): number | undefined {
+  return value === undefined ? undefined : Number.parseInt(value, 10);
 }
 
 /**
@@ -178,86 +150,78 @@ function parseSpans(html: string): ElementContent[] {
   let position = 0;
 
   while (position < html.length) {
-    // Check for start of a span tag
-    if (html.slice(position, position + 5) === '<span') {
-      // Find the end of the opening tag
-      const tagEnd = html.indexOf('>', position);
-      if (tagEnd === -1) break;
-
-      const openingTag = html.slice(position, tagEnd + 1);
-      const attrs = openingTag.slice(5, -1); // Remove '<span' and '>'
-
-      // Find the matching closing tag (accounting for nested spans)
-      const innerStart = tagEnd + 1;
-      let depth = 1;
-      let searchPos = innerStart;
-      let closingStart = -1;
-
-      while (depth > 0 && searchPos < html.length) {
-        const nextOpen = html.indexOf('<span', searchPos);
-        const nextClose = html.indexOf('</span>', searchPos);
-
-        if (nextClose === -1) break;
-
-        if (nextOpen !== -1 && nextOpen < nextClose) {
-          depth++;
-          searchPos = nextOpen + 5;
-        } else {
-          depth--;
-          if (depth === 0) {
-            closingStart = nextClose;
-          }
-          searchPos = nextClose + 7;
-        }
-      }
-
-      if (closingStart === -1) break;
-
-      const innerHtml = html.slice(innerStart, closingStart);
-
-      // Parse attributes
-      const styleMatch = attrs.match(/style="([^"]*)"/);
-      const style = styleMatch?.[1];
-
-      const classMatch = attrs.match(/class="([^"]*)"/);
-      const className = classMatch?.[1]?.split(/\s+/);
-
-      // Recursively parse inner content (handles nested spans)
-      const innerChildren = innerHtml.includes('<span')
-        ? parseSpans(innerHtml)
-        : innerHtml
-          ? [{ type: 'text' as const, value: decodeHtmlEntities(innerHtml) }]
-          : [];
-
-      children.push({
-        type: 'element',
-        tagName: 'span',
-        properties: {
-          style: style || undefined,
-          className: className,
-        },
-        children: innerChildren,
-      });
-
-      position = closingStart + 7; // Move past '</span>'
-    } else if (html[position] === '<') {
-      // Skip any other tags (shouldn't happen with Shiki output, but be safe)
-      const tagEnd = html.indexOf('>', position);
-      if (tagEnd === -1) break;
-      position = tagEnd + 1;
-    } else {
-      // Plain text - collect until next '<' or end
-      const nextTag = html.indexOf('<', position);
-      const textEnd = nextTag === -1 ? html.length : nextTag;
-      const text = html.slice(position, textEnd);
-      if (text) {
-        children.push({ type: 'text', value: decodeHtmlEntities(text) });
-      }
-      position = textEnd;
-    }
+    const span = html.startsWith('<span', position)
+      ? parseSpan(html, position)
+      : parseTextOrTag(html, position);
+    if (!span) break;
+    children.push(...span.nodes);
+    position = span.position;
   }
 
   return children;
+}
+
+type ParsedSegment = { nodes: ElementContent[]; position: number };
+
+function parseSpan(html: string, position: number): ParsedSegment | null {
+  const tagEnd = html.indexOf('>', position);
+  if (tagEnd === -1) return null;
+  const closingStart = findSpanEnd(html, tagEnd + 1);
+  if (closingStart === -1) return null;
+  const attrs = html.slice(position + 5, tagEnd);
+  const innerHtml = html.slice(tagEnd + 1, closingStart);
+  const children = innerHtml.includes('<span')
+    ? parseSpans(innerHtml)
+    : innerHtml
+      ? [{ type: 'text' as const, value: decodeHtmlEntities(innerHtml) }]
+      : [];
+  return {
+    nodes: [
+      {
+        type: 'element',
+        tagName: 'span',
+        properties: {
+          style: getAttribute(attrs, 'style'),
+          className: splitAttribute(attrs, 'class'),
+        },
+        children,
+      },
+    ],
+    position: closingStart + 7,
+  };
+}
+
+function findSpanEnd(html: string, start: number): number {
+  let depth = 1;
+  let position = start;
+  while (depth > 0 && position < html.length) {
+    const nextOpen = html.indexOf('<span', position);
+    const nextClose = html.indexOf('</span>', position);
+    if (nextClose === -1) return -1;
+    if (nextOpen !== -1 && nextOpen < nextClose) {
+      depth++;
+      position = nextOpen + 5;
+    } else {
+      depth--;
+      position = nextClose + 7;
+      if (depth === 0) return nextClose;
+    }
+  }
+  return -1;
+}
+
+function parseTextOrTag(html: string, position: number): ParsedSegment | null {
+  if (html[position] === '<') {
+    const tagEnd = html.indexOf('>', position);
+    return tagEnd === -1 ? null : { nodes: [], position: tagEnd + 1 };
+  }
+  const nextTag = html.indexOf('<', position);
+  const textEnd = nextTag === -1 ? html.length : nextTag;
+  const text = html.slice(position, textEnd);
+  return {
+    nodes: text ? [{ type: 'text', value: decodeHtmlEntities(text) }] : [],
+    position: textEnd,
+  };
 }
 
 const HTML_ENTITY_PATTERN = /&(?:lt|gt|amp|quot|apos|#39|#x27|#x2F|#x3C|#x3E|#x22|#x26);/gi;
@@ -358,71 +322,78 @@ export function rehypeShikiSync(options: RehypeShikiSyncOptions = {}) {
     // If highlighter isn't ready, skip highlighting
     // Code blocks will render as plain text
     if (!highlighter) {
-      return;
+      return tree;
     }
 
     visit(tree, 'element', (node, index, parent) => {
-      // Only process pre > code patterns
-      if (node.tagName !== 'pre') return;
-      if (!parent || typeof index !== 'number') return;
-
-      // Find the code child
+      if (node.tagName !== 'pre' || !parent || typeof index !== 'number') return;
       const codeChild = node.children.find(
         (child): child is Element => child.type === 'element' && child.tagName === 'code',
       );
-
       if (!codeChild) return;
-
-      // Extract language and code
-      const rawLanguage = extractLanguage(codeChild);
-      const language = rawLanguage ? normalizeLanguage(rawLanguage) : defaultLanguage;
-      // `mdast-util-to-hast` terminates every fence's text node with a
-      // trailing "\n" (it is what makes the serialized `<pre>` end on its own
-      // line). Shiki treats that newline as starting one more line and emits a
-      // phantom `<span class="line"></span>` at the end of every block, which
-      // renders as a stray blank row.
-      //
-      // Exactly one newline, via an anchored replace — NOT `.trimEnd()`. A
-      // fence is whitespace-significant (think a `diff` fence, or a snippet
-      // that deliberately ends in blank lines), and `trimEnd()` would eat all
-      // of that meaningful trailing whitespace, not just the serializer's
-      // artifact.
-      const code = extractText(codeChild).replace(/\n$/, '');
-
-      // Skip empty code blocks
-      if (!code.trim()) return;
-
-      // Skip plaintext - no highlighting needed
-      if (language === PLAINTEXT_LANGUAGE) {
-        // Just add data-language attribute for styling/accessibility
-        if (!node.properties) node.properties = {};
-        node.properties['dataLanguage'] = language;
-        return;
-      }
-
-      try {
-        // Generate highlighted HTML (only for bundled languages)
-        const highlightedHtml = highlighter.codeToHtml(code, {
-          lang: language,
-          theme: theme,
-        });
-
-        // Parse the HTML into hast nodes
-        const highlightedElement = parseShikiHtml(highlightedHtml);
-
-        // Preserve the original data-language for accessibility
-        if (!highlightedElement.properties['dataLanguage']) {
-          highlightedElement.properties['dataLanguage'] = language;
-        }
-
-        // Replace the original pre element with the highlighted one
-        parent.children[index] = highlightedElement;
-      } catch {
-        // If highlighting fails, leave the code block as-is
-        // This ensures graceful degradation for unsupported languages
-      }
+      highlightCodeBlock(node, codeChild, parent, index, highlighter, theme, defaultLanguage);
     });
+    return tree;
   };
+}
+
+function highlightCodeBlock(
+  node: Element,
+  codeChild: Element,
+  parent: Root | Element,
+  index: number,
+  highlighter: ReturnType<typeof getHighlighterSync>,
+  theme: string,
+  defaultLanguage: SupportedLanguage,
+): void {
+  if (!highlighter) return;
+  const rawLanguage = extractLanguage(codeChild);
+  const language = rawLanguage ? normalizeLanguage(rawLanguage) : defaultLanguage;
+  // `mdast-util-to-hast` terminates every fence's text node with a
+  // trailing "\n" (it is what makes the serialized `<pre>` end on its own
+  // line). Shiki treats that newline as starting one more line and emits a
+  // phantom `<span class="line"></span>` at the end of every block, which
+  // renders as a stray blank row.
+  //
+  // Exactly one newline, via an anchored replace — NOT `.trimEnd()`. A
+  // fence is whitespace-significant (think a `diff` fence, or a snippet
+  // that deliberately ends in blank lines), and `trimEnd()` would eat all
+  // of that meaningful trailing whitespace, not just the serializer's
+  // artifact.
+  const code = extractText(codeChild).replace(/\n$/, '');
+
+  // Skip empty code blocks
+  if (!code.trim()) return;
+
+  // Skip plaintext - no highlighting needed
+  if (language === PLAINTEXT_LANGUAGE) {
+    // Just add data-language attribute for styling/accessibility
+    if (!node.properties) node.properties = {};
+    node.properties['dataLanguage'] = language;
+    return;
+  }
+
+  try {
+    // Generate highlighted HTML (only for bundled languages)
+    const highlightedHtml = highlighter.codeToHtml(code, {
+      lang: language,
+      theme: theme,
+    });
+
+    // Parse the HTML into hast nodes
+    const highlightedElement = parseShikiHtml(highlightedHtml);
+
+    // Preserve the original data-language for accessibility
+    if (!highlightedElement.properties['dataLanguage']) {
+      highlightedElement.properties['dataLanguage'] = language;
+    }
+
+    // Replace the original pre element with the highlighted one
+    parent.children[index] = highlightedElement;
+  } catch {
+    // If highlighting fails, leave the code block as-is
+    // This ensures graceful degradation for unsupported languages
+  }
 }
 
 export default rehypeShikiSync;

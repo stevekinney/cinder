@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { join } from 'node:path';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
 // reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
@@ -149,13 +149,14 @@ describe('Marquee', () => {
     );
   });
 
-  test('manual resume override stays active when focus moves from the control to the viewport', async () => {
+  test('manual resume override stays active when focus remains inside the marquee', async () => {
     const { container, getByRole } = render(Marquee, {
       props: { children: textSnippet('content') },
     });
     const element = container.querySelector<HTMLElement>('.cinder-marquee');
-    const viewport = container.querySelector<HTMLDivElement>('.cinder-marquee__viewport');
     const control = getByRole('button', { name: 'Pause marquee animation' });
+    const innerButton = document.createElement('button');
+    container.querySelector('.cinder-marquee__item')?.append(innerButton);
 
     control.click();
     control.click();
@@ -163,7 +164,9 @@ describe('Marquee', () => {
 
     expect(element?.getAttribute('data-cinder-manual-resumed')).toBe('true');
 
-    element?.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: viewport }));
+    element?.dispatchEvent(
+      new FocusEvent('focusout', { bubbles: true, relatedTarget: innerButton }),
+    );
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(element?.getAttribute('data-cinder-manual-resumed')).toBe('true');
@@ -236,12 +239,13 @@ describe('Marquee', () => {
     expect(element?.getAttribute('data-cinder-manual-resumed')).toBe('true');
   });
 
-  test('viewport has keyboard access for reduced-motion scroll access', () => {
-    const { container } = render(Marquee, { children: textSnippet('content') });
+  test('viewport is keyboard-focusable and preserves accessible group and pause controls', () => {
+    const { container, getByRole } = render(Marquee, { children: textSnippet('content') });
     const viewport = container.querySelector<HTMLDivElement>('.cinder-marquee__viewport');
     expect(viewport?.tabIndex).toBe(0);
     expect(viewport?.getAttribute('role')).toBe('group');
     expect(viewport?.getAttribute('aria-label')).toBe('Marquee content');
+    expect(getByRole('button', { name: 'Pause marquee animation' })).toBeTruthy();
   });
 
   test('forwards label as aria-label and applies region role', () => {
@@ -293,9 +297,9 @@ describe('Marquee', () => {
     expect(reducedMotionBlock).toContain('display: none');
   });
 
-  test('viewport focus ring is visible for keyboard users', async () => {
+  test('pause control focus ring is visible for keyboard users', async () => {
     const css = await Bun.file(marqueeCssPath).text();
-    expect(css).toContain('.cinder-marquee__viewport:focus-visible');
+    expect(css).toContain('.cinder-marquee__control:focus-visible');
     expect(css).toContain('var(--cinder-ring-color)');
     expect(css).toContain('outline: var(--cinder-ring-width) solid ButtonText');
   });

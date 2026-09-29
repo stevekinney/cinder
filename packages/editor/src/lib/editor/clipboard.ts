@@ -14,8 +14,7 @@
  * @module
  */
 
-import { normalize } from '@lostgradient/markdown/pipeline';
-import { sanitizeHtml } from '@lostgradient/markdown/templates/sanitize-html';
+import { normalize, sanitizeHtml } from '@lostgradient/markdown';
 import {
   DOMParser,
   DOMSerializer,
@@ -24,6 +23,7 @@ import {
   type Slice,
 } from 'prosemirror-model';
 import { Plugin, PluginKey, TextSelection } from 'prosemirror-state';
+import type { EditorView } from 'prosemirror-view';
 
 import { createLazyProsePlugin } from './milkdown-plugin-runtime.js';
 
@@ -74,14 +74,90 @@ function isTextOnlySlice(slice: Slice): ProseMirrorNode | false {
   if (slice.content.childCount !== 1) return false;
 
   const node = slice.content.firstChild;
-  if (node?.type.name === 'text' && node.marks.length === 0) return node;
+  return isPlainTextNode(node) || isPlainTextParagraph(node);
+}
 
-  if (node?.type.name === 'paragraph' && node.childCount === 1) {
-    const firstChild = node.firstChild;
-    if (firstChild?.type.name === 'text' && firstChild.marks.length === 0) return firstChild;
+function isPlainTextNode(node: ProseMirrorNode | null): ProseMirrorNode | false {
+  return node?.type.name === 'text' && node.marks.length === 0 ? node : false;
+}
+
+function isPlainTextParagraph(node: ProseMirrorNode | null): ProseMirrorNode | false {
+  if (node?.type.name !== 'paragraph' || node.childCount !== 1) return false;
+  return isPlainTextNode(node.firstChild);
+}
+
+function insertVscodePaste(
+  view: EditorView,
+  clipboardData: DataTransfer,
+  schema: Schema,
+): boolean | undefined {
+  const plainText = clipboardData.getData('text/plain');
+  if (!clipboardData.getData('vscode-editor-data') || !plainText) return undefined;
+  const language = getLanguageHintFromVscodeClipboard(clipboardData);
+  const codeBlockType = getNodeFromSchema('code_block', schema);
+  const transaction = view.state.tr;
+  transaction.replaceSelectionWith(codeBlockType.create({ language }));
+  transaction
+    .setSelection(
+      TextSelection.near(transaction.doc.resolve(Math.max(0, transaction.selection.from - 2))),
+    )
+    .insertText(plainText.replace(/\r\n?/g, '\n'));
+  view.dispatch(transaction);
+  return true;
+}
+
+function insertMarkdownPaste(
+  view: EditorView,
+  markdown: string,
+  schema: Schema,
+  parser: (value: string) => ProseMirrorNode | string | null | undefined,
+): boolean | undefined {
+  if (!markdown) return undefined;
+  const parsed = parser(markdown);
+  if (!parsed || typeof parsed === 'string') {
+    view.dispatch(view.state.tr.insertText(markdown.replace(/\r\n?/g, '\n')));
+    return true;
   }
+  const dom = DOMSerializer.fromSchema(schema).serializeFragment(parsed.content);
+  const slice = DOMParser.fromSchema(schema).parseSlice(dom);
+  const textOnlyNode = isTextOnlySlice(slice);
+  if (textOnlyNode) {
+    view.dispatch(view.state.tr.replaceSelectionWith(textOnlyNode, true));
+    return true;
+  }
+  try {
+    view.dispatch(view.state.tr.replaceSelection(slice));
+    return true;
+  } catch {
+    return false;
+  }
+}
 
-  return false;
+function insertHtmlPaste(
+  view: EditorView,
+  html: string,
+  plainText: string,
+  schema: Schema,
+): boolean | undefined {
+  if (!html) return undefined;
+  const template = document.createElement('template');
+  template.innerHTML = sanitizeHtml(html);
+  const dom = template.content.cloneNode(true);
+  template.remove();
+  const slice = DOMParser.fromSchema(schema).parseSlice(dom);
+  const textOnlyNode = isTextOnlySlice(slice);
+  if (textOnlyNode) {
+    view.dispatch(view.state.tr.replaceSelectionWith(textOnlyNode, true));
+    return true;
+  }
+  try {
+    view.dispatch(view.state.tr.replaceSelection(slice));
+    return true;
+  } catch {
+    if (!plainText) return false;
+    view.dispatch(view.state.tr.insertText(plainText.replace(/\r\n?/g, '\n')));
+    return true;
+  }
 }
 
 /**
@@ -112,88 +188,15 @@ export const clipboardPlugin = createLazyProsePlugin(async (ctx) => {
         if (currentNode.type.spec.code) return false;
 
         const plainText = clipboardData.getData('text/plain');
-
-        // 1) VSCode paste → code block
-        const vscodeEditorData = clipboardData.getData('vscode-editor-data');
-        if (vscodeEditorData && plainText) {
-          const language = getLanguageHintFromVscodeClipboard(clipboardData);
-          const codeBlockType = getNodeFromSchema('code_block', schema);
-
-          const transaction = view.state.tr;
-
-          // Create a code block node, with a language hint if available.
-          transaction.replaceSelectionWith(codeBlockType.create({ language }));
-          transaction
-            .setSelection(
-              TextSelection.near(
-                transaction.doc.resolve(Math.max(0, transaction.selection.from - 2)),
-              ),
-            )
-            .insertText(plainText.replace(/\r\n?/g, '\n'));
-
-          view.dispatch(transaction);
-          return true;
-        }
-
-        // 2) Markdown clipboard type → parse and insert
+        const vscodeResult = insertVscodePaste(view, clipboardData, schema);
+        if (vscodeResult !== undefined) return vscodeResult;
         const markdown = getMarkdownFromClipboard(clipboardData);
-        if (markdown) {
-          const parser = ctx.get(parserCtx);
-          const parsed = parser(markdown);
-          if (!parsed || typeof parsed === 'string') {
-            // If parsing fails, fall back to inserting as plain text.
-            view.dispatch(view.state.tr.insertText(markdown.replace(/\r\n?/g, '\n')));
-            return true;
-          }
-
-          const dom = DOMSerializer.fromSchema(schema).serializeFragment(parsed.content);
-          const slice = DOMParser.fromSchema(schema).parseSlice(dom);
-
-          const textOnlyNode = isTextOnlySlice(slice);
-          if (textOnlyNode) {
-            view.dispatch(view.state.tr.replaceSelectionWith(textOnlyNode, true));
-            return true;
-          }
-
-          try {
-            view.dispatch(view.state.tr.replaceSelection(slice));
-            return true;
-          } catch {
-            return false;
-          }
-        }
-
-        // 3) HTML → sanitize then parse and insert
+        const markdownResult = insertMarkdownPaste(view, markdown, schema, (value) =>
+          ctx.get(parserCtx)(value),
+        );
+        if (markdownResult !== undefined) return markdownResult;
         const html = clipboardData.getData('text/html');
-        if (html) {
-          const sanitizedHtml = sanitizeHtml(html);
-          const template = document.createElement('template');
-          template.innerHTML = sanitizedHtml;
-          const dom = template.content.cloneNode(true);
-          template.remove();
-
-          const slice = DOMParser.fromSchema(schema).parseSlice(dom);
-          const textOnlyNode = isTextOnlySlice(slice);
-          if (textOnlyNode) {
-            view.dispatch(view.state.tr.replaceSelectionWith(textOnlyNode, true));
-            return true;
-          }
-
-          try {
-            view.dispatch(view.state.tr.replaceSelection(slice));
-            return true;
-          } catch {
-            // If HTML parsing fails, fall back to plain text (safe).
-            if (plainText) {
-              view.dispatch(view.state.tr.insertText(plainText.replace(/\r\n?/g, '\n')));
-              return true;
-            }
-            return false;
-          }
-        }
-
-        // 4) Plain text → default ProseMirror behavior (insert as-is)
-        return false;
+        return insertHtmlPaste(view, html, plainText, schema) ?? false;
       },
 
       clipboardTextSerializer: (slice) => {

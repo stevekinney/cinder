@@ -20,7 +20,7 @@
 </script>
 
 <script lang="ts">
-  import Input, { type InputProps } from '@lostgradient/cinder/input';
+  import { default as Input, type InputProps } from '../input/index.ts';
   import type { AutocompleteProps, AutocompleteSuggestion } from './autocomplete.types.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { resolveFieldControl } from '../../_internal/field-control.ts';
@@ -132,9 +132,9 @@
     );
   }
 
-  function toNonNegativeInteger(value: number, fallback: number): number {
-    if (!Number.isFinite(value)) return fallback;
-    return Math.max(0, Math.trunc(value));
+  function toNonNegativeInteger(numericValue: number, fallback: number): number {
+    if (!Number.isFinite(numericValue)) return fallback;
+    return Math.max(0, Math.trunc(numericValue));
   }
 
   function getEnabledIndexes(list: AutocompleteSuggestion[]): number[] {
@@ -219,7 +219,7 @@
       return;
     }
 
-    Promise.resolve(result)
+    void Promise.resolve(result)
       .then((nextSuggestions) => {
         if (
           controller.signal.aborted ||
@@ -254,6 +254,7 @@
         suggestions = deduped;
         loading = false;
         open = true;
+        return undefined;
         // rawActiveIndex is reset to null when the query starts; activeIndex is
         // $derived to auto-clamp, so no explicit clampActiveIndex call is needed.
       })
@@ -268,6 +269,7 @@
         suggestions = [];
         closePopup();
         devWarn('[cinder/autocomplete] suggestionSource failed.', errorValue);
+        return undefined;
       })
       .finally(() => {
         if (pendingRequestController === controller) {

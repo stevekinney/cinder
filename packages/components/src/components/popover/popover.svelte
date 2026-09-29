@@ -103,7 +103,7 @@
     // transition completes) — not on the ordinary-close tick in between,
     // which is exactly when `createAnchoredOverlay`'s effect must stay
     // stable for the retained panel's positioning to hold through the fade.
-    open || exitState.renderPanel;
+    void (open || exitState.renderPanel);
     return triggerRef && triggerRef.isConnected
       ? triggerRef
       : (findFirstFocusable(triggerWrapper) ?? null);
@@ -144,7 +144,7 @@
     // later removed mid-close on a SUBSEQUENT session, `resolvedAnchorElement`
     // would have no fallback to fall back to and the panel would unmount
     // without playing its exit.
-    open;
+    void open;
     if (anchorElement) {
       lastAnchorElement = anchorElement;
       return;
@@ -202,7 +202,7 @@
     // wouldn't otherwise change and so wouldn't re-notify this effect)
     // still refreshes the snapshot instead of leaving it at whatever a
     // PRIOR `onClosed` cleared it to.
-    open;
+    void open;
     if (!anchorElement) {
       // Same guard as `lastAnchorElement` above: retain ONLY for an actual
       // closing session (`!open && exitState.renderPanel`) — if `open` is

@@ -6,11 +6,13 @@
  * - Editor initialization
  * - Lifecycle management (mount/destroy)
  * - Reactive readonly updates
+ * - Live placeholder configuration updates without recreating the editor
  * - Two-way binding with effect loop prevention
  */
 
 import { untrack } from 'svelte';
 import type { Attachment } from 'svelte/attachments';
+import { watchReactiveValue } from './attach-reactive-watch.svelte.ts';
 import { createEditor, destroyEditor } from './editor.js';
 import type { EditorAttachmentOptions, EditorConfig, EditorState } from './types.js';
 import { DEFAULT_DEBOUNCE_MS } from './types.js';
@@ -41,11 +43,12 @@ export function createEditorAttachment(options: EditorAttachmentOptions): Attach
     onchange,
     onselectionchange,
     onlinkshortcut,
-    oncommentshortcut,
+    onCommentShortcut,
     debounceMs = DEFAULT_DEBOUNCE_MS,
     getPlugins,
-    getPlaceholderCompletion,
-    getPlaceholderDecoration,
+    getPlaceholderConfiguration,
+    placeholderListboxId,
+    onPlaceholderStatusChange,
   } = options;
 
   return (element: HTMLElement) => {
@@ -59,8 +62,8 @@ export function createEditorAttachment(options: EditorAttachmentOptions): Attach
     const readonly = untrack(() => getReadonly());
     const ariaLabel = untrack(() => getAriaLabel());
     const plugins = untrack(() => getPlugins?.() ?? []);
-    const placeholderCompletion = untrack(() => getPlaceholderCompletion?.());
-    const placeholderDecoration = untrack(() => getPlaceholderDecoration?.());
+    const placeholders = untrack(() => getPlaceholderConfiguration?.());
+    let latestPlaceholders = placeholders;
 
     const editorConfiguration: EditorConfig = {
       initialContent,
@@ -71,10 +74,21 @@ export function createEditorAttachment(options: EditorAttachmentOptions): Attach
       ...(onchange && { onchange }),
       ...(onselectionchange && { onselectionchange }),
       ...(onlinkshortcut && { onlinkshortcut }),
-      ...(oncommentshortcut && { oncommentshortcut }),
-      ...(placeholderCompletion && { placeholderCompletion }),
-      ...(placeholderDecoration && { placeholderDecoration }),
+      ...(onCommentShortcut && { onCommentShortcut }),
+      ...(placeholders && { placeholders }),
+      ...(placeholderListboxId && { placeholderListboxId }),
+      ...(onPlaceholderStatusChange && { onPlaceholderStatusChange }),
     };
+
+    // Placeholder configuration is live: every new configuration object is
+    // installed through a metadata-only transaction, never by recreating the
+    // editor. Changes made while the editor initializes are applied on ready.
+    const stopWatchingPlaceholders = getPlaceholderConfiguration
+      ? watchReactiveValue(getPlaceholderConfiguration, (next) => {
+          latestPlaceholders = next;
+          editorState?.setPlaceholderConfiguration(next);
+        })
+      : () => {};
 
     // Initialize editor asynchronously
     void (async () => {
@@ -83,24 +97,27 @@ export function createEditorAttachment(options: EditorAttachmentOptions): Attach
 
         // Guard against race condition if destroyed before init completes
         if (destroyed) {
-          destroyEditor(state);
+          await destroyEditor(state);
           return;
         }
 
         editorState = state;
+        state.setPlaceholderConfiguration(latestPlaceholders);
         onready?.(state);
       } catch (error) {
-        // If we were unmounted mid-init, swallow the error to avoid unhandled rejections
-        // in test environments that rapidly mount/unmount.
-        if (destroyed) return;
-        console.error('[Editor] Failed to initialize Milkdown editor:', error);
+        if (typeof globalThis.reportError === 'function') globalThis.reportError(error);
+        else throw error;
       }
     })();
 
     return () => {
       destroyed = true;
+      stopWatchingPlaceholders();
       if (editorState) {
-        destroyEditor(editorState);
+        void destroyEditor(editorState).catch((error) => {
+          if (typeof globalThis.reportError === 'function') globalThis.reportError(error);
+          else throw error;
+        });
         editorState = null;
       }
     };

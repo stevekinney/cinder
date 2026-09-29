@@ -6,8 +6,8 @@ Compact segmented selector for a small fixed set of options, including bindable 
 
 ```svelte
 <script lang="ts">
-  import { Segment } from '@lostgradient/cinder/segment';
-  import SegmentedControl from '@lostgradient/cinder/segmented-control';
+  import { Segment } from '@lostgradient/cinder';
+  import { SegmentedControl } from '@lostgradient/cinder';
 </script>
 
 <SegmentedControl id="view-filter" label="View filter" variant="navigation">
@@ -47,7 +47,6 @@ Compact segmented selector for a small fixed set of options, including bindable 
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

@@ -1,14 +1,17 @@
 import type { Snippet } from 'svelte';
 
-import type { FloatingActionProps } from '../floating-action/floating-action.types.ts';
+import type { FloatingActionButtonOnlyProps } from '../floating-action/floating-action.types.ts';
 
 /** Label placement for a SpeedDial.Action. */
 export type SpeedDialActionLabelPlacement = 'auto' | 'start' | 'end' | 'none';
 
-type FloatingActionControlProps = Extract<FloatingActionProps, { href?: undefined }>;
-
+// COR-239: this used to be `Extract<FloatingActionProps, { href?: undefined }>` — picking the
+// button-only arm out of the `FloatingActionProps` union. Restructuring `FloatingActionProps`
+// (see floating-action.types.ts) to avoid TS2590 made it a single intersection type rather than
+// a union, so `Extract` can no longer pick an arm out of it; floating-action.types.ts now exports
+// `FloatingActionButtonOnlyProps` directly for exactly this purpose.
 type SpeedDialActionButtonAttributes = Omit<
-  FloatingActionControlProps,
+  FloatingActionButtonOnlyProps,
   'aria-label' | 'children' | 'class' | 'disabled' | 'onclick' | 'size' | 'type'
 >;
 

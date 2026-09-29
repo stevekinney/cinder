@@ -95,7 +95,7 @@
  * from the `--cinder-color-{status}-{bg,fg,border}` triples in tokens-base.css
  * because the dark-theme triple background sits ~8 oklch-L points lighter than
  * the surface here (28% L vs 20% L), exceeding the audit's 0.02 ΔL threshold.
- * See docs/css-audit/status-triple-equivalence.md for the full table.
+ * See documentation/css-audit/status-triple-equivalence.md for the full table.
  * ---------------------------------------- */
 
   .cinder-callout[data-cinder-variant='info'] {

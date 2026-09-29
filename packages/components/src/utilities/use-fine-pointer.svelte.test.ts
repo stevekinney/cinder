@@ -1,48 +1,32 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
 const { useFinePointer } = await import('./use-fine-pointer.svelte.ts');
 
-type Listener = (event: { matches: boolean }) => void;
-
-type FakeMediaQueryList = {
-  matches: boolean;
-  media: string;
-  onchange: Listener | null;
-  addEventListener: (type: 'change', listener: Listener) => void;
-  removeEventListener: (type: 'change', listener: Listener) => void;
-  addListener: (listener: Listener) => void;
-  removeListener: (listener: Listener) => void;
-  dispatchEvent: (event: Event) => boolean;
-};
-
 function installMatchMediaMock(initialMatches: boolean) {
   const queriesPassed: string[] = [];
-
-  const list: FakeMediaQueryList = {
-    matches: initialMatches,
-    media: '',
-    onchange: null,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    addListener: () => {},
-    removeListener: () => {},
-    dispatchEvent: () => true,
+  const originalMatchMedia = window.matchMedia;
+  const list = originalMatchMedia.call(window, '');
+  let matches = initialMatches;
+  let media = '';
+  Object.defineProperties(list, {
+    matches: { get: () => matches },
+    media: { get: () => media },
+  });
+  window.matchMedia = (query: string) => {
+    queriesPassed.push(query);
+    media = query;
+    return list;
   };
 
-  const originalMatchMedia = window.matchMedia;
-  window.matchMedia = ((query: string) => {
-    queriesPassed.push(query);
-    list.media = query;
-    return list as unknown as MediaQueryList;
-  }) as typeof window.matchMedia;
-
   return {
-    list,
     queriesPassed,
+    setMatches(value: boolean) {
+      matches = value;
+    },
     restore() {
       window.matchMedia = originalMatchMedia;
     },
@@ -102,7 +86,7 @@ describe('useFinePointer', () => {
     }
     expect(finePointer.current).toBe(true);
 
-    mock.list.matches = false;
+    mock.setMatches(false);
 
     expect(finePointer.current).toBe(false);
   });
@@ -111,8 +95,9 @@ describe('useFinePointer', () => {
     // happy-dom's `matchMedia` is non-configurable — `delete` silently no-ops
     // and would leave it callable, defeating this test. Overwrite it instead.
     const original = window.matchMedia;
-    window.matchMedia = undefined as unknown as typeof window.matchMedia;
+    Object.defineProperty(window, 'matchMedia', { value: undefined });
     try {
+      expect(window.matchMedia).toBeUndefined();
       const finePointer = useFinePointer();
       expect(finePointer.current).toBe(false);
     } finally {

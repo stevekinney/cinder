@@ -17,7 +17,9 @@
  * the probability; they never eliminated it.
  *
  * Instead we now walk the import graph STATICALLY: resolve each subpath to its
- * source file via the package `exports` map, read each file with `readFileSync`,
+ * source file via its declared `exports` map (in Corvidae, the entry for that
+ * package in `scripts/mirror/package-surface.json`, because every workspace
+ * manifest exports only `.`), read each file with `readFileSync`,
  * extract its runtime imports with `Bun.Transpiler.scanImports` (which excludes
  * `import type` / `export type`), resolve each specifier, and recurse. A subpath
  * is "lean" iff no FORBIDDEN rendering package is reachable from it. Deterministic
@@ -46,8 +48,8 @@
  *    is the canonical "tiny consumer"; nothing in it should drag rendering.
  * B. **Aggregate barrels** — no rendering package reachable, even though they may
  *    legitimately reach unified/remark for the parser.
- * C. **Bare root** — re-exports `diff` and `pipeline` only; no rendering reachable
- *    regardless of which namespace a consumer uses.
+ * C. **Bare root** — not asserted in Corvidae; see the note where the root case
+ *    was removed.
  * D. **Sanity** — the rendering subpath MUST reach the rendering packages, so the
  *    leanness assertions above cannot pass vacuously.
  */
@@ -73,6 +75,18 @@ const FORBIDDEN_RENDERING_PACKAGES = ['shiki', '@shikijs/', 'rehype-katex', 'rem
 
 const WORKSPACE_ROOT = resolve(import.meta.dirname, '..', '..', '..');
 const PACKAGES_DIR = join(WORKSPACE_ROOT, 'packages');
+// Corvidae workspaces live in several parent directories, not only `packages/`:
+// the root package.json `workspaces` globs (`applications/*`, `components/*`,
+// `packages/*`, `internal/*`) name them.
+const WORKSPACE_PARENT_DIRS = (
+  JSON.parse(readFileSync(join(WORKSPACE_ROOT, 'package.json'), 'utf-8')) as {
+    workspaces: string[];
+  }
+).workspaces.map((pattern) => join(WORKSPACE_ROOT, pattern.replace(/\/\*$/, '')));
+// Corvidae declares the published package's subpaths here. The markdown
+// workspace manifest exports only `.` (COR-1297 now permits source subpath
+// exports, but markdown declares none), so the manifest cannot resolve them.
+const PACKAGE_SURFACE_PATH = join(WORKSPACE_ROOT, 'scripts', 'mirror', 'package-surface.json');
 
 // The import conditions to apply, in priority order, when picking a target from
 // an `exports` entry. The old Bun.build version resolved with `target: 'browser'`
@@ -88,6 +102,18 @@ type PackageJson = {
   name?: string;
   exports?: Record<string, unknown>;
 };
+
+type PackageSurface = {
+  packages: Record<string, { exports?: Record<string, unknown> } | undefined>;
+};
+
+let packageSurface: PackageSurface | undefined;
+
+/** The declared `exports` map for a workspace package, from the package surface file. */
+function readSurfaceExports(packageName: string): Record<string, unknown> | undefined {
+  packageSurface ??= JSON.parse(readFileSync(PACKAGE_SURFACE_PATH, 'utf-8')) as PackageSurface;
+  return packageSurface.packages[packageName]?.exports;
+}
 
 const packageJsonCache = new Map<string, PackageJson | null>();
 const scanCache = new Map<string, string[]>();
@@ -123,7 +149,8 @@ function pickConditionTarget(entry: unknown): string | undefined {
  * `packages/<dir>` directory name (e.g. some hypothetical external
  * `@some-scope/markdown` while `packages/markdown` exists in this repo).
  * Workspace-ness is decided structurally rather than by a hardcoded scope
- * prefix: every workspace package lives at `packages/<dir>`, where `<dir>`
+ * prefix: every workspace package lives at `<workspace parent>/<dir>` (one of
+ * WORKSPACE_PARENT_DIRS), where `<dir>`
  * is the LAST path segment of its npm name (`@lostgradient/markdown` →
  * `markdown`, `@lostgradient/editor` → `editor`). We try that directory
  * and confirm its `package.json#name` matches the specifier's package name
@@ -141,10 +168,11 @@ function resolveWorkspacePackageDirectory(specifier: string): string | undefined
   const packageDirName = segments[1]; // '@scope/name/sub' → segments = ['@scope','name','sub']
   if (packageDirName === undefined) return undefined;
   const packageQualifiedName = `@${segments[0]!.slice(1)}/${packageDirName}`;
-  const packageDir = join(PACKAGES_DIR, packageDirName);
-  const packageJson = readPackageJson(packageDir);
-  if (packageJson?.name !== packageQualifiedName) return undefined;
-  return packageDir;
+  for (const parentDir of WORKSPACE_PARENT_DIRS) {
+    const packageDir = join(parentDir, packageDirName);
+    if (readPackageJson(packageDir)?.name === packageQualifiedName) return packageDir;
+  }
+  return undefined;
 }
 
 /**
@@ -157,12 +185,13 @@ function resolveWorkspaceSubpath(specifier: string): string | undefined {
   const packageDir = resolveWorkspacePackageDirectory(specifier);
   if (!packageDir) return undefined;
   const packageJson = readPackageJson(packageDir);
-  if (!packageJson?.exports) return undefined;
-  const packageQualifiedName = packageJson.name!;
+  const packageQualifiedName = packageJson!.name!;
+  const exports = readSurfaceExports(packageQualifiedName);
+  if (!exports) return undefined;
   const subpath = specifier.slice(packageQualifiedName.length); // '' or '/diff/line-diff'
 
   const exportKey = subpath === '' ? '.' : `.${subpath}`;
-  const entry = packageJson.exports[exportKey];
+  const entry = exports[exportKey];
   if (entry === undefined) return undefined;
   const target = pickConditionTarget(entry);
   if (!target) return undefined;
@@ -330,7 +359,7 @@ function reachFromSubpath(entrySubpath: string): ReachResult {
   if (!entryFile) {
     throw new Error(
       `Could not resolve subpath "${entrySubpath}" to a source file via package exports. ` +
-        `Check the package.json "exports" map and the EXPORT_CONDITIONS order.`,
+        `Check its "exports" entry in scripts/mirror/package-surface.json and the EXPORT_CONDITIONS order.`,
     );
   }
 
@@ -397,6 +426,90 @@ function reachFromSubpath(entrySubpath: string): ReachResult {
   return { forbiddenReached, externalsReached, filesReached };
 }
 
+// Template parser entries are a separate, explicit boundary rather than a change
+// to FORBIDDEN_RENDERING_PACKAGES: `./templates/types`,
+// `./templates/template-placeholders` and `./templates/placeholder-security`
+// expose the catalog, parser and resolver, and may also reach the headless
+// `remark-math` parser, which the Markdown-aware placeholder scanner uses only to
+// exclude math nodes. No template parser module imports KaTeX or rendering code
+// from Corvidae source. Like the rest of this file, the check covers direct
+// source imports and does not traverse node_modules: `remark-math@6.0.0` depends
+// on `micromark-extension-math@3.1.0`, whose entry statically re-exports an HTML
+// extension that imports `katex@0.16.47`. `remark-math` and
+// `micromark-extension-math` declare `sideEffects: false`, so a bundler that
+// honors it can drop that extension; `katex` declares no `sideEffects` field,
+// and unbundled Bun evaluation still evaluates `katex`. The renderer
+// (`./templates/template-render`) and the HTML sanitizer
+// (`./templates/sanitize-html`) are not template parser entries.
+const TEMPLATE_PARSER_ENTRIES = [
+  '@lostgradient/markdown/templates/types',
+  '@lostgradient/markdown/templates/template-placeholders',
+  '@lostgradient/markdown/templates/placeholder-security',
+];
+
+/**
+ * External packages a template parser entry must not reach: the shared constant
+ * minus `remark-math` (the one permitted addition), plus KaTeX, the
+ * Markdown-to-HTML, sanitizer and worker packages the rendering pipeline uses,
+ * Svelte, and the editor engine packages. DOM exclusion is covered by the file
+ * rule below, because this package has no DOM package dependency.
+ */
+const FORBIDDEN_TEMPLATE_ENTRY_PACKAGES = [
+  'shiki',
+  '@shikijs/',
+  'rehype-katex',
+  'katex',
+  'remark-rehype',
+  'rehype-sanitize',
+  'rehype-stringify',
+  'hast-util-sanitize',
+  'comlink',
+  'svelte',
+  '@milkdown/',
+  'prosemirror-',
+  '@lostgradient/editor',
+] as const;
+
+/**
+ * Whether `specifier` belongs to a template-entry list `entry`. Unlike the
+ * ported `matchesPackage`, an entry ending in `-` (such as `prosemirror-`) is a
+ * prefix too, alongside entries ending in `/`; any other entry matches the exact
+ * package name or its `name/` subpaths.
+ */
+function matchesTemplateEntryPackage(specifier: string, entry: string): boolean {
+  return entry.endsWith('/') || entry.endsWith('-')
+    ? specifier.startsWith(entry)
+    : specifier === entry || specifier.startsWith(`${entry}/`);
+}
+
+function isForbiddenTemplateEntryPackage(specifier: string): boolean {
+  return FORBIDDEN_TEMPLATE_ENTRY_PACKAGES.some((entry) =>
+    matchesTemplateEntryPackage(specifier, entry),
+  );
+}
+
+const MARKDOWN_SOURCE_DIR = join(PACKAGES_DIR, 'markdown', 'src');
+const FORBIDDEN_TEMPLATE_ENTRY_FILES = new Set([
+  join(MARKDOWN_SOURCE_DIR, 'templates', 'template-render.ts'),
+  join(MARKDOWN_SOURCE_DIR, 'templates', 'sanitize-html.ts'),
+]);
+
+/**
+ * Reached files outside the template parser boundary: anything outside this
+ * package's `src/` (which also excludes `@lostgradient/editor` and every other
+ * workspace package, because the traversal follows workspace imports into
+ * their source), anything under `src/rendering/`, the renderer and the HTML
+ * sanitizer.
+ */
+function forbiddenTemplateEntryFiles(filesReached: ReadonlySet<string>): string[] {
+  return [...filesReached].filter(
+    (file) =>
+      !file.startsWith(`${MARKDOWN_SOURCE_DIR}/`) ||
+      file.startsWith(join(MARKDOWN_SOURCE_DIR, 'rendering') + '/') ||
+      FORBIDDEN_TEMPLATE_ENTRY_FILES.has(file),
+  );
+}
+
 function assertLean(entrySubpath: string): void {
   const { forbiddenReached } = reachFromSubpath(entrySubpath);
   if (forbiddenReached.size > 0) {
@@ -425,14 +538,10 @@ describe('import-graph leanness', () => {
     });
   });
 
-  describe('bare root (no rendering reachable)', () => {
-    it('@lostgradient/markdown root does not reach rendering', () => {
-      // The root barrel re-exports diff + pipeline only. Whichever namespace a
-      // consumer reaches into, the rendering graph must not be reachable from
-      // the package entry.
-      assertLean('@lostgradient/markdown');
-    });
-  });
+  // No bare-root assertion: Corvidae's root re-exports rendering by design (the
+  // package README says to "import … rendering … from the package root"), so
+  // leanness is asserted per subpath. Ruling by Steve Kinney, 2026-09-25,
+  // recorded as revision 6 of the Markdown placeholders project specification.
 
   describe('rendering subpath does reach shiki/katex (sanity check)', () => {
     // Inverse assertion: the rendering namespace MUST reach EVERY forbidden
@@ -459,6 +568,59 @@ describe('import-graph leanness', () => {
     });
   });
 
+  describe('template parser entries (headless; remark-math parser allowed)', () => {
+    it.each([...TEMPLATE_PARSER_ENTRIES])(
+      '%s reaches no rendering, KaTeX, DOM, Svelte or editor code',
+      (entry) => {
+        const { externalsReached, filesReached } = reachFromSubpath(entry);
+
+        expect([...externalsReached].filter(isForbiddenTemplateEntryPackage)).toEqual([]);
+        expect(forbiddenTemplateEntryFiles(filesReached)).toEqual([]);
+      },
+    );
+
+    it('the placeholder parser really reaches remark-math, so the allowance is not vacuous', () => {
+      const { externalsReached } = reachFromSubpath(
+        '@lostgradient/markdown/templates/template-placeholders',
+      );
+
+      expect([...externalsReached]).toContain('remark-math');
+    });
+
+    it('the template-entry matcher treats trailing / and - entries as prefixes', () => {
+      const matches = Object.fromEntries(
+        [
+          'prosemirror-state',
+          '@milkdown/core',
+          'svelte/store',
+          'katex/contrib/x',
+          '@lostgradient/editor',
+          'remark-math',
+          'remark-parse',
+        ].map((specifier) => [specifier, isForbiddenTemplateEntryPackage(specifier)]),
+      );
+
+      expect(matches).toEqual({
+        'prosemirror-state': true,
+        '@milkdown/core': true,
+        'svelte/store': true,
+        'katex/contrib/x': true,
+        '@lostgradient/editor': true,
+        'remark-math': false,
+        'remark-parse': false,
+      });
+    });
+
+    it('the template-entry checks reject the renderer subpath (control)', () => {
+      const { externalsReached, filesReached } = reachFromSubpath(
+        '@lostgradient/markdown/templates/template-render',
+      );
+
+      expect([...externalsReached].some(isForbiddenTemplateEntryPackage)).toBe(true);
+      expect(forbiddenTemplateEntryFiles(filesReached).length).toBeGreaterThan(0);
+    });
+  });
+
   describe('Worker rendering is opt-in', () => {
     it('@lostgradient/markdown/rendering does not reach the Worker modules', () => {
       const { filesReached } = reachFromSubpath('@lostgradient/markdown/rendering');
@@ -481,6 +643,12 @@ describe('import-graph leanness', () => {
     // an external package like this, even though it isn't ours at all.
     it('does not resolve a same-leaf-name external package as a workspace directory', () => {
       expect(resolveWorkspacePackageDirectory('@totally-unrelated-scope/markdown')).toBeUndefined();
+    });
+
+    it('resolves a workspace outside packages/ to its package directory', () => {
+      expect(resolveWorkspacePackageDirectory('@lostgradient/editor')).toBe(
+        join(WORKSPACE_ROOT, 'components', 'editor'),
+      );
     });
 
     it('does resolve the real @lostgradient/markdown specifier to its package directory', () => {

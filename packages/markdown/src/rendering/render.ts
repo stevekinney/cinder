@@ -23,7 +23,6 @@
  * @module
  */
 
-import type { Element as HastElement, Root as HastRoot } from 'hast';
 import type {
   Definition,
   Html,
@@ -31,14 +30,10 @@ import type {
   LinkReference,
   Nodes as MdastNodes,
   Root as MdastRoot,
-  Parent,
 } from 'mdast';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeStringify from 'rehype-stringify';
-import remarkGfm from 'remark-gfm';
-import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
-import type { Plugin, Processor } from 'unified';
 import { unified } from 'unified';
 import { visit } from 'unist-util-visit';
 
@@ -52,135 +47,17 @@ import { visit } from 'unist-util-visit';
 // In SvelteKit this typically goes in src/app.css or a layout component.
 import { extractCodeBlocks } from './extract-code-blocks.js';
 import { getHighlighterSync } from './highlighter.js';
+import { wrapNodePlaceholders } from './node-placeholders.js';
 import { rehypeShikiSync } from './rehype-shiki-sync.js';
-import { remarkGithubCallouts } from './remark-github-callouts.js';
+import {
+  ensureMathPipeline,
+  getBaseProcessor,
+  parseMarkdown,
+  type RehypeKatexPlugin,
+} from './render-parser.js';
 import { createSanitizeSchema } from './sanitize-schema.js';
 import { transformUrls } from './transform-urls.js';
 import type { RenderOptions, RenderResult } from './types.js';
-
-/**
- * Math-free rendering parser. Constructed lazily so that the unified
- * pipeline machinery only initializes when something actually renders.
- *
- * Stored as `unknown` because unified's `.use()` return type is a
- * narrowly-parameterised `Processor<P1, P2, ...>` that doesn't extend
- * the zero-arg `Processor` interface. The single cast in `getBaseProcessor`
- * documents the constraint; all consumers get a typed reference.
- */
-let baseProcessor: unknown = null;
-function getBaseProcessor(): Processor {
-  if (!baseProcessor)
-    baseProcessor = unified().use(remarkParse).use(remarkGfm).use(remarkGithubCallouts);
-  // eslint-disable-next-line no-unsafe-type-assertion -- unified's `.use()` returns a narrowly-parameterised `Processor<...>` that doesn't structurally extend the zero-arg `Processor`; see the `baseProcessor` doc comment above.
-  return baseProcessor as Processor;
-}
-
-/**
- * Lazy math-plugin loader and the cached math-aware processor.
- *
- * These exist so that markdown without `$` or `$$` never imports
- * `remark-math` or `rehype-katex` — both are >100 KB once their
- * dependencies are resolved. The loader is module-scoped so the chunk
- * is fetched at most once per page-lifetime; subsequent math renders
- * reuse the cached processor.
- *
- * For test injection, see `__setMathPluginLoaderForTests` below.
- */
-// rehype-katex's plugin shape isn't statically known after dynamic
-// import, so we treat it opaquely. We use `object` rather than `unknown`
-// so that `RehypeKatexPlugin | null` doesn't collapse to `unknown` —
-// the null disambiguation matters at call sites (no-math path).
-type RehypeKatexPlugin = object;
-type MathPluginLoader = () => Promise<{
-  remarkMath: Plugin;
-  rehypeKatex: RehypeKatexPlugin;
-}>;
-/** Resolved return type of MathPluginLoader, for the cached-promise annotation. */
-type MathPlugins = Awaited<ReturnType<MathPluginLoader>>;
-let mathPluginLoader: MathPluginLoader = async () => {
-  const [remarkMathModule, rehypeKatexModule] = await Promise.all([
-    import('remark-math'),
-    import('rehype-katex'),
-  ]);
-  return {
-    remarkMath: remarkMathModule.default as Plugin,
-    rehypeKatex: rehypeKatexModule.default,
-  };
-};
-let mathPluginsPromise: Promise<MathPlugins> | null = null;
-let mathProcessor: unknown = null;
-
-async function ensureMathPipeline(): Promise<{
-  processor: Processor;
-  rehypeKatex: RehypeKatexPlugin;
-}> {
-  // Guard against caching a rejected promise. Without this, a transient
-  // network error on the first dynamic import would permanently prevent
-  // math rendering for the page lifetime, because a rejected Promise is
-  // not null and ??= would never attempt a retry.
-  if (!mathPluginsPromise) {
-    mathPluginsPromise = mathPluginLoader().catch((error) => {
-      mathPluginsPromise = null; // allow retry on next render
-      throw error;
-    });
-  }
-  const { remarkMath, rehypeKatex } = await mathPluginsPromise;
-  if (!mathProcessor) {
-    mathProcessor = unified()
-      .use(remarkParse)
-      .use(remarkGfm)
-      .use(remarkGithubCallouts)
-      .use(remarkMath);
-  }
-  // eslint-disable-next-line no-unsafe-type-assertion -- same Processor variance constraint as getBaseProcessor; see the `baseProcessor` doc comment above.
-  return { processor: mathProcessor as Processor, rehypeKatex };
-}
-
-/**
- * Test-only override of the math-plugin loader.
- *
- * Replaces `mathPluginLoader` AND clears the dependent singleton state
- * (`mathPluginsPromise`, `mathProcessor`). Without
- * the singleton reset, a stub installed after a real load would never
- * be called because the cached promise would already be resolved.
- *
- * Returns a cleanup function that restores the previous loader and
- * clears the singleton state again, so subsequent tests start fresh.
- *
- * Not re-exported from packages/markdown/src/rendering/index.ts. Test
- * code imports it via the deep specifier `./render.js` from inside the
- * markdown package's tests.
- */
-export function __setMathPluginLoaderForTests(loader: MathPluginLoader): () => void {
-  const previous = mathPluginLoader;
-  mathPluginLoader = loader;
-  mathPluginsPromise = null;
-  mathProcessor = null;
-  return () => {
-    mathPluginLoader = previous;
-    mathPluginsPromise = null;
-    mathProcessor = null;
-  };
-}
-
-/**
- * Parse markdown AND run the processor's mdast transformers.
- *
- * `processor.parse()` alone runs only the parser — unified never invokes
- * transformers during `parse`, they belong to the `run` phase. Both entry
- * points used to call bare `parse()`, which was harmless while every remark
- * plugin in these pipelines (`remark-gfm`, `remark-math`) contributed nothing
- * but micromark extensions. `remarkGithubCallouts` is a real transformer, so
- * the `run` phase has to happen or the plugin is registered-but-never-called —
- * a failure mode that looks exactly like the plugin not matching.
- *
- * `runSync` is safe here: these processors hold only synchronous transformers,
- * and none of them is a compiler, so no stringification is triggered.
- */
-function parseMarkdown(processor: Processor, markdown: string): MdastRoot {
-  // eslint-disable-next-line no-unsafe-type-assertion -- unified's `parse()`/`runSync()` are typed against the broad unist `Node`; a remark-parse processor always yields an mdast `Root`.
-  return processor.runSync(processor.parse(markdown)) as MdastRoot;
-}
 
 /**
  * Cheap pre-check: does this markdown probably contain math?
@@ -343,7 +220,7 @@ function stripLinkNodes(root: MdastRoot): void {
     if (parent && typeof index === 'number') {
       if (node.type === 'link') {
         const linkNode = node;
-        const parentNode = parent as Parent;
+        const parentNode = parent;
         // Replace link node with its children (the link text)
         parentNode.children.splice(index, 1, ...linkNode.children);
         // Return index to revisit the same position since we replaced nodes
@@ -352,7 +229,7 @@ function stripLinkNodes(root: MdastRoot): void {
 
       if (node.type === 'linkReference') {
         const linkRefNode = node;
-        const parentNode = parent as Parent;
+        const parentNode = parent;
         // Replace linkReference node with its children (the link text)
         parentNode.children.splice(index, 1, ...linkRefNode.children);
         return index;
@@ -396,75 +273,26 @@ function renderFromMdast(
     allowDataImages: options.allowDataImages ?? false,
   });
 
-  // Convert mdast to hast
-  const hast = unified().use(remarkRehype, { allowDangerousHtml: false }).runSync(mdast);
-
-  // Render math nodes (inlineMath / math) to KaTeX HTML, only if the math
-  // pipeline has been loaded. rehype-katex defaults: throwOnError=false
-  // (invalid LaTeX becomes error markup).
-  const mathRenderedHast =
-    rehypeKatex === null
-      ? hast
-      : unified()
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any, no-unsafe-type-assertion -- rehype-katex's plugin signature is opaque after dynamic import; unified's `.use()` can't type-check a runtime-loaded plugin.
-          .use(rehypeKatex as any)
-          .runSync(hast);
+  // Keep the mdast-to-hast processor typed throughout the optional math pass.
+  const hastProcessor = unified().use(remarkRehype, { allowDangerousHtml: false });
+  if (rehypeKatex !== null) hastProcessor.use(rehypeKatex);
+  const mathRenderedHast = hastProcessor.runSync(mdast);
 
   // Apply syntax highlighting to code blocks. If the highlighter isn't
   // initialized yet, code blocks are left unhighlighted — the highlighter
   // initializes lazily on first getHighlighter() call.
   const highlightedHast = unified()
     .use(rehypeShikiSync, { theme: 'depict', defaultLanguage: 'plaintext' })
-    // eslint-disable-next-line no-unsafe-type-assertion -- unified's `runSync` returns the broad unist `Node`; the remark→rehype pipeline guarantees a hast `Root` here.
-    .runSync(mathRenderedHast as HastRoot);
+    .runSync(mathRenderedHast);
 
   if (options.nodePlaceholders) {
-    let placeholderIndex = 0;
-    let codeBlockIndex = 0;
-    visit(highlightedHast, 'element', (node: HastElement, index, parent) => {
-      const elementParent = parent as HastRoot | HastElement | undefined;
-      if (index === undefined || !elementParent) return;
-      const code =
-        node.tagName === 'pre'
-          ? node.children.find(
-              (child): child is HastElement => child.type === 'element' && child.tagName === 'code',
-            )
-          : undefined;
-      // Shiki may replace the original `language-*` class, so use the metadata
-      // extracted from mdast before highlighting as the stable language source.
-      const language = code ? codeBlocks[codeBlockIndex++]?.language : undefined;
-      const kind =
-        language === 'mermaid'
-          ? 'mermaid'
-          : node.tagName === 'table'
-            ? 'table'
-            : code
-              ? 'code-block'
-              : null;
-      if (!kind) return;
-
-      const placeholder: HastElement = {
-        type: 'element',
-        tagName: 'cinder-markdown-node',
-        properties: {
-          dataCinderMarkdownKind: kind,
-          dataCinderMarkdownIndex: placeholderIndex++,
-          ...(language ? { dataLanguage: language } : {}),
-        },
-        children: [node],
-      };
-      elementParent.children.splice(index, 1, placeholder);
-      return index + 1;
-    });
+    wrapNodePlaceholders(highlightedHast, codeBlocks);
   }
 
   // Sanitize the hast - MUST use runSync() to execute the transform
   // Note: stringify() only runs the compiler, not transforms, so we need
   // to run sanitization explicitly before stringifying
-  const sanitizedHast = unified()
-    .use(rehypeSanitize, schema)
-    // eslint-disable-next-line no-unsafe-type-assertion -- unified's `runSync` returns the broad unist `Node`; the prior rehype steps guarantee a hast `Root` here.
-    .runSync(highlightedHast as HastRoot);
+  const sanitizedHast = unified().use(rehypeSanitize, schema).runSync(highlightedHast);
 
   // Stringify the sanitized hast to HTML.
   // useNamedReferences: true makes rehype-stringify emit &amp; instead of &#x26;
@@ -477,7 +305,7 @@ function renderFromMdast(
 
   return {
     rawMarkdown: markdown,
-    html: String(html),
+    html,
     codeBlocks,
     hadUnsafeContent: hadHtmlNodes || hadUnsafeUrls,
   };

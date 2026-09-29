@@ -52,7 +52,8 @@ describe('createRetryingLoaderCache', () => {
       firstError = error;
     }
     expect(firstError).toBeInstanceOf(Error);
-    expect((firstError as Error).message).toBe('simulated load failure');
+    if (!(firstError instanceof Error)) throw new Error('Expected the loader failure');
+    expect(firstError.message).toBe('simulated load failure');
 
     // Second call retries the loader because the rejected promise was
     // evicted from the cache.
@@ -76,7 +77,8 @@ describe('createRetryingLoaderCache', () => {
     const results = await Promise.allSettled([load(), load(), load()]);
     for (const result of results) {
       expect(result.status).toBe('rejected');
-      expect((result as PromiseRejectedResult).reason).toBeInstanceOf(Error);
+      if (result.status !== 'rejected') throw new Error('Expected the loader rejection');
+      expect(result.reason).toBeInstanceOf(Error);
     }
     // All three calls shared the same in-flight loader invocation.
     expect(invocations).toBe(1);

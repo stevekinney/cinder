@@ -46,8 +46,10 @@ describe('Chat artifact components', () => {
 
   test('invokes a custom Mermaid renderer with the content and content type', () => {
     const rendererInvocation = mock((getContent: () => string, getType: () => 'mermaid') => ({
-      render: () =>
-        `<output data-testid="mermaid-renderer" data-type="${getType()}">${getContent()}</output>`,
+      render: () => `<output data-testid="mermaid-renderer" data-type="${getType()}"></output>`,
+      setup(element: Element) {
+        element.textContent = getContent();
+      },
     }));
     const mermaidRenderer: MermaidRenderer = createRawSnippet(rendererInvocation);
     const props = {
@@ -71,7 +73,10 @@ describe('Chat artifact components', () => {
     const rendererInvocation = mock(
       (getContent: () => string, getType: () => 'code', getLanguage: () => string | undefined) => ({
         render: () =>
-          `<output data-testid="code-renderer" data-type="${getType()}" data-language="${getLanguage()}">${getContent()}</output>`,
+          `<output data-testid="code-renderer" data-type="${getType()}" data-language="${getLanguage()}"></output>`,
+        setup(element: Element) {
+          element.textContent = getContent();
+        },
       }),
     );
     const codeRenderer: CodeRenderer = createRawSnippet(rendererInvocation);

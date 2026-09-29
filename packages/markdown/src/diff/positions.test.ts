@@ -34,7 +34,7 @@ describe('buildPositionMap', () => {
     const map = buildPositionMap(ast);
 
     for (let i = 1; i < map.length; i++) {
-      expect(map[i].offset).toBeGreaterThan(map[i - 1].offset);
+      expect(map[i]!.offset).toBeGreaterThan(map[i - 1]!.offset);
     }
   });
 
@@ -119,9 +119,9 @@ describe('enrichChangesWithPositions', () => {
 
     const enriched = enrichChangesWithPositions(changes, originalAst, currentAst);
 
-    expect(enriched[0].sourcePosition).not.toBeNull();
-    expect(enriched[0].blockType).toBe('paragraph');
-    expect(enriched[0].blockIndex).toBe(1); // Second block (paragraph after heading)
+    expect(enriched[0]!.sourcePosition).not.toBeNull();
+    expect(enriched[0]!.blockType).toBe('paragraph');
+    expect(enriched[0]!.blockIndex).toBe(1); // Second block (paragraph after heading)
   });
 
   it('handles insertions (no original range)', () => {
@@ -146,7 +146,7 @@ describe('enrichChangesWithPositions', () => {
 
     const enriched = enrichChangesWithPositions(changes, originalAst, currentAst);
 
-    expect(enriched[0].sourcePosition).not.toBeNull();
+    expect(enriched[0]!.sourcePosition).not.toBeNull();
   });
 
   it('handles deletions (no current range)', () => {
@@ -171,7 +171,7 @@ describe('enrichChangesWithPositions', () => {
 
     const enriched = enrichChangesWithPositions(changes, originalAst, currentAst);
 
-    expect(enriched[0].sourcePosition).not.toBeNull();
+    expect(enriched[0]!.sourcePosition).not.toBeNull();
   });
 
   it('preserves change properties while enriching', () => {
@@ -196,10 +196,10 @@ describe('enrichChangesWithPositions', () => {
 
     const enriched = enrichChangesWithPositions(changes, originalAst, currentAst);
 
-    expect(enriched[0].id).toBe('change-42');
-    expect(enriched[0].type).toBe('replacement');
-    expect(enriched[0].originalText).toBe('Hello');
-    expect(enriched[0].currentText).toBe('World');
+    expect(enriched[0]!.id).toBe('change-42');
+    expect(enriched[0]!.type).toBe('replacement');
+    expect(enriched[0]!.originalText).toBe('Hello');
+    expect(enriched[0]!.currentText).toBe('World');
   });
 
   it('computes accurate line/column when sourceText is provided', () => {
@@ -230,8 +230,8 @@ describe('enrichChangesWithPositions', () => {
       current,
     );
 
-    expect(enriched[0].sourcePosition).not.toBeNull();
-    expect(enriched[0].sourcePosition!.offset).toBe(22);
+    expect(enriched[0]!.sourcePosition).not.toBeNull();
+    expect(enriched[0]!.sourcePosition!.offset).toBe(22);
   });
 });
 
@@ -259,7 +259,7 @@ describe('enrichDiffWithPositions', () => {
     const result = enrichDiffWithPositions(changes, originalAst, currentAst);
 
     expect(result.changes).toHaveLength(1);
-    expect(result.changes[0].blockType).toBe('paragraph');
+    expect(result.changes[0]!.blockType).toBe('paragraph');
     expect(result.groups).toBeDefined();
     expect(Array.isArray(result.groups)).toBe(true);
   });
@@ -286,7 +286,7 @@ describe('enrichDiffWithPositions', () => {
 
     const result = enrichDiffWithPositions(changes, originalAst, currentAst, original, current);
 
-    expect(result.changes[0].sourcePosition).not.toBeNull();
-    expect(result.changes[0].sourcePosition!.offset).toBe(10);
+    expect(result.changes[0]!.sourcePosition).not.toBeNull();
+    expect(result.changes[0]!.sourcePosition!.offset).toBe(10);
   });
 });

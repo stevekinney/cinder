@@ -2,8 +2,7 @@
 
 Generic modal shell for rich content, forms, and structured workflows. Use the more specialised components when the content fits their narrower contract.
 
-See the [dialog preset boundary](https://github.com/stevekinney/cinder/blob/main/docs/decisions/dialog-presets.md)
-for the durable distinction from ConfirmDialog and AlertDialog.
+See the [dialog preset boundary](https://github.com/stevekinney/cinder/blob/main/docs/decisions/dialog-presets.md) for the durable distinction from ConfirmDialog and AlertDialog.
 
 ## Choosing this component
 
@@ -64,9 +63,9 @@ This conditional requirement is expressed in the generated JSON Schema below via
 
 ```svelte
 <script lang="ts">
-  import Button from '@lostgradient/cinder/button';
-  import Input from '@lostgradient/cinder/input';
-  import Modal from '@lostgradient/cinder/modal';
+  import { Button } from '@lostgradient/cinder';
+  import { Input } from '@lostgradient/cinder';
+  import { Modal } from '@lostgradient/cinder';
   let open = $state(false);
   let name = $state('');
   let triggerRef: HTMLElement | null = $state(null);
@@ -120,6 +119,7 @@ This conditional requirement is expressed in the generated JSON Schema below via
 <!-- generated:variables:start -->
 
 - `--cinder-modal-backdrop`
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

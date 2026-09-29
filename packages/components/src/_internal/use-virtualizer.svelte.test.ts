@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { tick } from 'svelte';
 
-import { setupHappyDom } from '../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import { TreeVirtualizer, type TreeVirtualizerOptions } from './use-virtualizer.svelte.ts';
 
 setupHappyDom();
@@ -26,18 +26,17 @@ function scrollElement({
   const element = document.createElement('div');
   Object.defineProperty(element, 'clientHeight', { configurable: true, value: height });
   element.scrollTop = scrollTop;
-  element.getBoundingClientRect = () =>
-    ({
-      width: 320,
-      height,
-      top: 0,
-      right: 320,
-      bottom: height,
-      left: 0,
-      x: 0,
-      y: 0,
-      toJSON: () => ({}),
-    }) as DOMRect;
+  element.getBoundingClientRect = () => ({
+    width: 320,
+    height,
+    top: 0,
+    right: 320,
+    bottom: height,
+    left: 0,
+    x: 0,
+    y: 0,
+    toJSON: () => ({}),
+  });
   document.body.append(element);
   return element;
 }

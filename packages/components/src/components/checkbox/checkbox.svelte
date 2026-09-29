@@ -23,7 +23,7 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { commitValue } from '../../utilities/value-change.ts';
-  import FormField from '@lostgradient/cinder/form-field';
+  import { default as FormField } from '../form-field/index.ts';
   import FormFieldFrame from '../../_internal/form-field-frame.svelte';
 
   let {

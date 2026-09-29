@@ -1,9 +1,9 @@
 /// <reference lib="dom" />
+import { setupHappyDom } from '@lostgradient/testing';
 import { describe, expect, test } from 'bun:test';
 import { tick } from 'svelte';
 import type { FakeClock } from '../../test/fake-clock.ts';
 import { installFakeClock } from '../../test/fake-clock.ts';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
@@ -88,11 +88,7 @@ describe('MarkdownEditor.setMarkdown() vs. a one-way value prop (cinder#1328)', 
     try {
       await pollUntil(() => isReady(result.container), clock);
 
-      const component = result.component as unknown as {
-        dualWriteSetMarkdown: (content: string) => void;
-        setOuterValue: (content: string) => void;
-        getLiveMarkdown: () => string;
-      };
+      const component = result.component;
 
       // Mirrors ReviewEditor.setMarkdown(): writes the parent's own value
       // AND calls the child's setMarkdown() in the same synchronous pass.
@@ -131,11 +127,7 @@ describe('MarkdownEditor.setMarkdown() vs. a one-way value prop (cinder#1328)', 
     try {
       await pollUntil(() => isReady(result.container), clock);
 
-      const component = result.component as unknown as {
-        dualWriteSetMarkdown: (content: string) => void;
-        setOuterValue: (content: string) => void;
-        getLiveMarkdown: () => string;
-      };
+      const component = result.component;
 
       component.dualWriteSetMarkdown('Imperative content.');
       await tick();
@@ -163,11 +155,7 @@ describe('MarkdownEditor.setMarkdown() vs. a one-way value prop (cinder#1328)', 
     try {
       await pollUntil(() => isReady(result.container), clock);
 
-      const component = result.component as unknown as {
-        setMarkdownOnEditor: (content: string) => void;
-        setOuterValue: (content: string) => void;
-        getLiveMarkdown: () => string;
-      };
+      const component = result.component;
 
       component.setMarkdownOnEditor('Imperative content.');
       component.setOuterValue('Reset content.');
@@ -196,10 +184,7 @@ describe('MarkdownEditor.setMarkdown() vs. a one-way value prop (cinder#1328)', 
     });
 
     try {
-      const component = result.component as unknown as {
-        setMarkdownOnEditor: (content: string) => void;
-        getValue: () => string;
-      };
+      const component = result.component;
 
       component.setMarkdownOnEditor('Imperative content.');
 
@@ -221,10 +206,7 @@ describe('MarkdownEditor live value ownership (CIN-406)', () => {
 
     try {
       await pollUntil(() => isReady(result.container), clock);
-      const component = result.component as unknown as {
-        applyUserEdit: (suffix: string) => void;
-        getLiveMarkdown: () => string;
-      };
+      const component = result.component;
 
       // Let the editor's initial one-way value reconciliation release its
       // external-update guard before simulating live user input.
@@ -254,11 +236,7 @@ describe('MarkdownEditor live value ownership (CIN-406)', () => {
 
     try {
       await pollUntil(() => isReady(result.container), clock);
-      const component = result.component as unknown as {
-        applyUserEdit: (suffix: string) => void;
-        setOuterValue: (content: string) => void;
-        getLiveMarkdown: () => string;
-      };
+      const component = result.component;
 
       await tick();
       await Promise.resolve();
@@ -288,10 +266,7 @@ describe('MarkdownEditor live value ownership (CIN-406)', () => {
 
     try {
       await pollUntil(() => isReady(result.container), clock);
-      const component = result.component as unknown as {
-        applyUserEditWithoutHistory: (suffix: string) => void;
-        getLiveMarkdown: () => string;
-      };
+      const component = result.component;
 
       await tick();
       await Promise.resolve();
@@ -314,10 +289,7 @@ describe('MarkdownEditor live value ownership (CIN-406)', () => {
 
     try {
       await pollUntil(() => isReady(result.container), clock);
-      const component = result.component as unknown as {
-        applyUserEdit: (suffix: string) => void;
-        getLiveMarkdown: () => string;
-      };
+      const component = result.component;
 
       await tick();
       await Promise.resolve();

@@ -6,7 +6,7 @@ Centered, max-width-capped wrapper for the narrow-column reading pattern. Contai
 
 ```svelte
 <script lang="ts">
-  import Container from '@lostgradient/cinder/container';
+  import { Container } from '@lostgradient/cinder';
 </script>
 
 <Container maxWidth="prose">
@@ -41,7 +41,6 @@ For an app shell with header and action regions, write the shell directly from `
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

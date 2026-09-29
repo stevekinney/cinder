@@ -7,7 +7,7 @@
 - The `description` prop renders a `<p>` element whose `id` is `{id}-description`. The input's `aria-describedby` attribute references this id so assistive technologies read the description text as supplementary information after the label.
 - The `error` prop renders a `<p>` element whose `id` is `{id}-error`. Two attributes change on the input simultaneously: `aria-invalid="true"` signals to assistive tech that the field is in an error state, and `aria-describedby` includes `{id}-error` so the error message is announced.
 - When both `description` and `error` are present, `aria-describedby` lists both ids separated by a space (`{id}-description {id}-error`). Screen readers announce them in order.
-- The error `<p>` carries `aria-live="polite"` so dynamically injected error messages are announced without interrupting ongoing speech.
+- The error `<p>` carries `aria-live="polite"` so dynamically injected error messages are announced without interrupting ongoing speech. This node mounts by default even before any error exists (empty, present in the DOM), rather than being created only once `error` is first set — a freshly-mounted live region is not reliably announced by NVDA or JAWS, so pre-mounting it is what makes the first error announcement actually work.
 
 ## Keyboard Interactions
 

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import type { AccessGateProps } from './access-gate.types.ts';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
 // reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
@@ -18,14 +18,14 @@ const { default: AccessGateFocusFixture } =
   await import('../../test/fixtures/access-gate-focus-fixture.svelte');
 const { default: AccessGateStatefulFixture } =
   await import('../../test/fixtures/access-gate-stateful-fixture.svelte');
-const { createRawSnippet, tick } = await import('svelte');
-const { renderToServerHtml } = await import('../../test/server-render.ts');
+const { createRawSnippet, tick, flushSync } = await import('svelte');
+const { renderSvelteOnServer } = await import('@lostgradient/testing');
 
 const accessGateSsrFixturePath = new URL(
   '../../test/fixtures/access-gate-ssr-fixture.svelte',
   import.meta.url,
 ).pathname;
-const accessGateSsrFixtureHtml = await renderToServerHtml(accessGateSsrFixturePath);
+const accessGateSsrFixtureHtml = await renderSvelteOnServer(accessGateSsrFixturePath);
 
 function markupSnippet(markup: string) {
   return createRawSnippet(() => ({
@@ -100,7 +100,10 @@ describe('AccessGate', () => {
 
     await tick();
 
-    const button = getByRole('button', { name: 'Cancel workflow' }) as HTMLButtonElement;
+    const button = requiredInstance(
+      getByRole('button', { name: 'Cancel workflow' }),
+      HTMLButtonElement,
+    );
     const reason = container.querySelector('.cinder-access-gate__inline-reason');
 
     expect(button.disabled).toBe(true);
@@ -120,7 +123,7 @@ describe('AccessGate', () => {
 
     await tick();
 
-    const button = getByRole('button', { name: 'Purge run' }) as HTMLButtonElement;
+    const button = requiredInstance(getByRole('button', { name: 'Purge run' }), HTMLButtonElement);
     const reason = container.querySelector('.cinder-access-gate__inline-reason');
     const describedBy = button.getAttribute('aria-describedby')?.split(/\s+/) ?? [];
 
@@ -231,7 +234,10 @@ describe('AccessGate', () => {
     const { container, getByRole } = render(AccessGateDynamicFixture, {});
 
     await fireEvent.click(getByRole('button', { name: 'Reveal denied action' }));
-    const button = getByRole('button', { name: 'Dynamic cancel' }) as HTMLButtonElement;
+    const button = requiredInstance(
+      getByRole('button', { name: 'Dynamic cancel' }),
+      HTMLButtonElement,
+    );
     const customControl = getByRole('button', { name: 'Dynamic custom cancel' });
     const reason = container.querySelector('.cinder-access-gate__inline-reason');
     let activations = 0;
@@ -335,7 +341,10 @@ describe('AccessGate', () => {
 
     await tick();
 
-    let button = getByRole('button', { name: 'Stateful cancel' }) as HTMLButtonElement;
+    let button = requiredInstance(
+      getByRole('button', { name: 'Stateful cancel' }),
+      HTMLButtonElement,
+    );
     let link = container.querySelector<HTMLAnchorElement>('a');
     let customControl = getByRole('button', { name: 'Stateful custom cancel' });
     const reason = container.querySelector('.cinder-access-gate__inline-reason');
@@ -371,11 +380,10 @@ describe('AccessGate', () => {
 
     await fireEvent.click(getByRole('button', { name: 'Grant scope' }));
 
-    await waitFor(() => {
-      expect(container.querySelector('.cinder-access-gate')).toBeNull();
-    });
-    button = getByRole('button', { name: 'Stateful cancel' }) as HTMLButtonElement;
-    link = getByRole('link', { name: 'Stateful link cancel' }) as HTMLAnchorElement;
+    flushSync();
+    expect(container.querySelector('.cinder-access-gate')?.outerHTML ?? null).toBeNull();
+    button = requiredInstance(getByRole('button', { name: 'Stateful cancel' }), HTMLButtonElement);
+    link = requiredInstance(getByRole('link', { name: 'Stateful link cancel' }), HTMLAnchorElement);
     customControl = getByRole('button', { name: 'Stateful custom cancel' });
     expect(button.disabled).toBe(false);
     expect(button.getAttribute('aria-describedby')).toBe('updated-hint');
@@ -499,7 +507,7 @@ describe('AccessGate', () => {
     ) {
       if (this === gateRoot || gateRoot.contains(this)) scopedCallCount += 1;
       return originalQuerySelectorAll.apply(this, args);
-    } as typeof originalQuerySelectorAll;
+    };
 
     try {
       const baseline = scopedCallCount;

@@ -1,7 +1,7 @@
 /**
  * Shared, front-matter-aware document normalization for diff-like exports.
  *
- * `normalize()` (`@lostgradient/markdown/pipeline`) is a Markdown pipeline with no
+ * `normalize()` (`@lostgradient/markdown`) is a Markdown pipeline with no
  * front-matter step. Handed a whole document — front matter and body together —
  * it re-reads the opening `---` as a thematic break and the YAML lines closed by
  * the second `---` as a setext heading, whose underline it re-emits as a run of
@@ -18,7 +18,7 @@
  * {@link normalizeDocument} rather than re-deriving their own front-matter
  * handling.
  */
-import { normalize, parseFrontMatter } from '@lostgradient/markdown/pipeline';
+import { normalize, parseFrontMatter } from '@lostgradient/markdown';
 
 export interface DocumentParts {
   /** The fenced front-matter block verbatim, including the newline that closes it. */

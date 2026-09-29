@@ -20,7 +20,7 @@
  *     -- --check`'s file-level "these paths drifted, regenerate" message.
  *   - It runs under plain `bun test` (this file matches the verification
  *     command `bun test --conditions browser --conditions svelte
- *     packages/components/scripts/tokens`), so it also catches the one path
+ *     components/cinder/scripts/tokens`), so it also catches the one path
  *     `tokens:generate -- --check` does NOT cover on its own: a change that
  *     runs `bun test` without also running `tokens:check` (e.g. `lint:invariants`
  *     was skipped or a future script starts running package tests standalone).
@@ -32,10 +32,8 @@
  *
  * No new `package.json` script is added for this file -- it is an ordinary
  * test, picked up by the package's `test` script and this ticket's `bun
- * test --conditions browser --conditions svelte packages/components/scripts/tokens`
- * verification command like every other `*.test.ts` in this directory, so
- * there is nothing to register in `check-pipeline-coverage.ts` (that map
- * tracks named `package.json` commands, not individual test files).
+ * test --conditions browser --conditions svelte components/cinder/scripts/tokens`
+ * verification command like every other `*.test.ts` in this directory.
  */
 
 import { readFile } from 'node:fs/promises';
@@ -43,7 +41,9 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, test } from 'bun:test';
 
 import { readRootTokenNames } from '../../src/test/token-introspection.ts';
-import { isRootDeclaredEntry, loadCorpus, tokensBaseCssPath } from './generate.ts';
+import { isRootDeclaredEntry } from './css-support.ts';
+import { loadCorpus } from './generate.ts';
+import { tokensBaseCssPath } from './generator-configuration.ts';
 import { buildBaseIndex } from './registry.ts';
 
 describe('tokens-base.css / corpus completeness', () => {

@@ -3,15 +3,7 @@ import type { Attachment } from 'svelte/attachments';
 import type { HTMLInputAttributes } from 'svelte/elements';
 
 export type InputType =
-  | 'text'
-  | 'email'
-  | 'password'
-  | 'search'
-  | 'tel'
-  | 'time'
-  | 'url'
-  | 'date'
-  | 'number';
+  'text' | 'email' | 'password' | 'search' | 'tel' | 'time' | 'url' | 'date' | 'number';
 
 /** Visual style of the input. `"code"` applies the shared monospace metric set (font-family, font-size, line-height, tab-size) used for source-like values such as regular expressions, URIs, and identifiers. */
 export type InputVariant = 'default' | 'code';

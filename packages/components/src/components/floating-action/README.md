@@ -6,7 +6,7 @@ Circular button representing the single most important action on a screen.
 
 ```svelte
 <script lang="ts">
-  import FloatingAction from '@lostgradient/cinder/floating-action';
+  import { FloatingAction } from '@lostgradient/cinder';
 </script>
 
 <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
@@ -170,6 +170,8 @@ Circular button representing the single most important action on a screen.
 
 ## Guidance
 
+`variant` and `shape` are deliberately independent axes here, unlike some other components in this library where "variant" controls shape or form: `variant` (`primary`/`secondary`/`surface`) is color palette only, and `shape` (`filled`/`extended`) is the filled-circle-versus-extended-pill axis. Set both together freely — an `extended` shape works with any `variant`.
+
 ### Use When
 
 - One action dominates the page purpose (compose, add, create).
@@ -200,7 +202,6 @@ Circular button representing the single most important action on a screen.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

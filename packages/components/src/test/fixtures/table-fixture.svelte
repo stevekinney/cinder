@@ -1,7 +1,9 @@
 <script lang="ts" module>
-  import type { TableSort } from '../../components/table/table.types.ts';
-  import type { TableDensity } from '../../components/table/table.types.ts';
-  import type { TableScrollContainerProps } from '../../components/table/table.types.ts';
+  import type {
+    TableSort,
+    TableDensity,
+    TableScrollContainerProps,
+  } from '../../components/table/table.types.ts';
   import type { TableCellProps } from '../../components/table-cell/table-cell.types.ts';
   /** Test-only fixture composing a sortable table. */
   export type TableFixtureProps = {

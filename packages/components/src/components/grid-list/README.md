@@ -4,12 +4,11 @@ GridList lays out homogeneous card-like list items in responsive auto-fit column
 
 ## Usage
 
-`GridList` is a compound component. Import the parent and compose
-`GridList.Item` via the namespace API.
+`GridList` is a compound component. Import the parent and compose `GridList.Item` via the namespace API.
 
 ```svelte
 <script lang="ts">
-  import { GridList } from '@lostgradient/cinder/grid-list';
+  import { GridList } from '@lostgradient/cinder';
 </script>
 
 <GridList minColumnWidth="14rem" aria-label="Projects">
@@ -23,8 +22,7 @@ GridList lays out homogeneous card-like list items in responsive auto-fit column
 </GridList>
 ```
 
-The leaf remains importable individually for à-la-carte builds — see
-`@lostgradient/cinder/grid-list-item`.
+The leaf remains importable individually for à-la-carte builds — see `@lostgradient/cinder`.
 
 ## Props
 
@@ -43,14 +41,12 @@ The leaf remains importable individually for à-la-carte builds — see
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents
 
 <!-- generated:subcomponents:start -->
 
-- `GridList.Item` — a card-style grid cell with optional stretched-link
-  behavior; see [`grid-list-item`](../grid-list-item/README.md).
+- `GridList.Item` — a card-style grid cell with optional stretched-link behavior; see [`grid-list-item`](../grid-list-item/README.md).
 
 <!-- generated:subcomponents:end -->

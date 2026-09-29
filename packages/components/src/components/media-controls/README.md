@@ -6,7 +6,7 @@ Accessible playback controls for play, pause, and replay actions with optional p
 
 ```svelte
 <script lang="ts">
-  import MediaControls from '@lostgradient/cinder/media-controls';
+  import { MediaControls } from '@lostgradient/cinder';
 </script>
 
 <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
@@ -57,7 +57,6 @@ Accessible playback controls for play, pause, and replay actions with optional p
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

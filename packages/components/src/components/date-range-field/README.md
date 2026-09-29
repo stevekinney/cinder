@@ -12,8 +12,8 @@ Values are ISO-8601 local strings. `granularity="day"` emits `YYYY-MM-DD`; time 
 
 ```svelte
 <script lang="ts">
-  import { DateRangeField } from '@lostgradient/cinder/date-range-field';
-  import type { DateRangeValue } from '@lostgradient/cinder/date-range-field';
+  import { DateRangeField } from '@lostgradient/cinder';
+  import type { DateRangeValue } from '@lostgradient/cinder';
 
   let range: DateRangeValue = $state({ start: undefined, end: undefined });
 </script>
@@ -32,8 +32,8 @@ Values are ISO-8601 local strings. `granularity="day"` emits `YYYY-MM-DD`; time 
 
 ```svelte
 <script lang="ts">
-  import { DateRangeField } from '@lostgradient/cinder/date-range-field';
-  import type { DateRangeDatePreset, DateRangeValue } from '@lostgradient/cinder/date-range-field';
+  import { DateRangeField } from '@lostgradient/cinder';
+  import type { DateRangeDatePreset, DateRangeValue } from '@lostgradient/cinder';
 
   let range: DateRangeValue = $state({ start: undefined, end: undefined });
 
@@ -73,8 +73,8 @@ Values are ISO-8601 local strings. `granularity="day"` emits `YYYY-MM-DD`; time 
 
 ```svelte
 <script lang="ts">
-  import { DateRangeField } from '@lostgradient/cinder/date-range-field';
-  import type { DateRangeValue } from '@lostgradient/cinder/date-range-field';
+  import { DateRangeField } from '@lostgradient/cinder';
+  import type { DateRangeValue } from '@lostgradient/cinder';
 
   let range: DateRangeValue = $state({ start: undefined, end: undefined });
 
@@ -131,7 +131,6 @@ type DateRangeDatePreset = {
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

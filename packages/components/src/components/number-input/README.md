@@ -6,7 +6,7 @@ Numeric text input with increment and decrement stepper controls.
 
 ```svelte
 <script lang="ts">
-  import NumberInput from '@lostgradient/cinder/number-input';
+  import { NumberInput } from '@lostgradient/cinder';
 
   let quantity = $state<number | null>(1);
 
@@ -59,7 +59,6 @@ Numeric text input with increment and decrement stepper controls.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

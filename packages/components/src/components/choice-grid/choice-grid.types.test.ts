@@ -13,6 +13,7 @@ import type {
   ChoiceGridColumns,
   ChoiceGridItemState,
   ChoiceGridProps,
+  ChoiceGridSize,
 } from './choice-grid.types.ts';
 
 describe('ChoiceGridItemState union', () => {
@@ -26,6 +27,19 @@ describe('ChoiceGridColumns union', () => {
   test('all valid column values are assignable', () => {
     const columns: ChoiceGridColumns[] = ['responsive', 1, 2, 3, 4];
     expect(columns.length).toBe(5);
+  });
+});
+
+describe('ChoiceGridSize union', () => {
+  test('the only defined value is assignable, and the type stays open for future values', () => {
+    const sizes: ChoiceGridSize[] = ['sm'];
+    expect(sizes.length).toBe(1);
+    // `size` is optional on ChoiceGridProps: omitting it keeps the default
+    // (uncompacted) appearance.
+    const omitted: Pick<ChoiceGridProps, 'size'> = {};
+    const compact: Pick<ChoiceGridProps, 'size'> = { size: 'sm' };
+    expect(omitted.size).toBeUndefined();
+    expect(compact.size).toBe('sm');
   });
 });
 

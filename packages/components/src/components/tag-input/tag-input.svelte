@@ -75,7 +75,7 @@
   let inputElement = $state<HTMLInputElement | null>(null);
   let draftValue = $state('');
   let inlineError = $state<string | null>(null);
-  let focusedChipIndex = $state(-1);
+  let focusedChipId = $state<string | null>(null);
   let statusAnnouncement = $state('');
   // Bumped on every announce so the live region re-fires even when two consecutive
   // announcements share the same text (e.g. adding the same tag again) — a same-value
@@ -89,6 +89,68 @@
 
   const currentTags = $derived(value ?? []);
   const resolvedReadonly = $derived(readonly === true);
+
+  // Stable per-occurrence chip identity. `currentTags` only carries tag
+  // *values* — a controlled `value` update (insert, remove, reorder) gives us
+  // a brand-new array with no positional relationship to the last one, so
+  // `${index}:${tag}` keys (the old scheme) reassign a chip's DOM node/focus
+  // to whatever tag now lands on that index. Assigning a durable id per
+  // occurrence, reused by value in left-to-right order, keeps the "same"
+  // logical chip attached to the same DOM node across such updates.
+  //
+  // `occurrenceIds` holds, after each reconciliation, the queue of ids
+  // currently assigned to each tag value in appearance order — the source
+  // queue the *next* reconciliation consumes from. It is plain (untracked)
+  // bookkeeping, not `$state`: `tagIds` is the reactive, render-facing output.
+  let occurrenceIds = new Map<string, string[]>();
+  let nextOccurrenceId = 0;
+
+  function mintOccurrenceId(): string {
+    nextOccurrenceId += 1;
+    return `tag-${nextOccurrenceId}`;
+  }
+
+  function reconcileTagIds(tags: string[]): string[] {
+    const previousQueues = occurrenceIds;
+    const nextQueues = new Map<string, string[]>();
+    const ids: string[] = [];
+
+    for (const tag of tags) {
+      const queue = previousQueues.get(tag);
+      const occurrenceId = queue && queue.length > 0 ? queue.shift()! : mintOccurrenceId();
+      ids.push(occurrenceId);
+      const bucket = nextQueues.get(tag);
+      if (bucket) {
+        bucket.push(occurrenceId);
+      } else {
+        nextQueues.set(tag, [occurrenceId]);
+      }
+    }
+
+    occurrenceIds = nextQueues;
+    return ids;
+  }
+
+  // Recomputed synchronously with `currentTags` (a `$derived`, not an
+  // `$effect`) so the `{#each}` keys below are always in sync with the tags
+  // they key — there is never a render where `currentTags` has moved on but
+  // `tagIds` has not caught up yet.
+  const tagIds = $derived.by(() => reconcileTagIds(currentTags));
+
+  // Flags that the write about to land in `value` came from this component's
+  // own `setTags` (a commit or a user-driven removal), not from a parent
+  // rewriting a controlled `value` prop. Both look identical to `currentTags`
+  // by the time the reconciliation effect below runs — and comparing the
+  // written array by reference does not work here, since `value`/`currentTags`
+  // are Svelte 5 reactive state and reading them back yields a proxied
+  // wrapper, never the exact array instance that was assigned — so a plain
+  // synchronous flag set immediately before the assignment (and consumed by
+  // the very next reconciliation pass) is the mechanism used to tell them
+  // apart. An internal write is already followed by its own explicit,
+  // index-based focus call (e.g. `focusAfterRemove`); the id-survival
+  // fallback below exists only for the parent-driven case, which owns no such
+  // follow-up.
+  let pendingInternalWrite = false;
 
   // Base field-control wiring: id, disabled, required, and context-provided
   // describedBy resolved from props + FormField context.
@@ -107,6 +169,10 @@
   const resolvedId = $derived(field.id);
   const tagListId = $derived(`${resolvedId}-tags`);
   const inlineErrorId = $derived(`${resolvedId}-inline-error`);
+
+  // Translate the id-based focus back to an index for the roving-tabindex
+  // math below, which still operates on positions.
+  const focusedChipIndex = $derived(focusedChipId === null ? -1 : tagIds.indexOf(focusedChipId));
 
   // Roving tabindex: exactly one remove button is in the tab order at a time.
   // When a chip is focused it owns the tab stop; otherwise the FIRST chip's
@@ -164,9 +230,46 @@
     }
   });
 
-  $effect(() => {
-    if (focusedChipIndex >= currentTags.length) {
-      focusedChipIndex = -1;
+  // Id-survival focus reconciliation. Runs whenever the reconciled id list
+  // changes (any insert, remove, or reorder of `currentTags`), replacing the
+  // old numeric clamp (`focusedChipIndex >= currentTags.length`) with an
+  // identity check: has the chip `focusedChipId` names actually disappeared?
+  //
+  // Uses `$effect.pre`, which runs before Svelte patches the DOM, so
+  // `document.activeElement` still reports the *about-to-be-replaced* chip
+  // button here — after the patch, a removed button has already lost focus
+  // to `<body>` and this check could never observe it.
+  $effect.pre(() => {
+    // Re-run whenever the reconciled id list changes.
+    void tagIds;
+
+    // Consume the flag: only the reconciliation pass immediately following a
+    // `setTags` call is "internal" — see `pendingInternalWrite` above.
+    const isInternalWrite = pendingInternalWrite;
+    pendingInternalWrite = false;
+
+    if (focusedChipId === null || tagIds.includes(focusedChipId)) return;
+
+    // The chip that held `focusedChipId` no longer exists in the reconciled
+    // list. Read real DOM focus BEFORE Svelte removes that chip's button.
+    const activeElement = document.activeElement;
+    const chipHadRealFocus =
+      activeElement !== null && getChipElements().includes(activeElement as HTMLElement);
+
+    focusedChipId = null;
+
+    // `removeTag` + `focusAfterRemove` already own focus for user-driven
+    // deletions (an internal `setTags` write, immediately followed by their
+    // own index-based `focusChip`/`focusInput` call). Moving focus here too
+    // would race with — and could override — that explicit call, so internal
+    // writes skip the fallback entirely.
+    if (isInternalWrite) return;
+
+    // Only steal focus toward the input if a chip button actually held real
+    // DOM focus; a stale-but-unfocused id disappearing must never move focus
+    // away from wherever the user actually is on the page.
+    if (chipHadRealFocus) {
+      void focusInput();
     }
   });
 
@@ -194,7 +297,7 @@
         if (event.defaultPrevented) return;
         draftValue = '';
         inlineError = null;
-        focusedChipIndex = -1;
+        focusedChipId = null;
         value = [...resetTarget];
       });
     };
@@ -229,6 +332,7 @@
 
   function setTags(nextTags: string[]): void {
     const normalized = [...nextTags];
+    pendingInternalWrite = true;
     value = normalized;
     onValueChange?.(normalized);
   }
@@ -267,7 +371,7 @@
 
     inlineError = null;
     draftValue = '';
-    focusedChipIndex = -1;
+    focusedChipId = null;
     setTags([...currentTags, candidate]);
     announceStatus(`${candidate} added.`);
     return true;
@@ -288,7 +392,7 @@
       return;
     }
 
-    focusedChipIndex = -1;
+    focusedChipId = null;
     void focusInput();
   }
 
@@ -304,7 +408,7 @@
   }
 
   function handleInputFocus(event: FocusEvent): void {
-    focusedChipIndex = -1;
+    focusedChipId = null;
     consumerFocus?.(event as FocusEvent & { currentTarget: EventTarget & HTMLInputElement });
   }
 
@@ -347,8 +451,8 @@
     consumerKeyDown?.(event as KeyboardEvent & { currentTarget: EventTarget & HTMLInputElement });
   }
 
-  function handleChipFocus(index: number): void {
-    focusedChipIndex = index;
+  function handleChipFocus(occurrenceId: string): void {
+    focusedChipId = occurrenceId;
   }
 
   function handleChipKeydown(index: number, event: KeyboardEvent): void {
@@ -367,7 +471,7 @@
       if (nextIndex !== null) {
         event.preventDefault();
         if (event.key === 'ArrowRight' && index === currentTags.length - 1) {
-          focusedChipIndex = -1;
+          focusedChipId = null;
           void focusInput();
         } else {
           void focusChip(nextIndex);
@@ -399,10 +503,13 @@
       aria-label={ariaLabel}
       aria-labelledby={labelledBy}
     >
-      <!-- Always key by a position-qualified composite (index:tag). A controlled
-           `value` prop can contain duplicate strings even when duplicateValuesAllowed is
-           false, so a pure value key would throw each_key_duplicate. -->
-      {#each currentTags as tag, index (`${index}:${tag}`)}
+      <!-- Key by the stable per-occurrence id (see `tagIds` above), not
+           position — that is what lets the "same" chip keep its DOM node and
+           focus across a controlled `value` insert/remove/reorder. A pure
+           value key would still throw each_key_duplicate for a controlled
+           `value` containing duplicate strings, which `tagIds` avoids by
+           minting a distinct id per occurrence. -->
+      {#each currentTags as tag, index (tagIds[index])}
         <li class="cinder-tag-input__chip">
           <span class="cinder-tag-input__chip-label">{tag}</span>
           {#if !field.disabled && !resolvedReadonly}
@@ -412,7 +519,7 @@
               aria-label={`Remove ${tag}`}
               tabindex={rovingChipIndex === index ? 0 : -1}
               onfocus={() => {
-                handleChipFocus(index);
+                handleChipFocus(tagIds[index]!);
               }}
               onclick={(event) => {
                 event.stopPropagation();
@@ -456,7 +563,7 @@
   {/if}
 
   {#if name}
-    {#each currentTags as tag, index (`hidden:${index}:${tag}`)}
+    {#each currentTags as tag, index (`hidden:${tagIds[index]}`)}
       <input type="hidden" {name} value={tag} disabled={field.disabled} />
     {/each}
   {/if}

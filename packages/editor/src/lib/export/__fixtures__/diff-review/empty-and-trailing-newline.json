@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "scope": "all",
+  "reviewTitle": "Review feedback",
+  "reviewNote": "",
+  "totals": {
+    "records": 2,
+    "messageBodies": 2,
+    "open": 2,
+    "resolved": 0,
+    "outdated": 0
+  },
+  "records": [
+    {
+      "recordKind": "diff",
+      "exportId": "[\"diff\",\"comment-trailing-newline\"]",
+      "commentId": "comment-trailing-newline",
+      "targetId": "blank-lines",
+      "current": true,
+      "targetKind": "source",
+      "targetLabel": "src/blank.ts",
+      "repositoryLabel": null,
+      "baseRevisionLabel": null,
+      "headRevisionLabel": null,
+      "snapshotId": "blank-lines-snapshot",
+      "fileOccurrence": 0,
+      "oldPath": "src/blank.ts",
+      "newPath": "src/blank.ts",
+      "anchor": {
+        "kind": "file"
+      },
+      "rawMapping": {
+        "status": "exact"
+      },
+      "body": "Fix this please.\n",
+      "resolved": false,
+      "outdated": false,
+      "createdAt": "2026-01-01T00:00:01.000Z",
+      "updatedAt": "2026-01-01T00:00:01.000Z"
+    },
+    {
+      "recordKind": "diff",
+      "exportId": "[\"diff\",\"comment-empty-quote\"]",
+      "commentId": "comment-empty-quote",
+      "targetId": "blank-lines",
+      "current": true,
+      "targetKind": "source",
+      "targetLabel": "src/blank.ts",
+      "repositoryLabel": null,
+      "baseRevisionLabel": null,
+      "headRevisionLabel": null,
+      "snapshotId": "blank-lines-snapshot",
+      "fileOccurrence": 0,
+      "oldPath": "src/blank.ts",
+      "newPath": "src/blank.ts",
+      "anchor": {
+        "kind": "range",
+        "side": "new",
+        "startLine": 4,
+        "endLine": 4,
+        "coordinateSpace": "raw-source",
+        "hunkOccurrence": 0,
+        "selectedText": "",
+        "contextBefore": ["function f() {"],
+        "contextAfter": ["  return 1;"]
+      },
+      "rawMapping": {
+        "status": "exact"
+      },
+      "body": "Blank line looks intentional.",
+      "resolved": false,
+      "outdated": false,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ]
+}

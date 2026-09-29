@@ -16,7 +16,7 @@
  */
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import type { ConversationHistory, Message, MessageRole } from './conversation-model.ts';
 
 setupHappyDom();
@@ -27,7 +27,7 @@ class TestResizeObserver {
   disconnect(): void {}
 }
 const originalResizeObserver = globalThis.ResizeObserver;
-globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
+globalThis.ResizeObserver = TestResizeObserver;
 
 class TestIntersectionObserver {
   observe(): void {}
@@ -221,7 +221,7 @@ function installLayoutModel(
       x: 0,
       y: top,
       toJSON: () => ({}),
-    } as DOMRect;
+    };
   }
 
   // Stamp a LIVE rect (computed from the model + current scrollTop at call
@@ -239,19 +239,19 @@ function installLayoutModel(
     };
   }
 
-  timeline.querySelector = ((selector: string) => {
+  timeline.querySelector = (selector: string) => {
     const element = originalQuerySelector(selector);
     stampMessageRect(element);
     return element;
-  }) as typeof timeline.querySelector;
+  };
 
-  timeline.querySelectorAll = ((selector: string) => {
+  timeline.querySelectorAll = (selector: string) => {
     const elements = originalQuerySelectorAll(selector);
     for (const element of elements) {
       stampMessageRect(element);
     }
     return elements;
-  }) as typeof timeline.querySelectorAll;
+  };
 
   timeline.getBoundingClientRect = () => domRect(0, VIEWPORT_HEIGHT);
 
@@ -270,13 +270,13 @@ function installLayoutModel(
   });
 
   const scrollTops: { top: number; behavior: string | undefined }[] = [];
-  timeline.scrollTo = ((options?: ScrollToOptions | number, y?: number) => {
+  timeline.scrollTo = (options?: ScrollToOptions | number, y?: number) => {
     const top =
       typeof options === 'number' ? (typeof y === 'number' ? y : options) : (options?.top ?? 0);
     const behavior = typeof options === 'object' ? options?.behavior : undefined;
     scrollTops.push({ top, behavior });
     timeline.scrollTop = top;
-  }) as typeof timeline.scrollTo;
+  };
 
   return {
     relayout,
@@ -383,7 +383,7 @@ describe('history prepend at scrollTop=0 (#1237)', () => {
         id: 'prepend-reject-chat',
         conversation,
         adapter,
-        onadaptererror: (event: { command: string; error: unknown }) => {
+        onAdapterError: (event: { command: string; error: unknown }) => {
           adapterErrors.push(event);
         },
       },
@@ -417,7 +417,7 @@ describe('history prepend at scrollTop=0 (#1237)', () => {
         id: 'prepend-reject-chat',
         conversation,
         adapter,
-        onadaptererror: (event: { command: string; error: unknown }) => {
+        onAdapterError: (event: { command: string; error: unknown }) => {
           adapterErrors.push(event);
         },
       });
@@ -467,7 +467,7 @@ describe('history prepend at scrollTop=0 (#1237)', () => {
         id: 'prepend-reject-noop-chat',
         conversation,
         adapter,
-        onadaptererror: (event: { command: string; error: unknown }) => {
+        onAdapterError: (event: { command: string; error: unknown }) => {
           adapterErrors.push(event);
         },
       },

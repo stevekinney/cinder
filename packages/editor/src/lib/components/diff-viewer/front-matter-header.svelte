@@ -1,6 +1,6 @@
 <script lang="ts" module>
   import type { HTMLAttributes } from 'svelte/elements';
-  import type { BadgeVariant, BadgeSize } from '@lostgradient/cinder/badge';
+  import type { BadgeVariant, BadgeSize } from '@lostgradient/cinder';
 
   export type FrontMatterHeaderVariant = 'panel' | 'inline';
 
@@ -31,8 +31,7 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
-  import Badge from '@lostgradient/cinder/badge';
-  import { ChevronDown, ChevronRight, FileText } from '@lostgradient/cinder/icons';
+  import { Badge, ChevronDown, ChevronRight, FileText } from '@lostgradient/cinder';
 
   let {
     id,

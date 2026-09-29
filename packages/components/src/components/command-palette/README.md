@@ -2,18 +2,15 @@
 
 Modal search overlay for keyboard-first commands, destinations, and record jumpers.
 
-CommandPalette intentionally uses a native modal `<dialog>` for top-layer,
-backdrop, focus-trap, and `aria-modal` semantics. See the
-[native dialog contract](https://github.com/stevekinney/cinder/blob/main/docs/decisions/command-palette-native-dialog.md).
-For a non-modal single-value picker, use [Combobox](../combobox/README.md).
+CommandPalette intentionally uses a native modal `<dialog>` for top-layer, backdrop, focus-trap, and `aria-modal` semantics. See the [native dialog contract](https://github.com/stevekinney/cinder/blob/main/docs/decisions/command-palette-native-dialog.md). For a non-modal single-value picker, use [Combobox](../combobox/README.md).
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import Button from '@lostgradient/cinder/button';
-  import CommandItem from '@lostgradient/cinder/command-item';
-  import CommandPalette from '@lostgradient/cinder/command-palette';
+  import { Button } from '@lostgradient/cinder';
+  import { CommandItem } from '@lostgradient/cinder';
+  import { CommandPalette } from '@lostgradient/cinder';
 
   let open = $state(false);
   let triggerRef: HTMLElement | null = $state(null);
@@ -111,7 +108,6 @@ Command items register with the palette by DOM node, so grouped results can use 
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

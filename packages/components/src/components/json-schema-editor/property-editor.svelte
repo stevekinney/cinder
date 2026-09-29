@@ -1,7 +1,7 @@
 <script lang="ts" module>
   import type { JsonSchemaTypeName, JsonSchemaValue } from './json-schema-editor-types.ts';
   import type { EnumDraft } from './enum-editor.svelte';
-  import type { SelectOption } from '@lostgradient/cinder/select';
+  import type { SelectOption } from '../select/index.ts';
 
   export type PropertyEditorProps = {
     idPrefix: string;
@@ -35,9 +35,9 @@
   import Badge from '../badge/badge.svelte';
   import Button from '../button/button.svelte';
   import Checkbox from '../checkbox/checkbox.svelte';
-  import Collapsible from '@lostgradient/cinder/collapsible';
+  import { default as Collapsible } from '../collapsible/index.ts';
+  import { default as Select } from '../select/index.ts';
   import Input from '../input/input.svelte';
-  import Select from '@lostgradient/cinder/select';
 
   import { reconcileCompositionBranchKeys } from './composition-branch-keys.ts';
   import {

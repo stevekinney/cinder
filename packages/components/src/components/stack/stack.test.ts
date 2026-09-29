@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -54,7 +54,7 @@ describe('Stack', () => {
       },
     });
 
-    const root = container.querySelector('.cinder-stack') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-stack'), HTMLElement);
     expect(root.classList.contains('custom-stack')).toBe(true);
     expect(root.getAttribute('data-cinder-direction')).toBe('row');
     expect(root.getAttribute('data-cinder-align')).toBe('center');

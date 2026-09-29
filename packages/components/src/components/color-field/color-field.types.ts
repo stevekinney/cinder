@@ -68,7 +68,7 @@ export type ColorFieldProps = {
   /** Additional classes merged onto the **outer wrapper** root (`.cinder-color-field`). */
   class?: string;
   /** Override the default parse-failure error message. */
-  errorMessage?: string;
+  errorMessage?: string | undefined;
   /**
    * Commit-on-Enter behavior. Default `'commit-then-submit'`:
    *   - `'commit-then-submit'`: Enter commits the value, then lets the form's

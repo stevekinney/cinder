@@ -5,4 +5,4 @@ export function themeContextOptions(theme: Theme): BrowserContextOptions {
   return { colorScheme: theme, reducedMotion: 'reduce' };
 }
 
-export const THEME_STORAGE_KEY = 'cinder-playground-theme';
+export const THEME_STORAGE_KEY = 'browser-fixture-theme';

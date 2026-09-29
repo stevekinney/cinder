@@ -6,12 +6,12 @@ import TreeRoot from './tree.svelte';
 
 /**
  * `Tree` is the parent compound component and a namespace exposing two parts:
- *   - `Tree.Item`, the compose-only leaf (also importable via `@lostgradient/cinder/tree-item`).
+ *   - `Tree.Item`, the compose-only leaf (also importable via `@lostgradient/cinder`).
  *   - `Tree.SelectAll`, the select-all/none control. It reads Tree's selection
  *   - `Tree.ExpandAll`, the expand/collapse control. It reads Tree's expansion
  *     context and throws if rendered outside a Tree, so — unlike `Tree.Item` —
  *     the context-only controls are namespace-only: there are no standalone
- *     `@lostgradient/cinder/tree-select-all` or `@lostgradient/cinder/tree-expand-all`
+ *     `@lostgradient/cinder` or `@lostgradient/cinder`
  *     imports, because standalone renders are always runtime errors.
  */
 const Tree = Object.assign(TreeRoot, {

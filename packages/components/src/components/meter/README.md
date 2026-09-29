@@ -8,16 +8,13 @@ Use `Meter` for static measurements with known bounds (`role="meter"`). Use `Pro
 
 ```svelte
 <script lang="ts">
-  import Meter from '@lostgradient/cinder/meter';
+  import { Meter } from '@lostgradient/cinder';
 </script>
 
 <Meter value={52} ariaLabel="Battery level" />
 ```
 
-For a measurement that has no numeric reading, provide an `unknown` verdict. Its
-label is rendered next to the empty track and included in the status's accessible name.
-Known verdict levels keep `role="meter"`, the numeric fill, and expose the verdict
-label through `aria-valuetext`.
+For a measurement that has no numeric reading, provide an `unknown` verdict. Its label is rendered next to the empty track and included in the status's accessible name. Known verdict levels keep `role="meter"`, the numeric fill, and expose the verdict label through `aria-valuetext`.
 
 ```svelte
 <Meter verdict={{ level: 'unknown', label: 'Awaiting data' }} ariaLabel="Service health" />
@@ -49,7 +46,6 @@ label through `aria-valuetext`.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

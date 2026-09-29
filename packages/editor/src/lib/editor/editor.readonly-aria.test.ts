@@ -2,7 +2,6 @@
 import { describe, expect, mock, test } from 'bun:test';
 
 import { setEditorReadonly } from './editor.js';
-import type { EditorState } from './types.js';
 
 /**
  * `readonly` has to reach the accessibility tree, not just the DOM.
@@ -18,7 +17,11 @@ import type { EditorState } from './types.js';
  * the textbox role lives on the ProseMirror node, and ARIA states do not
  * inherit down to it.
  */
-function createStubState(): { state: EditorState; dom: HTMLElement; props: unknown[] } {
+function createStubState(): {
+  state: { view: { dom: HTMLElement; setProps: (next: unknown) => void } };
+  dom: HTMLElement;
+  props: unknown[];
+} {
   const dom = document.createElement('div');
   const props: unknown[] = [];
   const state = {
@@ -28,8 +31,17 @@ function createStubState(): { state: EditorState; dom: HTMLElement; props: unkno
         props.push(next);
       }),
     },
-  } as unknown as EditorState;
+  };
   return { state, dom, props };
+}
+
+function isEditableProps(value: unknown): value is { editable: () => boolean } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'editable' in value &&
+    typeof value.editable === 'function'
+  );
 }
 
 describe('setEditorReadonly', () => {
@@ -60,16 +72,18 @@ describe('setEditorReadonly', () => {
 
     setEditorReadonly(state, true);
     expect(props).toHaveLength(1);
-    const [first] = props as [{ editable: () => boolean }];
+    const first = props[0];
+    if (!isEditableProps(first)) throw new Error('Expected editable props');
     expect(first.editable()).toBe(false);
 
     setEditorReadonly(state, false);
-    const [, second] = props as [unknown, { editable: () => boolean }];
+    const second = props[1];
+    if (!isEditableProps(second)) throw new Error('Expected editable props');
     expect(second.editable()).toBe(true);
   });
 
   test('does nothing when the view is gone, rather than throwing on teardown', () => {
-    const state = { view: undefined } as unknown as EditorState;
+    const state = { view: undefined };
 
     expect(() => setEditorReadonly(state, true)).not.toThrow();
   });

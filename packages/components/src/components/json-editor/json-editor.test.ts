@@ -1,9 +1,14 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
+import { flushSync } from 'svelte';
 
+import {
+  prepareSvelteServerSource,
+  renderSvelteOnServer,
+  requiredInstance,
+  setupHappyDom,
+} from '@lostgradient/testing';
 import { injectStrippedStyles } from '../../test/css.ts';
-import { setupHappyDom } from '../../test/happy-dom.ts';
-import { checkBuildFlagHydrationSafety } from '../../test/hydration-safety.ts';
 
 setupHappyDom();
 
@@ -11,6 +16,8 @@ const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/s
 const { enhanceJson } = await import('./json-editor-enhancement.ts');
 const { default: JsonEditor } = await import('./json-editor.svelte');
 const { default: schema } = await import('./json-editor.schema.ts');
+const jsonEditorSource = new URL('./json-editor.svelte', import.meta.url).pathname;
+await prepareSvelteServerSource(jsonEditorSource);
 
 afterEach(() => {
   cleanup();
@@ -18,25 +25,18 @@ afterEach(() => {
 });
 
 describe('JsonEditor', () => {
-  test('preserves requested native autofocus in server-rendered markup', async () => {
-    const result = await checkBuildFlagHydrationSafety(
-      new URL('./json-editor.svelte', import.meta.url).pathname,
-      { id: 'server-autofocus', label: 'Payload', value: '{}', autofocus: true },
-    );
-    expect(result.serverHtml).toMatch(/<textarea\b[^>]*\sautofocus(?:[\s=>])/);
-    expect(result.buildFlagInvariant).toBe(true);
-  });
-
-  test.each([false, true])('respects autofocus=%s through its focus attachment', (autofocus) => {
-    const { getByRole } = render(JsonEditor, {
-      id: 'autofocus-payload',
-      label: 'Payload',
-      value: '{}',
-      autofocus,
-    });
-    const textarea = getByRole('textbox', { name: 'Payload' });
-    expect(document.activeElement === textarea).toBe(autofocus);
-  });
+  test.each([false, true])(
+    'preserves native autofocus=%s in server-rendered markup',
+    async (autofocus) => {
+      const html = await renderSvelteOnServer(jsonEditorSource, {
+        id: 'server-autofocus',
+        label: 'Payload',
+        value: '{}',
+        autofocus,
+      });
+      expect(/<textarea\b[^>]*\sautofocus(?:[\s=>])/.test(html)).toBe(autofocus);
+    },
+  );
 
   test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
     const { container } = render(JsonEditor, {
@@ -85,10 +85,10 @@ describe('JsonEditor', () => {
       label: 'Baseline payload',
       value: '{"ready":true}',
     });
-    await waitFor(() =>
-      expect(baseline.container.querySelector('.cinder-json-editor__highlight')).toBeNull(),
-    );
-    expect(baseline.container.querySelector('.cinder-json-editor__highlight')).toBeNull();
+    flushSync();
+    expect(
+      baseline.container.querySelector('.cinder-json-editor__highlight')?.outerHTML ?? null,
+    ).toBeNull();
     baseline.unmount();
 
     const view = render(JsonEditor, {
@@ -183,7 +183,7 @@ describe('JsonEditor', () => {
       onValueChange,
     });
 
-    const editor = view.getByLabelText('Payload') as HTMLTextAreaElement;
+    const editor = requiredInstance(view.getByLabelText('Payload'), HTMLTextAreaElement);
     await fireEvent.input(editor, { target: { value: '{"after":true}' } });
 
     expect(onValueChange).toHaveBeenCalledWith('{"after":true}');
@@ -202,7 +202,9 @@ describe('JsonEditor', () => {
       value: '{"version":2}',
     });
 
-    expect((view.getByLabelText('Payload') as HTMLTextAreaElement).value).toBe('{"version":2}');
+    expect(requiredInstance(view.getByLabelText('Payload'), HTMLTextAreaElement).value).toBe(
+      '{"version":2}',
+    );
   });
 
   test('synchronizes parse feedback after a native form reset', async () => {
@@ -216,7 +218,7 @@ describe('JsonEditor', () => {
       defaultValue: '{}',
       form: form.id,
     });
-    const editor = view.getByLabelText('Payload') as HTMLTextAreaElement;
+    const editor = requiredInstance(view.getByLabelText('Payload'), HTMLTextAreaElement);
 
     await fireEvent.input(editor, { target: { value: '{' } });
     expect(editor.getAttribute('aria-invalid')).toBe('true');
@@ -323,7 +325,7 @@ describe('JsonEditor', () => {
 
     await fireEvent.input(editor, { target: { value: '{' } });
 
-    expect((editor as HTMLTextAreaElement).value).toBe('{');
+    expect(requiredInstance(editor, HTMLTextAreaElement).value).toBe('{');
     expect(editor.getAttribute('aria-invalid')).toBe('true');
     expect(view.getByRole('alert').textContent).toBe('Enter valid JSON.');
   });
@@ -344,7 +346,7 @@ describe('JsonEditor', () => {
       value: '{}',
     });
 
-    expect((editor as HTMLTextAreaElement).value).toBe('{');
+    expect(requiredInstance(editor, HTMLTextAreaElement).value).toBe('{');
     expect(editor.getAttribute('aria-invalid')).toBe('true');
     expect(view.getByRole('alert').textContent).toBe('Enter valid JSON.');
   });
@@ -391,7 +393,7 @@ describe('JsonEditor', () => {
       value: '{}',
       onValueChange,
     });
-    const editor = view.getByLabelText('Payload') as HTMLTextAreaElement;
+    const editor = requiredInstance(view.getByLabelText('Payload'), HTMLTextAreaElement);
 
     const tabEvent = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
     editor.dispatchEvent(tabEvent);
@@ -428,7 +430,7 @@ describe('JsonEditor', () => {
       value: '{ broken',
       validFeedbackVisible: false,
     });
-    const editor = view.getByLabelText('Payload') as HTMLTextAreaElement;
+    const editor = requiredInstance(view.getByLabelText('Payload'), HTMLTextAreaElement);
     expect(view.getByRole('alert').textContent).toBe('Enter valid JSON.');
 
     await fireEvent.input(editor, { target: { value: '{ "force": true }' } });

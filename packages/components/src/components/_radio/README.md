@@ -1,16 +1,12 @@
 # Radio
 
-A single radio option within a radio group, for mutually exclusive selection. It
-reads the group's selection context and throws if rendered outside a `RadioGroup`,
-so it is **namespace-only**: access it as `RadioGroup.Option`. There is no standalone
-`@lostgradient/cinder/radio` import — a lone radio is semantically meaningless and would throw at
-runtime. (A standalone `Checkbox`, by contrast, is a legitimate independent control.)
+A single radio option within a radio group, for mutually exclusive selection. It reads the group's selection context and throws if rendered outside a `RadioGroup`, so it is **namespace-only**: access it as `RadioGroup.Option`. There is no standalone `@lostgradient/cinder` import — a lone radio is semantically meaningless and would throw at runtime. (A standalone `Checkbox`, by contrast, is a legitimate independent control.)
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import { RadioGroup } from '@lostgradient/cinder/radio-group';
+  import { RadioGroup } from '@lostgradient/cinder';
 </script>
 
 <RadioGroup name="plan" label="Pricing tier">

@@ -6,8 +6,8 @@ Wraps multiple checkboxes under a shared label and validation context.
 
 ```svelte
 <script lang="ts">
-  import Checkbox from '@lostgradient/cinder/checkbox';
-  import CheckboxGroup from '@lostgradient/cinder/checkbox-group';
+  import { Checkbox } from '@lostgradient/cinder';
+  import { CheckboxGroup } from '@lostgradient/cinder';
 
   let email = $state(true);
   let sms = $state(false);
@@ -43,7 +43,6 @@ Wraps multiple checkboxes under a shared label and validation context.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -126,7 +126,7 @@ describe('MegaMenu', () => {
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
 
     const panelId = trigger.getAttribute('aria-controls') as string;
-    const panel = container.querySelector(`#${panelId}`) as HTMLElement;
+    const panel = requiredInstance(container.querySelector(`#${panelId}`), HTMLElement);
     panel.focus();
     await fireEvent.keyDown(panel, { key: 'Escape' });
     expect(container.querySelector(`#${panelId}`)).toBeNull();
@@ -592,9 +592,14 @@ describe('MegaMenu', () => {
     const getComputedStyleOverride = ((target: Element) => {
       const computed = originalWindowGetComputedStyle(target);
       if (target.matches('nav'))
-        Object.defineProperty(computed, 'direction', {
-          value: focused ? 'ltr' : 'rtl',
-          configurable: true,
+        return new Proxy(computed, {
+          get(declaration, key) {
+            return key === 'direction'
+              ? focused
+                ? 'ltr'
+                : 'rtl'
+              : Reflect.get(declaration, key, declaration);
+          },
         });
       return computed;
     }) as typeof window.getComputedStyle;
@@ -629,7 +634,7 @@ describe('MegaMenu', () => {
       addEventListener: (_type: string, listener: EventListener) => listeners.add(listener),
       removeEventListener: (_type: string, listener: EventListener) => listeners.delete(listener),
     } as unknown as MediaQueryList;
-    globalThis.matchMedia = (() => mediaQuery) as typeof matchMedia;
+    globalThis.matchMedia = () => mediaQuery;
     const style = document.createElement('style');
     style.textContent =
       '@media (prefers-color-scheme: dark) { .cinder-mega-menu { direction: ltr; } }';
@@ -686,7 +691,11 @@ describe('MegaMenu', () => {
     const getComputedStyleOverride = ((target: Element) => {
       const style = originalWindowGetComputedStyle(target);
       if (target instanceof HTMLElement && target.matches('nav[dir="auto"]')) {
-        Object.defineProperty(style, 'direction', { value: 'rtl', configurable: true });
+        return new Proxy(style, {
+          get(declaration, key) {
+            return key === 'direction' ? 'rtl' : Reflect.get(declaration, key, declaration);
+          },
+        });
       }
       return style;
     }) as typeof window.getComputedStyle;
@@ -725,7 +734,7 @@ describe('MegaMenu', () => {
     const { container } = render(MegaMenu, { items, dir: 'ltr' });
     const ancestor = document.createElement('div');
     ancestor.dir = 'rtl';
-    const menu = container.firstElementChild as HTMLElement;
+    const menu = requiredInstance(container.firstElementChild, HTMLElement);
     ancestor.append(menu);
     document.body.append(ancestor);
     const first = getTriggerByLabel(menu, 'Products');
@@ -923,7 +932,7 @@ describe('MegaMenu', () => {
         SpyResizeObserver.disconnectCalls += 1;
       }
     }
-    globalThis.ResizeObserver = SpyResizeObserver as unknown as typeof ResizeObserver;
+    globalThis.ResizeObserver = SpyResizeObserver;
     try {
       const { container } = render(MegaMenu, { items });
       await new Promise((resolve) => setTimeout(resolve, 0));

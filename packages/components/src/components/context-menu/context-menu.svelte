@@ -107,7 +107,7 @@
     open ? makeVirtualReference(anchorPoint?.x ?? requestedX, anchorPoint?.y ?? requestedY) : null,
   );
   const resolvedDirection = $derived.by(() => {
-    directionRevision;
+    void directionRevision;
     return resolveTextDirection(triggerElement, localeContext?.direction);
   });
 

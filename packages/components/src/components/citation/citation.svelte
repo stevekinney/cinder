@@ -15,7 +15,7 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
-  import Popover from '@lostgradient/cinder/popover';
+  import { default as Popover } from '../popover/index.ts';
 
   import type { CitationProps } from './citation.types.ts';
 
@@ -32,9 +32,19 @@
   let preserveMarkerForClose = $state(false);
   const markerDisabled = $derived(sources.length === 0 && !preserveMarkerForClose);
   const source = $derived(sources[page]);
+
+  function hasUnsafeUrlCharacter(url: string): boolean {
+    for (const character of url) {
+      if (character === '\\') return true;
+      const codePoint = character.charCodeAt(0);
+      if (codePoint <= 0x1f || codePoint === 0x7f) return true;
+    }
+    return false;
+  }
+
   const safeSourceUrl = $derived.by(() => {
     const url = source?.url?.trim();
-    if (!url || /[\u0000-\u001f\u007f\\]/.test(url) || /^[\\/]{2}/.test(url)) return undefined;
+    if (!url || hasUnsafeUrlCharacter(url) || /^[\\/]{2}/.test(url)) return undefined;
 
     if (/^[A-Za-z][A-Za-z\d+.-]*:/.test(url)) {
       try {

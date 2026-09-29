@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -80,7 +80,7 @@ describe('InlineConfirm', () => {
     });
 
     const cancel = getByRole('button', { name: 'Cancel' });
-    await waitFor(() => expect(document.activeElement).toBe(cancel));
+    await waitFor(() => expect(document.activeElement === cancel).toBe(true));
     await fireEvent.keyDown(document, { key: 'Escape' });
     expect(cancellations).toBe(1);
     expect(queryByRole('group')).toBeNull();

@@ -2,8 +2,8 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import { injectStrippedStyles } from '../../test/css.ts';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
@@ -73,13 +73,13 @@ describe('Checkbox', () => {
 
   test('checked prop is reflected on the input', () => {
     const { container } = render(Checkbox, { id: 'c', checked: true });
-    const input = container.querySelector('#c') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#c'), HTMLInputElement);
     expect(input.checked).toBe(true);
   });
 
   test('disabled prop forwards to the input', () => {
     const { container } = render(Checkbox, { id: 'c', disabled: true });
-    const input = container.querySelector('#c') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#c'), HTMLInputElement);
     expect(input.disabled).toBe(true);
   });
 
@@ -118,7 +118,7 @@ describe('Checkbox', () => {
 
   test('user click toggles bound checked', async () => {
     const { container } = render(Checkbox, { id: 'c', checked: false });
-    const input = container.querySelector('#c') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#c'), HTMLInputElement);
     expect(input.checked).toBe(false);
     await fireEvent.click(input);
     expect(input.checked).toBe(true);
@@ -130,7 +130,7 @@ describe('Checkbox', () => {
       checked: false,
       onValueChangeRequest: () => false,
     });
-    const input = container.querySelector('#c') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#c'), HTMLInputElement);
 
     await fireEvent.click(input);
 
@@ -140,7 +140,7 @@ describe('Checkbox', () => {
   test('onchange is forwarded with the raw pre-veto checked value even when onValueChangeRequest vetoes it', async () => {
     let forwardedChecked: boolean | undefined;
     const onchange = mock((event: Event) => {
-      forwardedChecked = (event.currentTarget as HTMLInputElement).checked;
+      forwardedChecked = requiredInstance(event.currentTarget, HTMLInputElement).checked;
     });
     const { container } = render(Checkbox, {
       id: 'c',
@@ -148,7 +148,7 @@ describe('Checkbox', () => {
       onValueChangeRequest: () => false,
       onchange,
     });
-    const input = container.querySelector('#c') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#c'), HTMLInputElement);
 
     await fireEvent.click(input);
 
@@ -164,7 +164,7 @@ describe('Checkbox', () => {
       checked: false,
       onValueChange,
     });
-    const input = container.querySelector('#c') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#c'), HTMLInputElement);
 
     await fireEvent.click(input);
 
@@ -180,7 +180,7 @@ describe('Checkbox', () => {
       onValueChangeRequest: () => false,
       onValueChange,
     });
-    const input = container.querySelector('#c') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#c'), HTMLInputElement);
 
     await fireEvent.click(input);
 
@@ -198,7 +198,7 @@ describe('Checkbox', () => {
         calls += 1;
       },
     });
-    const input = container.querySelector('#c') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#c'), HTMLInputElement);
 
     await fireEvent.click(input);
 
@@ -208,13 +208,13 @@ describe('Checkbox', () => {
 
   test('native form reset syncs the bindable checked state', async () => {
     const { container } = render(CheckboxFormResetFixture);
-    const input = container.querySelector('#accepted') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#accepted'), HTMLInputElement);
     const getByTestId = (id: string) => container.querySelector(`[data-testid="${id}"]`);
 
     await fireEvent.click(input);
     expect(getByTestId('checked')?.textContent).toBe('true');
 
-    (getByTestId('form') as HTMLFormElement).reset();
+    requiredInstance(getByTestId('form'), HTMLFormElement).reset();
 
     await waitFor(() => expect(getByTestId('checked')?.textContent).toBe('false'));
     expect(input.checked).toBe(false);
@@ -222,7 +222,7 @@ describe('Checkbox', () => {
 
   test('native form reset reapplies bindable indeterminate state', async () => {
     const { container } = render(CheckboxIndeterminateFormResetFixture);
-    const input = container.querySelector('#mixed') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#mixed'), HTMLInputElement);
     const getByTestId = (id: string) => container.querySelector(`[data-testid="${id}"]`);
 
     expect(input.indeterminate).toBe(true);
@@ -230,7 +230,7 @@ describe('Checkbox', () => {
     await fireEvent.click(input);
     expect(input.indeterminate).toBe(false);
 
-    (getByTestId('form') as HTMLFormElement).reset();
+    requiredInstance(getByTestId('form'), HTMLFormElement).reset();
 
     await waitFor(() => expect(input.indeterminate).toBe(true));
     expect(getByTestId('checked')?.textContent).toBe('false');
@@ -243,7 +243,7 @@ describe('Checkbox', () => {
       checked: false,
       indeterminate: true,
     });
-    const input = container.querySelector('#c') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#c'), HTMLInputElement);
     expect(input.indeterminate).toBe(true);
   });
 
@@ -253,7 +253,7 @@ describe('Checkbox', () => {
       checked: true,
       indeterminate: true,
     });
-    const input = container.querySelector('#c') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#c'), HTMLInputElement);
     expect(input.indeterminate).toBe(false);
   });
 
@@ -263,7 +263,7 @@ describe('Checkbox', () => {
       name: 'agreement',
       value: 'yes',
     });
-    const input = container.querySelector('#agree') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#agree'), HTMLInputElement);
     expect(input.name).toBe('agreement');
     expect(input.value).toBe('yes');
   });
@@ -273,7 +273,7 @@ describe('Checkbox', () => {
       id: 'c',
       class: 'extra',
     });
-    const input = container.querySelector('#c') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#c'), HTMLInputElement);
     expect(input.classList.contains('cinder-checkbox')).toBe(true);
     expect(input.classList.contains('extra')).toBe(true);
   });
@@ -289,18 +289,22 @@ describe('Checkbox', () => {
 
   test('supports a control-only checkbox with an external rich label', async () => {
     const { container, getByRole, queryByText } = render(CheckboxExternalLabelFixture);
-    const checkbox = getByRole('checkbox', {
-      name: 'lostgradient/cinder Component library',
-    }) as HTMLInputElement;
+    const checkbox = requiredInstance(
+      getByRole('checkbox', {
+        name: 'lostgradient/cinder Component library',
+      }),
+      HTMLInputElement,
+    );
 
     expect(queryByText('GH')).not.toBeNull();
     expect(container.querySelector('.repository-row__checkbox')).not.toBeNull();
     expect(container.querySelector('.cinder-checkbox-field__label')).toBeNull();
     expect(checkbox.checked).toBe(false);
 
-    const externalLabel = container.querySelector(
-      'label[for="repository-main"]',
-    ) as HTMLLabelElement;
+    const externalLabel = requiredInstance(
+      container.querySelector('label[for="repository-main"]'),
+      HTMLLabelElement,
+    );
     await fireEvent.click(externalLabel);
 
     expect(checkbox.checked).toBe(true);
@@ -334,7 +338,7 @@ describe('Checkbox — FormField context wiring', () => {
         fieldDescription: 'Read the terms before proceeding',
       },
     });
-    const input = container.querySelector('#agree') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#agree'), HTMLInputElement);
     expect(input.getAttribute('aria-describedby')).toBe('agree-description');
   });
 
@@ -346,7 +350,7 @@ describe('Checkbox — FormField context wiring', () => {
         fieldError: 'You must agree to continue',
       },
     });
-    const input = container.querySelector('#agree') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#agree'), HTMLInputElement);
     expect(input.getAttribute('aria-invalid')).toBe('true');
     expect(input.getAttribute('aria-describedby')).toBe('agree-error');
   });
@@ -381,7 +385,7 @@ describe('Checkbox — FormField context wiring', () => {
         checkboxError: 'Local error',
       },
     });
-    const input = container.querySelector('#agree') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#agree'), HTMLInputElement);
     expect(input.getAttribute('aria-describedby')).toBe(
       'agree-checkbox-description agree-checkbox-error agree-description agree-error',
     );
@@ -399,7 +403,7 @@ describe('Checkbox — FormField context wiring', () => {
         disabled: true,
       },
     });
-    const input = container.querySelector('#agree') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#agree'), HTMLInputElement);
     expect(input.disabled).toBe(true);
   });
 
@@ -411,7 +415,7 @@ describe('Checkbox — FormField context wiring', () => {
         required: true,
       },
     });
-    const input = container.querySelector('#agree') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#agree'), HTMLInputElement);
     // A required FormField must make the control actually required for validation + AT,
     // not just show the visual marker.
     expect(input.required).toBe(true);
@@ -426,7 +430,7 @@ describe('Checkbox — FormField context wiring', () => {
         checkboxLabel: 'I agree',
       },
     });
-    const input = container.querySelector('#agree') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('#agree'), HTMLInputElement);
     const label = container.querySelector('label[for="agree"]');
     expect(input).not.toBeNull();
     expect(label).not.toBeNull();
@@ -444,7 +448,10 @@ describe('Checkbox — FormField context wiring', () => {
         inheritId: true,
       },
     });
-    const input = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const input = requiredInstance(
+      container.querySelector('input[type="checkbox"]'),
+      HTMLInputElement,
+    );
     expect(input.id).toBe('agree');
     expect(container.querySelector('label[for="agree"]')).not.toBeNull();
   });

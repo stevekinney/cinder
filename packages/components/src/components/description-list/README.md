@@ -6,8 +6,8 @@ Semantic dl/dt/dd list for term–description pairs such as metadata or attribut
 
 ```svelte
 <script lang="ts">
-  import DescriptionList from '@lostgradient/cinder/description-list';
-  import type { DescriptionListItem } from '@lostgradient/cinder/description-list';
+  import { DescriptionList } from '@lostgradient/cinder';
+  import type { DescriptionListItem } from '@lostgradient/cinder';
 
   const items: DescriptionListItem[] = [
     { term: 'Component', definition: 'DescriptionList' },
@@ -39,7 +39,6 @@ Semantic dl/dt/dd list for term–description pairs such as metadata or attribut
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

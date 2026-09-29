@@ -18,7 +18,8 @@
     panelTitle?: string | undefined;
     /** Called when the panel is closed */
     onclose?: (() => void) | undefined;
-    class?: string;
+    class?: string | null | undefined;
+    style?: string | null | undefined;
   };
 </script>
 
@@ -34,24 +35,34 @@
     panelTitle,
     onclose,
     class: className,
+    style,
   }: ChatArtifactLayoutProps = $props();
 </script>
 
-<div class={classNames('chat-artifact-layout', className)} data-panel-open={open}>
-  <div class="chat-artifact-main">
-    {@render children()}
-  </div>
+<div class={classNames('chat-artifact-layout', className)} {style}>
+  <div class="chat-artifact-grid" data-panel-open={open}>
+    <div class="chat-artifact-main">
+      {@render children()}
+    </div>
 
-  {#if open && panel}
-    <ArtifactPanel {instanceId} title={panelTitle} {onclose}>
-      {@render panel()}
-    </ArtifactPanel>
-  {/if}
+    {#if open && panel}
+      <ArtifactPanel {instanceId} title={panelTitle} {onclose}>
+        {@render panel()}
+      </ArtifactPanel>
+    {/if}
+  </div>
 </div>
 
 <style>
   .chat-artifact-layout {
     container-type: inline-size;
+    height: 100%;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .chat-artifact-grid {
     display: grid;
     grid-template-columns: 1fr;
     height: 100%;
@@ -59,7 +70,7 @@
     transition: grid-template-columns var(--cinder-duration-base) var(--cinder-ease-standard);
   }
 
-  .chat-artifact-layout[data-panel-open='true'] {
+  .chat-artifact-grid[data-panel-open='true'] {
     grid-template-columns: 1fr 40%;
   }
 
@@ -71,14 +82,14 @@
 
   /* Narrow viewport: stack vertically */
   @container (max-width: 768px) {
-    .chat-artifact-layout[data-panel-open='true'] {
+    .chat-artifact-grid[data-panel-open='true'] {
       grid-template-columns: 1fr;
       grid-template-rows: 1fr 50%;
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .chat-artifact-layout {
+    .chat-artifact-grid {
       transition: none;
     }
   }

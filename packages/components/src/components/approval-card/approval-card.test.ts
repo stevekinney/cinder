@@ -4,8 +4,12 @@ import { readFileSync } from 'node:fs';
 
 import Ajv2020 from 'ajv/dist/2020';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
-import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
+import {
+  expectNoLeakedTimers,
+  requiredInstance,
+  setupHappyDom,
+  trackTimers,
+} from '@lostgradient/testing';
 import {
   formatEditableArguments,
   isApprovalActionable,
@@ -41,7 +45,7 @@ function approvalCardProps(overrides: Partial<ApprovalCardProps> = {}): Approval
     operation: {
       kind: 'command',
       command: 'bun run --filter=@lostgradient/cinder test',
-      filesTouched: ['packages/components/src/components/approval-card/approval-card.svelte'],
+      filesTouched: ['components/cinder/src/components/approval-card/approval-card.svelte'],
       argsPreview: { dryRun: false, retries: 1 },
     },
     env: ['DATABASE_URL=postgres://fake-secret-value', 'OPENAI_API_KEY'],
@@ -73,7 +77,7 @@ describe('ApprovalCard', () => {
       'utf8',
     );
 
-    expect(actionsSource).toContain("from '@lostgradient/cinder/json-editor'");
+    expect(actionsSource).toContain("from '../json-editor/index.ts'");
     expect(actionsSource).not.toContain("from '../json-editor/json-editor.svelte'");
   });
 
@@ -254,7 +258,7 @@ describe('ApprovalCard', () => {
     expect(getByRole('button', { name: 'Approve' }).getAttribute('type')).toBe('button');
   });
 
-  test('renders the risk level as a named, focusable signal icon per risk level', () => {
+  test('renders the risk level as a named, focusable signal image per risk level', () => {
     for (const risk of ['low', 'medium', 'high'] as const) {
       const { getByRole, unmount } = render(ApprovalCard, {
         ...approvalCardProps({ tool: { name: 'deploy-cloud', risk } }),
@@ -328,9 +332,12 @@ describe('ApprovalCard', () => {
       ...approvalCardProps({ editableArgs: false, onResolve }),
     });
 
-    const rememberCheckbox = getByRole('checkbox', {
-      name: "Don't ask again for operations like this",
-    }) as HTMLInputElement;
+    const rememberCheckbox = requiredInstance(
+      getByRole('checkbox', {
+        name: "Don't ask again for operations like this",
+      }),
+      HTMLInputElement,
+    );
 
     await fireEvent.click(rememberCheckbox);
     await fireEvent.click(getByRole('button', { name: 'Approve' }));
@@ -405,12 +412,13 @@ describe('ApprovalCard', () => {
       }),
     });
 
-    expect((view.getByLabelText('Reason') as HTMLTextAreaElement).value).toBe('');
+    expect(requiredInstance(view.getByLabelText('Reason'), HTMLTextAreaElement).value).toBe('');
     expect(
-      (
+      requiredInstance(
         view.getByRole('checkbox', {
           name: "Don't ask again for operations like this",
-        }) as HTMLInputElement
+        }),
+        HTMLInputElement,
       ).checked,
     ).toBe(false);
 
@@ -441,14 +449,15 @@ describe('ApprovalCard', () => {
       ...approvalCardProps({ onResolve, idempotencyKey: 'approval-one', snapshotId: 'snap-2' }),
     });
 
-    expect((view.getByLabelText('Reason') as HTMLTextAreaElement).value).toBe(
+    expect(requiredInstance(view.getByLabelText('Reason'), HTMLTextAreaElement).value).toBe(
       'Still drafting this reason.',
     );
     expect(
-      (
+      requiredInstance(
         view.getByRole('checkbox', {
           name: "Don't ask again for operations like this",
-        }) as HTMLInputElement
+        }),
+        HTMLInputElement,
       ).checked,
     ).toBe(true);
   });
@@ -472,13 +481,16 @@ describe('ApprovalCard', () => {
     await fireEvent.click(editToggle);
     expect(editToggle.getAttribute('aria-expanded')).toBe('true');
 
-    const textarea = getByLabelText('Edited arguments JSON') as HTMLTextAreaElement;
+    const textarea = requiredInstance(getByLabelText('Edited arguments JSON'), HTMLTextAreaElement);
     expect(textarea.value).toContain('"force": false');
 
     await fireEvent.input(textarea, { target: { value: '{ broken' } });
-    const invalidConfirmButton = getByRole('button', {
-      name: 'Confirm edited approval',
-    }) as HTMLButtonElement;
+    const invalidConfirmButton = requiredInstance(
+      getByRole('button', {
+        name: 'Confirm edited approval',
+      }),
+      HTMLButtonElement,
+    );
     expect(invalidConfirmButton.disabled).toBe(true);
     expect(getByRole('alert').textContent).toContain('valid JSON');
 
@@ -519,7 +531,7 @@ describe('ApprovalCard', () => {
 
     await fireEvent.click(getByRole('button', { name: 'Approve with edits' }));
 
-    const textarea = getByLabelText('Edited arguments JSON') as HTMLTextAreaElement;
+    const textarea = requiredInstance(getByLabelText('Edited arguments JSON'), HTMLTextAreaElement);
     expect(textarea.value).toContain('"force": false');
     expect(textarea.value).toContain('"files"');
 
@@ -546,7 +558,7 @@ describe('ApprovalCard', () => {
 
     await fireEvent.click(getByRole('button', { name: 'Approve with edits' }));
 
-    const textarea = getByLabelText('Edited arguments JSON') as HTMLTextAreaElement;
+    const textarea = requiredInstance(getByLabelText('Edited arguments JSON'), HTMLTextAreaElement);
     expect(textarea.value).toBe('null');
 
     await fireEvent.click(getByRole('button', { name: 'Confirm edited approval' }));
@@ -618,7 +630,10 @@ describe('ApprovalCard', () => {
     });
 
     await fireEvent.click(view.getByRole('button', { name: 'Approve with edits' }));
-    const staleTextarea = view.getByLabelText('Edited arguments JSON') as HTMLTextAreaElement;
+    const staleTextarea = requiredInstance(
+      view.getByLabelText('Edited arguments JSON'),
+      HTMLTextAreaElement,
+    );
     await fireEvent.input(staleTextarea, { target: { value: '{ "force": true }' } });
 
     await view.rerender({
@@ -636,7 +651,10 @@ describe('ApprovalCard', () => {
     expect(view.queryByLabelText('Edited arguments JSON')).toBeNull();
 
     await fireEvent.click(view.getByRole('button', { name: 'Approve with edits' }));
-    const nextTextarea = view.getByLabelText('Edited arguments JSON') as HTMLTextAreaElement;
+    const nextTextarea = requiredInstance(
+      view.getByLabelText('Edited arguments JSON'),
+      HTMLTextAreaElement,
+    );
     expect(nextTextarea.value).toContain('"region": "iad"');
     expect(nextTextarea.value).not.toContain('"force": true');
   });
@@ -675,7 +693,10 @@ describe('ApprovalCard', () => {
     expect(view.queryByLabelText('Edited arguments JSON')).toBeNull();
 
     await fireEvent.click(view.getByRole('button', { name: 'Approve with edits' }));
-    const reopenedTextarea = view.getByLabelText('Edited arguments JSON') as HTMLTextAreaElement;
+    const reopenedTextarea = requiredInstance(
+      view.getByLabelText('Edited arguments JSON'),
+      HTMLTextAreaElement,
+    );
     expect(reopenedTextarea.value).toContain('"force": true');
   });
 

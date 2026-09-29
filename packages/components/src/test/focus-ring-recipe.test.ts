@@ -80,7 +80,7 @@ const treeCss = loadCss('../components/tree/tree.css');
 
 // Svelte component <style> blocks converted in the same sweep. markdown-editor,
 // diff-viewer, and review-editor moved to @lostgradient/editor (see
-// docs/decisions/package-boundaries.md) and no longer live in this package's
+// documentation/decisions/package-boundaries.md) and no longer live in this package's
 // source tree, so their recipe pins moved with them.
 
 const TRANSPARENT_OUTLINE = 'var(--cinder-ring-width) solid transparent';
@@ -655,7 +655,7 @@ describe('focus-ring sweep — Strategy B-inset CSS selectors', () => {
 // used to live here (markdown-editor surface, diff line, front-matter header,
 // link-popover/thread-popover close, review-editor thread item/export
 // trigger, toolbar button/dropdown) pinned components that moved to
-// @lostgradient/editor (see docs/decisions/package-boundaries.md) and no
+// @lostgradient/editor (see documentation/decisions/package-boundaries.md) and no
 // longer live in this package's source tree.
 
 function cssVariablePixelValue(css: string, property: string): number {
@@ -788,7 +788,7 @@ describe('SVG chart focus-ring recipe', () => {
 // composer/edit textareas) and "selected/current state boundaries"
 // (ProseMirror selected nodes) blocks that used to live here pinned
 // review-editor and markdown-editor CSS, which moved to
-// @lostgradient/editor (see docs/decisions/package-boundaries.md) and no
+// @lostgradient/editor (see documentation/decisions/package-boundaries.md) and no
 // longer lives in this package's source tree.
 
 describe('focus-ring lint rule gates at error severity', () => {

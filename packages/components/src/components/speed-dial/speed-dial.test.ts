@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, jest, mock, spyOn, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -11,14 +11,14 @@ const { default: SpeedDialFixture } = await import('./speed-dial.fixture.svelte'
 const { waitForSpeedDialExit } = await import('./speed-dial-exit.ts');
 const { createQueuedFocusRestoration, getFocusTargetBeforeSpeedDial } =
   await import('./speed-dial-focus.ts');
-const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
+const { pushEscapeHandler, resetEscapeStack } = await import('../../_internal/overlay.ts');
 const speedDialSource = readFileSync(new URL('./speed-dial.svelte', import.meta.url), 'utf8');
 const speedDialStyles = readFileSync(new URL('./speed-dial.css', import.meta.url), 'utf8');
 
 afterEach(() => {
   cleanup();
   document.body.replaceChildren();
-  _resetEscapeStack();
+  resetEscapeStack();
   // Fallback-duration tests advance fake timers instead of sleeping past a
   // real wall-clock boundary (CIN-376 round 14 review) — reset here so a
   // fake-timer test never leaks into the next one.
@@ -792,7 +792,7 @@ describe('SpeedDial', () => {
       return selector === ':popover-open'
         ? this.dataset['testOpenPopover'] === 'true'
         : nativeMatches.call(this, selector);
-    });
+    } as HTMLElement['matches']);
 
     try {
       render(SpeedDialFixture, { target: innerPopover });
@@ -1458,7 +1458,7 @@ describe('SpeedDial', () => {
 
   test('hidden prop makes the root inert and the trigger unfocusable', () => {
     const { container } = render(SpeedDialFixture, { props: { hidden: true } });
-    const group = container.querySelector('.cinder-speed-dial') as HTMLElement;
+    const group = requiredInstance(container.querySelector('.cinder-speed-dial'), HTMLElement);
     const trigger = screen.getByRole('button', { name: 'Quick actions', hidden: true });
 
     expect(group.hasAttribute('hidden')).toBe(true);
@@ -1513,7 +1513,7 @@ describe('getFocusTargetBeforeSpeedDial', () => {
     focusedAction.setAttribute('tabindex', '2');
 
     const result = getFocusTargetBeforeSpeedDial({
-      rootElement: rootElement as unknown as HTMLDivElement,
+      rootElement: rootElement,
       actionsElement: null,
       focusedAction,
     });
@@ -1531,7 +1531,7 @@ describe('getFocusTargetBeforeSpeedDial', () => {
     document.body.append(wrapper);
 
     const result = getFocusTargetBeforeSpeedDial({
-      rootElement: rootElement as unknown as HTMLDivElement,
+      rootElement: rootElement,
       actionsElement: null,
       focusedAction: null,
     });
@@ -1567,8 +1567,8 @@ describe('getFocusTargetBeforeSpeedDial', () => {
     document.body.append(wrapper);
 
     const result = getFocusTargetBeforeSpeedDial({
-      rootElement: rootElement as unknown as HTMLDivElement,
-      actionsElement: actionsElement as unknown as HTMLDivElement,
+      rootElement: rootElement,
+      actionsElement: actionsElement,
     });
 
     expect(result).toBe(precedingButton);
@@ -1581,7 +1581,7 @@ describe('getFocusTargetBeforeSpeedDial', () => {
     document.body.append(wrapper);
 
     const result = getFocusTargetBeforeSpeedDial({
-      rootElement: rootElement as unknown as HTMLDivElement,
+      rootElement: rootElement,
       actionsElement: null,
     });
 

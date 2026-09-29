@@ -6,8 +6,8 @@ Non-blocking floating panel anchored to a trigger element for contextual content
 
 ```svelte
 <script lang="ts">
-  import { Button } from '@lostgradient/cinder/button';
-  import { Popover } from '@lostgradient/cinder/popover';
+  import { Button } from '@lostgradient/cinder';
+  import { Popover } from '@lostgradient/cinder';
 
   let open = $state(false);
   const headingId = 'my-popover-title';
@@ -74,7 +74,6 @@ Use Popover for rich, interactive contextual content anchored to a trigger — h
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

@@ -1,7 +1,8 @@
+import { fileEditViewMenus } from './menu-bar-test-data.ts';
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, jest, mock, spyOn, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -28,18 +29,13 @@ mock.module('@floating-ui/dom', () => ({
 }));
 
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
-const { prepareServerRenderSource, renderToServerHtml } =
-  await import('../../test/server-render.ts');
+const { prepareSvelteServerSource, renderSvelteOnServer } = await import('@lostgradient/testing');
 const { tick } = await import('svelte');
 const { default: MenuBar } = await import('./menu-bar.svelte');
-const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
-const MENU_BAR_SOURCE = `${import.meta.dir}/menu-bar.svelte`;
-const MENU_BAR_DIRECTION_FIXTURE_SOURCE = `${import.meta.dir}/../../test/fixtures/menu-bar-direction-fixture.svelte`;
+const { pushEscapeHandler, resetEscapeStack } = await import('../../_internal/overlay.ts');
+const MENU_BAR_SOURCE = `${import.meta.dir}/_menu-bar-ssr-test.svelte`;
 
-await Promise.all([
-  prepareServerRenderSource(MENU_BAR_SOURCE),
-  prepareServerRenderSource(MENU_BAR_DIRECTION_FIXTURE_SOURCE),
-]);
+await prepareSvelteServerSource(MENU_BAR_SOURCE);
 
 /**
  * Runs `run` with Bun's fake timers installed so the submenu's internal
@@ -71,45 +67,6 @@ async function withFakeTimers(run: () => void | Promise<void>): Promise<void> {
   }
 }
 
-function fileEditViewMenus(onOpenRecent = () => {}) {
-  return [
-    {
-      id: 'file',
-      label: 'File',
-      accessKey: 'f',
-      items: [
-        { id: 'new', label: 'New', shortcut: 'Ctrl+N' },
-        {
-          type: 'submenu' as const,
-          id: 'open-recent',
-          label: 'Open Recent',
-          items: [
-            { id: 'project', label: 'Cinder workspace', onSelect: onOpenRecent },
-            { type: 'separator' as const, id: 'recent-separator' },
-            { id: 'clear', label: 'Clear Menu', disabled: true },
-          ],
-        },
-        { type: 'separator' as const, id: 'file-separator' },
-        { id: 'delete', label: 'Delete Project', variant: 'danger' as const },
-      ],
-    },
-    {
-      id: 'edit',
-      label: 'Edit',
-      items: [
-        { id: 'undo', label: 'Undo', shortcut: 'Ctrl+Z' },
-        { id: 'redo', label: 'Redo', disabled: true },
-      ],
-    },
-    {
-      id: 'view',
-      label: 'View',
-      disabled: true,
-      items: [{ id: 'zoom-in', label: 'Zoom In' }],
-    },
-  ];
-}
-
 describe('MenuBar', () => {
   beforeEach(() => {
     computePositionSpy.mockClear();
@@ -121,7 +78,7 @@ describe('MenuBar', () => {
   // file (cleanup() in beforeEach never runs after the final test).
   afterEach(() => {
     cleanup();
-    _resetEscapeStack();
+    resetEscapeStack();
   });
 
   test('renders a labelled menubar with top-level menuitem triggers', () => {
@@ -290,10 +247,7 @@ describe('MenuBar', () => {
   });
 
   test('server rendering omits provider fallback direction until local DOM can be checked', async () => {
-    const html = await renderToServerHtml(MENU_BAR_SOURCE, {
-      menus: fileEditViewMenus(),
-      label: 'Application menu',
-    });
+    const html = await renderSvelteOnServer(MENU_BAR_SOURCE);
     const menuBarTag = html.match(/<div[^>]*class="[^"]*cinder-menu-bar[^"]*"[^>]*>/)?.[0] ?? '';
 
     expect(menuBarTag).not.toBe('');
@@ -301,8 +255,7 @@ describe('MenuBar', () => {
   });
 
   test('server rendering uses provider direction before local DOM can be checked', async () => {
-    const html = await renderToServerHtml(MENU_BAR_DIRECTION_FIXTURE_SOURCE, {
-      menus: fileEditViewMenus(),
+    const html = await renderSvelteOnServer(MENU_BAR_SOURCE, {
       providerDirection: 'rtl',
     });
     const menuBarTag = html.match(/<div[^>]*class="[^"]*cinder-menu-bar[^"]*"[^>]*>/)?.[0] ?? '';
@@ -316,7 +269,11 @@ describe('MenuBar', () => {
     const getComputedStyleOverride = ((target: Element) => {
       const style = originalWindowGetComputedStyle(target);
       if (target instanceof HTMLElement && target.getAttribute('role') === 'menubar') {
-        Object.defineProperty(style, 'direction', { value: 'rtl', configurable: true });
+        return new Proxy(style, {
+          get(declaration, key) {
+            return key === 'direction' ? 'rtl' : Reflect.get(declaration, key, declaration);
+          },
+        });
       }
       return style;
     }) as typeof window.getComputedStyle;
@@ -580,7 +537,7 @@ describe('MenuBar', () => {
     await tick();
     expect(document.activeElement).toBe(getByRole('menuitem', { name: 'New' }));
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'd' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), { key: 'd' });
     expect(document.activeElement).toBe(getByRole('menuitem', { name: 'Delete Project' }));
   });
 
@@ -593,7 +550,9 @@ describe('MenuBar', () => {
     await fireEvent.keyDown(getByRole('menuitem', { name: 'New' }), { key: 'd' });
     expect(document.activeElement).toBe(getByRole('menuitem', { name: 'Delete Project' }));
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'Escape',
+    });
     expect(file.getAttribute('aria-expanded')).toBe('false');
 
     await fireEvent.click(file);
@@ -613,7 +572,10 @@ describe('MenuBar', () => {
     await fireEvent.pointerEnter(submenuTrigger);
     await tick();
     const submenu = getByRole('menu', { name: 'Open Recent' });
-    const submenuWrapper = submenuTrigger.closest('.cinder-menu-bar__submenu') as HTMLElement;
+    const submenuWrapper = requiredInstance(
+      submenuTrigger.closest('.cinder-menu-bar__submenu'),
+      HTMLElement,
+    );
 
     submenuTrigger.getBoundingClientRect = () =>
       ({ left: 0, top: 0, right: 100, bottom: 40, width: 100, height: 40 }) as DOMRect;
@@ -642,7 +604,10 @@ describe('MenuBar', () => {
     const submenuTrigger = getByRole('menuitem', { name: 'Open Recent' });
     await fireEvent.pointerEnter(submenuTrigger);
     await tick();
-    const submenuWrapper = submenuTrigger.closest('.cinder-menu-bar__submenu') as HTMLElement;
+    const submenuWrapper = requiredInstance(
+      submenuTrigger.closest('.cinder-menu-bar__submenu'),
+      HTMLElement,
+    );
 
     await withFakeTimers(async () => {
       await fireEvent.mouseLeave(submenuWrapper, { clientX: 90, clientY: 20 });
@@ -820,5 +785,189 @@ describe('MenuBar', () => {
     } finally {
       outsideButton.remove();
     }
+  });
+
+  // COR-454: open/active menu identity is stored by menu.id, not array index,
+  // so reordering, inserting, removing, or disabling a menu no longer strands
+  // the wrong menu as "active" or "open".
+  describe('COR-454: menu identity across menus prop reconciliation', () => {
+    test('keeps an open menu open, focused, and its DOM ids stable when another menu is inserted before it', async () => {
+      const menus = fileEditViewMenus().slice(0, 2); // [file, edit], both enabled
+      const { getByRole, rerender } = render(MenuBar, { props: { menus } });
+      const edit = getByRole('menuitem', { name: 'Edit' });
+
+      edit.focus();
+      await fireEvent.keyDown(edit, { key: 'ArrowDown' });
+      await tick();
+
+      expect(edit.getAttribute('aria-expanded')).toBe('true');
+      const editTriggerId = edit.id;
+      const undoId = getByRole('menuitem', { name: 'Undo' }).id;
+
+      await rerender({
+        menus: [
+          { id: 'view', label: 'View', items: [{ id: 'zoom-in', label: 'Zoom In' }] },
+          ...menus,
+        ],
+      });
+      await tick();
+
+      const editAfter = getByRole('menuitem', { name: 'Edit' });
+      expect(editAfter.id).toBe(editTriggerId);
+      expect(editAfter.getAttribute('aria-expanded')).toBe('true');
+      expect(getByRole('menuitem', { name: 'Undo' }).id).toBe(undoId);
+
+      // Arrow navigation continues from Edit's new (last) position: View is now
+      // first, so ArrowRight from within Edit's open popup wraps to View.
+      await fireEvent.keyDown(getByRole('menuitem', { name: 'Undo' }), { key: 'ArrowRight' });
+      await tick();
+      expect(getByRole('menuitem', { name: 'View' }).getAttribute('aria-expanded')).toBe('true');
+      expect(document.activeElement).toBe(getByRole('menuitem', { name: 'Zoom In' }));
+    });
+
+    test('submenu trigger and submenu item ids stay stable when a menu is inserted before their parent', async () => {
+      const menus = fileEditViewMenus();
+      const { getByRole, rerender } = render(MenuBar, { props: { menus } });
+
+      await fireEvent.click(getByRole('menuitem', { name: 'File' }));
+      await tick();
+      const submenuTrigger = getByRole('menuitem', { name: 'Open Recent' });
+      await fireEvent.keyDown(submenuTrigger, { key: 'ArrowRight' });
+      await tick();
+
+      const submenuTriggerId = submenuTrigger.id;
+      const submenuItemId = getByRole('menuitem', { name: 'Cinder workspace' }).id;
+
+      await rerender({
+        menus: [
+          { id: 'window', label: 'Window', items: [{ id: 'minimize', label: 'Minimize' }] },
+          ...menus,
+        ],
+      });
+      await tick();
+
+      const submenuTriggerAfter = getByRole('menuitem', { name: 'Open Recent' });
+      expect(submenuTriggerAfter.id).toBe(submenuTriggerId);
+      expect(getByRole('menuitem', { name: 'Cinder workspace' }).id).toBe(submenuItemId);
+    });
+
+    test('disabling the open menu in place forward-scans to the next enabled menu, moves focus, and fires no onSelect', async () => {
+      const onSelect = mock(() => {});
+      const menus = [
+        { id: 'file', label: 'File', items: [{ id: 'new', label: 'New' }] },
+        { id: 'edit', label: 'Edit', items: [{ id: 'undo', label: 'Undo', onSelect }] },
+        { id: 'view', label: 'View', items: [{ id: 'zoom-in', label: 'Zoom In' }] },
+      ];
+      const { getByRole, queryByRole, rerender } = render(MenuBar, { props: { menus } });
+      const edit = getByRole('menuitem', { name: 'Edit' });
+
+      edit.focus();
+      await fireEvent.keyDown(edit, { key: 'ArrowDown' });
+      await tick();
+      expect(edit.getAttribute('aria-expanded')).toBe('true');
+
+      await rerender({ menus: [menus[0]!, { ...menus[1]!, disabled: true }, menus[2]!] });
+      await tick();
+      await tick();
+
+      const view = getByRole('menuitem', { name: 'View' });
+      const editAfter = getByRole('menuitem', { name: 'Edit' });
+
+      expect(editAfter.getAttribute('aria-expanded')).toBe('false');
+      expect(editAfter.getAttribute('tabindex')).toBe('-1');
+      expect(view.getAttribute('tabindex')).toBe('0');
+      expect(document.activeElement).toBe(view);
+      expect(queryByRole('menuitem', { name: 'Undo' })).toBeNull();
+      expect(onSelect).not.toHaveBeenCalled();
+    });
+
+    test('removing the open menu entirely forward-scans from its former visual position', async () => {
+      const menus = [
+        { id: 'file', label: 'File', items: [{ id: 'new', label: 'New' }] },
+        { id: 'edit', label: 'Edit', items: [{ id: 'undo', label: 'Undo' }] },
+        { id: 'view', label: 'View', items: [{ id: 'zoom-in', label: 'Zoom In' }] },
+      ];
+      const { getByRole, rerender } = render(MenuBar, { props: { menus } });
+      const edit = getByRole('menuitem', { name: 'Edit' });
+
+      edit.focus();
+      await fireEvent.keyDown(edit, { key: 'ArrowDown' });
+      await tick();
+
+      await rerender({ menus: [menus[0]!, menus[2]!] });
+      await tick();
+      await tick();
+
+      const view = getByRole('menuitem', { name: 'View' });
+      expect(view.getAttribute('tabindex')).toBe('0');
+      expect(document.activeElement).toBe(view);
+    });
+
+    test('removing or disabling the active-but-unopened menu falls back to the first enabled menu, unchanged', async () => {
+      const menus = [
+        { id: 'file', label: 'File', items: [{ id: 'new', label: 'New' }] },
+        { id: 'edit', label: 'Edit', items: [{ id: 'undo', label: 'Undo' }] },
+        { id: 'view', label: 'View', items: [{ id: 'zoom-in', label: 'Zoom In' }] },
+      ];
+      const { getByRole, rerender } = render(MenuBar, { props: { menus } });
+      const edit = getByRole('menuitem', { name: 'Edit' });
+
+      edit.focus();
+      await fireEvent.keyDown(edit, { key: 'ArrowRight' });
+      expect(document.activeElement).toBe(getByRole('menuitem', { name: 'View' }));
+
+      await rerender({ menus: [menus[0]!, menus[1]!] });
+      await tick();
+
+      expect(getByRole('menuitem', { name: 'File' }).getAttribute('tabindex')).toBe('0');
+    });
+
+    test('closes with no focusable trigger when no enabled menu remains after an update', async () => {
+      const menus = [{ id: 'file', label: 'File', items: [{ id: 'new', label: 'New' }] }];
+      const { getByRole, container, rerender } = render(MenuBar, { props: { menus } });
+      const file = getByRole('menuitem', { name: 'File' });
+
+      file.focus();
+      await fireEvent.keyDown(file, { key: 'ArrowDown' });
+      await tick();
+      expect(file.getAttribute('aria-expanded')).toBe('true');
+
+      await rerender({ menus: [{ ...menus[0]!, disabled: true }] });
+      await tick();
+      await tick();
+
+      expect(file.getAttribute('aria-expanded')).toBe('false');
+      expect(container.querySelector('[tabindex="0"]')).toBeNull();
+    });
+
+    test('does not move focus when it was outside the disabled menu trigger and popup', async () => {
+      const menus = [
+        { id: 'file', label: 'File', items: [{ id: 'new', label: 'New' }] },
+        { id: 'edit', label: 'Edit', items: [{ id: 'undo', label: 'Undo' }] },
+        { id: 'view', label: 'View', items: [{ id: 'zoom-in', label: 'Zoom In' }] },
+      ];
+      const { getByRole, rerender } = render(MenuBar, { props: { menus } });
+      const edit = getByRole('menuitem', { name: 'Edit' });
+
+      edit.focus();
+      await fireEvent.keyDown(edit, { key: 'ArrowDown' });
+      await tick();
+      expect(edit.getAttribute('aria-expanded')).toBe('true');
+
+      const outsideButton = document.createElement('button');
+      document.body.append(outsideButton);
+      try {
+        // Focus leaves the open popup, but the debounced focusin guard hasn't
+        // resolved its own tick().then() yet when the disabling update lands.
+        outsideButton.focus();
+        await rerender({ menus: [menus[0]!, { ...menus[1]!, disabled: true }, menus[2]!] });
+        await tick();
+        await tick();
+
+        expect(document.activeElement).toBe(outsideButton);
+      } finally {
+        outsideButton.remove();
+      }
+    });
   });
 });

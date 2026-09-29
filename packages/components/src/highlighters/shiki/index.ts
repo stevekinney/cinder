@@ -8,7 +8,7 @@
  * ```svelte
  * <script lang="ts">
  *   import { CodeBlock } from '@lostgradient/cinder';
- *   import { shikiHighlighter } from '@lostgradient/cinder/highlighters/shiki';
+ *   import { shikiHighlighter } from '@lostgradient/cinder';
  *
  *   const highlighter = shikiHighlighter({ theme: 'github-light' });
  * </script>
@@ -25,7 +25,7 @@
  * Why this builds on `shiki/core` + `@shikijs/engine-oniguruma` rather than
  * `import { createHighlighter } from 'shiki'` (see
  * `packages/markdown/src/rendering/highlighter.ts` for the sibling adapter
- * that established this pattern, and `docs/decisions/package-boundaries.md`
+ * that established this pattern, and `documentation/decisions/package-boundaries.md`
  * for the ~10 MB measurement this converges on): the default `shiki` entry
  * resolves to `bundle-full.mjs`, which statically references every bundled
  * grammar and theme in one module. For a build that bundles that module with
@@ -48,7 +48,7 @@
  * `packages/markdown` and closes the build-time regression risk above.
  *
  * Behavior contract (matches the {@link Highlighter} type in
- * `@lostgradient/cinder/utilities/highlighter`):
+ * `@lostgradient/cinder`):
  *
  *   - Returns a complete `<pre><code>...</code></pre>` block as a trusted
  *     HTML string. `<CodeBlock>` injects this via `{@html}` and replaces its
@@ -82,7 +82,7 @@ import { stripRootPreTabIndex } from './strip-root-pre-tab-index.ts';
 
 /**
  * Re-exported for backwards compatibility on the public
- * `@lostgradient/cinder/highlighters/shiki` surface. The canonical implementation lives in
+ * `@lostgradient/cinder` surface. The canonical implementation lives in
  * `utilities/retrying-loader-cache.ts` so `<CodeBlock>`'s default-highlighter
  * seam can reuse it without a static import edge to this adapter module.
  */

@@ -79,6 +79,9 @@ export type VirtualListProps<Item = unknown> = Omit<
    * computed style at mount, and the scroll offset is read from the start (right)
    * edge in that case.
    *
+   * Does not compose with `windowScroll` — see that prop, which silently ignores this
+   * one rather than windowing the window's own horizontal scroll.
+   *
    * Defaults to false.
    */
   horizontal?: boolean;
@@ -100,6 +103,56 @@ export type VirtualListProps<Item = unknown> = Omit<
    * scroll position unchanged.
    */
   stickToBottom?: boolean;
+  /**
+   * Virtualizes against the window's own scroll position instead of an
+   * internal scrolling container. Use this for a long list embedded directly
+   * in the page — a post list, a log — where the page itself scrolls rather
+   * than a fixed-height panel.
+   *
+   * Under this mode:
+   * - `height` is IGNORED. The component renders no scrolling container of
+   *   its own — no fixed block-size, no `overflow` — and instead takes its
+   *   full virtual size in normal document flow, like an unvirtualized list
+   *   would, with the page's own scrollbar covering it.
+   * - The viewport used for windowing is `window.innerHeight`, re-measured on
+   *   every window resize.
+   * - The list's scroll offset is the window's scroll position minus the
+   *   list's own offset in the document, so a list that starts partway down
+   *   the page (below a header, other content) windows correctly relative to
+   *   ITS top edge rather than the page's. That document offset is
+   *   re-measured on window resize, whenever the component's own resize
+   *   observer fires, and on the animation frame after a window scroll — so
+   *   content above the list that changes size without resizing anything,
+   *   an accordion collapsing, say, is picked up by the next scroll.
+   * - `scrollToIndex` and keyboard navigation scroll the window
+   *   (`window.scrollTo`) rather than an internal element.
+   * - The container keeps `tabindex="0"` by default, but it is no longer a
+   *   native scroll container: arrow-key and page navigation are handled
+   *   entirely by this component's own keyboard logic here, rather than
+   *   falling back to the browser's native scrolling of a focused element the
+   *   way a non-`windowScroll` list without `stickyItems` does.
+   *
+   * `stickyItems`, `stickToBottom`, `reverse`, and `scrollRestoration` all
+   * compose with `windowScroll` unchanged — every one of them is built on the
+   * same scroll-offset primitive this prop redirects to the window, so
+   * pinning a header at the window's top, pinning to the newest row on
+   * append, and restoring a saved position keep working exactly as documented
+   * elsewhere on this type.
+   *
+   * `horizontal` does NOT compose with this prop and is silently ignored
+   * while it is on: windowing the window's own horizontal scroll is not
+   * supported, and the combination degrades to an ordinary vertical
+   * `windowScroll` list rather than throwing. Pass one or the other.
+   *
+   * A consumer-supplied `onscroll` handler is bound to the internal
+   * container's native `scroll` event, which never fires under this mode;
+   * listen on `window` directly for scroll notifications instead.
+   *
+   * The window listener is passive, added on mount, and removed on teardown.
+   *
+   * Defaults to false.
+   */
+  windowScroll?: boolean;
   /**
    * Chat-transcript behaviour: the list starts at its end and returns there on
    * every append.
@@ -218,6 +271,11 @@ export type VirtualListProps<Item = unknown> = Omit<
    * by default so keyboard users can reach the native scroll container for
    * arrow-key scrolling. Pass `tabindex={-1}` when the viewport should be
    * programmatically focusable without entering the tab order.
+   *
+   * Under `windowScroll` the container is no longer a native scroll
+   * container, but it stays in the tab order by the same default — arrow-key
+   * and page navigation there are handled by this component rather than by
+   * focusing a scrollable element.
    */
   tabindex?: number;
   /**

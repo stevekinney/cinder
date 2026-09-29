@@ -2,17 +2,13 @@
 
 Controlled date/date-time picker that combines a text field, calendar trigger button, floating calendar, and optional time controls.
 
-DatePicker owns the picker UI (decision B): it uses a text input and Cinder's
-Calendar as the single calendar surface. This avoids combining a browser-native
-date picker with the custom floating calendar. The text input keeps its label,
-description, and error semantics; a separate button owns the dialog trigger
-semantics. DatePicker handles parsing and keyboard input.
+DatePicker owns the picker UI (decision B): it uses a text input and Cinder's Calendar as the single calendar surface. This avoids combining a browser-native date picker with the custom floating calendar. The text input keeps its label, description, and error semantics; a separate button owns the dialog trigger semantics. DatePicker handles parsing and keyboard input.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import { DatePicker } from '@lostgradient/cinder/date-picker';
+  import { DatePicker } from '@lostgradient/cinder';
 
   let value = $state<string | undefined>('2026-06-29');
 </script>
@@ -46,7 +42,6 @@ semantics. DatePicker handles parsing and keyboard input.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

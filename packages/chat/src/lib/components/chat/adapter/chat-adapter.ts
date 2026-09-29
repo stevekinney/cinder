@@ -12,20 +12,16 @@
  * nothing at runtime, so it is trivially SSR-safe.
  *
  * The adapter is always optional. When omitted, Chat behaves exactly as it does
- * with its plain callback props (`onsubmit` / `onretry` / `onedit` /
- * `onstopgenerating`); the internal command dispatcher routes both paths
+ * with its plain callback props (`onSubmit` / `onRetry` / `onEdit` /
+ * `onStopGenerating`); the internal command dispatcher routes both paths
  * identically (adapter method first, callback fallback).
  *
  * @module
  */
 
-import type {
-  JSONValue,
-  Message,
-  MessageInput,
-  ToolCall,
-  ToolResult,
-} from '../conversation-model.ts';
+import type { ApprovalResolution } from '@lostgradient/cinder';
+import type { TypingParticipant } from '../chat.types.ts';
+import type { Message, MessageInput, ToolCall, ToolResult } from '../conversation-model.ts';
 import type { ChatAttachment } from '../input/chat-attachment.ts';
 import type { ToolCallPresentation } from '../utilities/types.ts';
 
@@ -47,9 +43,11 @@ export type ChatReadReceiptEvent = {
 };
 
 /** A tool result plus an optional JSON-safe provider extension for approval state. */
-export type ChatToolResult = ToolResult & {
-  pendingApproval?: JSONValue;
-};
+/**
+ * Re-exported from the wire types, which own it now: the transport contract is
+ * compiled by producers that render nothing, so it cannot depend on this file.
+ */
+export type { ChatToolResult } from '../../../session/stream-event-codec-types.ts';
 
 /**
  * Push handlers Chat hands to {@link ChatAdapter.subscribe}. The adapter invokes
@@ -85,8 +83,8 @@ export type ChatToolResult = ToolResult & {
 export type ChatPushHandlers = {
   /** A new (or updated) message arrived. Forwarded to the consumer; Chat does not mutate the transcript. */
   onMessage: (message: Message) => void;
-  /** A participant's typing state changed. Forwarded to the consumer. */
-  onTypingChange: (isTyping: boolean) => void;
+  /** Complete snapshot of participants currently typing. Forwarded to the consumer. */
+  onTypingChange: (participants: TypingParticipant[]) => void;
   /** A read receipt arrived. Forwarded to the consumer. */
   onReadReceipt: (event: ChatReadReceiptEvent) => void;
   /** Streaming began for a message — drives Chat's `beginStreaming(messageId)`. */
@@ -106,12 +104,12 @@ export type ChatToolApprovalResolution = 'resolved' | 'pending';
  * Only `sendMessage` is required; everything else is optional so an adapter can
  * opt into exactly the capabilities its transport supports. Command methods
  * return `Promise<void>` — Chat awaits them and routes any failure (a rejected
- * promise OR a synchronous throw from the method) to `onadaptererror` rather
+ * promise OR a synchronous throw from the method) to `onAdapterError` rather
  * than swallowing it.
  *
- * The optional `approveToolCall`/`denyToolCall` (consumed by the tool-approval
- * task) and `loadOlderMessages` (consumed by the load-history task) are declared
- * here so the seam is complete; their UI wiring lands with those tasks.
+ * The optional `resolveToolApproval` (consumed by the approval card) and
+ * `loadOlderMessages` (consumed by the load-history task) are declared here so
+ * the seam is complete.
  */
 export type ChatAdapter = {
   /** Supplies connector-neutral activity prose and an icon category for tool calls. */
@@ -176,10 +174,11 @@ export type ChatAdapter = {
    * finished running.
    */
   subscribe?: (conversationId: string, handlers: ChatPushHandlers) => () => void;
-  /** Approve an action-required tool call by id. (UI wired by the tool-approval task.) */
-  approveToolCall?: (toolCallId: string) => Promise<void | ChatToolApprovalResolution>;
-  /** Reject an action-required tool call by id. (UI wired by the tool-approval task.) */
-  denyToolCall?: (toolCallId: string) => Promise<void | ChatToolApprovalResolution>;
+  /** Resolve an action-required approval with the full decision payload. */
+  resolveToolApproval?: (
+    toolCallId: string,
+    resolution: ApprovalResolution,
+  ) => Promise<void | ChatToolApprovalResolution>;
 };
 
 /**
@@ -192,8 +191,7 @@ export type ChatCommand =
   | 'editMessage'
   | 'stopGenerating'
   | 'loadOlderMessages'
-  | 'approveToolCall'
-  | 'denyToolCall';
+  | 'resolveToolApproval';
 
 /** Error event surfaced when an adapter command fails (rejection or sync throw). */
 export type ChatAdapterErrorEvent = {

@@ -6,8 +6,8 @@ Styled heading element that visually separates and titles a content section.
 
 ```svelte
 <script lang="ts">
-  import Button from '@lostgradient/cinder/button';
-  import SectionHeading from '@lostgradient/cinder/section-heading';
+  import { Button } from '@lostgradient/cinder';
+  import { SectionHeading } from '@lostgradient/cinder';
 </script>
 
 <SectionHeading
@@ -41,7 +41,6 @@ Styled heading element that visually separates and titles a content section.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

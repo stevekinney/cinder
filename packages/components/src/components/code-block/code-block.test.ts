@@ -1,13 +1,13 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import type { Highlighter } from '../../utilities/highlighter.ts';
 
 setupHappyDom();
 
 // The default-highlighter seam is the single module CodeBlock imports to reach
-// Shiki. Mocking THIS exact specifier (never the public `@lostgradient/cinder/highlighters/shiki`
+// Shiki. Mocking THIS exact specifier (never the public `@lostgradient/cinder`
 // subpath, which CodeBlock does not import directly) is what makes the
 // "default loader is NOT invoked when an explicit highlighter is provided"
 // assertion real instead of false-confidence.
@@ -345,7 +345,7 @@ describe('CodeBlock — explicit highlighter prop', () => {
       expect(token).not.toBeNull();
       // Verbatim: the highlighter's exact markup is in the DOM.
       expect(token?.textContent).toBe('const x = 1;');
-      expect(container.querySelector('.cinder-code-block__pre')).toBeNull();
+      expect(container.querySelector('.cinder-code-block__pre')?.outerHTML ?? null).toBeNull();
     });
   });
 

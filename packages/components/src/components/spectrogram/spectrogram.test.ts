@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -353,7 +353,7 @@ describe('Spectrogram', () => {
       );
     }
 
-    const binsFromTop = [...firstFrameCells].sort(
+    const binsFromTop = [...firstFrameCells].toSorted(
       (left, right) => Number(left.getAttribute('y')) - Number(right.getAttribute('y')),
     );
     expect(Number(binsFromTop[0]?.getAttribute('y'))).toBeCloseTo(0);

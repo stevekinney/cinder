@@ -24,9 +24,9 @@
 
 /// <reference lib="dom" />
 import { afterAll, afterEach, describe, expect, jest, test } from 'bun:test';
-import { createRawSnippet, mount, tick, unmount } from 'svelte';
+import { createRawSnippet, flushSync, mount, tick, unmount } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import { importWithoutDomGlobals } from '../../test/import-without-dom-globals.ts';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import.
@@ -43,7 +43,7 @@ class TestResizeObserver {
   disconnect(): void {}
 }
 const originalResizeObserver = globalThis.ResizeObserver;
-globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
+globalThis.ResizeObserver = TestResizeObserver;
 
 class TestIntersectionObserver {
   observe(): void {}
@@ -140,10 +140,10 @@ function appendActionRequiredMessage(
     action: {
       type: 'approval',
       message,
-      risk: 'low',
-      operation: { kind: 'command', command: 'test-command', argsPreview: {} },
+      risk: 'high',
+      operation: { kind: 'command', command: 'echo approval', argsPreview: { ok: true } },
       policyVersion: 'test-policy',
-      idempotencyKey: 'chat-approval-1',
+      idempotencyKey: 'test-approval',
     },
   };
 
@@ -301,14 +301,23 @@ describe('Chat — basic render', () => {
     expect(timeline?.getAttribute('role')).toBe('log');
   });
 
-  test('forwards a custom class onto the container', () => {
+  test('forwards custom class and style onto the outer layout element', () => {
     const conversation = createConversation({ id: 'conversation-class' });
     const { container } = render(Chat, {
-      props: { id: 'chat-class', conversation, class: 'my-custom-chat' },
+      props: {
+        id: 'chat-class',
+        conversation,
+        class: 'my-custom-chat',
+        style: 'block-size: 100%;',
+      },
     });
 
+    const layout = container.querySelector('.chat-artifact-layout');
     const region = container.querySelector('.chat-container');
-    expect(region?.classList.contains('my-custom-chat')).toBe(true);
+    expect(layout?.classList.contains('my-custom-chat')).toBe(true);
+    expect(layout?.getAttribute('style')).toBe('block-size: 100%;');
+    expect(region?.classList.contains('my-custom-chat')).toBe(false);
+    expect(region?.getAttribute('style')).toBeNull();
   });
 
   test('renders the default empty state when the conversation has no messages', () => {
@@ -616,7 +625,7 @@ describe('Chat — slot composition', () => {
         id: 'chat-prompt-submit',
         conversation,
         emptyPrompts: ['Summarize this'],
-        onsubmit: (event: { message: { content: unknown } }) => {
+        onSubmit: (event: { message: { content: unknown } }) => {
           submitted.push(String(event.message.content));
         },
       },
@@ -802,7 +811,8 @@ describe('Chat — interactions', () => {
     expect(container.querySelector('.chat-drop-overlay')).not.toBeNull();
 
     await fireEvent(root, createDragEvent('drop', [file]));
-    await waitFor(() => expect(container.querySelector('.chat-drop-overlay')).toBeNull());
+    flushSync();
+    expect(container.querySelector('.chat-drop-overlay')?.outerHTML ?? null).toBeNull();
   });
 
   test('file drag overlay stays hidden when attachments are disabled', async () => {
@@ -825,9 +835,9 @@ describe('Chat — interactions', () => {
     conversation = appendUserMessage(conversation, 'Second request');
     conversation = appendAssistantMessage(conversation, 'Second response');
     const firstUserId = conversation.ids[0]!;
-    const onrollback = jest.fn();
+    const onRollback = jest.fn();
     const { container, getByRole } = render(Chat, {
-      props: { id: 'chat-rollback', conversation, onrollback },
+      props: { id: 'chat-rollback', conversation, onRollback },
     });
 
     const firstMessage = container.querySelector<HTMLElement>(
@@ -839,12 +849,12 @@ describe('Chat — interactions', () => {
       firstMessage.querySelector<HTMLButtonElement>('.chat-message-rollback-button')!,
     );
 
-    expect(onrollback).not.toHaveBeenCalled();
+    expect(onRollback).not.toHaveBeenCalled();
     expect(container.querySelectorAll('[data-cinder-rollback-discarded]')).toHaveLength(4);
     expect(getByRole('dialog', { name: 'Rollback conversation?' })).not.toBeNull();
 
     await fireEvent.click(getByRole('button', { name: 'Rollback conversation' }));
-    expect(onrollback).toHaveBeenCalledWith(firstUserId);
+    expect(onRollback).toHaveBeenCalledWith(firstUserId);
     expect(container.querySelectorAll('[data-cinder-rollback-discarded]')).toHaveLength(0);
   });
 
@@ -893,7 +903,7 @@ describe('Chat — interactions', () => {
         id: 'chat-stop',
         conversation,
         streaming: true,
-        onstopgenerating: (event: { messageId: string }) => stopped.push(event.messageId),
+        onStopGenerating: (event: { messageId: string }) => stopped.push(event.messageId),
       },
     });
 
@@ -904,7 +914,7 @@ describe('Chat — interactions', () => {
 });
 
 describe('Chat — atBottom bindable after send', () => {
-  test('handleSubmit fires onsubmit and does not throw (atBottom write regression guard)', async () => {
+  test('handleSubmit fires onSubmit and does not throw (atBottom write regression guard)', async () => {
     // Regression: handleSubmit called scrollState.setIsAtBottom(true) but never
     // wrote to the `atBottom` bindable prop. The parent binding went stale:
     // a consumer with `bind:atBottom` would see false even though Chat had set
@@ -924,7 +934,7 @@ describe('Chat — atBottom bindable after send', () => {
         conversation: createConversation({ id: 'conversation-atbottom-send' }),
         atBottom: false,
         emptyPrompts: ['Tell me a joke'],
-        onsubmit: (event: { message: { content: unknown } }) => {
+        onSubmit: (event: { message: { content: unknown } }) => {
           submitted.push(String(event.message.content));
         },
       },
@@ -959,7 +969,7 @@ describe('Chat — atBottom bindable after send', () => {
       props: {
         id: 'chat-scroll-top-unread',
         conversation,
-        onunreadindicatorchange: (event: { unreadCount: number }) => {
+        onUnreadIndicatorChange: (event: { unreadCount: number }) => {
           unreadChanges.push(event.unreadCount);
         },
       },
@@ -1128,10 +1138,11 @@ describe('Chat — imperative API forwarding', () => {
 
   test('warms markdown for imperative and content-driven streaming paths', async () => {
     const source = await Bun.file(new URL('./container/chat.svelte', import.meta.url)).text();
+    const streamingOwner = await Bun.file(
+      new URL('./container/use-chat-streaming-state.svelte.ts', import.meta.url),
+    ).text();
 
-    expect(source).toMatch(
-      /export function beginStreaming\(messageId: string\): void \{\s*\/\/[\s\S]*?void preloadMarkdownPipeline\(\);/,
-    );
+    expect(streamingOwner).toContain('void preloadMarkdownPipeline();');
     expect(source).toContain('if (streaming && (!streamingInitialized || !previousStreaming)) {');
     expect(source).toContain('previousStreaming = streaming;');
   });

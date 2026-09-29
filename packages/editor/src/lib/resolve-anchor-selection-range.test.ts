@@ -1,16 +1,14 @@
 /// <reference lib="dom" />
+import { setupHappyDom } from '@lostgradient/testing';
 import { afterEach, describe, expect, test } from 'bun:test';
-import {
-  anchorPluginKey,
-  createAnchorPlugin,
-  resolveAnchorSelectionRange,
-} from './anchor-decorations.js';
+import { resolveAnchorSelectionRange } from './anchor-decorations.js';
+import { anchorPluginKey } from './anchor-plugin-state.js';
+import { createAnchorPlugin } from './anchor-plugin.js';
 import type { Thread } from './comments/types.js';
 import { createEditor } from './editor/editor.js';
 import type { EditorState } from './editor/types.js';
 import type { FakeClock } from './test/fake-clock.js';
 import { drainMount, installFakeClock } from './test/fake-clock.js';
-import { setupHappyDom } from './test/happy-dom.js';
 
 setupHappyDom();
 

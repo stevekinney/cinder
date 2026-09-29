@@ -16,7 +16,7 @@ describe('parse', () => {
     if (result.success) {
       expect(result.ast.type).toBe('root');
       expect(result.ast.children).toHaveLength(1);
-      expect(result.ast.children[0].type).toBe('paragraph');
+      expect(result.ast.children[0]!.type).toBe('paragraph');
     }
   });
 
@@ -26,11 +26,11 @@ describe('parse', () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.ast.children).toHaveLength(2);
-      expect(result.ast.children[0].type).toBe('heading');
-      expect(result.ast.children[1].type).toBe('heading');
+      expect(result.ast.children[0]!.type).toBe('heading');
+      expect(result.ast.children[1]!.type).toBe('heading');
 
-      const h1 = result.ast.children[0];
-      const h2 = result.ast.children[1];
+      const h1 = result.ast.children[0]!;
+      const h2 = result.ast.children[1]!;
       if (h1.type === 'heading' && h2.type === 'heading') {
         expect(h1.depth).toBe(1);
         expect(h2.depth).toBe(2);
@@ -43,7 +43,7 @@ describe('parse', () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      const para = result.ast.children[0];
+      const para = result.ast.children[0]!;
       if (para.type === 'paragraph') {
         expect(para.children.some((c) => c.type === 'emphasis')).toBe(true);
         expect(para.children.some((c) => c.type === 'strong')).toBe(true);
@@ -56,7 +56,7 @@ describe('parse', () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      const para = result.ast.children[0];
+      const para = result.ast.children[0]!;
       if (para.type === 'paragraph') {
         expect(para.children.some((c) => c.type === 'delete')).toBe(true);
       }
@@ -68,11 +68,11 @@ describe('parse', () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      const list = result.ast.children[0];
+      const list = result.ast.children[0]!;
       if (list.type === 'list') {
         expect(list.children).toHaveLength(2);
-        const item1 = list.children[0];
-        const item2 = list.children[1];
+        const item1 = list.children[0]!;
+        const item2 = list.children[1]!;
         if (item1.type === 'listItem' && item2.type === 'listItem') {
           expect(item1.checked).toBe(true);
           expect(item2.checked).toBe(false);
@@ -86,7 +86,7 @@ describe('parse', () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.ast.children[0].type).toBe('table');
+      expect(result.ast.children[0]!.type).toBe('table');
     }
   });
 
@@ -95,7 +95,7 @@ describe('parse', () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      const code = result.ast.children[0];
+      const code = result.ast.children[0]!;
       if (code.type === 'code') {
         expect(code.lang).toBe('javascript');
         expect(code.value).toBe('const x = 1;');
@@ -108,11 +108,11 @@ describe('parse', () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      const paragraph = result.ast.children[0];
+      const paragraph = result.ast.children[0]!;
       expect(paragraph.type).toBe('paragraph');
 
       if (paragraph.type === 'paragraph') {
-        const image = paragraph.children[0];
+        const image = paragraph.children[0]!;
         expect(image.type).toBe('image');
 
         if (image.type === 'image') {
@@ -130,9 +130,9 @@ describe('parse', () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.ast.position).toBeDefined();
-      expect(result.ast.children[0].position).toBeDefined();
+      expect(result.ast.children[0]!.position).toBeDefined();
 
-      const heading = result.ast.children[0];
+      const heading = result.ast.children[0]!;
       expect(heading.position?.start).toEqual({
         line: 1,
         column: 1,
@@ -147,7 +147,7 @@ describe('parse', () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.ast.position).toBeUndefined();
-      expect(result.ast.children[0].position).toBeUndefined();
+      expect(result.ast.children[0]!.position).toBeUndefined();
     }
   });
 
@@ -199,7 +199,7 @@ describe('parseOrThrow', () => {
     const ast = parseOrThrow('# Hello');
 
     expect(ast.type).toBe('root');
-    expect(ast.children[0].type).toBe('heading');
+    expect(ast.children[0]!.type).toBe('heading');
   });
 
   it('throws MarkdownParseError for null input', () => {

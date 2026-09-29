@@ -21,7 +21,7 @@ export function projectMentionLabel(value: string): string | null {
     backslashes = value[index] === '\\' ? backslashes + 1 : 0;
   }
 
-  for (let index = value.length - 1; index >= 0; ) {
+  for (let index = value.length - 1; index >= 0;) {
     if (value[index] !== '`') {
       index -= 1;
       continue;
@@ -35,7 +35,7 @@ export function projectMentionLabel(value: string): string | null {
     index = start - 1;
   }
 
-  for (let index = 0; index < value.length; ) {
+  for (let index = 0; index < value.length;) {
     const codeEnd = codeEnds.get(index);
     if (codeEnd !== undefined) {
       index = codeEnd;
@@ -122,7 +122,7 @@ export function projectMentionLabel(value: string): string | null {
     plain = '';
     return true;
   };
-  for (let index = 0; index < value.length; ) {
+  for (let index = 0; index < value.length;) {
     const codeEnd = codeEnds.get(index);
     if (codeEnd !== undefined) {
       if (!flushPlain()) return null;

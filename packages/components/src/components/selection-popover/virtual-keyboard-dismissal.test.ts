@@ -1,7 +1,8 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
+import { SelectionPopoverTestViewport } from './selection-popover-test-viewport';
 
 setupHappyDom();
 
@@ -28,8 +29,7 @@ describe('createVirtualKeyboardDismissal', () => {
   test('fires the dismiss callback on a visualViewport resize/scroll sequence consistent with the on-screen keyboard opening then closing, when nothing owns it', async () => {
     const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
     const originalVisualViewport = Object.getOwnPropertyDescriptor(window, 'visualViewport');
-    const visualViewport = new EventTarget() as EventTarget & { scale: number };
-    visualViewport.scale = 1;
+    const visualViewport = new SelectionPopoverTestViewport(window.innerHeight);
     Object.defineProperty(window, 'visualViewport', { configurable: true, value: visualViewport });
 
     const dismissCalls: boolean[] = [];
@@ -67,8 +67,7 @@ describe('createVirtualKeyboardDismissal', () => {
   test('does not fire on a visualViewport resize/scroll sequence consistent with the composer itself owning the on-screen keyboard (real focus inside the panel)', async () => {
     const originalVirtualKeyboard = Object.getOwnPropertyDescriptor(navigator, 'virtualKeyboard');
     const originalVisualViewport = Object.getOwnPropertyDescriptor(window, 'visualViewport');
-    const visualViewport = new EventTarget() as EventTarget & { scale: number };
-    visualViewport.scale = 1;
+    const visualViewport = new SelectionPopoverTestViewport(window.innerHeight);
     Object.defineProperty(window, 'visualViewport', { configurable: true, value: visualViewport });
 
     const dismissCalls: boolean[] = [];
@@ -83,7 +82,7 @@ describe('createVirtualKeyboardDismissal', () => {
       // reads — this is the "the user is actively typing" signal, distinct
       // from an unrelated/external viewport movement.
       const textarea = getByTestId('textarea');
-      (textarea as HTMLTextAreaElement).focus();
+      requiredInstance(textarea, HTMLTextAreaElement).focus();
 
       setVirtualKeyboardHeight(300);
       visualViewport.dispatchEvent(new Event('resize'));

@@ -2,7 +2,7 @@
 import { describe, expect, test } from 'bun:test';
 import { createRawSnippet, mount, unmount } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -90,9 +90,10 @@ describe('SideNavigationGroup', () => {
     const { container } = render(SideNavigationGroup, {
       props: { label: 'Settings', children: itemSnippet() },
     });
-    const button = container.querySelector(
-      '.cinder-side-navigation-group__trigger',
-    ) as HTMLButtonElement;
+    const button = requiredInstance(
+      container.querySelector('.cinder-side-navigation-group__trigger'),
+      HTMLButtonElement,
+    );
     expect(button?.getAttribute('aria-expanded')).toBe('true');
     await fireEvent.click(button);
     expect(button?.getAttribute('aria-expanded')).toBe('false');
@@ -102,9 +103,10 @@ describe('SideNavigationGroup', () => {
     const { container } = render(SideNavigationGroup, {
       props: { label: 'Settings', expanded: false, children: itemSnippet() },
     });
-    const button = container.querySelector(
-      '.cinder-side-navigation-group__trigger',
-    ) as HTMLButtonElement;
+    const button = requiredInstance(
+      container.querySelector('.cinder-side-navigation-group__trigger'),
+      HTMLButtonElement,
+    );
     expect(button?.getAttribute('aria-expanded')).toBe('false');
     await fireEvent.click(button);
     expect(button?.getAttribute('aria-expanded')).toBe('true');
@@ -156,9 +158,10 @@ describe('SideNavigationGroup', () => {
     const { container } = render(SideNavigationGroup, {
       props: { label: 'Settings', disabled: true, children: itemSnippet() },
     });
-    const button = container.querySelector(
-      '.cinder-side-navigation-group__trigger',
-    ) as HTMLButtonElement;
+    const button = requiredInstance(
+      container.querySelector('.cinder-side-navigation-group__trigger'),
+      HTMLButtonElement,
+    );
     expect(button?.disabled).toBe(true);
   });
 
@@ -166,9 +169,10 @@ describe('SideNavigationGroup', () => {
     const { container } = render(SideNavigationGroup, {
       props: { label: 'Settings', disabled: true, children: itemSnippet() },
     });
-    const button = container.querySelector(
-      '.cinder-side-navigation-group__trigger',
-    ) as HTMLButtonElement;
+    const button = requiredInstance(
+      container.querySelector('.cinder-side-navigation-group__trigger'),
+      HTMLButtonElement,
+    );
     expect(button?.getAttribute('aria-expanded')).toBe('true');
     await fireEvent.click(button);
     expect(button?.getAttribute('aria-expanded')).toBe('true');
@@ -178,9 +182,10 @@ describe('SideNavigationGroup', () => {
     const { container } = render(SideNavigationGroup, {
       props: { label: 'Settings', disabled: true, expanded: false, children: itemSnippet() },
     });
-    const button = container.querySelector(
-      '.cinder-side-navigation-group__trigger',
-    ) as HTMLButtonElement;
+    const button = requiredInstance(
+      container.querySelector('.cinder-side-navigation-group__trigger'),
+      HTMLButtonElement,
+    );
     await fireEvent.click(button);
     expect(button?.getAttribute('aria-expanded')).toBe('false');
   });
@@ -218,9 +223,10 @@ describe('SideNavigationGroup', () => {
         children: itemSnippet(),
       },
     });
-    const button = container.querySelector(
-      '.cinder-side-navigation-group__trigger',
-    ) as HTMLButtonElement;
+    const button = requiredInstance(
+      container.querySelector('.cinder-side-navigation-group__trigger'),
+      HTMLButtonElement,
+    );
     await fireEvent.click(button);
     expect(expandedValue).toBe(false);
   });
@@ -306,7 +312,7 @@ describe('SideNavigationGroup', () => {
 const { default: ContainsActiveHarness } = await import('./_contains-active-harness.svelte');
 
 function groupRoot(container: HTMLElement): HTMLElement {
-  return container.querySelector('li.cinder-side-navigation-group') as HTMLElement;
+  return requiredInstance(container.querySelector('li.cinder-side-navigation-group'), HTMLElement);
 }
 
 describe('SideNavigationGroup — contains-active', () => {

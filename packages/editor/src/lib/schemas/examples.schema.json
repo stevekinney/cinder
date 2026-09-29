@@ -20,7 +20,7 @@
     "import": {
       "type": "string",
       "description": "The import specifier consumers use to import the component. Matches the component's 'import' field in components.json.",
-      "examples": ["@lostgradient/editor/markdown-editor"]
+      "examples": ["@lostgradient/editor"]
     },
     "examples": {
       "type": "array",

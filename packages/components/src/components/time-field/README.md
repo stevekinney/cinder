@@ -6,7 +6,7 @@ Standalone time-of-day input with optional timezone selection.
 
 ```svelte
 <script lang="ts">
-  import TimeField from '@lostgradient/cinder/time-field';
+  import { TimeField } from '@lostgradient/cinder';
 
   let time = $state('09:30');
 </script>
@@ -47,7 +47,6 @@ Standalone time-of-day input with optional timezone selection.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

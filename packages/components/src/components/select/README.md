@@ -6,7 +6,7 @@ Native-style dropdown select for choosing a single option from a predefined list
 
 ```svelte
 <script lang="ts">
-  import Select from '@lostgradient/cinder/select';
+  import { Select } from '@lostgradient/cinder';
   const options = [
     { value: 'free', label: 'Free' },
     { value: 'pro', label: 'Pro' },
@@ -43,7 +43,6 @@ Native-style dropdown select for choosing a single option from a predefined list
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

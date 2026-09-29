@@ -17,16 +17,16 @@ import TableHeader from '../table-header/table-header.svelte';
 import TableRow from '../table-row/table-row.svelte';
 import { Table } from './index.ts';
 
-const _body: typeof TableBody = Table.Body;
-const _cell: typeof TableCell = Table.Cell;
-const _header: typeof TableHeader = Table.Header;
-const _headerCell: typeof TableHeaderCell = Table.HeaderCell;
-const _row: typeof TableRow = Table.Row;
+const body: typeof TableBody = Table.Body;
+const cell: typeof TableCell = Table.Cell;
+const header: typeof TableHeader = Table.Header;
+const headerCell: typeof TableHeaderCell = Table.HeaderCell;
+const row: typeof TableRow = Table.Row;
 
 Table satisfies Component<never>;
 
-void _body;
-void _cell;
-void _header;
-void _headerCell;
-void _row;
+void body;
+void cell;
+void header;
+void headerCell;
+void row;

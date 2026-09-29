@@ -6,8 +6,8 @@ Hover-and-focus triggered rich preview card for non-interactive contextual conte
 
 ```svelte
 <script lang="ts">
-  import Button from '@lostgradient/cinder/button';
-  import HoverCard from '@lostgradient/cinder/hover-card';
+  import { Button } from '@lostgradient/cinder';
+  import { HoverCard } from '@lostgradient/cinder';
 </script>
 
 <HoverCard>
@@ -58,7 +58,6 @@ Hover-and-focus triggered rich preview card for non-interactive contextual conte
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

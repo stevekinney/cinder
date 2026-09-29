@@ -94,7 +94,7 @@ export function makeScanMetadata(value: string): ScanMetadata {
     }
   }
 
-  for (let start = 0; start < value.length; ) {
+  for (let start = 0; start < value.length;) {
     const lineEnd = getLineEnd(value, start);
     let cursor = start;
     let quoteDepth = 0;
@@ -200,7 +200,7 @@ export function makeScanMetadata(value: string): ScanMetadata {
 
   const nextCodeRun = new Map<number, number>();
   const nextMathClose = new Map<number, number>();
-  for (let index = value.length - 1; index >= 0; ) {
+  for (let index = value.length - 1; index >= 0;) {
     const character = value[index];
     if (index === lineStarts[index] && !paragraphLineStarts.has(index)) {
       nextCodeRun.clear();

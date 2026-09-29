@@ -8,7 +8,7 @@ The canonical use case is **vertical dividers between toolbar groups**—for exa
 
 ```svelte
 <script lang="ts">
-  import Divider from '@lostgradient/cinder/divider';
+  import { Divider } from '@lostgradient/cinder';
 </script>
 
 <!-- Horizontal rule between sections -->
@@ -47,7 +47,6 @@ The canonical use case is **vertical dividers between toolbar groups**—for exa
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

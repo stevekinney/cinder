@@ -1,7 +1,7 @@
 /**
- * Drift test for docs/tokens.md.
+ * Drift test for components/cinder/documentation/tokens.md.
  *
- * Since CIN-30, docs/tokens.md's token tables are GENERATED (see
+ * Since CIN-30, components/cinder/documentation/tokens.md's token tables are GENERATED (see
  * `generate-artifacts.ts`) from the DTCG corpus at `src/tokens/`, between
  * `<!-- BEGIN/END GENERATED TOKEN TABLE -->` markers -- `tokens:generate
  * -- --check` already fails on any drift between the committed doc and a
@@ -20,7 +20,7 @@ import { join } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
 
-import { loadCorpus, serializeEntryValue } from '../../scripts/tokens/generate.ts';
+import { loadCorpus } from '../../scripts/tokens/generate.ts';
 import {
   buildBaseDocuments,
   buildBaseIndex,
@@ -28,18 +28,18 @@ import {
   themeAwarePaths,
 } from '../../scripts/tokens/registry.ts';
 import { createValueResolver } from '../../scripts/tokens/resolve.ts';
+import { serializeEntryValue } from '../../scripts/tokens/value-entry.ts';
 import { readRootTokenValues } from '../test/token-introspection.ts';
 
 const PACKAGE_ROOT = join(import.meta.dir, '..', '..');
-const REPO_ROOT = join(PACKAGE_ROOT, '..', '..');
 const TOKENS_CSS = join(PACKAGE_ROOT, 'src', 'styles', 'tokens-base.css');
-const TOKENS_DOC = join(REPO_ROOT, 'docs', 'tokens.md');
-const FOCUS_RING_POLICY_DOC = join(REPO_ROOT, 'docs', 'focus-ring-policy.md');
-const THEMING_DOC = join(REPO_ROOT, 'docs', 'theming.md');
+const TOKENS_DOC = join(PACKAGE_ROOT, 'documentation', 'tokens.md');
+const FOCUS_RING_POLICY_DOC = join(PACKAGE_ROOT, 'documentation', 'focus-ring-policy.md');
+const THEMING_DOC = join(PACKAGE_ROOT, 'documentation', 'theming.md');
 
 /**
  * The corpus's own view of "every base token's `:root` value", built the
- * same way `generate-artifacts.ts` builds it for docs/tokens.md's "Default"
+ * same way `generate-artifacts.ts` builds it for documentation/tokens.md's "Default"
  * column -- `buildBaseIndex` (Stage 4's `baseIndex`, factored out to
  * `registry.ts`) plus a resolver over the same base documents, so a
  * mismatch here means the doc and the corpus disagree, not that this test's
@@ -61,6 +61,17 @@ async function readCorpusTokenValues(): Promise<Map<string, string>> {
     values.set(entry.cssProperty, serializeEntryValue(corpusEntry, baseIndex, resolveReferences));
   }
   return values;
+}
+
+function appendUnquotedCharacter(
+  normalized: string,
+  whitespace: boolean,
+  character: string,
+): { normalized: string; whitespace: boolean } {
+  let next = normalized;
+  if (character === ',' || character === ')') next = next.trimEnd();
+  else if (whitespace && next.length > 0 && !/[(),]$/.test(next)) next += ' ';
+  return { normalized: next + character, whitespace: false };
 }
 
 function normalizeTokenValue(value: string): string {
@@ -85,10 +96,9 @@ function normalizeTokenValue(value: string): string {
       whitespace = true;
       continue;
     }
-    if (character === ',' || character === ')') normalized = normalized.trimEnd();
-    else if (whitespace && normalized.length > 0 && !/[(),]$/.test(normalized)) normalized += ' ';
-    whitespace = false;
-    normalized += character;
+    const next = appendUnquotedCharacter(normalized, whitespace, character);
+    normalized = next.normalized;
+    whitespace = next.whitespace;
   }
   return normalized.trim();
 }
@@ -171,7 +181,21 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
   return { duplicates: duplicates.toSorted(), tokens };
 }
 
-describe('docs/tokens.md drift', () => {
+function expectFocusRingReferences(markdown: string, tokens: ReadonlyMap<string, string>): void {
+  const references = extractDocTokens(markdown);
+  expect(references.duplicates).toEqual([]);
+  for (const token of [
+    '--cinder-ring-width',
+    '--cinder-ring-offset',
+    '--cinder-ring-offset-color',
+  ]) {
+    const expected = tokens.get(token);
+    expect(expected).toBeDefined();
+    expect(references.tokens.get(token), token).toBe(expected);
+  }
+}
+
+describe('documentation/tokens.md drift', () => {
   test('documents exactly the tokens declared in the corpus', async () => {
     const [corpusTokens, doc] = await Promise.all([
       readCorpusTokenValues(),
@@ -251,6 +275,46 @@ describe('docs/tokens.md drift', () => {
     expect(extractDocTokens(html).tokens.get('--cinder-markdown')).toBe('*A*|_B_~C~');
   });
 
+  describe('focused guide token references', () => {
+    const values = new Map([
+      ['--cinder-ring-width', '2px'],
+      ['--cinder-ring-offset', '2px'],
+      ['--cinder-ring-offset-color', 'var(--cinder-surface-raised)'],
+    ]);
+    const compact = [...values]
+      .map(([name, value]) => `| \`${name}\` | \`${value}\` | role |`)
+      .join('\n');
+
+    test('accepts compact Markdown tables produced by the root formatter', () => {
+      expectFocusRingReferences(compact, values);
+    });
+
+    test('accepts padded Markdown columns without changing token values', () => {
+      const padded = compact.replaceAll('` |', '`        |');
+      expectFocusRingReferences(padded, values);
+    });
+
+    test('rejects an incorrect token value', () => {
+      expect(() => expectFocusRingReferences(compact.replace('`2px`', '`3px`'), values)).toThrow();
+    });
+
+    test('rejects a missing required token row', () => {
+      const missing = compact.split('\n').slice(1).join('\n');
+      expect(() => expectFocusRingReferences(missing, values)).toThrow();
+    });
+
+    test('rejects a value mentioned outside its required token row', () => {
+      const misplaced =
+        compact.replace('`var(--cinder-surface-raised)`', '`transparent`') +
+        '\n`var(--cinder-surface-raised)`';
+      expect(() => expectFocusRingReferences(misplaced, values)).toThrow();
+    });
+
+    test('rejects duplicate token rows', () => {
+      expect(() => expectFocusRingReferences(compact + '\n' + compact, values)).toThrow();
+    });
+  });
+
   test('keeps exact token references in focused guides current', async () => {
     const [css, focusRingPolicy, theming] = await Promise.all([
       readFile(TOKENS_CSS, 'utf8'),
@@ -264,13 +328,7 @@ describe('docs/tokens.md drift', () => {
       return resolved!;
     };
 
-    expect(focusRingPolicy).toContain(
-      `| \`--cinder-ring-width\`        | \`${value('--cinder-ring-width')}\``,
-    );
-    expect(focusRingPolicy).toContain(
-      `| \`--cinder-ring-offset\`       | \`${value('--cinder-ring-offset')}\``,
-    );
-    expect(focusRingPolicy).toContain(`\`${value('--cinder-ring-offset-color')}\``);
+    expectFocusRingReferences(focusRingPolicy, tokens);
 
     const scopedThemeBlock = (theme: 'light' | 'dark') => {
       const block = theming.match(

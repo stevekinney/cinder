@@ -155,10 +155,11 @@
     if (!shouldProbeFilterChildren) return;
 
     const filterValueAtProbeStart = context.filterValue;
-    tick().then(() => {
+    void tick().then(() => {
       if (context.filtering && context.filterValue === filterValueAtProbeStart) {
         probedFilterValue = filterValueAtProbeStart;
       }
+      return undefined;
     });
   });
 

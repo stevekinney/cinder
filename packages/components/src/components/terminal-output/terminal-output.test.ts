@@ -1,8 +1,8 @@
 /// <reference lib="dom" />
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import { afterEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { createRawSnippet } from 'svelte';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
@@ -91,7 +91,10 @@ describe('TerminalOutput', () => {
         },
       },
     });
-    const output = container.querySelector('.cinder-terminal-output') as HTMLElement;
+    const output = requiredInstance(
+      container.querySelector('.cinder-terminal-output'),
+      HTMLElement,
+    );
     Object.defineProperty(output, 'scrollHeight', { configurable: true, value: 400 });
     Object.defineProperty(output, 'clientHeight', { configurable: true, value: 100 });
     output.scrollTop = 0;

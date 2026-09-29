@@ -1,7 +1,7 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "inline-loading",
-  "import": "@lostgradient/cinder/inline-loading",
+  "import": "@lostgradient/cinder",
   "examples": [
     {
       "id": "lifecycle",

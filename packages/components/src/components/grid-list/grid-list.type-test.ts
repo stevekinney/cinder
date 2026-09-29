@@ -13,8 +13,8 @@ import type { Component } from 'svelte';
 import GridListItem from '../grid-list-item/grid-list-item.svelte';
 import { GridList } from './index.ts';
 
-const _item: typeof GridListItem = GridList.Item;
+const item: typeof GridListItem = GridList.Item;
 
 GridList satisfies Component<never>;
 
-void _item;
+void item;

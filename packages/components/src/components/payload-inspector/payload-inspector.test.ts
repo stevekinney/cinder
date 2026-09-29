@@ -2,8 +2,8 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import Ajv2020 from 'ajv/dist/2020';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
 // reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
@@ -192,7 +192,7 @@ describe('PayloadInspector', () => {
         const copyButton = container.querySelector<HTMLButtonElement>('.cinder-copy-button');
         expect(copyButton).not.toBeNull();
 
-        await fireEvent.click(copyButton as HTMLButtonElement);
+        await fireEvent.click(requiredInstance(copyButton, HTMLButtonElement));
 
         expect(writeText).toHaveBeenCalledWith('"hello"');
         expect(writeText).not.toHaveBeenCalledWith('hello');

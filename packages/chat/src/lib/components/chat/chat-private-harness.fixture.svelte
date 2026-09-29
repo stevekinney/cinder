@@ -13,23 +13,37 @@
     Chat,
     appendAssistantMessage,
     appendMessages,
+    appendStreamingMessage,
     appendUserMessage,
+    cancelStreamingMessage,
     createConversation,
+    finalizeStreamingMessage,
+    type ChatAdapter,
+    type ChatPushHandlers,
+    type ChatReadReceiptEvent,
     type ChatRowContext,
     type ChatSubmitEvent,
     type ConversationHistory,
     type JSONValue,
     type Message,
+    type MultiModalContent,
+    type ReadReceipt,
+    type TypingParticipant,
+    updateStreamingMessage,
     type ToolErrorCategory,
+    type ToolResult,
   } from '@lostgradient/chat';
-  import { Button } from '@lostgradient/cinder/button';
-  import { Input } from '@lostgradient/cinder/input';
-  import { Segment } from '@lostgradient/cinder/segment';
-  import { SegmentedControl } from '@lostgradient/cinder/segmented-control';
-  import { Select } from '@lostgradient/cinder/select';
-  import { Textarea } from '@lostgradient/cinder/textarea';
-  import { Toggle } from '@lostgradient/cinder/toggle';
-  import { onDestroy } from 'svelte';
+  import {
+    Button,
+    Input,
+    Segment,
+    SegmentedControl,
+    Select,
+    Textarea,
+    Tooltip,
+    Toggle,
+  } from '@lostgradient/cinder';
+  import { onDestroy, onMount } from 'svelte';
 
   // Out of scope for this harness (documented, not silently dropped):
   // bottomThreshold / jumpThreshold (kept at defaults so overflow + jump are
@@ -38,8 +52,9 @@
   // mirrors of behavior the wired callbacks already surface).
 
   // --- Chat instance (for the imperative streaming + scroll API) ---
-  // Plain `let`: only read via `chat?.method()` calls, never reactively.
-  let chat: ReturnType<typeof Chat> | undefined;
+  // `$state` avoids Svelte's non-reactive bind:this warning while this remains
+  // read only by imperative `chat?.method()` calls.
+  let chat = $state<ReturnType<typeof Chat> | undefined>();
 
   // --- Conversation state (immutable snapshots via the cinder/chat builders) ---
   let conversation = $state<ConversationHistory>(createConversation({ id: 'harness' }));
@@ -59,13 +74,20 @@
   let historyGeneration = 0;
   let pendingHistoryRequest = $state<{ generation: number; resolve: () => void } | undefined>();
   let historyPage = 0;
+  let readReceipts = $state<Map<string, ReadReceipt> | undefined>(undefined);
+  let directTypingParticipants = $state<TypingParticipant[] | undefined>(undefined);
+  let adapterEnabled = $state(false);
+  let customMessageSnippets = $state(true);
+  let adapterHandlers: ChatPushHandlers | undefined;
 
   // --- Reply controls ---
   let replyText = $state('Here is the answer, delivered in a few deliberate chunks.');
   let replyMode = $state<'instant' | 'typing' | 'streaming'>('typing');
   let streamMechanism = $state<'imperative' | 'content-mutation'>('imperative');
+  let unrelatedTooltipTrigger = $state<HTMLButtonElement | null>(null);
   let streaming = $state(false);
   let streamingStatus = $state('');
+  const submittedImageUrls = new Set<string>();
 
   // --- Tool-call controls ---
   let toolName = $state('exports_check');
@@ -80,7 +102,7 @@
   });
 
   // --- Event log (queryable: data-event + data-payload per entry) ---
-  // Chat emits a burst of identical onunreadindicatorchange events while its
+  // Chat emits a burst of identical onUnreadIndicatorChange events while its
   // empty state settles on mount (all `{unreadCount:0, newMessageIndicatorVisible:
   // false}`). We de-duplicate: a callback whose (event, payload) is identical to
   // the most recent entry for that event is dropped. That kills the mount noise
@@ -111,6 +133,7 @@
   // chunk captures the token active when it was queued and bails if a newer op
   // has started — so an already-dequeued timer can't write into a fresh stream.
   let activeOperation = 0;
+  let holdNextFirstStreamToken = false;
 
   function later(callback: () => void, delay: number): void {
     const handle = setTimeout(() => {
@@ -141,9 +164,10 @@
 
     if (streamingMessageId) {
       if (mode === 'preservePartial') {
-        conversation = replaceMessageContent(conversation, streamingMessageId, streamingPartial);
+        conversation = updateStreamingMessage(conversation, streamingMessageId, streamingPartial);
+        conversation = finalizeStreamingMessage(conversation, streamingMessageId);
       } else {
-        conversation = removeMessage(conversation, streamingMessageId);
+        conversation = cancelStreamingMessage(conversation, streamingMessageId);
       }
       chat?.endStreaming();
     }
@@ -153,7 +177,7 @@
     streamingStatus = '';
   }
 
-  // --- Immutable message helpers (replace/remove by id) ---
+  // --- Immutable message helpers ---
   function replaceMessageContent(
     current: ConversationHistory,
     id: string,
@@ -166,22 +190,6 @@
       messages: { ...current.messages, [id]: { ...existing, content } },
       updatedAt: new Date().toISOString(),
     };
-  }
-
-  function removeMessage(current: ConversationHistory, id: string): ConversationHistory {
-    if (!current.messages[id]) return current;
-    const messages = { ...current.messages };
-    delete messages[id];
-    return {
-      ...current,
-      ids: current.ids.filter((existing) => existing !== id),
-      messages,
-      updatedAt: new Date().toISOString(),
-    };
-  }
-
-  function lastMessageId(current: ConversationHistory): string {
-    return current.ids[current.ids.length - 1] ?? '';
   }
 
   function prependHistoryMessages(current: ConversationHistory): ConversationHistory {
@@ -214,6 +222,10 @@
   }
 
   // --- Reply as the other side ---
+  function handleSendReplyClick(): void {
+    sendReply(replyText);
+  }
+
   function sendReply(text: string): void {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -240,9 +252,10 @@
       return;
     }
 
-    // streaming: append one empty assistant message, then grow ITS content.
-    conversation = appendAssistantMessage(conversation, '');
-    const messageId = lastMessageId(conversation);
+    // streaming: append one streaming assistant message, then grow ITS content.
+    const started = appendStreamingMessage(conversation, 'assistant');
+    conversation = started.conversation;
+    const messageId = started.messageId;
     streamingMessageId = messageId;
     streamingPartial = '';
     // `streaming` drives the composer's Stop affordance for BOTH mechanisms;
@@ -253,9 +266,20 @@
       chat?.beginStreaming(messageId);
     }
     // Deterministic cadence: a fixed number of chunks at a fixed delay so an
-    // intermediate partial state is reliably observable before completion.
+    // intermediate partial state is reliably observable before completion. A
+    // one-shot test hook can hold the first chunk long enough to observe the
+    // post-beginStreaming, pre-first-token presentation state.
     const chunks = splitIntoChunks(trimmed, 5);
-    streamChunk(chunks, 0, activeOperation);
+    if (holdNextFirstStreamToken) {
+      later(() => releaseFirstStreamToken(chunks, activeOperation), 600);
+    } else {
+      streamChunk(chunks, 0, activeOperation);
+    }
+  }
+
+  function releaseFirstStreamToken(chunks: string[], operation: number): void {
+    holdNextFirstStreamToken = false;
+    streamChunk(chunks, 0, operation);
   }
 
   function streamChunk(chunks: string[], index: number, operation: number): void {
@@ -263,12 +287,13 @@
     if (operation !== activeOperation) return;
 
     if (index >= chunks.length) {
-      // Commit the final content into the message, then end the stream.
-      conversation = replaceMessageContent(
+      // Commit the final content into the message, then clear the streaming flag.
+      conversation = updateStreamingMessage(
         conversation,
         streamingMessageId ?? '',
         streamingPartial,
       );
+      conversation = finalizeStreamingMessage(conversation, streamingMessageId ?? '');
       if (streamMechanism === 'imperative') chat?.endStreaming();
       streamingMessageId = null;
       streaming = false;
@@ -277,14 +302,9 @@
     }
     const chunk = chunks[index] ?? '';
     streamingPartial += chunk;
+    conversation = updateStreamingMessage(conversation, streamingMessageId ?? '', streamingPartial);
     if (streamMechanism === 'imperative') {
       chat?.pushToken(chunk);
-    } else {
-      conversation = replaceMessageContent(
-        conversation,
-        streamingMessageId ?? '',
-        streamingPartial,
-      );
     }
     later(() => streamChunk(chunks, index + 1, operation), 120);
   }
@@ -306,7 +326,7 @@
     // Unique per injection — deriving from logCounter would reuse the same id
     // for repeated injections that don't add a log entry, breaking pairing.
     const callId = `call-${crypto.randomUUID()}`;
-    const result =
+    const result: ToolResult =
       toolOutcome === 'error'
         ? {
             callId,
@@ -327,14 +347,14 @@
               action: {
                 type: 'approval' as const,
                 message: 'Approve running this tool before it executes?',
-                risk: 'low' as const,
+                risk: 'high',
                 operation: {
-                  kind: 'command' as const,
-                  command: toolName,
-                  argsPreview: parsedToolArguments.value,
+                  kind: 'command',
+                  command: 'echo approval',
+                  argsPreview: { ok: true },
                 },
                 policyVersion: 'test-policy',
-                idempotencyKey: `harness-${callId}`,
+                idempotencyKey: 'test-approval',
               },
             }
           : { callId, outcome: 'success' as const, content: { status: 'ok' } };
@@ -354,6 +374,8 @@
   function seedThread(): void {
     cancelPending('discard');
     cancelPendingHistoryRequest();
+    readReceipts = undefined;
+    directTypingParticipants = undefined;
     let next = createConversation({ id: 'harness-seeded' });
     // Repeated token "alpha" for deterministic search assertions, plus enough
     // messages to overflow the fixed-height viewport.
@@ -377,6 +399,8 @@
   function seedLongThread(): void {
     cancelPending('discard');
     cancelPendingHistoryRequest();
+    readReceipts = undefined;
+    directTypingParticipants = undefined;
     let next = createConversation({ id: 'harness-seeded-long' });
     for (let index = 0; index < 150; index += 1) {
       next = appendUserMessage(next, `Question ${index + 1}: tell me about alpha.`);
@@ -391,6 +415,7 @@
   }
 
   function seedFailedMessage(): void {
+    readReceipts = undefined;
     conversation = appendMessages(conversation, {
       role: 'user',
       content: 'This message failed to send.',
@@ -398,28 +423,342 @@
     });
   }
 
+  function seedMetadataMessage(): void {
+    cancelPending('discard');
+    cancelPendingHistoryRequest();
+    directTypingParticipants = undefined;
+    const createdAt = '2026-01-01T12:34:00Z';
+    const message: Message = {
+      id: 'metadata-message',
+      role: 'user',
+      content: 'Timestamped message with enough text to prove the receipt stays outside content.',
+      position: 0,
+      createdAt,
+      metadata: {},
+      hidden: false,
+    };
+    conversation = {
+      schemaVersion: 4,
+      id: 'harness-metadata',
+      status: 'active',
+      metadata: {},
+      ids: [message.id],
+      messages: { [message.id]: message },
+      createdAt,
+      updatedAt: createdAt,
+    };
+    readReceipts = new Map([[message.id, { status: 'read', readBy: ['Avery'] }]]);
+  }
+
   function clearConversation(): void {
     cancelPending('discard');
     cancelPendingHistoryRequest();
+    revokeSubmittedImageUrls();
     conversation = createConversation({ id: 'harness-cleared' });
+    readReceipts = undefined;
+    directTypingParticipants = undefined;
     delayedHistory = false;
     historyPage = 0;
   }
 
+  type HarnessImageContent = Extract<MultiModalContent, { type: 'image' }> & {
+    width?: number;
+    height?: number;
+  };
+  type ToolScenario =
+    | 'pending'
+    | 'text-success'
+    | 'json-success'
+    | 'grouped'
+    | 'duplicate-call-id'
+    | 'standalone-navigation'
+    | 'grouped-navigation';
+
+  type ChatHarnessWindow = Window & {
+    corvidaeChatHarnessAppendImages?: (images: HarnessImageContent[]) => void;
+    corvidaeChatHarnessAppendToolScenario?: (scenario: ToolScenario) => void;
+    corvidaeChatHarnessSetCustomMessageSnippets?: (enabled: boolean) => void;
+    corvidaeChatHarnessUseAdapter?: () => void;
+    corvidaeChatHarnessHoldNextFirstStreamToken?: () => void;
+    corvidaeChatHarnessPushTypingSnapshot?: (participants: TypingParticipant[]) => void;
+    corvidaeChatHarnessSetDirectTypingParticipants?: (
+      participants: TypingParticipant[] | undefined,
+    ) => void;
+  };
+
+  const harnessAdapter: ChatAdapter = {
+    sendMessage: async () => {},
+    describeToolCall: (toolCall, result) => ({
+      verb: result?.outcome === 'success' ? 'Checked' : 'Checking',
+      tense: result?.outcome === 'success' ? 'past' : 'present',
+      detail: toolCall.name,
+      kind: 'search',
+    }),
+    subscribe: (_conversationId, handlers) => {
+      adapterHandlers = handlers;
+      return () => {
+        if (adapterHandlers === handlers) adapterHandlers = undefined;
+      };
+    },
+  };
+
+  function createSubmittedImageContent(attachment: { file: File }): HarnessImageContent {
+    const url = URL.createObjectURL(attachment.file);
+    submittedImageUrls.add(url);
+    return {
+      type: 'image',
+      url,
+      mimeType: attachment.file.type,
+      text: attachment.file.name,
+    };
+  }
+
+  function appendToolScenario(scenario: ToolScenario): void {
+    cancelPending('discard');
+
+    if (scenario === 'duplicate-call-id') {
+      const createdAt = '2026-01-01T12:00:00.000Z';
+      const sharedToolCallId = 'shared-occurrence-call';
+      const first: Message = {
+        id: 'duplicate-occurrence-one',
+        role: 'tool-call',
+        content: '',
+        position: 0,
+        createdAt,
+        metadata: {},
+        hidden: false,
+        toolCall: {
+          id: sharedToolCallId,
+          name: 'shared_identity_check',
+          arguments: { occurrence: 'first' },
+        },
+      };
+      const second: Message = {
+        ...first,
+        id: 'duplicate-occurrence-two',
+        position: 1,
+        toolCall: {
+          id: sharedToolCallId,
+          name: 'shared_identity_check',
+          arguments: { occurrence: 'second' },
+        },
+      };
+      conversation = {
+        schemaVersion: 4,
+        id: 'duplicate-tool-call-occurrences',
+        status: 'active',
+        metadata: {},
+        ids: [first.id, second.id],
+        messages: { [first.id]: first, [second.id]: second },
+        createdAt,
+        updatedAt: createdAt,
+      };
+      return;
+    }
+
+    if (scenario === 'standalone-navigation') {
+      conversation = appendMessages(
+        createConversation({ id: 'standalone-tool-navigation' }),
+        { role: 'user', content: 'Before standalone tool activity.' },
+        {
+          role: 'tool-call',
+          content: '',
+          toolCall: {
+            id: `navigation-standalone-${crypto.randomUUID()}`,
+            name: 'standalone_navigation_check',
+            arguments: { step: 'standalone' },
+          },
+        },
+        { role: 'assistant', content: 'After standalone tool activity.' },
+      );
+      return;
+    }
+
+    if (scenario === 'grouped-navigation') {
+      const firstCallId = `navigation-grouped-first-${crypto.randomUUID()}`;
+      const secondCallId = `navigation-grouped-second-${crypto.randomUUID()}`;
+      conversation = appendMessages(
+        createConversation({ id: 'grouped-tool-navigation' }),
+        { role: 'user', content: 'Before grouped tool activity.' },
+        {
+          role: 'tool-call',
+          content: '',
+          toolCall: {
+            id: firstCallId,
+            name: 'grouped_navigation_one',
+            arguments: { step: 1 },
+          },
+        },
+        {
+          role: 'tool-call',
+          content: '',
+          toolCall: {
+            id: secondCallId,
+            name: 'grouped_navigation_two',
+            arguments: { step: 2 },
+          },
+        },
+        {
+          role: 'tool-result',
+          content: '',
+          toolResult: { callId: firstCallId, outcome: 'success', content: { status: 'ok' } },
+        },
+        {
+          role: 'tool-result',
+          content: '',
+          toolResult: { callId: secondCallId, outcome: 'success', content: { status: 'ok' } },
+        },
+        { role: 'assistant', content: 'After grouped tool activity.' },
+      );
+      return;
+    }
+
+    const firstCallId = `scenario-${scenario}-${crypto.randomUUID()}`;
+    const firstCall = {
+      role: 'tool-call' as const,
+      content: '',
+      toolCall: {
+        id: firstCallId,
+        name: scenario === 'pending' ? 'pending_check' : 'exports_check',
+        arguments:
+          scenario === 'pending'
+            ? { package: '@lostgradient/pending', phase: 'queued' }
+            : { package: '@lostgradient/cinder', checks: ['exports', 'types'] },
+      },
+    };
+
+    if (scenario === 'pending') {
+      conversation = appendMessages(conversation, firstCall);
+      return;
+    }
+
+    if (scenario === 'text-success') {
+      conversation = appendMessages(conversation, firstCall, {
+        role: 'tool-result',
+        content: '',
+        toolResult: {
+          callId: firstCallId,
+          outcome: 'success' as const,
+          content: 'plain text result from the tool',
+        },
+      });
+      return;
+    }
+
+    const firstResult = {
+      role: 'tool-result' as const,
+      content: '',
+      toolResult: {
+        callId: firstCallId,
+        outcome: 'success' as const,
+        content: { status: 'ok', package: '@lostgradient/cinder' },
+      },
+    };
+
+    if (scenario === 'json-success') {
+      conversation = appendMessages(conversation, firstCall, firstResult);
+      return;
+    }
+
+    const secondCallId = `scenario-${scenario}-${crypto.randomUUID()}`;
+    const secondCall = {
+      role: 'tool-call' as const,
+      content: '',
+      toolCall: {
+        id: secondCallId,
+        name: 'type_check',
+        arguments: ['components/chat', null],
+      },
+    };
+    const secondResult = {
+      role: 'tool-result' as const,
+      content: '',
+      toolResult: {
+        callId: secondCallId,
+        outcome: 'error' as const,
+        content: null,
+        error: {
+          code: 'typecheck_failed',
+          category: 'internal' as ToolErrorCategory,
+          retryable: false,
+          message: 'Type check failed for the chat package.',
+        },
+      },
+    };
+
+    conversation = appendMessages(conversation, firstCall, secondCall, firstResult, secondResult);
+  }
+
+  function revokeSubmittedImageUrls(): void {
+    for (const url of submittedImageUrls) URL.revokeObjectURL(url);
+    submittedImageUrls.clear();
+  }
+
+  onMount(() => {
+    const harnessWindow = window as ChatHarnessWindow;
+    harnessWindow.corvidaeChatHarnessAppendImages = (images) => {
+      conversation = appendMessages(conversation, {
+        role: 'user',
+        content: images,
+      });
+    };
+    harnessWindow.corvidaeChatHarnessAppendToolScenario = appendToolScenario;
+    harnessWindow.corvidaeChatHarnessSetCustomMessageSnippets = (enabled) => {
+      customMessageSnippets = enabled;
+    };
+    harnessWindow.corvidaeChatHarnessUseAdapter = () => {
+      adapterEnabled = true;
+    };
+    harnessWindow.corvidaeChatHarnessHoldNextFirstStreamToken = () => {
+      holdNextFirstStreamToken = true;
+    };
+    harnessWindow.corvidaeChatHarnessPushTypingSnapshot = (participants) => {
+      if (!adapterHandlers) throw new Error('Chat harness adapter is not subscribed.');
+      adapterHandlers.onTypingChange(participants);
+    };
+    harnessWindow.corvidaeChatHarnessSetDirectTypingParticipants = (participants) => {
+      directTypingParticipants = participants;
+    };
+    return () => {
+      delete harnessWindow.corvidaeChatHarnessAppendImages;
+      delete harnessWindow.corvidaeChatHarnessAppendToolScenario;
+      delete harnessWindow.corvidaeChatHarnessSetCustomMessageSnippets;
+      delete harnessWindow.corvidaeChatHarnessUseAdapter;
+      delete harnessWindow.corvidaeChatHarnessHoldNextFirstStreamToken;
+      delete harnessWindow.corvidaeChatHarnessPushTypingSnapshot;
+      delete harnessWindow.corvidaeChatHarnessSetDirectTypingParticipants;
+    };
+  });
+
   // --- Chat callbacks ---
   function handleSubmit(event: ChatSubmitEvent): void {
     const content = typeof event.message.content === 'string' ? event.message.content : '';
-    record('onsubmit', content);
+    record('onSubmit', JSON.stringify({ content, attachments: event.attachments.length }));
+    const imageParts: MultiModalContent[] = event.attachments
+      .filter((attachment) => attachment.kind === 'image')
+      .map((attachment) => createSubmittedImageContent(attachment));
+    const messageContent =
+      imageParts.length > 0
+        ? [
+            ...(content ? [{ type: 'text', text: content } satisfies MultiModalContent] : []),
+            ...imageParts,
+          ]
+        : event.message.content;
     conversation = appendMessages(conversation, {
       role: 'user',
-      content: event.message.content,
+      content: messageContent,
     });
     if (autoReply) sendReply(replyText);
   }
 
   function handleEdit(event: { messageId: string; content: string }): void {
-    record('onedit', event);
+    record('onEdit', event);
     conversation = replaceMessageContent(conversation, event.messageId, event.content);
+  }
+
+  function handleStopGenerating(event: { messageId: string }): void {
+    cancelPending('preservePartial');
+    record('onStopGenerating', event.messageId);
   }
 
   function cancelPendingHistoryRequest(): void {
@@ -443,7 +782,7 @@
         request = { generation, resolve };
         pendingHistoryRequest = request;
       });
-      if (pendingHistoryRequest === request) {
+      if (pendingHistoryRequest?.generation === request.generation) {
         pendingHistoryRequest = undefined;
       }
     }
@@ -455,6 +794,7 @@
   onDestroy(() => {
     cancelPending('destroy');
     cancelPendingHistoryRequest();
+    revokeSubmittedImageUrls();
   });
 
   const surfaceMode = $derived<'default' | 'transparent'>(
@@ -468,6 +808,17 @@
   );
   const historyProps = $derived(
     historyEnabled ? { moreHistoryAvailable: true, onLoadHistory: handleLoadHistory } : {},
+  );
+  const readReceiptProps = $derived(readReceipts ? { readReceipts } : {});
+  const adapterProps = $derived(
+    adapterEnabled
+      ? {
+          adapter: harnessAdapter,
+          onTypingChange: (participants: TypingParticipant[]) =>
+            record('onTypingChange', participants),
+          onReadReceipt: (event: ChatReadReceiptEvent) => record('onReadReceipt', event),
+        }
+      : {},
   );
 </script>
 
@@ -488,13 +839,27 @@
        svelte:element keeps the rendered DOM as a div while avoiding the
        static a11y warning for this focusable scroll-region pattern. -->
   <svelte:element
-    this={'div'}
+    this={"div"}
     data-testid="harness-controls"
     role="group"
     aria-label="Harness controls"
     tabindex={0}
     style="flex: 1 1 20rem; min-width: 0; max-height: min(80vh, 44rem); overflow-y: auto; display: grid; gap: 1rem; padding: 1rem; border: 1px solid var(--cinder-border-muted); border-radius: var(--cinder-radius-md); background: var(--cinder-surface-inset);"
   >
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+      <button
+        bind:this={unrelatedTooltipTrigger}
+        type="button"
+        data-testid="unrelated-tooltip-trigger"
+      >
+        Unrelated tooltip
+      </button>
+      <Tooltip
+        text="Unrelated tooltip remains available"
+        triggerRef={unrelatedTooltipTrigger}
+        class="unrelated-tooltip"
+      />
+    </div>
     <section style="display: grid; gap: 0.5rem;">
       <strong>Reply as the other side</strong>
       <Textarea
@@ -525,7 +890,7 @@
           <Segment value="content-mutation">Content</Segment>
         </SegmentedControl>
       {/if}
-      <Button data-testid="send-reply" onclick={() => sendReply(replyText)}>Send reply</Button>
+      <Button data-testid="send-reply" onclick={handleSendReplyClick}>Send reply</Button>
     </section>
 
     <section
@@ -613,6 +978,9 @@
         <Button data-testid="seed-long" variant="secondary" onclick={seedLongThread}
           >Seed long thread</Button
         >
+        <Button data-testid="seed-metadata" variant="secondary" onclick={seedMetadataMessage}
+          >Seed metadata message</Button
+        >
         <Button data-testid="clear" variant="secondary" onclick={clearConversation}>Clear</Button>
         <Button data-testid="scroll-top" variant="ghost" onclick={() => chat?.scrollToTop()}
           >Scroll to top</Button
@@ -636,7 +1004,7 @@
            svelte:element keeps the rendered DOM as a div while avoiding the
            static a11y warning for this focusable scroll-region pattern. -->
       <svelte:element
-        this={'div'}
+        this={"div"}
         data-testid="event-log"
         role="group"
         aria-label="Event log"
@@ -657,63 +1025,108 @@
        viewport-relative height keep it usable even when wrapped below the
        controls on a narrow viewport. -->
   <div style="flex: 3 1 24rem; min-width: 0; height: min(70vh, 42rem); min-height: 26rem;">
-    <Chat
-      bind:this={chat}
-      id="harness-chat"
-      {conversation}
-      {streaming}
-      {streamingStatus}
-      capabilities={{ attachments, search, copy, editing, retry }}
-      {surfaceMode}
-      {virtualized}
-      virtualizationEstimatedRowHeight={72}
-      virtualizationInitialHeight={480}
-      virtualizationOverscan={2}
-      {...emptyPromptsProp}
-      {...historyProps}
-      onsubmit={handleSubmit}
-      onedit={handleEdit}
-      onretry={(messageId: string) => record('onretry', messageId)}
-      onstopgenerating={(event: { messageId: string }) => {
-        cancelPending('preservePartial');
-        record('onstopgenerating', event.messageId);
-      }}
-      onjumptolatest={() => record('onjumptolatest')}
-      onscrollstatechange={(event: { atBottom: boolean }) =>
-        record('onscrollstatechange', { atBottom: event.atBottom })}
-      onunreadindicatorchange={(event: {
-        unreadCount: number;
-        newMessageIndicatorVisible: boolean;
-      }) => record('onunreadindicatorchange', event)}
-      onExpandedChange={(expanded: boolean) => record('onExpandedChange', { expanded })}
-      onattachmentadd={(attachment: { id: string }) => record('onattachmentadd', attachment.id)}
-      onattachmentremove={(attachment: { id: string }) =>
-        record('onattachmentremove', attachment.id)}
-      onattachmentfailure={(_file: File, error: string) => record('onattachmentfailure', error)}
-    >
-      {#snippet header()}
-        <div
-          data-testid="harness-header"
-          style="padding: 0.5rem 0.75rem; font-weight: var(--cinder-font-semibold);"
-        >
-          Harness conversation
-        </div>
-      {/snippet}
-      {#snippet messageActions({ message }: ChatRowContext)}
-        <Button
-          iconOnly={true}
-          label="Message action"
-          size="xs"
-          variant="ghost"
-          data-testid="harness-message-action"
-          data-message-id={message.id}
-        >
-          ★
-        </Button>
-      {/snippet}
-      {#snippet messageStatus({ message }: ChatRowContext)}
-        <span data-testid="harness-message-status" data-message-id={message.id}>·</span>
-      {/snippet}
-    </Chat>
+    {#if customMessageSnippets}
+      <Chat
+        bind:this={chat}
+        id="harness-chat"
+        {conversation}
+        {streaming}
+        {streamingStatus}
+        capabilities={{ attachments, search, copy, editing, retry }}
+        {surfaceMode}
+        {virtualized}
+        virtualizationEstimatedRowHeight={72}
+        virtualizationInitialHeight={480}
+        virtualizationOverscan={2}
+        {...emptyPromptsProp}
+        {...historyProps}
+        {...readReceiptProps}
+        typingParticipants={directTypingParticipants}
+        {...adapterProps}
+        onSubmit={handleSubmit}
+        onEdit={handleEdit}
+        onRetry={(messageId: string) => record('onRetry', messageId)}
+        onStopGenerating={handleStopGenerating}
+        onJumpToLatest={() => record('onJumpToLatest')}
+        onScrollStateChange={(event: { atBottom: boolean }) =>
+          record('onScrollStateChange', { atBottom: event.atBottom })}
+        onUnreadIndicatorChange={(event: {
+          unreadCount: number;
+          newMessageIndicatorVisible: boolean;
+        }) => record('onUnreadIndicatorChange', event)}
+        onExpandedChange={(expanded: boolean) => record('onExpandedChange', { expanded })}
+        onAttachmentAdd={(attachment: { id: string }) => record('onAttachmentAdd', attachment.id)}
+        onAttachmentRemove={(attachment: { id: string }) =>
+          record('onAttachmentRemove', attachment.id)}
+        onAttachmentFailure={(_file: File, error: string) => record('onAttachmentFailure', error)}
+      >
+        {#snippet header()}
+          <div
+            data-testid="harness-header"
+            style="padding: 0.5rem 0.75rem; font-weight: var(--cinder-font-semibold);"
+          >
+            Harness conversation
+          </div>
+        {/snippet}
+        {#snippet messageActions({ message }: ChatRowContext)}
+          <Button
+            iconOnly={true}
+            label="Message action"
+            size="xs"
+            variant="ghost"
+            data-testid="harness-message-action"
+            data-message-id={message.id}
+          >
+            ★
+          </Button>
+        {/snippet}
+        {#snippet messageStatus({ message }: ChatRowContext)}
+          <span data-testid="harness-message-status" data-message-id={message.id}>·</span>
+        {/snippet}
+      </Chat>
+    {:else}
+      <Chat
+        bind:this={chat}
+        id="harness-chat"
+        {conversation}
+        {streaming}
+        {streamingStatus}
+        capabilities={{ attachments, search, copy, editing, retry }}
+        {surfaceMode}
+        {virtualized}
+        virtualizationEstimatedRowHeight={72}
+        virtualizationInitialHeight={480}
+        virtualizationOverscan={2}
+        {...emptyPromptsProp}
+        {...historyProps}
+        {...readReceiptProps}
+        typingParticipants={directTypingParticipants}
+        {...adapterProps}
+        onSubmit={handleSubmit}
+        onEdit={handleEdit}
+        onRetry={(messageId: string) => record('onRetry', messageId)}
+        onStopGenerating={handleStopGenerating}
+        onJumpToLatest={() => record('onJumpToLatest')}
+        onScrollStateChange={(event: { atBottom: boolean }) =>
+          record('onScrollStateChange', { atBottom: event.atBottom })}
+        onUnreadIndicatorChange={(event: {
+          unreadCount: number;
+          newMessageIndicatorVisible: boolean;
+        }) => record('onUnreadIndicatorChange', event)}
+        onAttachmentAdd={(attachment: { id: string }) => record('onAttachmentAdd', attachment.id)}
+        onAttachmentRemove={(attachment: { id: string }) =>
+          record('onAttachmentRemove', attachment.id)}
+        onAttachmentFailure={(_file: File, error: string) => record('onAttachmentFailure', error)}
+      >
+        {#snippet header()}
+          <div
+            data-testid="harness-header"
+            style="padding: 0.5rem 0.75rem; font-weight: var(--cinder-font-semibold);"
+          >
+            Harness conversation
+          </div>
+        {/snippet}
+      </Chat>
+    {/if}
   </div>
 </div>

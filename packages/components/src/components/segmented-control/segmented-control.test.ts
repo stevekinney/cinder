@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { tick } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -998,7 +998,7 @@ describe('SegmentedControl — variants', () => {
 
 describe('SegmentedControl — tablist variant', () => {
   // These tests pin the accessibility guardrails from
-  // docs/decisions/segmented-control-tablist-variant.md. They assert the
+  // documentation/decisions/segmented-control-tablist-variant.md. They assert the
   // existing semantics are correct so the visual CSS does not advertise tab
   // behavior the interaction model fails to satisfy.
   //

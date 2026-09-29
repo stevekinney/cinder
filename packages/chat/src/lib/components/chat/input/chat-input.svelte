@@ -63,7 +63,7 @@
     /** Called when stop is requested (transforms send button into stop button when sending=true) */
     onstop?: (() => void) | undefined;
     /** Called when user input or insertAtRange changes the composer's plain-text value. */
-    oncomposerinput?: ((value: string, event?: Event) => void) | undefined;
+    onComposerInput?: ((value: string, event?: Event) => void) | undefined;
     /**
      * Called before ChatInput's internal Enter-to-send handling when a keydown
      * originates from the composer textarea. Calling `preventDefault()` skips
@@ -75,11 +75,11 @@
     /** Called when focus leaves the composer textarea. */
     oncomposerblur?: ((event: FocusEvent) => void) | undefined;
     /** Called when an attachment is added */
-    onattachmentadd?: ((attachment: ChatAttachment) => void) | undefined;
+    onAttachmentAdd?: ((attachment: ChatAttachment) => void) | undefined;
     /** Called when an attachment is removed */
-    onattachmentremove?: ((attachment: ChatAttachment) => void) | undefined;
+    onAttachmentRemove?: ((attachment: ChatAttachment) => void) | undefined;
     /** Called when an attachment fails validation */
-    onattachmentfailure?: ((file: File, error: string) => void) | undefined;
+    onAttachmentFailure?: ((file: File, error: string) => void) | undefined;
 
     // Snippets for extensibility
     /** Custom actions area (e.g., additional buttons) */
@@ -113,8 +113,7 @@
   import { classNames } from '../../../utilities/class-names.ts';
   import { useAnnouncer } from '../../../utilities/use-announcer.svelte.ts';
   import { createIdFactory, useStableId } from '../../../utilities/id-factory.ts';
-  import { ArrowUp, Paperclip, Square, X } from '@lostgradient/cinder/icons';
-  import Button from '@lostgradient/cinder/button';
+  import { ArrowUp, Paperclip, Square, Tooltip, X, Button } from '@lostgradient/cinder';
   import { deriveAttachmentKind } from './attachment-kind.ts';
   import ChatAttachmentPreview from './chat-attachment-preview.svelte';
 
@@ -163,13 +162,13 @@
     largePasteThreshold = 8_000,
     onsubmit,
     onstop,
-    oncomposerinput,
+    onComposerInput,
     oncomposerkeydown,
     oncomposerselectionchange,
     oncomposerblur,
-    onattachmentadd,
-    onattachmentremove,
-    onattachmentfailure,
+    onAttachmentAdd,
+    onAttachmentRemove,
+    onAttachmentFailure,
     actions,
     ...rest
   }: ChatInputProps = $props();
@@ -183,6 +182,7 @@
   let formElement = $state<HTMLFormElement | null>(null);
   let editorElement = $state<HTMLTextAreaElement | null>(null);
   let fileInputRef = $state<HTMLInputElement | null>(null);
+  let sendButtonRef = $state<HTMLButtonElement | null>(null);
 
   // Internal state
   let attachments = $state<ChatAttachment[]>([]);
@@ -195,20 +195,40 @@
 
   // Derived state
   const errorId = $derived(`${id}-error`);
-  const hintId = $derived(`${id}-hint`);
   const shortcutDescriptionId = $derived(`${id}-shortcut-description`);
   const isWhitespaceOnly = $derived(value.trim().length === 0);
   const hasPendingAttachments = $derived(
     attachments.some((a) => a.status === 'pending' || a.status === 'uploading'),
   );
   const hasReadyPromotedPaste = $derived(
-    attachments.some((attachment) => attachment.status === 'ready' && attachment.restoreText),
+    attachments.some(
+      (attachment) =>
+        attachment.status === 'ready' &&
+        attachment.restoreText !== undefined &&
+        attachment.restoreText.trim().length > 0,
+    ),
+  );
+  const hasReadyAttachments = $derived(
+    attachments.some((attachment) => attachment.status === 'ready' && !attachment.restoreText),
   );
   // Allow submit when text is present, even if some attachments errored.
   // Only block on pending/uploading attachments (they're not yet ready to send).
   const canSubmit = $derived(
-    (!isWhitespaceOnly || hasReadyPromotedPaste) && !disabled && !sending && !hasPendingAttachments,
+    (!isWhitespaceOnly || hasReadyAttachments || hasReadyPromotedPaste) &&
+      !disabled &&
+      !sending &&
+      !hasPendingAttachments,
   );
+  const sendTooltipText = $derived.by(() => {
+    if (hasPendingAttachments) return 'Wait for attachments';
+    if (isWhitespaceOnly && !hasReadyAttachments && !hasReadyPromotedPaste) {
+      return 'Add a message or attachment';
+    }
+    if (showStopButton) return 'Stop generating';
+    if (submitOn === 'modifier-enter') return 'Send (Command or Control + Enter)';
+    if (submitOn === 'enter-if-single-line' && value.includes('\n')) return 'Send message';
+    return 'Send (Enter)';
+  });
 
   // Determine if we're in form action mode
   const isFormActionMode = $derived(!!action);
@@ -216,6 +236,12 @@
   // =========================================================================
   // Attachment Handling
   // =========================================================================
+
+  function handleSendButtonClick(event: MouseEvent): void {
+    if (!showStopButton) return;
+    event.preventDefault();
+    onstop?.();
+  }
 
   function isValidType(file: File): boolean {
     return acceptedTypes.some((type) => {
@@ -240,7 +266,7 @@
   ): ChatAttachment | null {
     // Type validation
     if (!isValidType(file)) {
-      onattachmentfailure?.(
+      onAttachmentFailure?.(
         file,
         `Invalid file type: ${file.type}. Accepted types: ${acceptedTypes.join(', ')}.`,
       );
@@ -250,7 +276,7 @@
     // Size validation
     if (file.size > maxFileSize) {
       const maxSizeMB = Math.round(maxFileSize / (1024 * 1024));
-      onattachmentfailure?.(file, `File exceeds ${maxSizeMB}MB limit`);
+      onAttachmentFailure?.(file, `File exceeds ${maxSizeMB}MB limit`);
       return null;
     }
 
@@ -283,16 +309,17 @@
     };
 
     attachments = [...attachments, attachment];
-    onattachmentadd?.(attachment);
+    onAttachmentAdd?.(attachment);
     announcer.announce(`${KIND_LABELS[kind]} attached: ${file.name}`);
 
     // Fire-and-forget text extraction for code files
     if (kind === 'code' && restoreText === undefined) {
-      file.text().then(
+      void file.text().then(
         (text) => {
           attachments = attachments.map((a) =>
             a.id === attachment.id ? { ...a, textContent: text, status: 'ready' as const } : a,
           );
+          return undefined;
         },
         () => {
           attachments = attachments.map((a) =>
@@ -300,6 +327,7 @@
               ? { ...a, status: 'error' as const, error: 'Failed to read file' }
               : a,
           );
+          return undefined;
         },
       );
     }
@@ -333,12 +361,12 @@
             : remainingAttachment,
         );
         value = `${value.slice(0, start)}${attachment.restoreText}${value.slice(end)}`;
-        oncomposerinput?.(value);
+        onComposerInput?.(value);
         const caretIndex = start + attachment.restoreText.length;
         previousComposerValue = value;
         queueMicrotask(() => editorElement?.setSelectionRange(caretIndex, caretIndex));
       }
-      onattachmentremove?.(attachment);
+      onAttachmentRemove?.(attachment);
       announcer.announce(`${KIND_LABELS[attachment.kind]} removed`);
     }
   }
@@ -371,7 +399,7 @@
     }
 
     // If we have files, prevent default and let addAttachment handle all validation
-    // (including calling onattachmentfailure for invalid types/sizes)
+    // (including calling onAttachmentFailure for invalid types/sizes)
     if (files.length > 0) {
       event.preventDefault();
       files.forEach((file) => addAttachment(file));
@@ -394,7 +422,7 @@
           editorElement.setRangeText('', restoreRange.start, restoreRange.end, 'start');
           value = editorElement.value;
           previousComposerValue = value;
-          oncomposerinput?.(value, event);
+          onComposerInput?.(value, event);
         }
       }
     }
@@ -468,13 +496,14 @@
     const promotedPastes = readyAttachments.filter(
       (attachment) => attachment.restoreText !== undefined,
     );
-    if (trimmedContent.length === 0 && promotedPastes.length === 0) {
+    if (trimmedContent.length === 0 && promotedPastes.length === 0 && !hasReadyAttachments) {
       event.preventDefault();
       return;
     }
 
     const submittedContent = promotedPastes
       .map((attachment, index) => ({ attachment, index }))
+      .slice()
       .sort(
         (left, right) =>
           (right.attachment.restoreRange?.start ?? latestContent.length) -
@@ -487,7 +516,7 @@
         return `${content.slice(0, start)}${attachment.restoreText ?? ''}${content.slice(end)}`;
       }, latestContent)
       .trim();
-    if (submittedContent.length === 0) {
+    if (submittedContent.length === 0 && !hasReadyAttachments) {
       event.preventDefault();
       return;
     }
@@ -640,7 +669,7 @@
       previousComposerValue = value;
     }
     pendingInputRange = null;
-    oncomposerinput?.(value, event);
+    onComposerInput?.(value, event);
   }
 
   function handleBeforeInput(event: InputEvent): void {
@@ -728,7 +757,7 @@
     previousComposerValue = nextValue;
     editorElement.focus();
     editorElement.setSelectionRange(caret, caret);
-    oncomposerinput?.(value);
+    onComposerInput?.(value);
   }
 
   export function addFiles(files: File[]): void {
@@ -819,8 +848,7 @@
       {disabled}
       class="chat-input-editor"
       aria-describedby={shortcutDescriptionId}
-      rows="1"
-    ></textarea>
+      rows="1"></textarea>
   </div>
 
   <!-- Footer with actions -->
@@ -866,17 +894,6 @@
           Press Enter to send. Press Shift+Enter for a newline.
         {/if}
       </span>
-      {#if !showStopButton}
-        <span id={hintId} class="chat-input-hint" aria-hidden="true">
-          {#if submitOn === 'modifier-enter'}
-            <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd> to send
-          {:else if submitOn === 'enter-if-single-line' && value.includes('\n')}
-            Use the send button to send this multiline message
-          {:else}
-            <kbd>Enter</kbd> to send, <kbd>Shift</kbd>+<kbd>Enter</kbd> for newline
-          {/if}
-        </span>
-      {/if}
     </div>
 
     <div class="chat-input-footer-right">
@@ -884,54 +901,55 @@
         {@render actions()}
       {/if}
 
-      {#if showStopButton}
-        <!-- Stop button: replaces send button during streaming when onstop is provided -->
-        <button
-          type="button"
-          class="chat-input-send"
-          data-stop
-          onclick={onstop}
-          aria-label="Stop generating"
-          aria-describedby={shortcutDescriptionId}
-        >
+      <!-- Send/Stop trigger stays mounted so Tooltip does not tear down while focus leaves it. -->
+      <button
+        bind:this={sendButtonRef}
+        type={showStopButton ? 'button' : 'submit'}
+        class="chat-input-send"
+        data-stop={showStopButton ? '' : undefined}
+        disabled={showStopButton ? false : !canSubmit}
+        onclick={handleSendButtonClick}
+        aria-label={showStopButton
+          ? 'Stop generating'
+          : sending
+            ? 'Sending message'
+            : 'Send message'}
+        aria-describedby={shortcutDescriptionId}
+      >
+        {#if showStopButton}
           <Square class="cinder-icon-sm" />
-        </button>
-      {:else}
-        <!-- Send button: shows spinner when sending (without onstop), otherwise arrow -->
-        <button
-          type="submit"
-          class="chat-input-send"
-          disabled={!canSubmit}
-          aria-label={sending ? 'Sending message' : 'Send message'}
-          aria-describedby={shortcutDescriptionId}
-        >
-          {#if sending}
-            <svg
-              class="chat-input-spinner"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <circle
-                class="spinner-track"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="spinner-head"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-          {:else}
-            <ArrowUp class="cinder-icon-sm" />
-          {/if}
-        </button>
-      {/if}
+        {:else if sending}
+          <svg
+            class="chat-input-spinner"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <circle
+              class="spinner-track"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              stroke-width="4"
+            ></circle>
+            <path
+              class="spinner-head"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            ></path>
+          </svg>
+        {:else}
+          <ArrowUp class="cinder-icon-sm" />
+        {/if}
+      </button>
+      <Tooltip
+        text={sendTooltipText}
+        class="chat-input-tooltip"
+        placement="top"
+        triggerRef={sendButtonRef}
+      />
     </div>
   </div>
 
@@ -996,27 +1014,16 @@
     gap: var(--cinder-space-2);
   }
 
-  /* Wrapper allows remove button to extend beyond image bounds without clipping */
+  /* Keep the remove control inside the preview while preserving its hit target. */
   .chat-input-attachment-wrapper {
     position: relative;
-    /* Add padding to accommodate the extended touch target.
-       The remove button below is absolutely positioned with physical `right`
-       to anchor at the visual top-right corner of the image in both LTR and
-       RTL, so the wrapper's accommodating padding must also be physical to
-       match. Using padding-inline-end would flip in RTL while the button
-       stayed anchored right, causing overflow/clipping. */
-    padding-top: var(--cinder-space-2);
-    /* stylelint-disable-next-line csstools/use-logical */
-    padding-right: var(--cinder-space-2);
+    overflow: hidden;
   }
 
   .chat-input-attachment-remove {
     position: absolute;
-    /* Position so visual center aligns with top-right corner of image.
-       Wrapper has 8px padding, button is 44px (22px to center).
-       To center button at image corner: padding - (button_size / 2) = 8px - 22px = -14px */
-    top: calc(var(--cinder-space-2) - var(--cinder-touch-target-min) / 2);
-    right: calc(var(--cinder-space-2) - var(--cinder-touch-target-min) / 2);
+    inset-block-start: 0;
+    inset-inline-end: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1024,72 +1031,46 @@
     width: var(--cinder-touch-target-min);
     height: var(--cinder-touch-target-min);
     padding: 0;
-    /* Transparent background with centered visible circle */
-    background: transparent;
+    background: oklch(0% 0 0 / 70%);
     border: none;
     border-radius: var(--cinder-radius-full);
     cursor: pointer;
     color: white;
-    opacity: 0;
+    opacity: 1;
     transition:
       opacity var(--cinder-duration-fast) var(--cinder-ease-standard),
       background var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  /* Visible circular background - smaller than touch target, centered */
-  .chat-input-attachment-remove::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 1.25rem;
-    height: 1.25rem;
-    background: oklch(0% 0 0 / 70%);
-    border-radius: var(--cinder-radius-full);
-    transform: translate(-50%, -50%);
-    transition: background var(--cinder-duration-fast) var(--cinder-ease-standard);
-    z-index: -1;
-  }
-
   @media (hover: hover) {
-    .chat-input-attachment-remove:hover::before {
+    .chat-input-attachment-remove:hover {
       background: var(--cinder-status-danger-solid);
     }
   }
 
-  .chat-input-attachment-wrapper:hover .chat-input-attachment-remove,
-  .chat-input-attachment-wrapper:focus-within .chat-input-attachment-remove {
-    opacity: 1;
-  }
-
-  /* The button is a 44px touch target but the visible chip is the centered
-     1.25rem `::before` circle. Paint the ring on the visible circle so it hugs
-     the chip rather than the oversized hit area. */
   .chat-input-attachment-remove:focus-visible {
     opacity: 1;
   }
 
   .chat-input-attachment-remove:focus-visible::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
     box-shadow: inset 0 0 0 var(--cinder-ring-width)
       var(--_cinder-chat-input-attachment-remove-ring, var(--cinder-ring-color));
+    pointer-events: none;
   }
 
   @media (forced-colors: active) {
-    /* Forced-colors strips the box-shadow ring, so repaint a system-color
-       outline directly on the visible `::before` circle (which is round via
-       border-radius: full, so the outline follows the chip). Painting on the
-       circle itself avoids depending on fragile parent-to-pseudo offset math. */
+    .chat-input-attachment-remove:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: var(--cinder-ring-offset);
+    }
     .chat-input-attachment-remove:focus-visible::before {
       box-shadow: none;
       outline: var(--cinder-ring-width) solid ButtonText;
       outline-offset: var(--cinder-ring-offset);
-    }
-  }
-
-  /* Touch devices: always show remove button */
-  @media (hover: none) {
-    .chat-input-attachment-remove {
-      opacity: 1;
     }
   }
 
@@ -1132,7 +1113,7 @@
   /* Footer */
   .chat-input-footer {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: space-between;
     gap: var(--cinder-space-2);
   }
@@ -1140,34 +1121,13 @@
   .chat-input-footer-left,
   .chat-input-footer-right {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     gap: var(--cinder-space-2);
   }
 
-  .chat-input-hint {
-    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
-    color: var(--cinder-text-subtle);
-  }
-
-  .chat-input-hint kbd {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 1.25rem;
-    height: 1.25rem;
-    padding: 0 var(--cinder-space-1);
-    font-family: inherit;
-    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
-    color: var(--cinder-text-default);
-    background: var(--cinder-surface-raised);
-    border: 1px solid var(--cinder-border);
-    border-radius: var(--cinder-radius-sm);
-  }
-
-  /* Hide hint on narrow containers */
-  @container (max-width: 320px) {
-    .chat-input-hint {
-      display: none;
+  @media (pointer: coarse) {
+    :global(.chat-input-tooltip.cinder-tooltip) {
+      display: none !important;
     }
   }
 

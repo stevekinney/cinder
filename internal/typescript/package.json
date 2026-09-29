@@ -1,0 +1,10 @@
+{
+  "name": "@lostgradient/typescript",
+  "private": true,
+  "exports": {
+    "./library.json": "./library.json",
+    "./browser.json": "./browser.json"
+  },
+  "type": "module",
+  "version": "0.0.0"
+}

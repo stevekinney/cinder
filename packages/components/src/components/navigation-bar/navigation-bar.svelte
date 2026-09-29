@@ -26,7 +26,7 @@
 <script lang="ts">
   import type { Placement } from '@floating-ui/dom';
   import type { NavigationBarProps, NavigationVariant } from './navigation-bar.types.ts';
-  import type { SequentialFocusTarget } from '../../utilities/focus.ts';
+  import type { SequentialFocusTarget } from '../../utilities/composed-tree.ts';
   import { flushSync, onDestroy } from 'svelte';
   import { BROWSER as browser } from 'esm-env';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
@@ -284,7 +284,7 @@
     // If observer doesn't fire synchronously (edge case), set a fallback after a microtask.
     // In modern browsers, observe() triggers callback synchronously on the same tick.
     if (!hasInitialMeasurement) {
-      Promise.resolve().then(() => {
+      void Promise.resolve().then(() => {
         if (!hasInitialMeasurement) {
           // Fallback: measure once more using contentRect-like calculation
           const rect = navigationBarElement?.getBoundingClientRect();
@@ -297,6 +297,7 @@
             hasInitialMeasurement = true;
           }
         }
+        return undefined;
       });
     }
 
@@ -354,7 +355,7 @@
         : null;
     if (brandTarget) return brandTarget;
 
-    const items = getSequentialNavigationItems();
+    const navigationItems = getSequentialNavigationItems();
     const toggleTabIndex = toggle ? getTabIndexValue(toggle) : 0;
     if (toggleTabIndex > 0) {
       // A positive-tabindex toggle has already passed every lower-or-equal
@@ -374,8 +375,8 @@
       // better outcome even though, in principle, a higher positive tier
       // could theoretically exist elsewhere on the page.
       return (
-        items.find((item) => getTabIndexValue(item) >= toggleTabIndex) ??
-        items.find((item) => getTabIndexValue(item) === 0) ??
+        navigationItems.find((item) => getTabIndexValue(item) >= toggleTabIndex) ??
+        navigationItems.find((item) => getTabIndexValue(item) === 0) ??
         null
       );
     }
@@ -385,7 +386,7 @@
     // is sorted positives-first, so its globally-first entry can be a
     // positive-tabindex item the toggle has already passed; filter for the
     // first zero-tier item instead of naively taking items[0].
-    return items.find((item) => getTabIndexValue(item) === 0) ?? null;
+    return navigationItems.find((item) => getTabIndexValue(item) === 0) ?? null;
   }
 
   function bridgeBrandTabToPortaledPanel(event: KeyboardEvent): boolean {
@@ -716,15 +717,16 @@
   }
 
   function focusAdjacentNavigationItem(currentItem: HTMLElement, direction: -1 | 1): void {
-    const items = getNavigationItems();
-    if (items.length === 0) return;
+    const navigationItems = getNavigationItems();
+    if (navigationItems.length === 0) return;
 
-    const currentIndex = items.indexOf(currentItem);
+    const currentIndex = navigationItems.indexOf(currentItem);
     if (currentIndex === -1) return;
 
-    for (let step = 1; step < items.length; step++) {
-      const nextIndex = (currentIndex + direction * step + items.length) % items.length;
-      const nextItem = items[nextIndex];
+    for (let step = 1; step < navigationItems.length; step++) {
+      const nextIndex =
+        (currentIndex + direction * step + navigationItems.length) % navigationItems.length;
+      const nextItem = navigationItems[nextIndex];
       if (nextItem && isEnabledNavigationItem(nextItem)) {
         nextItem.focus();
         return;

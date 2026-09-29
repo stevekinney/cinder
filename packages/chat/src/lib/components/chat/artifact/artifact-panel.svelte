@@ -15,7 +15,7 @@
 </script>
 
 <script lang="ts">
-  import { X } from '@lostgradient/cinder/icons';
+  import { X } from '@lostgradient/cinder';
 
   let { instanceId = 'artifact', title, onclose, children }: ArtifactPanelProps = $props();
 
@@ -88,11 +88,13 @@
   }
 
   .artifact-panel-header {
-    display: flex;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
     align-items: center;
-    justify-content: space-between;
-    padding: var(--cinder-space-3) var(--cinder-space-4);
-    border-bottom: 1px solid var(--cinder-border-muted);
+    box-sizing: border-box;
+    height: 48px;
+    padding: 2px var(--cinder-space-2);
+    box-shadow: inset 0 -1px 0 var(--cinder-border-muted);
     flex-shrink: 0;
     gap: var(--cinder-space-2);
   }
@@ -102,24 +104,25 @@
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-text-default);
     overflow: hidden;
+    text-align: center;
     text-overflow: ellipsis;
     white-space: nowrap;
-    flex: 1;
+    grid-column: 2;
   }
 
   .artifact-panel-close {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: var(--cinder-touch-target-min);
-    height: var(--cinder-touch-target-min);
+    width: 44px;
+    height: 44px;
     padding: 0;
     background: transparent;
     border: none;
     border-radius: var(--cinder-radius-md);
     color: var(--cinder-text-muted);
     cursor: pointer;
-    flex-shrink: 0;
+    grid-column: 3;
     transition:
       background var(--cinder-duration-fast) var(--cinder-ease-standard),
       color var(--cinder-duration-fast) var(--cinder-ease-standard);

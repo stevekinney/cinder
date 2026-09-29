@@ -20,9 +20,8 @@
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
   import { stringifyOrNull } from '../../../utilities/stringify.ts';
-  import Dropdown from '@lostgradient/cinder/dropdown';
+  import { Dropdown, Check, Copy, FileCode, FileText } from '@lostgradient/cinder';
   import { createCopyState } from '../../../utilities/copy-state.svelte.ts';
-  import { Check, Copy, FileCode, FileText } from '@lostgradient/cinder/icons';
   import { getMessages, messagesToMarkdown } from '../utilities/index.ts';
 
   let {

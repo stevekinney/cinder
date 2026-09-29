@@ -1,4 +1,4 @@
-import type { RenderOptions } from '@lostgradient/markdown/rendering';
+import type { RenderOptions } from '@lostgradient/markdown';
 
 type MarkdownPipeline = {
   renderMarkdownWithMath: (content: string, options?: RenderOptions) => Promise<{ html: string }>;
@@ -16,7 +16,7 @@ export function preloadMarkdownPipeline(
   // harnesses from evaluating the browser-only rendering graph.
   if (typeof window === 'undefined' || window !== globalThis) return undefined;
 
-  return (pipelinePromise ??= (loadPipeline?.() ?? import('@lostgradient/markdown/rendering'))
+  return (pipelinePromise ??= (loadPipeline?.() ?? import('@lostgradient/markdown'))
     .then(({ renderMarkdownWithMath }) => ({ renderMarkdownWithMath }))
     .catch(() => {
       // Allow a later stream to retry after a transient chunk-load failure.

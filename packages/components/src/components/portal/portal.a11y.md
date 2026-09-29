@@ -46,8 +46,7 @@ In all cases the consumer also owns:
 4. **Labelling** — `aria-labelledby`/`aria-label` and the appropriate `role` (`dialog`, `menu`, `tooltip`, …) on the consumer's element. The accessible name belongs there, never on Portal's wrapper.
 5. **Dismissal** — wire `Escape` and any other affordances on the consumer's element. Portal has no key handlers and will not close anything.
 
-> [!WARNING]
-> Treating Portal as "the overlay" is the classic mistake. It relocates pixels and DOM nodes; it does **not** relocate focus, manage a focus trap, or hide the background. Skipping the responsibilities above — or applying _modal_ focus-trapping to a _non-modal_ tooltip — produces an overlay that looks correct to a mouse user and is broken or hostile for keyboard and screen-reader users.
+> [!WARNING] Treating Portal as "the overlay" is the classic mistake. It relocates pixels and DOM nodes; it does **not** relocate focus, manage a focus trap, or hide the background. Skipping the responsibilities above — or applying _modal_ focus-trapping to a _non-modal_ tooltip — produces an overlay that looks correct to a mouse user and is broken or hostile for keyboard and screen-reader users.
 
 ## Attribute inheritance and why it exists
 

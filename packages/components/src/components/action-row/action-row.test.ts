@@ -2,7 +2,7 @@
 import { describe, expect, mock, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -88,7 +88,7 @@ describe('ActionRow', () => {
       props: { onclick, title: textSnippet('Clickable run') },
     });
 
-    const row = container.querySelector('.cinder-action-row') as HTMLButtonElement;
+    const row = requiredInstance(container.querySelector('.cinder-action-row'), HTMLButtonElement);
     await fireEvent.click(row);
 
     expect(onclick).toHaveBeenCalledTimes(1);
@@ -100,7 +100,7 @@ describe('ActionRow', () => {
       props: { disabled: true, onclick, title: textSnippet('Disabled run') },
     });
 
-    const row = container.querySelector('.cinder-action-row') as HTMLButtonElement;
+    const row = requiredInstance(container.querySelector('.cinder-action-row'), HTMLButtonElement);
     expect(row.disabled).toBe(true);
     await fireEvent.click(row);
     expect(onclick).not.toHaveBeenCalled();

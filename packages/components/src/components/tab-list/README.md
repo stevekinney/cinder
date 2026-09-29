@@ -4,11 +4,7 @@ Keyboard-navigable row of tab triggers that control which tab panel is visible.
 
 ## Usage
 
-`TabList` is a compose-only leaf of [`Tabs`](../tabs/README.md).
-The idiomatic API is `Tabs.List`, reached through the parent
-namespace — see the [tabs README](../tabs/README.md#usage) for the composed
-snippet. The flat `@lostgradient/cinder/tab-list` subpath remains exported for
-à-la-carte builds that import the leaf directly.
+`TabList` is a compose-only leaf of [`Tabs`](../tabs/README.md). The idiomatic API is `Tabs.List`, reached through the parent namespace — see the [tabs README](../tabs/README.md#usage) for the composed snippet. The flat `@lostgradient/cinder` subpath remains exported for à-la-carte builds that import the leaf directly.
 
 ## Props
 
@@ -28,7 +24,6 @@ snippet. The flat `@lostgradient/cinder/tab-list` subpath remains exported for
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

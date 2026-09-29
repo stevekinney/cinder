@@ -31,7 +31,7 @@
   let {
     conversation,
     headingLevel = 2,
-    showExportActions = true,
+    exportActionsVisible = true,
     class: className,
     actions,
     ...rest
@@ -70,9 +70,9 @@
     </p>
   </div>
 
-  {#if showExportActions || actions}
+  {#if exportActionsVisible || actions}
     <div class="cinder-chat-conversation-header__actions">
-      {#if showExportActions}
+      {#if exportActionsVisible}
         <ConversationExportActions id={`${conversation.id}-export-actions`} {conversation} />
       {/if}
       {#if actions}
