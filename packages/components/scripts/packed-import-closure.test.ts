@@ -153,7 +153,9 @@ describe('published tarball import closure', () => {
     test(`${label}: excludes test-only helper modules from the tarball`, () => {
       const leaked = walk(sourceRoot, [])
         .map((file) => relative(packageRoot, file))
-        .filter((file) => /-(?:test-(?:helpers|support)|snippet-helpers)(?:\.svelte)?\.ts$/.test(file))
+        .filter((file) =>
+          /-(?:test-(?:helpers|support)|snippet-helpers)(?:\.svelte)?\.ts$/.test(file),
+        )
         .filter(packed);
       expect(leaked).toEqual([]);
     });
