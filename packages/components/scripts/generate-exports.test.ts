@@ -468,6 +468,22 @@ describe('computeFiles', () => {
     expect(files.slice(0, STATIC_FILES_GLOBS.length)).toEqual([...STATIC_FILES_GLOBS]);
   });
 
+  it('keeps mirrored source imports and test-only helpers out of the published surface', () => {
+    expect(STATIC_FILES_GLOBS).toContain('src/exports/**/*.ts');
+    for (const exclusion of [
+      '!src/components/**/*-test-helpers.ts',
+      '!src/components/**/*-test-support.ts',
+      '!src/components/**/*-test-support.svelte.ts',
+      '!src/components/**/*-snippet-helpers.ts',
+      '!src/_internal/**/*-test-helpers.ts',
+      '!src/_internal/**/*-test-support.ts',
+      '!src/utilities/**/*-test-helpers.ts',
+      '!src/utilities/**/*-test-support.ts',
+    ]) {
+      expect(STATIC_FILES_GLOBS).toContain(exclusion);
+    }
+  });
+
   it('appends both explicit root JSON entries', () => {
     const files = computeFiles(exportsWithManifest);
     expect(files).toContain('components.json');
