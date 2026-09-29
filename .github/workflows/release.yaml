@@ -188,15 +188,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Pull request events created by GITHUB_TOKEN require manual approval.
-      # Explicit workflow dispatches are the supported exception, so trigger
-      # a playground preview against the generated branch instead of
-      # requiring a human to push an empty commit to the Version Packages
-      # pull request. deploy-playground.yaml is unaffected by COR-1196's
-      # workflow retirements, so this dispatch survives unchanged; the
-      # unit-tests.yaml/browser-tests.yaml/changeset-guard.yaml dispatches
-      # this step used to make alongside it are gone with those workflows.
-      - name: Dispatch Version Packages pull request preview deploy
+      # Pull request events created by GITHUB_TOKEN do not start these checks.
+      # Dispatch both required verification workflows against the generated
+      # branch head, plus the existing Playground preview, so the Version
+      # Packages pull request can pass branch protection without an empty commit.
+      - name: Dispatch Version Packages pull request checks and preview deploy
         if: steps.changesets.outputs.pullRequestNumber != ''
         env:
           GH_TOKEN: ${{ github.token }}
@@ -205,6 +201,8 @@ jobs:
           set -euo pipefail
           release_branch="$(gh pr view "$RELEASE_PULL_REQUEST_NUMBER" --json headRefName --jq '.headRefName')"
 
+          gh workflow run mirror-verify.yaml --ref "$release_branch"
+          gh workflow run mcp-verify.yaml --ref "$release_branch"
           gh workflow run deploy-playground.yaml --ref "$release_branch" -f environment=preview
 
       - name: Check validated Markdown package artifact budget

@@ -288,6 +288,25 @@ describe('Playwright dependency setup', () => {
     delete missingVerifier.jobs['verify-mirror'];
     expect(releaseUsesMirrorVerification(missingVerifier, mirror)).toBe(false);
   });
+
+  test('dispatches both required checks for a Changesets-created Version Packages pull request', () => {
+    const workspaceRoot = resolve(import.meta.dirname, '../../..');
+    const release = loadYaml(
+      readFileSync(join(workspaceRoot, '.github/workflows/release.yaml'), 'utf8'),
+    );
+    expect(
+      findMissingWorkflowDispatches(release, [
+        'mirror-verify.yaml',
+        'mcp-verify.yaml',
+        'deploy-playground.yaml',
+      ]),
+    ).toEqual([]);
+    const mcpWorkflow = readFileSync(
+      join(workspaceRoot, '.github/workflows/mcp-verify.yaml'),
+      'utf8',
+    );
+    expect(mcpWorkflow).toMatch(/^\s{2}workflow_dispatch:$/m);
+  });
 });
 
 describe('validate-release-workflow changeset guards', () => {

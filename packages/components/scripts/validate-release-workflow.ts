@@ -610,7 +610,11 @@ function runValidation(): void {
   }
   pass('Release waits for generated mirror verification');
 
-  const requiredVersionPullRequestWorkflows = ['deploy-playground.yaml'];
+  const requiredVersionPullRequestWorkflows = [
+    'mirror-verify.yaml',
+    'mcp-verify.yaml',
+    'deploy-playground.yaml',
+  ];
   const missingWorkflowDispatches = findMissingWorkflowDispatches(
     parsedWorkflow,
     requiredVersionPullRequestWorkflows,
