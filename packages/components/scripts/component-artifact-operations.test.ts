@@ -8,6 +8,7 @@ import { formatGenerated } from './component-artifact-operations.ts';
 import { assertPrettierResolvesToRoot } from './lib/prettier-resolution.ts';
 
 const repositoryRoot = resolve(import.meta.dirname, '../../..');
+const packageRoot = resolve(import.meta.dirname, '..');
 
 /**
  * The happy path -- `formatGenerated` producing correctly formatted artifacts --
@@ -47,7 +48,7 @@ describe('formatGenerated prettier resolution', () => {
     expect(version).toBe(rootVersion);
     expect(resolvedFrom).toContain('/node_modules/prettier/');
     // A copy nested under this package would resolve from a different tree.
-    expect(resolvedFrom).not.toContain('/components/cinder/node_modules/');
+    expect(resolvedFrom).not.toContain(`${packageRoot}/node_modules/`);
   });
 
   /**
@@ -93,14 +94,8 @@ describe('formatGenerated prettier resolution', () => {
   test('resolves prettier overrides per generated file in one component directory', async () => {
     const temporaryDirectory = mkdtempSync(join(tmpdir(), 'cinder-format-generated-'));
     const scriptPath = join(temporaryDirectory, 'probe.ts');
-    const operationsPath = join(
-      repositoryRoot,
-      'components/cinder/scripts/component-artifact-operations.ts',
-    );
-    const componentDirectory = join(
-      repositoryRoot,
-      'components/cinder/src/components/run-step-timeline',
-    );
+    const operationsPath = join(packageRoot, 'scripts/component-artifact-operations.ts');
+    const componentDirectory = join(packageRoot, 'src/components/run-step-timeline');
     const markdownInput =
       '| Name | Description |\n' +
       '| --- | --- |\n' +
@@ -119,7 +114,7 @@ describe('formatGenerated prettier resolution', () => {
         'const formattedMarkdown = await formatGenerated(markdownInput, markdownPath);',
         'const markdownOptions = await prettier.resolveConfig(markdownPath);',
         'const freshMarkdown = await prettier.format(markdownInput, { ...markdownOptions, filepath: markdownPath });',
-        'console.log(JSON.stringify({ formattedMarkdown, freshMarkdown }));',
+        'console.log(JSON.stringify({ formattedMarkdown, freshMarkdown, proseWrap: markdownOptions?.proseWrap }));',
       ].join('\n'),
     );
 
@@ -142,10 +137,15 @@ describe('formatGenerated prettier resolution', () => {
       const parsed = JSON.parse(stdout) as {
         formattedMarkdown: string;
         freshMarkdown: string;
+        proseWrap?: string;
       };
       expect(parsed.formattedMarkdown).toBe(parsed.freshMarkdown);
-      expect(parsed.formattedMarkdown).toContain('| Name | Description |');
-      expect(parsed.formattedMarkdown).not.toContain('| Name            |');
+      expect(parsed.formattedMarkdown).toMatch(/\|\s*`RunStepDetail`\s*\|/);
+      if (parsed.proseWrap === 'never') {
+        expect(parsed.formattedMarkdown).toContain('| Name | Description |');
+      } else {
+        expect(parsed.formattedMarkdown).toContain('| Name            | Description');
+      }
     } finally {
       rmSync(temporaryDirectory, { recursive: true, force: true });
     }

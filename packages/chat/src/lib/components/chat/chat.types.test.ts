@@ -181,3 +181,15 @@ test('published tool-call artifact example uses a single artifact panel owner', 
   expect(toolCallExample?.code).not.toContain('messageActions');
   expect(toolCallExample?.code).not.toContain('selectedArtifact');
 });
+
+test('composer popover example imports the named public component export', () => {
+  const examples = JSON.parse(
+    readFileSync(
+      join(import.meta.dir, '..', 'chat-composer-popover', 'chat-composer-popover.examples.json'),
+      'utf8',
+    ),
+  ) as { examples: Array<{ code: string }> };
+
+  expect(examples.examples[0]?.code).toContain('import { ChatComposerPopover,');
+  expect(examples.examples[0]?.code).not.toMatch(/import ChatComposerPopover\s*,/);
+});
