@@ -1,5 +1,5 @@
 {
-  "name": "@cinder/testing",
+  "name": "@lostgradient/testing",
   "private": true,
   "type": "module",
   "scripts": {

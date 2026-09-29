@@ -6579,7 +6579,7 @@
   "devDependencies": {
     "@changesets/get-release-plan": "4.0.16",
     "@changesets/parse": "0.4.3",
-    "@cinder/testing": "workspace:*",
+    "@lostgradient/testing": "workspace:*",
     "@lostgradient/bun-plugin-svelte": "^0.0.1",
     "@playwright/test": "^1.61.1",
     "@sveltejs/adapter-node": "5.5.4",

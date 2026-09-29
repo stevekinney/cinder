@@ -50,7 +50,7 @@ const pkg = (name: string, dir: string, dependencies: string[] = []): WorkspaceP
 // but cinder no longer depends on editor.
 const graphPackages: readonly WorkspacePackage[] = [
   pkg('@lostgradient/cinder', 'packages/components/', [
-    '@cinder/testing',
+    '@lostgradient/testing',
     '@lostgradient/markdown',
   ]),
   pkg('@lostgradient/markdown', 'packages/markdown/'),
@@ -64,7 +64,7 @@ const graphPackages: readonly WorkspacePackage[] = [
     '@lostgradient/cinder',
     '@lostgradient/markdown',
   ]),
-  pkg('@cinder/testing', 'packages/testing/'),
+  pkg('@lostgradient/testing', 'packages/testing/'),
 ];
 
 const sorted = (names: Iterable<string>): string[] => [...names].toSorted();
@@ -436,7 +436,7 @@ describe('isSourceFile', () => {
 });
 
 describe('expandToDependents', () => {
-  // NOTE: `@lostgradient/cinder` dev-depends on `@cinder/testing` and
+  // NOTE: `@lostgradient/cinder` dev-depends on `@lostgradient/testing` and
   // `@lostgradient/markdown` only (Phase 5 deleted its upstream re-export
   // shims, so it no longer dev-depends on `@lostgradient/editor`).
   // `@lostgradient/chat` and `@lostgradient/editor` both depend on Cinder,
@@ -470,13 +470,13 @@ describe('expandToDependents', () => {
     ]);
   });
 
-  it('expands @cinder/testing to testing + cinder + editor + chat + playground', () => {
-    expect(expand('@cinder/testing')).toEqual([
+  it('expands @lostgradient/testing to testing + cinder + editor + chat + playground', () => {
+    expect(expand('@lostgradient/testing')).toEqual([
       '@cinder/playground',
-      '@cinder/testing',
       '@lostgradient/chat',
       '@lostgradient/cinder',
       '@lostgradient/editor',
+      '@lostgradient/testing',
     ]);
   });
 
@@ -494,18 +494,20 @@ describe('expandToDependents', () => {
   });
 
   it('is cycle-safe and dedupes across multiple touched packages', () => {
-    // @lostgradient/markdown and @cinder/testing both flow, transitively,
+    // @lostgradient/markdown and @lostgradient/testing both flow, transitively,
     // through the cinder<->editor cycle to chat and playground — touching
     // both at once proves the cycle terminates and the union dedupes.
     expect(
-      sorted(expandToDependents(graphPackages, ['@lostgradient/markdown', '@cinder/testing'])),
+      sorted(
+        expandToDependents(graphPackages, ['@lostgradient/markdown', '@lostgradient/testing']),
+      ),
     ).toEqual([
       '@cinder/playground',
-      '@cinder/testing',
       '@lostgradient/chat',
       '@lostgradient/cinder',
       '@lostgradient/editor',
       '@lostgradient/markdown',
+      '@lostgradient/testing',
     ]);
   });
 
@@ -561,7 +563,7 @@ describe('buildableForwardClosure', () => {
 
   it('returns an empty list when no buildable package is touched', () => {
     expect(buildableForwardClosure(new Set())).toEqual([]);
-    expect(buildableForwardClosure(new Set(['@cinder/testing']))).toEqual([]);
+    expect(buildableForwardClosure(new Set(['@lostgradient/testing']))).toEqual([]);
     expect(buildableForwardClosure(new Set(['@lostgradient/chat']))).toEqual([]);
   });
 });

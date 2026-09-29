@@ -18,7 +18,7 @@ export type ArtifactKey = {
   fixture: string;
 };
 
-/** Resolves to the root of the `@cinder/testing` package (the directory containing `src/`). */
+/** Resolves to the root of the `@lostgradient/testing` package (the directory containing `src/`). */
 function packageRoot(): string {
   // src/helpers/artifact-path.ts → ../..
   return resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');

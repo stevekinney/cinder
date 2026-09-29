@@ -559,7 +559,7 @@ describe('buildPublishedManifest', () => {
         shiki: '^3.21.0',
       },
       devDependencies: {
-        '@cinder/testing': 'workspace:*',
+        '@lostgradient/testing': 'workspace:*',
         typescript: '^5.9.0',
       },
     };
@@ -579,7 +579,7 @@ describe('buildPublishedManifest', () => {
       version: '0.0.0',
       exports: {},
       devDependencies: {
-        '@cinder/testing': 'workspace:*',
+        '@lostgradient/testing': 'workspace:*',
       },
     };
 

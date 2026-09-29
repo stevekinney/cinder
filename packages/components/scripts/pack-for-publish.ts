@@ -4,7 +4,7 @@
  * `bun pm pack` runs against the source `packages/components/package.json`,
  * which carries:
  *   - `devDependencies` on upstream workspace-only packages (`@lostgradient/markdown`,
- *     `@lostgradient/editor`, `@cinder/testing`) — cinder's build bundles their
+ *     `@lostgradient/editor`, `@lostgradient/testing`) — cinder's build bundles their
  *     source into `dist/`, so they must NOT appear in any published dep field.
  *   - `exports` entries for the 30 upstream re-export sub-paths whose
  *     `svelte` condition points at `./src/<pkg>/<subpath>.ts`. The published
@@ -159,7 +159,7 @@ function resolveWorkspaceSiblingVersion(name: string): string {
  * Transform every `workspace:*` entry in a dependency-field record.
  *
  * `devDependencies` entries are always source-only, local-resolution
- * pointers (`@cinder/testing`; formerly `@lostgradient/markdown` before it
+ * pointers (`@lostgradient/testing`; formerly `@lostgradient/markdown` before it
  * became a real dependency) — the published tarball must never reference
  * the `workspace:` protocol, so these are STRIPPED entirely (mode
  * `'strip'`).
@@ -273,7 +273,11 @@ function buildPublishedManifest(
       published[field] = transformed;
     }
   }
-  const strippedDevDependencies = transformDependencyField(source.devDependencies, 'strip', catalog);
+  const strippedDevDependencies = transformDependencyField(
+    source.devDependencies,
+    'strip',
+    catalog,
+  );
   if (strippedDevDependencies === undefined) {
     delete published.devDependencies;
   } else {
