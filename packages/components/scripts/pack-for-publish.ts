@@ -230,7 +230,12 @@ function readRootCatalog(): Readonly<Record<string, string>> {
   if (typeof parsed !== 'object' || parsed === null) return {};
   const catalog = (parsed as { catalog?: unknown }).catalog;
   if (typeof catalog !== 'object' || catalog === null) return {};
-  return catalog as Record<string, string>;
+  const entries: Record<string, string> = {};
+  for (const [name, version] of Object.entries(catalog)) {
+    if (typeof version !== 'string') throw new Error(`Invalid catalog version for ${name}`);
+    entries[name] = version;
+  }
+  return entries;
 }
 
 function rewriteComponentMetadataNodeEntry(

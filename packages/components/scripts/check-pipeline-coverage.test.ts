@@ -55,10 +55,30 @@ const release = (): Workflow => ({
     },
   },
 });
+const mcp = (): Workflow => ({
+  name: 'verify-cinder-mcp',
+  on: { pull_request: {}, merge_group: {} },
+  jobs: {
+    verify: {
+      steps: [
+        {
+          name: 'Validate packed cinder-mcp consumer',
+          run: 'bun run --filter=@lostgradient/cinder-mcp validate:consumer',
+        },
+        { name: 'Lint cinder-mcp', run: 'bun run --filter=@lostgradient/cinder-mcp lint' },
+        {
+          name: 'Typecheck cinder-mcp',
+          run: 'bun run --filter=@lostgradient/cinder-mcp typecheck',
+        },
+        { name: 'Test cinder-mcp', run: 'bun run --filter=@lostgradient/cinder-mcp test' },
+      ],
+    },
+  },
+});
 
 describe('mirror pipeline coverage', () => {
   it('accepts the parsed target topology', () =>
-    expect(checkMirrorPipeline(mirror(), release()).violations).toEqual([]));
+    expect(checkMirrorPipeline(mirror(), release(), mcp()).violations).toEqual([]));
   it('rejects a wrong package directory and command', () => {
     const changed = mirror();
     const typecheckStep = changed.jobs?.['verify']?.steps?.[1];
@@ -66,22 +86,31 @@ describe('mirror pipeline coverage', () => {
     typecheckStep['working-directory'] = 'packages/wrong';
     typecheckStep.run = 'bun run build';
     expect(
-      checkMirrorPipeline(changed, release()).violations.map(({ detail }) => detail),
+      checkMirrorPipeline(changed, release(), mcp()).violations.map(({ detail }) => detail),
     ).toContain('typecheck contract missing for @lostgradient/markdown');
   });
   it('rejects release linkage mutations', () => {
     const changed = release();
     changed.jobs!['release']!.needs = [];
     changed.jobs!['verify-mirror']!.uses = './.github/workflows/old.yaml';
-    const details = checkMirrorPipeline(mirror(), changed).violations.map(({ detail }) => detail);
+    const details = checkMirrorPipeline(mirror(), changed, mcp()).violations.map(
+      ({ detail }) => detail,
+    );
     expect(details).toContain('verify-mirror must call mirror-verify.yaml');
     expect(details).toContain('release job must need verify-mirror');
   });
   it('requires the fifth published package release contract', () => {
     const changed = release();
     changed.jobs!['release']!.steps = [];
-    expect(checkMirrorPipeline(mirror(), changed).violations.map(({ detail }) => detail)).toContain(
-      'cinder-mcp consumer validation missing',
-    );
+    expect(
+      checkMirrorPipeline(mirror(), changed, mcp()).violations.map(({ detail }) => detail),
+    ).toContain('cinder-mcp consumer validation missing');
+  });
+  it('requires target-owned cinder-mcp pull request verification', () => {
+    const changed = mcp();
+    changed.jobs!['verify']!.steps = [];
+    expect(
+      checkMirrorPipeline(mirror(), release(), changed).violations.map(({ detail }) => detail),
+    ).toContain('cinder-mcp pull request consumer validation missing');
   });
 });

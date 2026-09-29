@@ -2,10 +2,12 @@
 import { load as loadYaml } from 'js-yaml';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { z } from 'zod';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const workflows = join(root, '.github', 'workflows');
 export const MIRROR_VERIFY_WORKFLOW = 'mirror-verify.yaml';
+export const MCP_VERIFY_WORKFLOW = 'mcp-verify.yaml';
 export const RELEASE_WORKFLOW = 'release.yaml';
 export const MIRROR_PACKAGES = [
   '@lostgradient/markdown',
@@ -15,9 +17,41 @@ export const MIRROR_PACKAGES = [
 ] as const;
 export const PUBLISHED_PACKAGES = [...MIRROR_PACKAGES, '@lostgradient/cinder-mcp'] as const;
 
-type Step = { name?: string; run?: string; uses?: string; 'working-directory'?: string };
-type Job = { uses?: string; needs?: string | string[]; steps?: Step[] };
-export type Workflow = { name?: string; jobs?: Record<string, Job> };
+type Step = {
+  name?: string | undefined;
+  run?: string | undefined;
+  uses?: string | undefined;
+  'working-directory'?: string | undefined;
+};
+type Job = {
+  uses?: string | undefined;
+  needs?: string | string[] | undefined;
+  steps?: Step[] | undefined;
+};
+const workflowSchema = z.object({
+  name: z.string().optional(),
+  on: z.record(z.string(), z.unknown()).optional(),
+  jobs: z
+    .record(
+      z.string(),
+      z.object({
+        uses: z.string().optional(),
+        needs: z.union([z.string(), z.array(z.string())]).optional(),
+        steps: z
+          .array(
+            z.object({
+              name: z.string().optional(),
+              run: z.string().optional(),
+              uses: z.string().optional(),
+              'working-directory': z.string().optional(),
+            }),
+          )
+          .optional(),
+      }),
+    )
+    .optional(),
+});
+export type Workflow = z.infer<typeof workflowSchema>;
 export type PipelineViolation = { workflow: string; detail: string };
 export type PipelineCheckResult = { violations: PipelineViolation[] };
 
@@ -74,9 +108,43 @@ function checkMirror(mirror: Workflow, violations: PipelineViolation[]): void {
     add(violations, MIRROR_VERIFY_WORKFLOW, 'Node consumer import smoke test missing');
 }
 
-export function checkMirrorPipeline(mirror: Workflow, release: Workflow): PipelineCheckResult {
+function checkMcp(mcp: Workflow, violations: PipelineViolation[]): void {
+  if (
+    mcp.name !== 'verify-cinder-mcp' ||
+    !('pull_request' in (mcp.on ?? {})) ||
+    !('merge_group' in (mcp.on ?? {}))
+  )
+    add(violations, MCP_VERIFY_WORKFLOW, 'cinder-mcp pull request triggers missing');
+  const steps = mcp.jobs?.['verify']?.steps;
+  for (const [name, command] of [
+    ['Validate packed cinder-mcp consumer', 'validate:consumer'],
+    ['Lint cinder-mcp', 'lint'],
+    ['Typecheck cinder-mcp', 'typecheck'],
+    ['Test cinder-mcp', 'test'],
+  ]) {
+    if (
+      !steps?.some(
+        (step) =>
+          step.name === name &&
+          step.run?.trim() === `bun run --filter=@lostgradient/cinder-mcp ${command}`,
+      )
+    )
+      add(
+        violations,
+        MCP_VERIFY_WORKFLOW,
+        `cinder-mcp pull request ${command === 'validate:consumer' ? 'consumer validation' : command} missing`,
+      );
+  }
+}
+
+export function checkMirrorPipeline(
+  mirror: Workflow,
+  release: Workflow,
+  mcp: Workflow,
+): PipelineCheckResult {
   const violations: PipelineViolation[] = [];
   checkMirror(mirror, violations);
+  checkMcp(mcp, violations);
   const verify = release.jobs?.['verify-mirror'];
   if (verify?.uses !== `./.github/workflows/${MIRROR_VERIFY_WORKFLOW}`)
     add(violations, RELEASE_WORKFLOW, 'verify-mirror must call mirror-verify.yaml');
@@ -96,12 +164,14 @@ export function checkMirrorPipeline(mirror: Workflow, release: Workflow): Pipeli
   return { violations };
 }
 async function readWorkflow(name: string): Promise<Workflow> {
-  return loadYaml(await Bun.file(join(workflows, name)).text()) as Workflow;
+  const parsed: unknown = loadYaml(await Bun.file(join(workflows, name)).text());
+  return workflowSchema.parse(parsed);
 }
 async function main(): Promise<void> {
   const result = checkMirrorPipeline(
     await readWorkflow(MIRROR_VERIFY_WORKFLOW),
     await readWorkflow(RELEASE_WORKFLOW),
+    await readWorkflow(MCP_VERIFY_WORKFLOW),
   );
   if (result.violations.length) {
     for (const violation of result.violations)
