@@ -267,7 +267,7 @@ async function runPlainNodeConsumer(fixture: ValidationFixture): Promise<void> {
       // hypothetical unsanitized-passthrough bug.
       `if (typeof DOMParser !== 'undefined') throw new Error('expected no DOMParser under plain Node — fixture assumption is stale');`,
       `if (sanitizeHtml('<script>x</script>hi') !== '') throw new Error('templates/sanitize-html did not fail closed without DOMParser');`,
-      `const templated = renderTemplate('Hello {{name}}', { name: 'World' });`,
+      `const templated = renderTemplate('Hello {{name}}', { name: 'World' }, { definitions: { candidates: [{ path: 'name', types: ['string'] }] } });`,
       `if (!templated.includes('World')) throw new Error('templates/template-render failed');`,
       `console.log('markdown consumer OK');`,
       '',
