@@ -325,16 +325,16 @@ describe('walkDependencyGraph — real virtual-list tree (CIN-522)', () => {
     expect(result.scannedFilePaths.length).toBeGreaterThan(rootFilePaths.length);
   });
 
-  test('reaches the real src/test/happy-dom.ts transitively, yet does not flag its "happy-dom" import', async () => {
+  test('reaches test-only virtual-list helpers without treating them as production imports', async () => {
     const declaredDependencyNames = await loadDeclaredDependencyNames();
     const rootFilePaths = await collectScanTargets();
     const result = await walkDependencyGraph(rootFilePaths, declaredDependencyNames);
 
-    const happyDomFilePath = result.scannedFilePaths.find((filePath) =>
-      filePath.endsWith(join('test', 'happy-dom.ts')),
+    const helperFilePath = result.scannedFilePaths.find((filePath) =>
+      filePath.endsWith(join('virtual-list', 'virtual-list-test-helpers.ts')),
     );
-    expect(happyDomFilePath).toBeDefined();
-    expect(result.violations.some((violation) => violation.filePath === happyDomFilePath)).toBe(
+    expect(helperFilePath).toBeDefined();
+    expect(result.violations.some((violation) => violation.filePath === helperFilePath)).toBe(
       false,
     );
   });

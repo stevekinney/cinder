@@ -538,6 +538,11 @@ export async function collectScanTargets(): Promise<string[]> {
   const glob = new Glob('**/*.{ts,svelte}');
   for await (const relativePath of glob.scan({ cwd: virtualListRoot })) {
     if (relativePath === SELF_TEST_RELATIVE_PATH) continue;
+    // Helpers named `*-test-helpers.ts` are reached from test roots, but are
+    // not production roots themselves. Keeping them out of the root set lets
+    // walkDependencyGraph apply the test-only dependency rule to their imports
+    // without allowing a helper to make a production dependency appear valid.
+    if (relativePath.endsWith('-test-helpers.ts')) continue;
     files.push(join(virtualListRoot, relativePath));
   }
   files.push(fixedVirtualWindowFile);
