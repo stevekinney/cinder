@@ -1,5 +1,19 @@
 # @lostgradient/chat
 
+## 0.15.0
+
+### Minor Changes
+
+- [#1330](https://github.com/stevekinney/cinder/pull/1330) [`b86a1c9`](https://github.com/stevekinney/cinder/commit/b86a1c97d384b4657aefb85705038696bd3ee314) Thanks [@stevekinney](https://github.com/stevekinney)! - Widen internal peer ranges to follow the coordinated release.
+
+### Patch Changes
+
+- [#1558](https://github.com/stevekinney/cinder/pull/1558) [`7a5689b`](https://github.com/stevekinney/cinder/commit/7a5689bfa243f327c662c67b6b54900e38f52a6d) Thanks [@stevekinney](https://github.com/stevekinney)! - Resolve rewind helpers from Conversationalist's public root and require version 1.3.0 so fresh consumers can bundle Chat.
+
+- Updated dependencies [[`7a5689b`](https://github.com/stevekinney/cinder/commit/7a5689bfa243f327c662c67b6b54900e38f52a6d), [`5871bbd`](https://github.com/stevekinney/cinder/commit/5871bbd68c91fc2e74799a9087926be2b5625fef)]:
+  - @lostgradient/cinder@0.26.3
+  - @lostgradient/markdown@0.6.0
+
 ## 0.14.0
 
 ### Minor Changes

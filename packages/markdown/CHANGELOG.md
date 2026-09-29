@@ -1,5 +1,11 @@
 # @lostgradient/markdown
 
+## 0.6.0
+
+### Minor Changes
+
+- [#1560](https://github.com/stevekinney/cinder/pull/1560) [`5871bbd`](https://github.com/stevekinney/cinder/commit/5871bbd68c91fc2e74799a9087926be2b5625fef) Thanks [@stevekinney](https://github.com/stevekinney)! - Publish the expanded Markdown rendering and template APIs with the current source and package contracts.
+
 ## 0.5.0
 
 ### Minor Changes

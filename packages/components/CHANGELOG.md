@@ -1,5 +1,14 @@
 # @lostgradient/cinder
 
+## 0.26.3
+
+### Patch Changes
+
+- [#1558](https://github.com/stevekinney/cinder/pull/1558) [`7a5689b`](https://github.com/stevekinney/cinder/commit/7a5689bfa243f327c662c67b6b54900e38f52a6d) Thanks [@stevekinney](https://github.com/stevekinney)! - Make initial reactive state and choice-grid roles explicit while preserving existing component behavior and keyboard access. Document intentional keyboard focus on tooltip triggers and overflow containers with element-local compiler exceptions.
+
+- Updated dependencies [[`5871bbd`](https://github.com/stevekinney/cinder/commit/5871bbd68c91fc2e74799a9087926be2b5625fef)]:
+  - @lostgradient/markdown@0.6.0
+
 ## 0.26.2
 
 ### Patch Changes

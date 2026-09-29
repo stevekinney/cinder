@@ -1,5 +1,14 @@
 # @lostgradient/cinder-mcp
 
+## 0.1.19
+
+### Patch Changes
+
+- [#1560](https://github.com/stevekinney/cinder/pull/1560) [`5871bbd`](https://github.com/stevekinney/cinder/commit/5871bbd68c91fc2e74799a9087926be2b5625fef) Thanks [@stevekinney](https://github.com/stevekinney)! - Use MCP SDK 1.30.0 so Cinder MCP's Zod schemas typecheck against the installed dependency graph.
+
+- Updated dependencies [[`7a5689b`](https://github.com/stevekinney/cinder/commit/7a5689bfa243f327c662c67b6b54900e38f52a6d)]:
+  - @lostgradient/cinder@0.26.3
+
 ## 0.1.18
 
 ### Patch Changes

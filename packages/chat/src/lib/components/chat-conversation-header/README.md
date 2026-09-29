@@ -19,8 +19,8 @@ Header primitive for the active Chat conversation, composed as a sibling above C
 | Prop                   | Type              | Required | Default | Description                                                                                                                                       |
 | ---------------------- | ----------------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `class`                | `string`          | no       | —       | Additional class name merged with `.cinder-chat-conversation-header`.                                                                             |
-| `headingLevel`         | `2` \| `3` \| `4` | no       | —       | Heading level for the conversation title. Default `2`.                                                                                            |
 | `exportActionsVisible` | `boolean`         | no       | —       | Whether to render the built-in conversation export actions. Default `true`.                                                                       |
+| `headingLevel`         | `2` \| `3` \| `4` | no       | —       | Heading level for the conversation title. Default `2`.                                                                                            |
 | `actions`              | `(opaque)`        | no       | —       | Additional action controls rendered after the built-in export actions. Not expressible in JSON Schema; see the component types for the signature. |
 | `conversation`         | `(opaque)`        | yes      | —       | Active compatible conversation snapshot. Not expressible in JSON Schema; see the component types for the signature.                               |
 
@@ -31,7 +31,6 @@ Header primitive for the active Chat conversation, composed as a sibling above C
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents
