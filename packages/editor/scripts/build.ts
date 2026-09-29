@@ -52,6 +52,8 @@ const buildCacheInputs = {
     // server-identity or scoped-CSS filename fix) must invalidate this
     // package's hash too, or a stale dist survives an "up to date" skip.
     `${WORKSPACE_ROOT}/packages/components/scripts/svelte-plugin.ts`,
+    `${WORKSPACE_ROOT}/packages/components/scripts/lib/dist-relative-imports.ts`,
+    `${WORKSPACE_ROOT}/packages/components/scripts/lib/emit-arbitrary-extension-declarations.ts`,
   ],
   upstreamDistDirectories: [],
 };

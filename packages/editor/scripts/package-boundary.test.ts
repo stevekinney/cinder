@@ -39,6 +39,17 @@ const plannedCinderVersion =
   cinderManifest.version;
 
 describe('Editor package ownership boundary', () => {
+  test('hashes every shared Cinder script imported by the Editor build', async () => {
+    const build = await Bun.file(join(packageRoot, 'scripts', 'build.ts')).text();
+    const sharedScripts = [
+      ...build.matchAll(/from '\.\.\/\.\.\/components\/scripts\/([^']+)'/g),
+    ].map((match) => match[1]);
+    expect(sharedScripts.length).toBeGreaterThan(0);
+    for (const script of sharedScripts) {
+      expect(build).toContain('${WORKSPACE_ROOT}/packages/components/scripts/' + script);
+    }
+  });
+
   test('builds each public Node component entry from its source export', () => {
     const manifest = {
       ...editorManifest,

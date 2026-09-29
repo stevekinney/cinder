@@ -1,6 +1,6 @@
 import { $, Glob } from 'bun';
 import { existsSync } from 'node:fs';
-import { chmod, mkdir, rm } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { dirname, join, normalize } from 'node:path';
 import { emitDts } from 'svelte2tsx';
 
@@ -710,26 +710,38 @@ await emitDts({
   // `knowledge.ts` as a file argument on the command line instead (with `scripts/knowledge` as
   // `cwd`) hits TS5112 — tsc refuses to silently ignore the *package's* `tsconfig.json` it still
   // discovers by walking up from that `cwd` once files are also given on the command line.
-  const knowledgeTsconfigPath = `${distributionDirectory}/.knowledge-declarations.tsconfig.json`;
-  await Bun.write(
-    knowledgeTsconfigPath,
-    JSON.stringify({
-      extends: `${repositoryRoot}/tsconfig.build.json`,
-      compilerOptions: {
-        rootDir: knowledgeSourceDirectory,
-        outDir: knowledgeDeclarationOutput,
-        composite: false,
-        incremental: false,
-        emitDeclarationOnly: true,
-        allowImportingTsExtensions: true,
-        sourceMap: false,
-        inlineSources: false,
-      },
-      include: [`${knowledgeSourceDirectory}/**/*.ts`],
-      exclude: [`${knowledgeSourceDirectory}/**/*.test.ts`],
-    }),
+  const knowledgeConfigurationDirectory = await mkdtemp(
+    join(repositoryRoot, '.knowledge-declarations-'),
   );
-  const knowledgeDtsResult = await $`bunx tsc -p ${knowledgeTsconfigPath}`.nothrow();
+  const knowledgeTsconfigPath = join(
+    knowledgeConfigurationDirectory,
+    'knowledge-declarations.tsconfig.json',
+  );
+  const knowledgeDtsResult = await (async () => {
+    try {
+      await Bun.write(
+        knowledgeTsconfigPath,
+        JSON.stringify({
+          extends: `${repositoryRoot}/tsconfig.build.json`,
+          compilerOptions: {
+            rootDir: knowledgeSourceDirectory,
+            outDir: knowledgeDeclarationOutput,
+            composite: false,
+            incremental: false,
+            emitDeclarationOnly: true,
+            allowImportingTsExtensions: true,
+            sourceMap: false,
+            inlineSources: false,
+          },
+          include: [`${knowledgeSourceDirectory}/**/*.ts`],
+          exclude: [`${knowledgeSourceDirectory}/**/*.test.ts`],
+        }),
+      );
+      return await $`bunx tsc -p ${knowledgeTsconfigPath}`.nothrow();
+    } finally {
+      await rm(knowledgeConfigurationDirectory, { recursive: true, force: true });
+    }
+  })();
   if (knowledgeDtsResult.exitCode !== 0) {
     process.stderr.write(
       `Build aborted: could not emit declarations for scripts/knowledge:\n${knowledgeDtsResult.stdout.toString()}${knowledgeDtsResult.stderr.toString()}\n`,
@@ -789,7 +801,9 @@ await emitArbitraryExtensionDeclarations(distributionDirectory);
         existsSync(`${distributionDirectory}/${distRelativePath}`),
       ),
     );
-    extensionlessDeclarationSpecifiers.push(...findExtensionlessDeclarationSpecifiers(relative, content));
+    extensionlessDeclarationSpecifiers.push(
+      ...findExtensionlessDeclarationSpecifiers(relative, content),
+    );
     selfReferentialTypeImports.push(...findSelfReferentialTypeImports(relative, content));
   }
   if (
@@ -806,7 +820,10 @@ await emitArbitraryExtensionDeclarations(distributionDirectory);
         (unresolvedArbitraryExtensionImports.length > 0
           ? '\nArbitrary-extension (.svelte/.css) specifier missing its Node16 declaration companion:\n' +
             unresolvedArbitraryExtensionImports
-              .map((offender) => `  ${offender.file} -> ${offender.specifier} (needs ${offender.requiredDeclarationPath})`)
+              .map(
+                (offender) =>
+                  `  ${offender.file} -> ${offender.specifier} (needs ${offender.requiredDeclarationPath})`,
+              )
               .join('\n')
           : '') +
         (extensionlessDeclarationSpecifiers.length > 0

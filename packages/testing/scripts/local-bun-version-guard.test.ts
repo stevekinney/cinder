@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { localBunVersionNotice } from './local-bun-version-guard.ts';
+import { localBunVersionNotice, readPinnedBunVersion } from './local-bun-version-guard.ts';
 
 describe('localBunVersionNotice', () => {
   test('is silent when the running Bun matches the pin', () => {
@@ -15,11 +15,11 @@ describe('localBunVersionNotice', () => {
   });
 
   test('defaults the pinned version to the workspace packageManager pin', () => {
-    // readPinnedBunVersion() reads the real root package.json, which pins
-    // bun@1.4.0 — see packages/testing/scripts/pinned-bun-version.test.ts.
-    expect(localBunVersionNotice('1.4.0')).toBeUndefined();
+    const pinnedVersion = readPinnedBunVersion();
+    expect(pinnedVersion).toBe('1.4.2');
+    expect(localBunVersionNotice(pinnedVersion)).toBeUndefined();
     const notice = localBunVersionNotice('9.9.9');
     expect(notice).toContain('9.9.9');
-    expect(notice).toContain('1.4.0');
+    expect(notice).toContain(pinnedVersion);
   });
 });
