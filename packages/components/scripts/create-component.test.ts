@@ -67,7 +67,7 @@ describe('component authoring guidance', () => {
     expect(canonicalChecklist).toContain('#968');
     expect(canonicalChecklist).toContain('sidebar count-gate');
     expect(canonicalChecklist).toContain('check-token-contrast.test.ts');
-    expect(canonicalChecklist).toContain('check-pipeline-coverage.ts');
+    expect(canonicalChecklist).toContain('structural mirror pipeline guard');
 
     for (const relativePath of CHECKLIST_MIRRORS) {
       const source = await readFile(join(REPOSITORY_ROOT, relativePath), 'utf8');
