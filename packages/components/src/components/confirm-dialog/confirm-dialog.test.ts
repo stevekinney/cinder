@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -100,10 +100,11 @@ describe('ConfirmDialog', () => {
         onConfirm: () => {},
       },
     });
-    const dialog = container.querySelector('dialog') as HTMLDialogElement;
-    const descriptionParagraph = container.querySelector(
-      '.cinder-confirm-dialog__description',
-    ) as HTMLElement;
+    const dialog = requiredInstance(container.querySelector('dialog'), HTMLDialogElement);
+    const descriptionParagraph = requiredInstance(
+      container.querySelector('.cinder-confirm-dialog__description'),
+      HTMLElement,
+    );
     expect(descriptionParagraph).not.toBeNull();
     expect(descriptionParagraph.textContent).toContain('This cannot be undone.');
     const describedById = dialog.getAttribute('aria-describedby');
@@ -138,8 +139,14 @@ describe('ConfirmDialog', () => {
       },
     });
 
-    const input = view.getByLabelText('Type "Cinder" to confirm') as HTMLInputElement;
-    const confirmButton = view.getByRole('button', { name: 'Delete' }) as HTMLButtonElement;
+    const input = requiredInstance(
+      view.getByLabelText('Type "Cinder" to confirm'),
+      HTMLInputElement,
+    );
+    const confirmButton = requiredInstance(
+      view.getByRole('button', { name: 'Delete' }),
+      HTMLButtonElement,
+    );
     expect(input.autocomplete).toBe('off');
     expect(confirmButton.disabled).toBe(true);
 
@@ -155,8 +162,12 @@ describe('ConfirmDialog', () => {
       typeToConfirm: ' Cinder ',
       onConfirm,
     });
-    expect((view.getByLabelText('Type "Cinder" to confirm') as HTMLInputElement).value).toBe('');
-    expect((view.getByRole('button', { name: 'Delete' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      requiredInstance(view.getByLabelText('Type "Cinder" to confirm'), HTMLInputElement).value,
+    ).toBe('');
+    expect(
+      requiredInstance(view.getByRole('button', { name: 'Delete' }), HTMLButtonElement).disabled,
+    ).toBe(true);
   });
 
   test('typed confirmation supports a custom visible label', () => {
@@ -198,9 +209,9 @@ describe('ConfirmDialog', () => {
       },
     });
     expect(view.container.querySelector('.cinder-confirm-dialog__typed-confirmation')).toBeNull();
-    expect((view.getByRole('button', { name: 'Delete' }) as HTMLButtonElement).disabled).toBe(
-      false,
-    );
+    expect(
+      requiredInstance(view.getByRole('button', { name: 'Delete' }), HTMLButtonElement).disabled,
+    ).toBe(false);
   });
 
   test('typed confirmation styles include the composed Input sidecar', async () => {
@@ -331,7 +342,7 @@ describe('ConfirmDialog', () => {
         },
       },
     });
-    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const dialog = requiredInstance(container.querySelector('dialog'), HTMLDialogElement);
     const cancelEvent = new Event('cancel', { cancelable: true });
     await fireEvent(dialog, cancelEvent);
     await tick();
@@ -358,7 +369,7 @@ describe('ConfirmDialog', () => {
         },
       },
     });
-    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const dialog = requiredInstance(container.querySelector('dialog'), HTMLDialogElement);
     await fireEvent.click(dialog);
     await tick();
     expect(cancelCount).toBe(1);
@@ -384,7 +395,10 @@ describe('ConfirmDialog', () => {
         },
       },
     });
-    const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+    const closeButton = requiredInstance(
+      container.querySelector('.cinder-modal__close'),
+      HTMLButtonElement,
+    );
     await fireEvent.click(closeButton);
     await tick();
     expect(cancelCount).toBe(1);
@@ -604,7 +618,7 @@ describe('ConfirmDialog', () => {
         },
       },
     });
-    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const dialog = requiredInstance(container.querySelector('dialog'), HTMLDialogElement);
     const cancelEvent = new Event('cancel', { cancelable: true });
     await fireEvent(dialog, cancelEvent);
     await tick();
@@ -632,7 +646,7 @@ describe('ConfirmDialog', () => {
         },
       },
     });
-    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const dialog = requiredInstance(container.querySelector('dialog'), HTMLDialogElement);
     await fireEvent.click(dialog);
     await tick();
     // Unlike AlertDialog, ConfirmDialog allows backdrop dismiss.
@@ -659,10 +673,13 @@ describe('ConfirmDialog focus trap', () => {
       },
     });
 
-    const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
+    const panel = requiredInstance(container.querySelector('.cinder-modal__panel'), HTMLElement);
     expect(panel).not.toBeNull();
 
-    const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+    const closeButton = requiredInstance(
+      container.querySelector('.cinder-modal__close'),
+      HTMLButtonElement,
+    );
     const [cancelButton] = footerButtons(container);
     expect(closeButton).not.toBeNull();
     expect(cancelButton).not.toBeNull();
@@ -690,11 +707,14 @@ describe('ConfirmDialog focus trap', () => {
       },
     });
 
-    const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
+    const panel = requiredInstance(container.querySelector('.cinder-modal__panel'), HTMLElement);
     expect(panel).not.toBeNull();
 
     const [cancelButton] = footerButtons(container);
-    const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+    const closeButton = requiredInstance(
+      container.querySelector('.cinder-modal__close'),
+      HTMLButtonElement,
+    );
     expect(cancelButton).not.toBeNull();
     expect(closeButton).not.toBeNull();
 

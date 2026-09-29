@@ -21,8 +21,7 @@
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
   import { formatRelativeTime } from '../../utilities/format-date.ts';
-  import Button from '@lostgradient/cinder/button';
-  import { Pencil, Trash2 } from '@lostgradient/cinder/icons';
+  import { Button, Pencil, Trash2 } from '@lostgradient/cinder';
 
   let {
     comments,
@@ -103,8 +102,7 @@
             class="comment-edit-textarea"
             bind:value={editingBody}
             onkeydown={(e) => handleEditKeyDown(e, comment.id)}
-            rows={3}
-          ></textarea>
+            rows={3}></textarea>
           <div class="comment-edit-actions">
             <Button variant="ghost" size="xs" onclick={cancelEdit}>Cancel</Button>
             <Button

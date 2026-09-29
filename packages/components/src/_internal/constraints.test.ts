@@ -586,6 +586,36 @@ describe('evaluateConstraints — complex synthetic document', () => {
 // defineConstraints — identity helper
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// evaluateConstraints — unsupported combinator (defensive default)
+// ---------------------------------------------------------------------------
+
+describe('evaluateConstraints — unsupported combinator', () => {
+  it('throws for a combinator outside the known union', () => {
+    // `Combinator` is exhaustively typed, so this is only reachable by a
+    // caller that bypasses the type system (e.g. a hand-authored
+    // `.constraints.json` file loaded at runtime without validation) — the
+    // defensive `default` branch guards against exactly that.
+    const document: ConstraintsDocument = {
+      component: 'test',
+      summary: 'Test document',
+      rules: [
+        {
+          id: 'bogus-combinator',
+          severity: 'error',
+          description: 'Uses an unsupported combinator',
+          kind: 'sideways' as never,
+          of: [{ prop: 'x', exists: true }],
+        },
+      ],
+    };
+    expect(() => evaluateConstraints(document, {})).toThrow(TypeError);
+    expect(() => evaluateConstraints(document, {})).toThrow(
+      'Unsupported constraint combinator: sideways',
+    );
+  });
+});
+
 describe('defineConstraints', () => {
   it('returns the argument unchanged', () => {
     const document: ConstraintsDocument = {

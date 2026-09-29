@@ -6,7 +6,7 @@ Inline shortcut hint that renders a key combo via Kbd alongside an action label,
 
 ```svelte
 <script lang="ts">
-  import ShortcutHint from '@lostgradient/cinder/shortcut-hint';
+  import { ShortcutHint } from '@lostgradient/cinder';
 </script>
 
 <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
@@ -47,7 +47,6 @@ Inline shortcut hint that renders a key combo via Kbd alongside an action label,
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

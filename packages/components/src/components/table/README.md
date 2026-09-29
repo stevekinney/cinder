@@ -2,20 +2,15 @@
 
 Full data table with header, body, and optional footer for structured tabular content.
 
-See the [tabular family boundaries](https://github.com/stevekinney/cinder/blob/main/docs/decisions/tabular-families.md)
-for when to choose Table versus DataTable or DataGrid. Table is the nearest
-choice when you need custom native-table markup; use DataTable for runtime
-columns/rows and DataGrid for interactive grid semantics.
+See the [tabular family boundaries](https://github.com/stevekinney/cinder/blob/main/docs/decisions/tabular-families.md) for when to choose Table versus DataTable or DataGrid. Table is the nearest choice when you need custom native-table markup; use DataTable for runtime columns/rows and DataGrid for interactive grid semantics.
 
 ## Usage
 
-`Table` is a compound component. Import the parent and compose its leaves via
-the namespace API: `Table.Header`, `Table.HeaderCell`, `Table.Body`,
-`Table.Row`, and `Table.Cell`.
+`Table` is a compound component. Import the parent and compose its leaves via the namespace API: `Table.Header`, `Table.HeaderCell`, `Table.Body`, `Table.Row`, and `Table.Cell`.
 
 ```svelte
 <script lang="ts">
-  import { Table } from '@lostgradient/cinder/table';
+  import { Table } from '@lostgradient/cinder';
 
   const people = [
     { name: 'Ada Lovelace', role: 'Mathematician', commits: 142 },
@@ -43,18 +38,9 @@ the namespace API: `Table.Header`, `Table.HeaderCell`, `Table.Body`,
 </Table>
 ```
 
-Pass `scrollable` for dense or unknown-width tables. The Table root stays a
-native `<table>`; Cinder generates a focusable `.cinder-table-scroll` wrapper
-that owns horizontal overflow when the available component width is too narrow.
-Use `scrollContainerProps` to label, style, or override attributes on that
-generated wrapper. When `scrollable` and `stickyHeader` are combined, the
-generated wrapper is the sticky header's scroll container; set a bounded block
-size on `scrollContainerProps` when the table should scroll vertically inside
-that wrapper.
+Pass `scrollable` for dense or unknown-width tables. The Table root stays a native `<table>`; Cinder generates a focusable `.cinder-table-scroll` wrapper that owns horizontal overflow when the available component width is too narrow. Use `scrollContainerProps` to label, style, or override attributes on that generated wrapper. When `scrollable` and `stickyHeader` are combined, the generated wrapper is the sticky header's scroll container; set a bounded block size on `scrollContainerProps` when the table should scroll vertically inside that wrapper.
 
-The leaves remain importable individually for à-la-carte builds — see
-`@lostgradient/cinder/table-body`, `@lostgradient/cinder/table-cell`, `@lostgradient/cinder/table-header`,
-`@lostgradient/cinder/table-header-cell`, and `@lostgradient/cinder/table-row`.
+The leaves are also named exports of `@lostgradient/cinder`.
 
 ## Props
 
@@ -79,7 +65,6 @@ The leaves remain importable individually for à-la-carte builds — see
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents
@@ -87,8 +72,7 @@ This component does not declare any local CSS variables.
 <!-- generated:subcomponents:start -->
 
 - `Table.Header` — the `<thead>` row group; see [`table-header`](../table-header/README.md).
-- `Table.HeaderCell` — a sortable `<th>`; see
-  [`table-header-cell`](../table-header-cell/README.md).
+- `Table.HeaderCell` — a sortable `<th>`; see [`table-header-cell`](../table-header-cell/README.md).
 - `Table.Body` — the `<tbody>` row group; see [`table-body`](../table-body/README.md).
 - `Table.Row` — a `<tr>` with optional selection; see [`table-row`](../table-row/README.md).
 - `Table.Cell` — a `<td>` with optional alignment; see [`table-cell`](../table-cell/README.md).

@@ -4,8 +4,8 @@ import AccordionRoot from './accordion.svelte';
 
 /**
  * `Accordion` is the parent compound component and a namespace exposing the
- * compose-only `Accordion.Item` leaf. The leaf remains importable individually
- * via `@lostgradient/cinder/accordion-item`.
+ * compose-only `Accordion.Item` leaf.
+ * The leaf is also a named export of `@lostgradient/cinder`.
  */
 const Accordion = Object.assign(AccordionRoot, {
   Item: AccordionItem,

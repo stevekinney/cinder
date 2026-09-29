@@ -19,8 +19,7 @@ The collapsible implementation follows the [WAI-ARIA Disclosure pattern](https:/
 - `aria-labelledby="{base}-label"` — associates the panel region with the visible trigger label content so trigger-only `aria-label` overrides do not rename the panel landmark.
 - Removed from the DOM when closed. Standard disclosure behavior — no `display:none` or `visibility:hidden` approach. `aria-controls` on the trigger is cleared simultaneously.
 
-> [!NOTE] Landmark count
-> Every open Collapsible panel becomes a named `region` landmark. On pages with many simultaneously open Collapsibles, landmark navigation lists grow proportionally. If landmark pollution is a concern, use a plain `{#if}` panel or consider whether the `Accordion` pattern (which intentionally omits `role="region"` per the WAI-ARIA APG) better fits the use case.
+> [!NOTE] Landmark count Every open Collapsible panel becomes a named `region` landmark. On pages with many simultaneously open Collapsibles, landmark navigation lists grow proportionally. If landmark pollution is a concern, use a plain `{#if}` panel or consider whether the `Accordion` pattern (which intentionally omits `role="region"` per the WAI-ARIA APG) better fits the use case.
 
 ## Keyboard Interactions
 

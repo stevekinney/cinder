@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -31,9 +31,9 @@ mock.module('@floating-ui/dom', () => ({
 }));
 
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
-const { tick } = await import('svelte');
+const { tick, flushSync } = await import('svelte');
 const { default: ContextMenuHarness } = await import('./_context-menu-test-harness.svelte');
-const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
+const { pushEscapeHandler, resetEscapeStack } = await import('../../_internal/overlay.ts');
 
 function queryMenu(): HTMLElement | null {
   return document.body.querySelector<HTMLElement>('[role="menu"]');
@@ -46,18 +46,18 @@ beforeEach(() => {
   flipSpy.mockClear();
   offsetSpy.mockClear();
   shiftSpy.mockClear();
-  _resetEscapeStack();
+  resetEscapeStack();
 });
 
 afterEach(() => {
   cleanup();
-  _resetEscapeStack();
+  resetEscapeStack();
 });
 
 describe('ContextMenu', () => {
   test('right-click opens a dropdown menu at the requested pointer coordinates', async () => {
     const { container } = render(ContextMenuHarness);
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
 
@@ -75,7 +75,7 @@ describe('ContextMenu', () => {
 
   test('right-to-left context menus open toward inline-start by default', async () => {
     const { container } = render(ContextMenuHarness, { props: { direction: 'rtl' } });
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
 
@@ -86,7 +86,7 @@ describe('ContextMenu', () => {
 
   test('provider-only right-to-left context menus open toward inline-start', async () => {
     const { container } = render(ContextMenuHarness, { props: { providerDirection: 'rtl' } });
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
 
@@ -100,7 +100,7 @@ describe('ContextMenu', () => {
     const { container } = render(ContextMenuHarness, {
       props: { providerDirection: 'rtl', menuDirection: 'ltr' },
     });
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
 
@@ -114,7 +114,7 @@ describe('ContextMenu', () => {
     const { container } = render(ContextMenuHarness, {
       props: { direction: 'ltr', providerDirection: 'rtl' },
     });
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
 
@@ -128,7 +128,7 @@ describe('ContextMenu', () => {
     const { container, rerender } = render(ContextMenuHarness, {
       props: { direction: 'ltr' },
     });
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     await tick();
     await rerender({ direction: 'rtl' });
@@ -154,19 +154,18 @@ describe('ContextMenu', () => {
       throw new Error('detached panel');
     });
     const { container } = render(ContextMenuHarness);
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
 
-    await waitFor(() => {
-      const menu = queryMenu();
-      expect(menu).not.toBeNull();
-      expect(menu?.parentElement).toBe(document.body);
-      expect(menu?.getAttribute('data-cinder-position-ready')).toBe('false');
-      expect(menu?.getAttribute('data-cinder-requested-x')).toBe('24');
-      expect(menu?.getAttribute('data-cinder-requested-y')).toBe('36');
-      expect(menu?.style.cssText).toBe('');
-    });
+    flushSync();
+    const menu = queryMenu();
+    expect(menu).not.toBeNull();
+    expect(menu?.parentElement).toBe(document.body);
+    expect(menu?.getAttribute('data-cinder-position-ready')).toBe('false');
+    expect(menu?.getAttribute('data-cinder-requested-x')).toBe('24');
+    expect(menu?.getAttribute('data-cinder-requested-y')).toBe('36');
+    expect(menu?.style.cssText).toBe('');
   });
 
   test('consumer trigger handlers do not replace core context-menu handlers', async () => {
@@ -189,7 +188,7 @@ describe('ContextMenu', () => {
         },
       },
     });
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
 
@@ -227,7 +226,7 @@ describe('ContextMenu', () => {
         triggerHandlers: { onkeydown: triggerKeyDown },
       },
     });
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
     await waitFor(() => expect(queryMenu()).not.toBeNull());
@@ -241,7 +240,8 @@ describe('ContextMenu', () => {
 
     expect(escapeEvent.defaultPrevented).toBe(true);
     expect(triggerKeyDown).not.toHaveBeenCalled();
-    await waitFor(() => expect(queryMenu()).toBeNull());
+    flushSync();
+    expect(queryMenu()?.outerHTML ?? null).toBeNull();
   });
 
   test('inherits escape-stack registration transitively from DropdownMenu: dismisses only itself above another stack registration', async () => {
@@ -252,7 +252,7 @@ describe('ContextMenu', () => {
 
     try {
       const { container } = render(ContextMenuHarness);
-      const region = container.querySelector('.context-menu-region') as HTMLElement;
+      const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
       await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
       await waitFor(() => expect(queryMenu()).not.toBeNull());
@@ -260,7 +260,8 @@ describe('ContextMenu', () => {
       window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 
       expect(parentEscapeCount).toBe(0);
-      await waitFor(() => expect(queryMenu()).toBeNull());
+      flushSync();
+      expect(queryMenu()?.outerHTML ?? null).toBeNull();
     } finally {
       releaseParent();
     }
@@ -268,7 +269,7 @@ describe('ContextMenu', () => {
 
   test('right-clicking again while open repositions to the latest pointer coordinates', async () => {
     const { container } = render(ContextMenuHarness);
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
     await waitFor(() => expect(queryMenu()?.getAttribute('data-cinder-requested-x')).toBe('24'));
@@ -294,7 +295,7 @@ describe('ContextMenu', () => {
 
   test('disabled context menu leaves native contextmenu behavior alone', async () => {
     const { container } = render(ContextMenuHarness, { props: { disabled: true } });
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
 
@@ -304,23 +305,30 @@ describe('ContextMenu', () => {
 
   test('selecting a menu item closes the menu and restores focus to the trigger', async () => {
     const { container } = render(ContextMenuHarness);
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
-    const triggerButton = container.querySelector('.context-menu-button') as HTMLButtonElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
+    const triggerButton = requiredInstance(
+      container.querySelector('.context-menu-button'),
+      HTMLButtonElement,
+    );
     triggerButton.focus();
 
     await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
     await waitFor(() => expect(queryMenu()).not.toBeNull());
 
-    const openItem = queryMenu()?.querySelector('[role="menuitem"]') as HTMLButtonElement;
+    const openItem = requiredInstance(
+      queryMenu()?.querySelector('[role="menuitem"]'),
+      HTMLButtonElement,
+    );
     await fireEvent.click(openItem);
 
-    await waitFor(() => expect(queryMenu()).toBeNull());
+    flushSync();
+    expect(queryMenu()?.outerHTML ?? null).toBeNull();
     expect(document.activeElement).toBe(triggerButton);
   });
 
   test('touch long-press opens the menu after the configured delay', async () => {
     const { container } = render(ContextMenuHarness, { props: { longPressDelay: 0 } });
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     await fireEvent.pointerDown(region, { pointerType: 'touch', clientX: 14, clientY: 18 });
 
@@ -334,7 +342,7 @@ describe('ContextMenu', () => {
 
   test('touch movement beyond the threshold cancels long-press open', async () => {
     const { container } = render(ContextMenuHarness, { props: { longPressDelay: 10 } });
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     await fireEvent.pointerDown(region, { pointerType: 'touch', clientX: 14, clientY: 18 });
     await fireEvent.pointerMove(region, { pointerType: 'touch', clientX: 40, clientY: 18 });
@@ -349,7 +357,7 @@ describe('ContextMenu', () => {
     for (const eventName of cleanupEvents) {
       cleanup();
       const { container } = render(ContextMenuHarness, { props: { longPressDelay: 10 } });
-      const region = container.querySelector('.context-menu-region') as HTMLElement;
+      const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
       await fireEvent.pointerDown(region, { pointerType: 'touch', clientX: 14, clientY: 18 });
       await fireEvent(region, new PointerEvent(eventName, { bubbles: true, pointerType: 'touch' }));
@@ -363,7 +371,7 @@ describe('ContextMenu', () => {
     const outerClick = mock(() => {});
     document.addEventListener('click', outerClick);
     const { container } = render(ContextMenuHarness, { props: { longPressDelay: 0 } });
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     try {
       await fireEvent.pointerDown(region, { pointerType: 'touch', clientX: 14, clientY: 18 });
@@ -382,7 +390,7 @@ describe('ContextMenu', () => {
 
   test('long-press suppresses duplicate synthetic contextmenu events until another pointerdown', async () => {
     const { container } = render(ContextMenuHarness, { props: { longPressDelay: 0 } });
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     await fireEvent.pointerDown(region, { pointerType: 'touch', clientX: 14, clientY: 18 });
     await waitFor(() => expect(queryMenu()).not.toBeNull());
@@ -396,7 +404,7 @@ describe('ContextMenu', () => {
 
   test('long-press suppression clears before a later mouse contextmenu request', async () => {
     const { container } = render(ContextMenuHarness, { props: { longPressDelay: 0 } });
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     await fireEvent.pointerDown(region, { pointerType: 'touch', clientX: 14, clientY: 18 });
     await waitFor(() => expect(queryMenu()).not.toBeNull());
@@ -410,21 +418,31 @@ describe('ContextMenu', () => {
 
   test('outside pointerdown closes a touch-opened context menu', async () => {
     const { container } = render(ContextMenuHarness, { props: { longPressDelay: 0 } });
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
-    const outside = container.querySelector('.context-menu-selection') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
+    const outside = requiredInstance(
+      container.querySelector('.context-menu-selection'),
+      HTMLElement,
+    );
 
     await fireEvent.pointerDown(region, { pointerType: 'touch', clientX: 14, clientY: 18 });
     await waitFor(() => expect(queryMenu()).not.toBeNull());
     await fireEvent.pointerDown(outside, { pointerType: 'touch' });
 
-    await waitFor(() => expect(queryMenu()).toBeNull());
+    flushSync();
+    expect(queryMenu()?.outerHTML ?? null).toBeNull();
   });
 
   test('outside pointerdown restores the captured focus instead of the focusable trigger wrapper', async () => {
     const { container } = render(ContextMenuHarness);
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
-    const triggerButton = container.querySelector('.context-menu-button') as HTMLButtonElement;
-    const outside = container.querySelector('.context-menu-selection') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
+    const triggerButton = requiredInstance(
+      container.querySelector('.context-menu-button'),
+      HTMLButtonElement,
+    );
+    const outside = requiredInstance(
+      container.querySelector('.context-menu-selection'),
+      HTMLElement,
+    );
     region.tabIndex = 0;
     triggerButton.focus();
 
@@ -432,13 +450,14 @@ describe('ContextMenu', () => {
     await waitFor(() => expect(queryMenu()).not.toBeNull());
     await fireEvent.pointerDown(outside);
 
-    await waitFor(() => expect(queryMenu()).toBeNull());
+    flushSync();
+    expect(queryMenu()?.outerHTML ?? null).toBeNull();
     expect(document.activeElement).toBe(triggerButton);
   });
 
   test('opening focuses the first enabled menu item', async () => {
     const { container } = render(ContextMenuHarness);
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
 
@@ -450,7 +469,7 @@ describe('ContextMenu', () => {
 
   test('ArrowDown and ArrowUp navigate enabled items and skip disabled ones', async () => {
     const { container } = render(ContextMenuHarness);
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
     await waitFor(() => {
@@ -458,55 +477,67 @@ describe('ContextMenu', () => {
     });
 
     // "Disabled action" is skipped — ArrowDown lands on the next enabled item.
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'ArrowDown',
+    });
     expect(document.activeElement?.textContent).toContain('Rename');
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'ArrowDown',
+    });
     expect(document.activeElement?.textContent).toContain('Delete');
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowUp' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'ArrowUp',
+    });
     expect(document.activeElement?.textContent).toContain('Rename');
   });
 
   test('ArrowDown wraps from the last enabled item back to the first', async () => {
     const { container } = render(ContextMenuHarness);
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
     await waitFor(() => {
       expect(document.activeElement?.textContent).toContain('Open');
     });
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'End' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), { key: 'End' });
     expect(document.activeElement?.textContent).toContain('Delete');
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'ArrowDown',
+    });
     expect(document.activeElement?.textContent).toContain('Open');
   });
 
   test('ArrowUp wraps from the first enabled item to the last', async () => {
     const { container } = render(ContextMenuHarness);
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
     await waitFor(() => {
       expect(document.activeElement?.textContent).toContain('Open');
     });
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowUp' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'ArrowUp',
+    });
     expect(document.activeElement?.textContent).toContain('Delete');
   });
 
   test('Enter on the focused item selects it and closes the menu', async () => {
     const { container } = render(ContextMenuHarness);
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
     await waitFor(() => {
       expect(document.activeElement?.textContent).toContain('Open');
     });
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'ArrowDown',
+    });
     expect(document.activeElement?.textContent).toContain('Rename');
 
     // In a real browser, pressing Enter on a focused <button> dispatches a native
@@ -514,16 +545,20 @@ describe('ContextMenu', () => {
     // synthesizes its own click on keydown (that caused double-activation), and
     // happy-dom does not synthesize the native click from keydown — so we fire
     // the click directly on the focused item to exercise the same native path.
-    await fireEvent.click(document.activeElement as HTMLElement);
+    await fireEvent.click(requiredInstance(document.activeElement, HTMLElement));
 
-    await waitFor(() => expect(queryMenu()).toBeNull());
+    flushSync();
+    expect(queryMenu()?.outerHTML ?? null).toBeNull();
     expect(container.querySelector('.context-menu-selected')?.textContent).toBe('rename');
   });
 
   test('Escape closes the menu and restores focus to the trigger region', async () => {
     const { container } = render(ContextMenuHarness);
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
-    const triggerButton = container.querySelector('.context-menu-button') as HTMLButtonElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
+    const triggerButton = requiredInstance(
+      container.querySelector('.context-menu-button'),
+      HTMLButtonElement,
+    );
     triggerButton.focus();
 
     await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
@@ -531,19 +566,25 @@ describe('ContextMenu', () => {
       expect(document.activeElement?.textContent).toContain('Open');
     });
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'Escape',
+    });
 
     // Escape both flips open to false (the close effect restores focus) and
     // runs DropdownMenu's own focusTrigger() call, so focus lands back inside
     // the trigger region rather than escaping to the body.
-    await waitFor(() => expect(queryMenu()).toBeNull());
+    flushSync();
+    expect(queryMenu()?.outerHTML ?? null).toBeNull();
     expect(region.contains(document.activeElement)).toBe(true);
   });
 
   test('keyboard navigation drives the role=menu items: ArrowDown/ArrowUp move, Enter selects, Escape closes', async () => {
     const { container, getByRole, getAllByRole, queryByRole } = render(ContextMenuHarness);
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
-    const triggerButton = container.querySelector('.context-menu-button') as HTMLButtonElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
+    const triggerButton = requiredInstance(
+      container.querySelector('.context-menu-button'),
+      HTMLButtonElement,
+    );
     triggerButton.focus();
 
     // Open the floating menu from the pointer location.
@@ -555,40 +596,49 @@ describe('ContextMenu', () => {
     const items = getAllByRole('menuitem');
     expect(items.length).toBe(4);
     expect(menu.contains(getByRole('menuitem', { name: 'Open' }))).toBe(true);
-    await waitFor(() => {
-      expect(document.activeElement).toBe(getByRole('menuitem', { name: 'Open' }));
-    });
+    flushSync();
+    expect(document.activeElement).toBe(getByRole('menuitem', { name: 'Open' }));
 
     // ArrowDown skips the disabled item and lands on the next enabled one.
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'ArrowDown',
+    });
     expect(document.activeElement).toBe(getByRole('menuitem', { name: 'Rename' }));
 
     // ArrowUp moves focus back up to the first enabled item.
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowUp' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'ArrowUp',
+    });
     expect(document.activeElement).toBe(getByRole('menuitem', { name: 'Open' }));
 
     // Enter on the focused item selects it and closes the menu. In a real
     // browser Enter on a <button> dispatches a native click; DropdownItem relies
     // on that (it no longer synthesizes its own click) and happy-dom does not
     // synthesize it from keydown, so we fire the click to drive the native path.
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'ArrowDown',
+    });
     expect(document.activeElement).toBe(getByRole('menuitem', { name: 'Rename' }));
-    await fireEvent.click(document.activeElement as HTMLElement);
+    await fireEvent.click(requiredInstance(document.activeElement, HTMLElement));
 
-    await waitFor(() => expect(queryByRole('menu')).toBeNull());
+    flushSync();
+    expect(queryByRole('menu')?.outerHTML ?? null).toBeNull();
     expect(container.querySelector('.context-menu-selected')?.textContent).toBe('rename');
 
     // Re-open, then Escape closes the menu and restores focus to the trigger.
     await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
     await waitFor(() => getByRole('menu'));
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
-    await waitFor(() => expect(queryByRole('menu')).toBeNull());
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'Escape',
+    });
+    flushSync();
+    expect(queryByRole('menu')?.outerHTML ?? null).toBeNull();
     expect(region.contains(document.activeElement)).toBe(true);
   });
 
   test('Escape closes the menu when focus is on the trigger region not the menu panel', async () => {
     const { container, getByRole, queryByRole } = render(ContextMenuHarness);
-    const region = container.querySelector('.context-menu-region') as HTMLElement;
+    const region = requiredInstance(container.querySelector('.context-menu-region'), HTMLElement);
 
     // Open the context menu via right-click
     await fireEvent.contextMenu(region, { clientX: 50, clientY: 50 });
@@ -596,12 +646,16 @@ describe('ContextMenu', () => {
 
     // Fire Escape on the trigger region (not inside the menu)
     await fireEvent.keyDown(region, { key: 'Escape' });
-    await waitFor(() => expect(queryByRole('menu')).toBeNull());
+    flushSync();
+    expect(queryByRole('menu')?.outerHTML ?? null).toBeNull();
   });
 
   test('keyboard context menu keys open at the focused target edge', async () => {
     const { container } = render(ContextMenuHarness);
-    const button = container.querySelector('.context-menu-button') as HTMLButtonElement;
+    const button = requiredInstance(
+      container.querySelector('.context-menu-button'),
+      HTMLButtonElement,
+    );
     button.getBoundingClientRect = () =>
       ({
         x: 10,
@@ -625,7 +679,10 @@ describe('ContextMenu', () => {
 
   test('keyboard context menu keys use the inline-start edge in right-to-left direction', async () => {
     const { container } = render(ContextMenuHarness, { props: { direction: 'rtl' } });
-    const button = container.querySelector('.context-menu-button') as HTMLButtonElement;
+    const button = requiredInstance(
+      container.querySelector('.context-menu-button'),
+      HTMLButtonElement,
+    );
     button.getBoundingClientRect = () =>
       ({
         x: 10,

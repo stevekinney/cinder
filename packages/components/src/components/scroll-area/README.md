@@ -6,7 +6,7 @@ Bounded scrolling container that constrains overflowing content within a max hei
 
 ```svelte
 <script lang="ts">
-  import ScrollArea from '@lostgradient/cinder/scroll-area';
+  import { ScrollArea } from '@lostgradient/cinder';
 
   const command =
     '$ bun run --filter=@lostgradient/cinder build && bun run --filter=@lostgradient/cinder test --coverage --reporter=verbose --bail';
@@ -17,10 +17,7 @@ Bounded scrolling container that constrains overflowing content within a max hei
 >
 ```
 
-> **`dragToScroll`** enables fine-pointer (mouse) click-and-drag scrolling
-> with momentum, using the same physics as Carousel's mouse drag. Off by
-> default, and not supported when `direction="both"`. See
-> `scroll-area.a11y.md` for the review.
+> **`dragToScroll`** enables fine-pointer (mouse) click-and-drag scrolling with momentum, using the same physics as Carousel's mouse drag. Off by default, and not supported when `direction="both"`. See `scroll-area.a11y.md` for the review.
 
 ## Props
 
@@ -46,7 +43,6 @@ Bounded scrolling container that constrains overflowing content within a max hei
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

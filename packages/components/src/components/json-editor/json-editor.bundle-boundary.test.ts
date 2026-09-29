@@ -126,9 +126,7 @@ describe('JsonEditor — bundle boundary', () => {
   test('enhancement is reached only through a dynamic import', async () => {
     const componentPath = resolvePath(import.meta.dir, 'json-editor.svelte');
     const source = await Bun.file(componentPath).text();
-    expect(source).toMatch(
-      /import\(\s*['"]@lostgradient\/cinder\/json-editor\/enhancement['"]\s*\)/,
-    );
+    expect(source).toMatch(/import\(\s*['"]\.\/json-editor-enhancement\.ts['"]\s*\)/);
     expect(source).not.toMatch(/from\s*['"]\.\/json-editor-enhancement\.ts['"]/);
   });
 
@@ -145,6 +143,6 @@ describe('JsonEditor — bundle boundary', () => {
   test('synchronizes overlay scroll after lazy enhancement resolves', async () => {
     const source = await Bun.file(resolvePath(import.meta.dir, 'json-editor.svelte')).text();
     expect(source).toContain('highlightNode.scrollTop = textareaNode.scrollTop');
-    expect(source).toMatch(/import\s*\{[^}]*\btick\b[^}]*\}\s*from\s*['"]svelte['"]/);
+    expect(source).toContain("import { tick, untrack } from 'svelte'");
   });
 });

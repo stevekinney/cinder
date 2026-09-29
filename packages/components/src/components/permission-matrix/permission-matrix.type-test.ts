@@ -14,7 +14,7 @@ const columns = [
   { id: 'write', label: 'Write' },
 ] satisfies PermissionMatrixAxisItem[];
 
-const _valid: PermissionMatrixProps<{ id: string; label: string; scopeKey: string }> = {
+const valid: PermissionMatrixProps<{ id: string; label: string; scopeKey: string }> = {
   label: 'Scope permissions',
   rows: scopeRows,
   columns,
@@ -28,7 +28,7 @@ const _valid: PermissionMatrixProps<{ id: string; label: string; scopeKey: strin
   },
 };
 
-const _invalid: PermissionMatrixProps = {
+const invalid: PermissionMatrixProps = {
   label: 'Scope permissions',
   rows: columns,
   columns,
@@ -39,5 +39,5 @@ const _invalid: PermissionMatrixProps = {
   },
 };
 
-void _valid;
-void _invalid;
+void valid;
+void invalid;

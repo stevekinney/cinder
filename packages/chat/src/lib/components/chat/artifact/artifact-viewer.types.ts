@@ -10,6 +10,14 @@ export type ChatArtifact = {
   title?: string;
 };
 
+/** Artifact value resolved from message metadata for user-facing actions and panels. */
+export type ResolvedChatArtifact = ChatArtifact & {
+  /** Stable source message identity. Duplicate titles and content never collide. */
+  id: string;
+  /** Normalized non-empty title used for accessible names and panel chrome. */
+  title: string;
+};
+
 /** Consumer-owned Mermaid rendering snippet. */
 export type MermaidRenderer = Snippet<[content: string, type: 'mermaid']>;
 export type CodeRenderer = Snippet<[content: string, type: 'code', language: string | undefined]>;

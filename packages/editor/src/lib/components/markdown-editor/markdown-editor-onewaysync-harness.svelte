@@ -72,5 +72,5 @@
   value={passedValue}
   id="onewaysync-harness"
   label="One-way sync harness"
-  showToolbar={false}
+  toolbarEnabled={false}
 />

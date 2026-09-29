@@ -6,7 +6,7 @@ Coordinates a set of radio buttons under a single name with shared validation st
 
 ```svelte
 <script lang="ts">
-  import RadioGroup from '@lostgradient/cinder/radio-group';
+  import { RadioGroup } from '@lostgradient/cinder';
 </script>
 
 <RadioGroup name="disabled-region" label="Region (locked for trial accounts)" value="us" disabled>
@@ -40,7 +40,6 @@ Coordinates a set of radio buttons under a single name with shared validation st
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

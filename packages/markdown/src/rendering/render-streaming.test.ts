@@ -99,11 +99,11 @@ describe('splitStreamingContent', () => {
   });
 
   it('handles null/undefined gracefully', () => {
-    expect(splitStreamingContent(null as unknown as string)).toEqual({
+    expect(Reflect.apply(splitStreamingContent, null, [null])).toEqual({
       rendered: '',
       tail: '',
     });
-    expect(splitStreamingContent(undefined as unknown as string)).toEqual({
+    expect(Reflect.apply(splitStreamingContent, null, [undefined])).toEqual({
       rendered: '',
       tail: '',
     });

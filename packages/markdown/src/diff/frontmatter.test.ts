@@ -100,7 +100,7 @@ describe('computeDiffWithFrontMatter', () => {
       expect(result.frontMatterGroup.blockType).toBe(FRONTMATTER_BLOCK_TYPE);
       expect(result.frontMatterGroup.blockIndex).toBe(FRONTMATTER_BLOCK_INDEX);
       // The first group in the array should be the front matter group
-      expect(result.groups[0]).toBe(result.frontMatterGroup);
+      expect(result.groups[0]!).toBe(result.frontMatterGroup);
     }
   });
 

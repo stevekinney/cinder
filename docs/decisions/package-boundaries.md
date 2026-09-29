@@ -243,12 +243,9 @@ stops existing:
 | `@cinder/editor`     | split across both new packages — gone              |
 | `@cinder/commentary` | absorbed into `@lostgradient/editor` — gone        |
 | `@cinder/playground` | unchanged, stays private                           |
-| `@cinder/testing`    | unchanged, stays private                           |
+| `@cinder/testing`    | renamed → `@lostgradient/testing` (private)        |
 
-That leaves a rule worth keeping: **`@cinder/*` means private dev tooling that will never ship;
-`@lostgradient/*` means published.** Today the two scopes are muddled — `@cinder/markdown` is
-private but its code ships inside cinder's bundle anyway. Afterwards the scope tells you the
-truth.
+The naming rule proposed here predates the mirror conversion: `@lostgradient/testing` is also private. Publication is now determined by each package manifest and release workflow, not its scope alone.
 
 Every `workspace:*` reference to a renamed package must be repointed: `packages/components`,
 `packages/playground`, and the internal edges between `commentary`, `editor`, and `markdown`.

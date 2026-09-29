@@ -6,7 +6,7 @@ On-page heading navigation for long-form content and docs layouts.
 
 ```svelte
 <script lang="ts">
-  import TableOfContents from '@lostgradient/cinder/table-of-contents';
+  import { TableOfContents } from '@lostgradient/cinder';
 </script>
 
 <TableOfContents target="#article-content" />
@@ -36,6 +36,7 @@ On-page heading navigation for long-form content and docs layouts.
 - `--cinder-table-of-contents-link-active-color`
 - `--cinder-table-of-contents-link-color`
 - `--cinder-table-of-contents-link-indent-step`
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

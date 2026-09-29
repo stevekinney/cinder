@@ -1,214 +1,83 @@
-/**
- * Core Milkdown editor initialization.
- *
- * This module configures Milkdown with CommonMark + GFM support,
- * integrating with the DEP-35 pipeline for consistent serialization.
- */
+import { getMarkdown, replaceAll } from '@milkdown/kit/utils';
+import { EditorState as ProseMirrorState, Selection } from 'prosemirror-state';
+import { preloadCommandRuntime } from './commands.ts';
+import { notifySelection } from './editor-selection.ts';
+import { createEditorKeymap } from './keymap-plugin.ts';
+import { preloadLazyPluginRuntime } from './milkdown-plugin-runtime.js';
+import { createTemplateCompletionPlugin } from './template-completion-plugin.ts';
+import { createTemplateInvalidDecorationPlugin } from './template-invalid-decoration-plugin.ts';
+import {
+  createPlaceholderConfigurationTransaction,
+  createTemplatePlaceholderConfigurationPlugin,
+  readPlaceholderConfiguration,
+} from './template-placeholder-configuration-plugin.ts';
+import {
+  resolvePlaceholderConfiguration,
+  type PlaceholderEditorConfiguration,
+  type ResolvedPlaceholderConfiguration,
+} from './template-placeholder-configuration.ts';
 
-import type { Ctx } from '@milkdown/kit/ctx';
-
-import type { EditorConfig, EditorSelection, EditorState } from './types.js';
+import { applyReadonlyAria } from './editor-lifecycle.ts';
+import type { EditorConfig, EditorState } from './types.js';
 import { DEFAULT_DEBOUNCE_MS } from './types.js';
 
-function shouldLogDevelopmentWarnings(): boolean {
-  return typeof process === 'undefined' || process.env.NODE_ENV !== 'production';
-}
+type EditorBuilder = ReturnType<typeof import('@milkdown/kit/core').Editor.make>;
+type MilkdownPluginList =
+  import('@milkdown/ctx').MilkdownPlugin | import('@milkdown/ctx').MilkdownPlugin[];
 
-/**
- * Create and configure a Milkdown editor instance.
- *
- * @param container - DOM element to mount the editor in
- * @param config - Editor configuration
- * @returns Promise resolving to EditorState for imperative control
- */
-export async function createEditor(
+function configureEditor(
+  builder: EditorBuilder,
   container: HTMLElement,
-  config: EditorConfig = {},
-): Promise<EditorState> {
-  if (typeof document === 'undefined') {
-    throw new Error('createEditor() requires a browser document.');
-  }
-
-  const [
-    { Editor, rootCtx, defaultValueCtx, editorViewCtx, editorViewOptionsCtx },
-    { commonmark, listItemKeymap },
-    { gfm, tableKeymap },
-    { history },
-    { listener, listenerCtx },
-    { getMarkdown, replaceAll },
-    { preloadCommandRuntime },
-    { preloadLazyPluginRuntime },
-    { placeholderPlugin },
-    { createEditorKeymap },
-    { clipboardPlugin },
-    { linkInputRulePlugin },
-    { createTemplateCompletionPlugin },
-    { createTemplateInvalidDecorationPlugin },
-  ] = await Promise.all([
-    import('@milkdown/kit/core'),
-    import('@milkdown/kit/preset/commonmark'),
-    import('@milkdown/kit/preset/gfm'),
-    import('@milkdown/kit/plugin/history'),
-    import('@milkdown/kit/plugin/listener'),
-    import('@milkdown/kit/utils'),
-    import('./commands.js'),
-    import('./milkdown-plugin-runtime.js'),
-    import('./placeholder.js'),
-    import('./keymap-plugin.js'),
-    import('./clipboard.js'),
-    import('./link-input-rule.js'),
-    import('./template-completion-plugin.js'),
-    import('./template-invalid-decoration-plugin.js'),
-  ]);
-  await preloadCommandRuntime();
-  // cinder#1306: primes the cache createLazyProsePlugin/createLazyInputRule
-  // need to register a timer synchronously (see milkdown-plugin-runtime.ts).
-  // Must resolve before any `.use(...)` call below reaches one of those
-  // plugins' outer function, so it runs alongside preloadCommandRuntime(),
-  // before the builder chain starts.
-  await preloadLazyPluginRuntime();
-
-  const {
-    initialContent = '',
-    readonly = false,
-    ariaLabel,
-    changeDebounceMs = DEFAULT_DEBOUNCE_MS,
-    onchange,
-    onselectionchange,
-    onlinkshortcut,
-    oncommentshortcut,
-    plugins = [],
-    placeholderCompletion,
-    placeholderDecoration,
-  } = config;
-  const resolvedAriaLabel =
-    typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel.trim() : undefined;
-
-  // Track if we're updating from external source to prevent loops
-  let isExternalUpdate = false;
-  // Track if editor is destroyed to prevent accessing context after cleanup
-  let isDestroyed = false;
-  let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
-  let hasPendingInternalChange = false;
-  // Build the editor
-  let builder = Editor.make()
+  initialContent: string,
+  resolvedAriaLabel: string | undefined,
+  rootCtx: typeof import('@milkdown/kit/core').rootCtx,
+  defaultValueCtx: typeof import('@milkdown/kit/core').defaultValueCtx,
+  editorViewOptionsCtx: typeof import('@milkdown/kit/core').editorViewOptionsCtx,
+  listItemKeymap: typeof import('@milkdown/kit/preset/commonmark').listItemKeymap,
+  tableKeymap: typeof import('@milkdown/kit/preset/gfm').tableKeymap,
+  listenerCtx: typeof import('@milkdown/kit/plugin/listener').listenerCtx,
+  editorViewCtx: typeof import('@milkdown/kit/core').editorViewCtx,
+  listener: typeof import('@milkdown/kit/plugin/listener').listener,
+  commonmark: typeof import('@milkdown/kit/preset/commonmark').commonmark,
+  gfm: typeof import('@milkdown/kit/preset/gfm').gfm,
+  linkInputRulePlugin: import('@milkdown/ctx').MilkdownPlugin,
+  clipboardPlugin: import('@milkdown/ctx').MilkdownPlugin,
+  history: MilkdownPluginList,
+  placeholderPlugin: import('@milkdown/ctx').MilkdownPlugin,
+  keymap: import('@milkdown/ctx').MilkdownPlugin,
+  isDestroyed: () => boolean,
+  onmarkdownupdated: (markdown: string, previousMarkdown: string) => void,
+  onselectionchange?: EditorConfig['onselectionchange'],
+): EditorBuilder {
+  return builder
     .config((ctx) => {
       ctx.set(rootCtx, container);
       ctx.set(defaultValueCtx, initialContent);
-      if (resolvedAriaLabel) {
-        ctx.update(editorViewOptionsCtx, (previous) => {
-          const previousAttributes = previous.attributes;
-
-          return {
-            ...previous,
-            attributes:
-              typeof previousAttributes === 'function'
-                ? (state) => ({ ...previousAttributes(state), 'aria-label': resolvedAriaLabel })
-                : { ...previousAttributes, 'aria-label': resolvedAriaLabel },
-          };
-        });
-      }
+      if (!resolvedAriaLabel) return;
+      ctx.update(editorViewOptionsCtx, (previous) => ({
+        ...previous,
+        attributes: withAriaLabel(previous.attributes ?? {}, resolvedAriaLabel),
+      }));
     })
     .config((ctx) => {
-      // Set up change listener
       const listenerManager = ctx.get(listenerCtx);
-
-      listenerManager.markdownUpdated((_ctx, markdown, prevMarkdown) => {
-        // Skip if editor is destroyed (debounced callback fired after cleanup)
-        if (isDestroyed) return;
-        // Skip if this is an external update (from setMarkdown)
-        if (isExternalUpdate) return;
-        // Skip if content unchanged
-        if (markdown === prevMarkdown) return;
-
-        // Debounce onChange calls
-        if (debounceTimeout) clearTimeout(debounceTimeout);
-        debounceTimeout = setTimeout(() => {
-          if (isDestroyed) return; // Guard after debounce
-          hasPendingInternalChange = false;
-          onchange?.(markdown);
-        }, changeDebounceMs);
-      });
-
-      // Selection change tracking (for DEP-39 comment anchoring and toolbar state)
-      // We need TWO listeners:
-      // 1. selectionUpdated - fires on selection-only changes (user clicks without editing)
-      // 2. updated - fires on document changes (which also change the selection position)
-      // Together, these ensure the toolbar always reflects the current cursor position.
-      if (onselectionchange) {
-        const notifySelectionChange = (
-          listenerContext: Ctx,
-          liveSelection?: { from: number; to: number },
-        ) => {
-          // Skip if editor is destroyed
-          if (isDestroyed) return;
-
-          // Wrap context access in try-catch - Milkdown may have already cleared
-          // its context registry during unmount, causing ctx.get() to throw
-          let view;
-          try {
-            view = listenerContext.get(editorViewCtx);
-          } catch {
-            // Context already destroyed during cleanup, silently ignore
-            return;
-          }
-          // Guard against view not being ready or state not yet attached
-          if (!view?.state) return;
-
-          const { from, to } = liveSelection ?? view.state.selection;
-          const selection: EditorSelection = {
-            from,
-            to,
-            isCollapsed: from === to,
-          };
-
-          onselectionchange(selection);
-        };
-
-        // Listen for selection-only changes (clicking without editing)
-        listenerManager.selectionUpdated((listenerContext, selection) =>
-          notifySelectionChange(listenerContext, selection),
-        );
-
-        // Listen for document changes (which also affect selection position)
-        listenerManager.updated((listenerContext) => notifySelectionChange(listenerContext));
-      }
+      listenerManager.markdownUpdated((_ctx, markdown, previousMarkdown) =>
+        onmarkdownupdated(markdown, previousMarkdown),
+      );
+      if (!onselectionchange) return;
+      listenerManager.selectionUpdated((context, selection) =>
+        notifySelection(context, editorViewCtx, isDestroyed, onselectionchange, selection),
+      );
+      listenerManager.updated((context) =>
+        notifySelection(context, editorViewCtx, isDestroyed, onselectionchange),
+      );
     })
     .config((ctx) => {
-      // cinder#1302: the commonmark preset's own listItemKeymap binds plain
-      // Tab/Shift-Tab to sink/lift-list-item (see @milkdown/preset-commonmark's
-      // listItemKeymap). That binding and createEditorKeymap's Tab-escape latch
-      // (keymap-plugin.ts) both get merged into ONE ProseMirror keymap plugin —
-      // Milkdown's KeymapManager chains every handler registered for a key into
-      // a single command, in priority order (ties broken by registration
-      // order) — and the preset's plugin registers first, so its handler always
-      // ran before ours got a chance. A successful sink/lift returns true,
-      // which stops the chain and preventDefaults the key, so the latch's
-      // Escape-then-Tab release (armed correctly) was never actually reachable:
-      // the preset's Tab handler re-indented before the chain ever reached the
-      // latch-aware binding.
-      //
-      // Fix: strip Tab/Shift-Tab from the preset's own keymap here, before its
-      // $shortcut plugin builds (it waits on KeymapReady, which is gated on
-      // SchemaReady — far later than this synchronous config callback runs —
-      // so there is no race). Mod-]/Mod-[ stay bound, so indent/outdent remains
-      // reachable by keyboard; Tab/Shift-Tab become exclusively
-      // createEditorKeymap's to handle, which is the only place the WCAG 2.1.2
-      // escape latch lives.
       ctx.update(listItemKeymap.key, (current) => ({
         ...current,
         SinkListItem: { ...current.SinkListItem, shortcuts: 'Mod-]' },
         LiftListItem: { ...current.LiftListItem, shortcuts: 'Mod-[' },
       }));
-
-      // GFM's tableKeymap binds the identical trap one node type over: plain
-      // Tab/Shift-Tab move between table cells, with the SAME
-      // registers-before-the-latch ordering (and higher priority — 100 vs.
-      // the default 50 — so it would win even more decisively). Found while
-      // implementing the list fix above; same mechanism, same fix. Mod-]/
-      // Mod-[ already exist as tableKeymap's OWN alternate bindings for
-      // NextCell/PrevCell, so keeping them here costs nothing extra and
-      // matches the list keymap's shape.
       ctx.update(tableKeymap.key, (current) => ({
         ...current,
         NextCell: { ...current.NextCell, shortcuts: 'Mod-]' },
@@ -220,67 +89,250 @@ export async function createEditor(
     .use(linkInputRulePlugin)
     .use(clipboardPlugin)
     .use(history)
-    .use(
-      createEditorKeymap({
-        ...(onlinkshortcut ? { onlinkshortcut } : {}),
-        ...(oncommentshortcut ? { oncommentshortcut } : {}),
-      }),
-    ) // DEP-37/47: Keyboard shortcuts
+    .use(keymap)
     .use(listener)
     .use(placeholderPlugin);
+}
 
-  // DEP-583: Conditionally register placeholder completion plugin
-  if (placeholderCompletion) {
-    const completionConfig = placeholderCompletion;
-    builder = builder.use(createTemplateCompletionPlugin(() => completionConfig));
+function withAriaLabel(
+  attributes:
+    | Record<string, string>
+    | ((state: import('@milkdown/prose/state').EditorState) => Record<string, string>),
+  ariaLabel: string,
+): typeof attributes {
+  if (typeof attributes === 'function') {
+    return (state) => ({ ...attributes(state), 'aria-label': ariaLabel });
   }
+  return { ...attributes, 'aria-label': ariaLabel };
+}
 
-  // DEP-583: Conditionally register placeholder invalid decoration plugin
-  if (placeholderDecoration) {
-    const decorationConfig = placeholderDecoration;
-    builder = builder.use(
-      createTemplateInvalidDecorationPlugin(
-        () => decorationConfig.candidates,
-        decorationConfig.invalidClassName ? () => decorationConfig.invalidClassName! : undefined,
-      ),
-    );
-  }
+/**
+ * Install the placeholder plugins on every editor. They stay inert until a
+ * configuration enables them, so configuration can arrive or change after
+ * mount without recreating the editor.
+ */
+function addOptionalPlugins(
+  builder: EditorBuilder,
+  initialPlaceholders: ResolvedPlaceholderConfiguration,
+  config: Pick<EditorConfig, 'placeholderListboxId' | 'onPlaceholderStatusChange'>,
+  plugins: NonNullable<EditorConfig['plugins']>,
+): EditorBuilder {
+  builder = builder
+    .use(createTemplatePlaceholderConfigurationPlugin(initialPlaceholders))
+    .use(
+      createTemplateCompletionPlugin({
+        ...(config.placeholderListboxId ? { listboxId: config.placeholderListboxId } : {}),
+        ...(config.onPlaceholderStatusChange
+          ? { onStatusChange: config.onPlaceholderStatusChange }
+          : {}),
+      }),
+    )
+    .use(createTemplateInvalidDecorationPlugin(initialPlaceholders));
+  for (const plugin of plugins) builder = builder.use(plugin);
+  return builder;
+}
 
-  // Apply additional plugins (for DEP-39 anchoring, decorations, etc.)
-  const editor = await builder.use(plugins).create();
+/**
+ * Tracks which document the change callback has already accounted for.
+ *
+ * Milkdown's listener reports a document change after its own debounce, so a
+ * report can arrive after MarkdownEditor already took that document with
+ * `flushPendingChange()`, or after `resetDocument()` replaced it. Every
+ * document-changing transaction the listener reports advances `version`;
+ * `settle()` records the current version, and a later report is stale while
+ * no newer transaction has happened.
+ */
+function createDocumentVersions() {
+  let version = 0;
+  let settledVersion = -1;
+  return {
+    /** Record a transaction the Milkdown listener will report. */
+    noteTransaction(transaction: { docChanged: boolean; getMeta(key: string): unknown }): void {
+      if (transaction.docChanged && transaction.getMeta('addToHistory') !== false) version += 1;
+    },
+    settle(): void {
+      settledVersion = version;
+    },
+    isSettled(): boolean {
+      return version === settledVersion;
+    },
+  };
+}
 
-  // Get the view for direct access
-  const view = editor.ctx.get(editorViewCtx);
+function createMarkdownChangeHandler(
+  isDestroyed: () => boolean,
+  isExternalUpdate: () => boolean,
+  isSettled: () => boolean,
+  timer: { value: ReturnType<typeof setTimeout> | null },
+  setPendingInternalChange: (pending: boolean) => void,
+  onchange: EditorConfig['onchange'],
+  debounceMs: number,
+): (markdown: string, previousMarkdown: string) => void {
+  return (markdown, previousMarkdown) => {
+    if (isDestroyed() || isExternalUpdate() || markdown === previousMarkdown || isSettled()) {
+      return;
+    }
+    if (timer.value) clearTimeout(timer.value);
+    timer.value = setTimeout(() => {
+      if (isDestroyed()) return;
+      setPendingInternalChange(false);
+      onchange?.(markdown);
+    }, debounceMs);
+  };
+}
 
-  // ProseMirror's transaction dispatch is the first synchronous point at
-  // which the live document is authoritative. Keep the component's value
-  // owner current there, while leaving the public onchange callback debounced.
+function createEditorKeymapWithCallbacks(
+  onlinkshortcut: EditorConfig['onlinkshortcut'],
+  onCommentShortcut: EditorConfig['onCommentShortcut'],
+) {
+  return createEditorKeymap({
+    ...(onlinkshortcut ? { onlinkshortcut } : {}),
+    ...(onCommentShortcut ? { onCommentShortcut } : {}),
+  });
+}
+
+function configureView(
+  view: EditorState['view'],
+  isDestroyed: () => boolean,
+  isExternalUpdate: () => boolean,
+  readonly: boolean,
+  ariaLabel: string | undefined,
+  setPendingInternalChange: (pending: boolean) => void,
+  noteTransaction: (transaction: Parameters<EditorState['view']['dispatch']>[0]) => void,
+): void {
   const dispatchTransaction = view.props.dispatchTransaction;
   view.setProps({
     dispatchTransaction: (transaction) => {
-      if (dispatchTransaction) {
-        dispatchTransaction.call(view, transaction);
-      } else {
-        view.updateState(view.state.apply(transaction));
-      }
-      if (transaction.docChanged && !isDestroyed && !isExternalUpdate) {
-        hasPendingInternalChange = true;
+      if (dispatchTransaction) dispatchTransaction.call(view, transaction);
+      else view.updateState(view.state.apply(transaction));
+      noteTransaction(transaction);
+      if (transaction.docChanged && !isDestroyed() && !isExternalUpdate()) {
+        setPendingInternalChange(true);
       }
     },
   });
-
-  // Apply readonly state
-  if (readonly && view) {
-    view.setProps({ editable: () => false });
-  }
+  if (readonly) view.setProps({ editable: () => false });
+  view.dom.setAttribute('aria-multiline', 'true');
   applyReadonlyAria(view, readonly);
+  if (ariaLabel) view.dom.setAttribute('aria-label', ariaLabel);
+}
 
-  // Apply aria-label to the ProseMirror DOM element (the element with role="textbox")
-  if (resolvedAriaLabel && view?.dom) {
-    view.dom.setAttribute('aria-label', resolvedAriaLabel);
+export async function createEditor(
+  container: HTMLElement,
+  config: EditorConfig = {},
+): Promise<EditorState> {
+  if (typeof document === 'undefined') {
+    throw new Error('createEditor() requires a browser document.');
   }
 
-  // Build the state object
+  const [
+    { Editor, rootCtx, defaultValueCtx, editorViewCtx, editorViewOptionsCtx, parserCtx },
+    { commonmark, listItemKeymap },
+    { gfm, tableKeymap },
+    { history },
+    { listener, listenerCtx },
+    { placeholderPlugin },
+    { clipboardPlugin },
+    { linkInputRulePlugin },
+  ] = await Promise.all([
+    import('@milkdown/kit/core'),
+    import('@milkdown/kit/preset/commonmark'),
+    import('@milkdown/kit/preset/gfm'),
+    import('@milkdown/kit/plugin/history'),
+    import('@milkdown/kit/plugin/listener'),
+    import('./placeholder.js'),
+    import('./clipboard.js'),
+    import('./link-input-rule.js'),
+  ]);
+  await preloadCommandRuntime();
+  await preloadLazyPluginRuntime();
+
+  const {
+    initialContent = '',
+    readonly = false,
+    ariaLabel,
+    changeDebounceMs = DEFAULT_DEBOUNCE_MS,
+    onchange,
+    onselectionchange,
+    onlinkshortcut,
+    onCommentShortcut,
+    plugins = [],
+    placeholders,
+  } = config;
+  const resolvedAriaLabel =
+    typeof ariaLabel === 'string' && ariaLabel.trim().length > 0 ? ariaLabel.trim() : undefined;
+
+  let isExternalUpdate = false;
+  let isDestroyed = false;
+  const debounceTimeout = { value: null as ReturnType<typeof setTimeout> | null };
+  let hasPendingInternalChange = false;
+  const versions = createDocumentVersions();
+  const onmarkdownupdated = createMarkdownChangeHandler(
+    () => isDestroyed,
+    () => isExternalUpdate,
+    () => versions.isSettled(),
+    debounceTimeout,
+    (pending) => {
+      hasPendingInternalChange = pending;
+    },
+    onchange,
+    changeDebounceMs,
+  );
+
+  const builder = configureEditor(
+    Editor.make(),
+    container,
+    initialContent,
+    resolvedAriaLabel,
+    rootCtx,
+    defaultValueCtx,
+    editorViewOptionsCtx,
+    listItemKeymap,
+    tableKeymap,
+    listenerCtx,
+    editorViewCtx,
+    listener,
+    commonmark,
+    gfm,
+    linkInputRulePlugin,
+    clipboardPlugin,
+    history,
+    placeholderPlugin,
+    createEditorKeymapWithCallbacks(onlinkshortcut, onCommentShortcut),
+    () => isDestroyed,
+    onmarkdownupdated,
+    onselectionchange,
+  );
+  let installedPlaceholders: PlaceholderEditorConfiguration | undefined = placeholders;
+  const editor = await addOptionalPlugins(
+    builder,
+    resolvePlaceholderConfiguration(placeholders),
+    config,
+    plugins,
+  ).create();
+
+  const view = editor.ctx.get(editorViewCtx);
+
+  configureView(
+    view,
+    () => isDestroyed,
+    () => isExternalUpdate,
+    readonly,
+    resolvedAriaLabel,
+    (pending) => {
+      hasPendingInternalChange = pending;
+    },
+    (transaction) => versions.noteTransaction(transaction),
+  );
+
+  function cancelPendingChange(): void {
+    if (debounceTimeout.value) {
+      clearTimeout(debounceTimeout.value);
+      debounceTimeout.value = null;
+    }
+    hasPendingInternalChange = false;
+  }
+
   const state: EditorState = {
     editor,
     view,
@@ -299,9 +351,9 @@ export async function createEditor(
 
     setMarkdown(content: string) {
       // Clear any pending debounce to prevent stale callbacks
-      if (debounceTimeout) {
-        clearTimeout(debounceTimeout);
-        debounceTimeout = null;
+      if (debounceTimeout.value) {
+        clearTimeout(debounceTimeout.value);
+        debounceTimeout.value = null;
       }
 
       hasPendingInternalChange = false;
@@ -313,10 +365,54 @@ export async function createEditor(
       }
     },
 
+    flushPendingChange() {
+      if (!hasPendingInternalChange) return null;
+      cancelPendingChange();
+      versions.settle();
+      return editor.action(getMarkdown());
+    },
+
+    resetDocument(content: string) {
+      cancelPendingChange();
+      isExternalUpdate = true;
+      try {
+        const doc = editor.ctx.get(parserCtx)(content);
+        if (!doc) return;
+        // A fresh state with the same plugins empties the undo history.
+        view.updateState(
+          ProseMirrorState.create({
+            schema: view.state.schema,
+            doc,
+            plugins: view.state.plugins,
+            selection: Selection.atEnd(doc),
+          }),
+        );
+        // The new state starts from the placeholder configuration the editor
+        // was created with; reinstall the current one without history.
+        view.dispatch(
+          createPlaceholderConfigurationTransaction(
+            view.state,
+            resolvePlaceholderConfiguration(installedPlaceholders),
+          ),
+        );
+      } finally {
+        isExternalUpdate = false;
+        versions.settle();
+      }
+    },
+
+    setPlaceholderConfiguration(next: PlaceholderEditorConfiguration | undefined) {
+      if (isDestroyed || next === installedPlaceholders) return;
+      installedPlaceholders = next;
+      const resolved = resolvePlaceholderConfiguration(next);
+      if (resolved === readPlaceholderConfiguration(view.state)) return;
+      view.dispatch(createPlaceholderConfigurationTransaction(view.state, resolved));
+    },
+
     clearPendingTimers() {
-      if (debounceTimeout) {
-        clearTimeout(debounceTimeout);
-        debounceTimeout = null;
+      if (debounceTimeout.value) {
+        clearTimeout(debounceTimeout.value);
+        debounceTimeout.value = null;
       }
     },
 
@@ -328,120 +424,4 @@ export async function createEditor(
   return state;
 }
 
-/**
- * Mirror the readonly flag onto the ProseMirror DOM node as `aria-readonly`.
- *
- * `editable: () => false` gives that node `contenteditable="false"`, which stops
- * edits but does NOT convey read-only-ness: Chromium still computes the textbox
- * as `readonly=false, settable=true` — indistinguishable from an editable
- * editor, so a screen reader announces an editable field that silently ignores
- * typing.
- *
- * It has to go on `view.dom` specifically. Measured with CDP
- * `Accessibility.getFullAXTree`: `aria-readonly` on the wrapping
- * `role="application"` host changes nothing, because the textbox role lives on
- * the ProseMirror node, and ARIA states do not inherit down to it. That is the
- * same reason `aria-label` is applied to `view.dom` rather than to the host.
- */
-function applyReadonlyAria(view: EditorState['view'] | null | undefined, readonly: boolean): void {
-  if (!view?.dom) return;
-  if (readonly) {
-    view.dom.setAttribute('aria-readonly', 'true');
-  } else {
-    view.dom.removeAttribute('aria-readonly');
-  }
-}
-
-/**
- * Update the readonly state of an editor.
- */
-export function setEditorReadonly(state: EditorState, readonly: boolean): void {
-  state.view?.setProps({ editable: () => !readonly });
-  applyReadonlyAria(state.view, readonly);
-}
-
-// Track stderr suppression nesting to prevent race conditions (DEP-139).
-// When multiple destroyEditor calls execute concurrently, we need reference counting
-// to ensure we only restore stderr when the outermost call completes.
-let stderrSuppressionDepth = 0;
-let originalStderrWrite: NodeJS.WriteStream['write'] | null = null;
-
-function writeWithSuppressedMilkdownErrors(
-  this: NodeJS.WriteStream,
-  buffer: string | Uint8Array,
-  callback?: (error?: Error | null) => void,
-): boolean;
-function writeWithSuppressedMilkdownErrors(
-  this: NodeJS.WriteStream,
-  str: string | Uint8Array,
-  encoding?: BufferEncoding,
-  callback?: (error?: Error | null) => void,
-): boolean;
-function writeWithSuppressedMilkdownErrors(
-  this: NodeJS.WriteStream,
-  chunk: string | Uint8Array,
-  encodingOrCallback?: BufferEncoding | ((error?: Error | null) => void),
-  callback?: (error?: Error | null) => void,
-): boolean {
-  const message = typeof chunk === 'string' ? chunk : chunk.toString();
-  if (message.includes('MilkdownError')) {
-    return true;
-  }
-
-  if (!originalStderrWrite) return true;
-
-  if (typeof encodingOrCallback === 'function') {
-    return originalStderrWrite(chunk, encodingOrCallback);
-  }
-
-  return originalStderrWrite(chunk, encodingOrCallback, callback);
-}
-
-/**
- * Destroy an editor instance and clean up resources.
- */
-export function destroyEditor(state: EditorState): void {
-  // Mark destroyed first to prevent debounced callbacks from accessing context
-  state.markDestroyed();
-  state.clearPendingTimers();
-
-  // Suppress MilkdownError stderr output during destruction (DEP-139).
-  // Milkdown logs "Context editorView not found" errors to stderr during teardown
-  // when it accesses its own context that's being destroyed. These are harmless.
-  // Only applicable in Node/test environments; browser builds don't have process.stderr.
-  const stderr = typeof process !== 'undefined' ? process.stderr : undefined;
-
-  if (stderr) {
-    // Increment depth and capture original on first entry
-    if (stderrSuppressionDepth === 0) {
-      originalStderrWrite = stderr.write.bind(stderr);
-      stderr.write = writeWithSuppressedMilkdownErrors;
-    }
-    stderrSuppressionDepth++;
-  }
-
-  try {
-    void state.editor.destroy();
-  } catch (error) {
-    // Milkdown can throw during teardown if its context registry has already been cleared
-    // (e.g. rapid mount/unmount in tests). Destroy should never crash the app.
-    // Suppress "Context editorView not found" errors during cleanup - they're harmless.
-    const isMilkdownContextError =
-      error instanceof Error &&
-      error.message.includes('Context') &&
-      error.message.includes('not found');
-
-    if (!isMilkdownContextError && shouldLogDevelopmentWarnings()) {
-      console.warn('[Editor] Failed to destroy Milkdown editor:', error);
-    }
-  } finally {
-    // Decrement depth and restore stderr only when reaching zero
-    if (stderr) {
-      stderrSuppressionDepth--;
-      if (stderrSuppressionDepth === 0 && originalStderrWrite) {
-        stderr.write = originalStderrWrite;
-        originalStderrWrite = null;
-      }
-    }
-  }
-}
+export { destroyEditor, setEditorReadonly } from './editor-lifecycle.ts';

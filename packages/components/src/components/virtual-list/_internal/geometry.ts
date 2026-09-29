@@ -234,3 +234,25 @@ export function resolveObservedMainAxisSize(
   if (axis === 'horizontal') return borderBoxSize?.inlineSize ?? contentRect.width;
   return borderBoxSize?.blockSize ?? contentRect.height;
 }
+
+/**
+ * The CROSS-axis size of an observed row — the axis {@link resolveObservedMainAxisSize}
+ * does not report. Under `horizontal` that is the row's block size (its height): a
+ * pinned sticky row leaves flow once it crosses the window boundary, and the in-flow
+ * window's own auto block-size is then computed only from its remaining siblings,
+ * which clips a pinned row taller than they are unless that height is measured and
+ * fed back explicitly.
+ *
+ * Same `borderBoxSize`-first, `contentRect`-fallback precedence as the main-axis
+ * reader, for the same reason: `borderBoxSize` is writing-mode relative and already
+ * excludes padding and border, and an engine that reports only `contentRect` needs
+ * the axis picked by hand.
+ */
+export function resolveObservedCrossAxisSize(
+  borderBoxSize: { readonly blockSize: number; readonly inlineSize: number } | undefined,
+  contentRect: { readonly width: number; readonly height: number },
+  axis: AxisMode,
+): number {
+  if (axis === 'horizontal') return borderBoxSize?.blockSize ?? contentRect.height;
+  return borderBoxSize?.inlineSize ?? contentRect.width;
+}

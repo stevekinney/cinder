@@ -75,8 +75,9 @@ export {
   appendStreamingMessage,
   cancelStreamingMessage,
   finalizeStreamingMessage,
+  isStreamingMessage,
   updateStreamingMessage,
-} from 'conversationalist/streaming';
+} from './builders.ts';
 
 // Conversationalist runtime helper — validates that values a consumer builds
 // by hand (message content, metadata, tool call arguments) are JSON-compatible
@@ -141,8 +142,10 @@ export {
   getMessageText,
   getUnresolvedToolApprovals,
   messagesToMarkdown,
+  normalizeArtifactTitle,
   pairToolCallsWithResults,
   resolveMessageArtifact,
+  resolveMessageArtifactValue,
   type ChatExportOptions,
   type DeliveryStatus,
   type ToolResultMessage,
@@ -174,7 +177,6 @@ export {
   ChatMessage,
   MessageAttachments,
   MessageContent,
-  ToolCallGroup,
 } from './message/index.ts';
 
 // Container — internal implementation utilities. The inner `Chat`
@@ -214,4 +216,5 @@ export type {
   ChatArtifact,
   CodeRenderer,
   MermaidRenderer,
+  ResolvedChatArtifact,
 } from './artifact/index.ts';

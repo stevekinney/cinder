@@ -16,7 +16,7 @@ Masked display for API keys, tokens, and webhook secrets with accessible copy ac
 
 ```svelte
 <script lang="ts">
-  import { SecretValueField } from '@lostgradient/cinder/secret-value-field';
+  import { SecretValueField } from '@lostgradient/cinder';
 </script>
 
 <!-- Newly-created API key: show once, prompt to copy -->
@@ -63,7 +63,6 @@ Masked display for API keys, tokens, and webhook secrets with accessible copy ac
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

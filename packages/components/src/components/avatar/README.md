@@ -6,7 +6,7 @@ Displays a user's profile photo, initials, or fallback icon at a consistent size
 
 ```svelte
 <script lang="ts">
-  import Avatar from '@lostgradient/cinder/avatar';
+  import { Avatar } from '@lostgradient/cinder';
 </script>
 
 <Avatar name="Ada Lovelace" />
@@ -32,7 +32,6 @@ Displays a user's profile photo, initials, or fallback icon at a consistent size
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

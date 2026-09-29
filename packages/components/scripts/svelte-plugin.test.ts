@@ -59,10 +59,31 @@ describe('hasAuthoredStyleBlock', () => {
 });
 
 describe('allowsStyleBlock', () => {
+  it('allows the synced Editor review components to retain their scoped styles', () => {
+    expect(
+      allowsStyleBlock(
+        '/checkout/packages/editor/src/lib/components/diff-review/diff-review-renderer.svelte',
+      ),
+    ).toBe(true);
+    expect(
+      allowsStyleBlock(
+        '/checkout/packages/editor/src/lib/components/diff-review-comments/diff-review-comment-item.svelte',
+      ),
+    ).toBe(true);
+    expect(
+      allowsStyleBlock('/checkout/packages/components/src/components/button/button.svelte'),
+    ).toBe(false);
+  });
+
   it('allows component test fixtures to keep scoped styles local', () => {
     expect(
       allowsStyleBlock(
         '/checkout/packages/components/src/test/fixtures/virtualizer-live-fixture.svelte',
+      ),
+    ).toBe(true);
+    expect(
+      allowsStyleBlock(
+        '/checkout/packages/components/src/components/data-grid/data-grid-selection-bind-fixtures.svelte',
       ),
     ).toBe(true);
   });

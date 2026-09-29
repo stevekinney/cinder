@@ -6,7 +6,7 @@ Filled SVG area chart for showing magnitude and cumulative trends across an orde
 
 ```svelte
 <script lang="ts">
-  import AreaChart from '@lostgradient/cinder/area-chart';
+  import { AreaChart } from '@lostgradient/cinder';
 </script>
 
 <AreaChart label="No retention data" series={[]} dataTableVisibility="hidden" />
@@ -63,7 +63,6 @@ Set `tooltip={true}` for the default focus-aware visual tooltip, or pass a `Snip
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

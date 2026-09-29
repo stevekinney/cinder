@@ -1,11 +1,11 @@
 /**
- * Type-level contract for `@lostgradient/cinder/tokens/registry`.
+ * Type-level contract for `@lostgradient/cinder`.
  *
  * This file is never executed and exports nothing meaningful — it exists so
  * `typecheck` fails if the generated module stops supporting a lookup style a
- * consumer depends on. It is the only place that checks the emitted module's
- * TYPES: `tokens-consumer/check.mjs` exercises the same lookups at runtime, but
- * it is JavaScript, so it cannot catch a type regression.
+ * consumer depends on. The package-root runtime contract is exercised in
+ * `token-root-exports.test.ts`; these declarations also check each lookup map
+ * and optional facet without executing a browser component.
  *
  * The regression it guards against is real and was caught in review rather than
  * by any gate: emitting the registry as `… as const satisfies TokenRegistry`

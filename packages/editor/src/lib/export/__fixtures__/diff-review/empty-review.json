@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "scope": "all",
+  "reviewTitle": "Review feedback",
+  "reviewNote": "",
+  "totals": {
+    "records": 0,
+    "messageBodies": 0,
+    "open": 0,
+    "resolved": 0,
+    "outdated": 0
+  },
+  "records": []
+}

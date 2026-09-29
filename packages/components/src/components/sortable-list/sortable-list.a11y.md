@@ -87,7 +87,4 @@ The lift shadow (`box-shadow`) is preserved under reduced motion as it provides 
 - **Disabled items**: Out of scope.
 - **Nested scroll containers**: Auto-scroll applies to the window only.
 - **NVDA on Windows**: Verified with VoiceOver on macOS. NVDA compatibility tracking is deferred.
-- **No shift animation**: Neighboring rows relocate instantly (an ordinary Svelte
-  keyed-`#each` DOM move) rather than sliding into place. `.cinder-sortable-item--shifting`
-  marks the displaced rows as a state hook, but carries no transition — animating the
-  move requires a FLIP-style effect, tracked as a follow-up rather than bundled here.
+- **No shift animation**: Neighboring rows relocate instantly (an ordinary Svelte keyed-`#each` DOM move) rather than sliding into place. `.cinder-sortable-item--shifting` marks the displaced rows as a state hook, but carries no transition — animating the move requires a FLIP-style effect, tracked as a follow-up rather than bundled here.

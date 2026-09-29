@@ -6,7 +6,7 @@ Inline async-action status indicator that transitions from loading to success or
 
 ```svelte
 <script lang="ts">
-  import InlineLoading from '@lostgradient/cinder/inline-loading';
+  import { InlineLoading } from '@lostgradient/cinder';
 
   let status = $state<'inactive' | 'active' | 'finished' | 'error'>('inactive');
 </script>
@@ -33,7 +33,6 @@ Inline async-action status indicator that transitions from loading to success or
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

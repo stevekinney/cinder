@@ -6,7 +6,7 @@ Composable slide rotator with controls, indicators, keyboard support, and option
 
 ```svelte
 <script lang="ts">
-  import { Carousel } from '@lostgradient/cinder/carousel';
+  import { Carousel } from '@lostgradient/cinder';
 
   const slides = [
     { id: 'one', label: 'Welcome', title: 'Welcome', description: 'Start here' },
@@ -17,36 +17,16 @@ Composable slide rotator with controls, indicators, keyboard support, and option
 <Carousel {slides} autoplay />
 ```
 
-> **`loop` defaults to `false`.** `Previous`/`Next` clamp and disable at the
-> ends instead of wrapping. Set `loop` to wrap past the first/last slide.
-> Wrapping is seamless only for the **first** cycle through the deck —
-> `slides` is rendered in a rotated physical order (via CSS `order`) starting
-> from the initial `activeIndex`, so the first wrap navigation lines up with
-> an adjacent physical slide. Repeated wraps after that reuse the same
-> rotated order and are not guaranteed to be adjacent, so they animate as a
-> longer traversal rather than a single seamless step.
+> **`loop` defaults to `false`.** `Previous`/`Next` clamp and disable at the ends instead of wrapping. Set `loop` to wrap past the first/last slide. Wrapping is seamless only for the **first** cycle through the deck — `slides` is rendered in a rotated physical order (via CSS `order`) starting from the initial `activeIndex`, so the first wrap navigation lines up with an adjacent physical slide. Repeated wraps after that reuse the same rotated order and are not guaranteed to be adjacent, so they animate as a longer traversal rather than a single seamless step.
 
-> **`slidesPerView` and `loop` are mutually exclusive.** Setting
-> `slidesPerView` above `1` while `loop` is also set logs a dev warning and
-> ignores `loop` — wrapping a multi-slide range across the physical-order
-> rotation boundary would leave a partial-width gap. `slidesPerView` above
-> `1` also widens the _active_ range: more than one slide is non-`inert` at
-> once, and the live region announces `"Slides N–M of Total"` instead of a
-> single labelled slide. See `carousel.a11y.md` for the full review.
+> **`slidesPerView` and `loop` are mutually exclusive.** Setting `slidesPerView` above `1` while `loop` is also set logs a dev warning and ignores `loop` — wrapping a multi-slide range across the physical-order rotation boundary would leave a partial-width gap. `slidesPerView` above `1` also widens the _active_ range: more than one slide is non-`inert` at once, and the live region announces `"Slides N–M of Total"` instead of a single labelled slide. See `carousel.a11y.md` for the full review.
 
 ```svelte
 <!-- Peek layout: 1.2 slides visible, hinting at the next one -->
 <Carousel {slides} slidesPerView={1.2} gap="1rem" />
 ```
 
-> **Mouse users get click-and-drag scrolling, with momentum, automatically.**
-> On a fine pointer (`(hover: hover) and (pointer: fine)`) with
-> `prefers-reduced-motion` off, clicking and dragging the track scrolls it
-> with the same physics a released swipe would have, snapping to the
-> nearest slide on release. There is no prop to opt out per-instance today —
-> it degrades automatically under reduced motion, and never engages for
-> touch or pen (they already pan the native scroller directly). See
-> `carousel.a11y.md` for the full review.
+> **Mouse users get click-and-drag scrolling, with momentum, automatically.** On a fine pointer (`(hover: hover) and (pointer: fine)`) with `prefers-reduced-motion` off, clicking and dragging the track scrolls it with the same physics a released swipe would have, snapping to the nearest slide on release. There is no prop to opt out per-instance today — it degrades automatically under reduced motion, and never engages for touch or pen (they already pan the native scroller directly). See `carousel.a11y.md` for the full review.
 
 ## Props
 
@@ -81,4 +61,5 @@ Composable slide rotator with controls, indicators, keyboard support, and option
 - `--cinder-carousel-dot-size`
 - `--cinder-carousel-gap`
 - `--cinder-carousel-slide-size`
+
 <!-- generated:variables:end -->

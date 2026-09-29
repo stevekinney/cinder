@@ -4,8 +4,8 @@ import StatisticGroupRoot from './statistic-group.svelte';
 
 /**
  * `StatisticGroup` is the parent compound component and a namespace exposing the
- * `StatisticGroup.Statistic` leaf. The leaf remains importable individually via
- * `@lostgradient/cinder/statistic`.
+ * `StatisticGroup.Statistic` leaf.
+ * The leaf is also a named export of `@lostgradient/cinder`.
  */
 const StatisticGroup = Object.assign(StatisticGroupRoot, {
   Statistic,

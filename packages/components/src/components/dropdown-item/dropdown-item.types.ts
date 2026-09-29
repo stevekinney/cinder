@@ -1,5 +1,10 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAnchorAttributes, HTMLAttributes, HTMLButtonAttributes } from 'svelte/elements';
+import type {
+  DataAttributes,
+  PadUnion,
+  WithoutDataAttributes,
+} from '../../_internal/union-props.ts';
 
 export type DropdownItemVariant = 'default' | 'danger';
 export type DropdownItemRole = 'menuitem' | 'menuitemcheckbox' | 'menuitemradio';
@@ -72,4 +77,66 @@ export type DropdownItemAnchorProps = DropdownItemBase &
     type?: undefined;
   };
 
-export type DropdownItemProps = DropdownItemButtonProps | DropdownItemAnchorProps;
+// COR-239: keyof Props became too complex for TypeScript to represent (TS2590) once a consumer
+// type-checked `DropdownItemButtonProps | DropdownItemAnchorProps` under `skipLibCheck: false`
+// — each arm forwarded a FULL svelte/elements attribute interface (including its `data-*` index
+// signature), and the two arms have different key sets. `DropdownItemButtonProps` and
+// `DropdownItemAnchorProps` above are UNCHANGED and still fully exported (they're part of the
+// public API and are not fed through `Component<Props, ...>` themselves, so they were never the
+// source of the defect) — only `DropdownItemProps`, the type actually wrapped in `Component<>`,
+// is rebuilt below: the attribute surface common to both render paths hoisted into one non-union
+// type with `data-*` removed (`SharedHtmlAttributes`), `data-*` forwarding restored via a single
+// non-distributed `DataAttributes` intersected once, and only the element-SPECIFIC attributes
+// kept inline inside the (padded) small union (naming this union's shapes, rather than writing
+// them inline, was measured to reintroduce TS2590; see `src/_internal/union-props.ts` and
+// button.types.ts for the general mechanism). No prop was added, removed, widened, or narrowed —
+// arbitrary `data-*` props are still accepted on every arm, exactly as before.
+type SharedHtmlAttributes = WithoutDataAttributes<Omit<HTMLAttributes<HTMLElement>, 'class'>>;
+
+type DropdownItemDiscriminant =
+  | (Omit<
+      HTMLButtonAttributes,
+      keyof HTMLAttributes<HTMLElement> | 'class' | 'disabled' | 'type'
+    > & {
+      href?: undefined;
+      /**
+       * Button type forwarded to the `<button>` element. Defaults to `"button"`.
+       *
+       * NOTE: `type="submit"` only submits a surrounding `<form>` when the menu
+       * stays inside that form's DOM subtree. DropdownMenu portals its panel to
+       * `document.body` on the non-popover fallback path, so a submit item is then
+       * NOT a form descendant and native submission is skipped. To submit a form
+       * from a portaled menu, set `form="<form-id>"` to associate the button with
+       * the form by id, or handle submission in `onclick`.
+       */
+      type?: 'button' | 'submit' | 'reset';
+    })
+  | (Omit<HTMLAnchorAttributes, keyof HTMLAttributes<HTMLElement> | 'class' | 'href'> & {
+      /**
+       * Destination URL. Any defined value — including an empty string — selects
+       * the anchor branch and renders an `<a>`. Omit `href` entirely to render a
+       * `<button>`.
+       */
+      href: string;
+      type?: undefined;
+    });
+
+export type DropdownItemProps = SharedHtmlAttributes &
+  DataAttributes &
+  PadUnion<DropdownItemDiscriminant> & {
+    /** Visual style of the item. Use `danger` to signal a destructive action. Default `default`. */
+    variant?: DropdownItemVariant;
+    /** ARIA role for the row. Use `menuitemcheckbox` or `menuitemradio` for selectable menu items. */
+    itemRole?: DropdownItemRole;
+    /** Checked state for checkbox and radio menu items. Omitted for normal menu items. */
+    checked?: boolean;
+    /** When true, adds leading padding to align the item with items that have a leading icon or indicator. Default `false`. */
+    inset?: boolean;
+    /** When true, the parent dropdown closes after this item is activated. Default `true`. */
+    closeOnSelect?: boolean;
+    /** Additional class names merged with the component's root class. */
+    class?: string;
+    children?: Snippet;
+    /** When true the item is inert: click is blocked and aria-disabled is set. */
+    disabled?: boolean | undefined;
+  };

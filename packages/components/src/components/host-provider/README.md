@@ -10,10 +10,30 @@ HostProvider is the shared coordination boundary for desktop-aware Cinder surfac
 
 ```svelte
 <script lang="ts">
-  import { HostProvider } from '@lostgradient/cinder/host-provider';
+  import { HostProvider } from '@lostgradient/cinder';
 </script>
 
 <HostProvider platform="macos" safeHeaderLeft="4rem" safeHeaderRight="1rem">
   <p>Desktop-aware application surface</p>
 </HostProvider>
 ```
+
+## Props
+
+<!-- generated:props:start -->
+
+| Prop              | Type                                             | Required | Default | Description                                                                                                |
+| ----------------- | ------------------------------------------------ | -------- | ------- | ---------------------------------------------------------------------------------------------------------- |
+| `platform`        | `"web"` \| `"macos"` \| `"windows"` \| `"linux"` | no       | `"web"` | Host platform. Defaults to `web`, where desktop chrome behavior is inert.                                  |
+| `safeHeaderLeft`  | `string`                                         | no       | `"0px"` | Inline-start titlebar inset supplied by the desktop host. Defaults to `0px`.                               |
+| `safeHeaderRight` | `string`                                         | no       | `"0px"` | Inline-end titlebar inset supplied by the desktop host. Defaults to `0px`.                                 |
+| `children`        | `(opaque)`                                       | no       | —       | Descendant application surface. Not expressible in JSON Schema; see the component types for the signature. |
+
+<!-- generated:props:end -->
+
+## CSS Variables
+
+<!-- generated:variables:start -->
+
+This component does not declare any local CSS variables.
+<!-- generated:variables:end -->

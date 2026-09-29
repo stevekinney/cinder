@@ -89,6 +89,12 @@
     contain-intrinsic-size: auto 48px;
   }
 
+  /* Virtual rows already bind mounted content to the visible window, so
+   * separators must contribute their real height to row measurement. */
+  :global(.chat-virtual-row) .chat-date-separator {
+    content-visibility: visible;
+  }
+
   .chat-date-separator-line {
     flex: 1;
     height: 1px;

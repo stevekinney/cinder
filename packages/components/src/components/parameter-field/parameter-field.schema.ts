@@ -26,11 +26,13 @@ const schema = {
     },
     unsaved: {
       type: 'boolean',
-      description: 'Marks the current override as not yet persisted.',
+      description: 'Marks the current override as not yet persisted. Defaults to `false`.',
+      default: false,
     },
     experimental: {
       type: 'boolean',
-      description: 'Marks the parameter as experimental.',
+      description: 'Marks the parameter as experimental. Defaults to `false`.',
+      default: false,
     },
     class: {
       type: 'string',
@@ -50,7 +52,8 @@ const schema = {
       {
         name: 'onOverrideChange',
         reason: 'function-or-snippet',
-        description: 'Called when the override changes or is reset.',
+        description:
+          "Called when the component's own `setOverride` (exposed to `children`\nas `ParameterFieldEditorState.setOverride`) accepts a value, or its\nbuilt-in reset action runs—not only when either actually changes the\noverride: calling `setOverride` with the value `override` already\nholds still notifies. `setOverride` rejecting a `NaN`/infinite value\nis the one case where nothing happens: no override change, no call\nhere—see that function. Not called when a parent changes the\nbindable `override` prop programmatically—that update is not\ndistinguishable here from the component's own writes.",
       },
     ],
   },

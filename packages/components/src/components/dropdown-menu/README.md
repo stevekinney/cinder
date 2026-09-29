@@ -4,11 +4,7 @@ Floating list of actions or options that opens from a trigger element.
 
 ## Usage
 
-`DropdownMenu` is a compose-only leaf of [`Dropdown`](../dropdown/README.md).
-The idiomatic API is `Dropdown.Menu`, reached through the parent
-namespace — see the [dropdown README](../dropdown/README.md#usage) for the composed
-snippet. The flat `@lostgradient/cinder/dropdown-menu` subpath remains exported for
-à-la-carte builds that import the leaf directly.
+`DropdownMenu` is a compose-only leaf of [`Dropdown`](../dropdown/README.md). The idiomatic API is `Dropdown.Menu`, reached through the parent namespace — see the [dropdown README](../dropdown/README.md#usage) for the composed snippet. The leaf is also a named export of `@lostgradient/cinder`.
 
 ## Props
 
@@ -26,7 +22,6 @@ snippet. The flat `@lostgradient/cinder/dropdown-menu` subpath remains exported 
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

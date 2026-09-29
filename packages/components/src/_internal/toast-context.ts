@@ -17,12 +17,7 @@ export type ToastVariant = 'info' | 'success' | 'warning' | 'danger';
 
 /** Toast viewport anchor. */
 export type ToastPosition =
-  | 'top-left'
-  | 'top-center'
-  | 'top-right'
-  | 'bottom-left'
-  | 'bottom-center'
-  | 'bottom-right';
+  'top-left' | 'top-center' | 'top-right' | 'bottom-left' | 'bottom-center' | 'bottom-right';
 
 /** Options for {@link ToastApi.show}. */
 export type ToastOptions = {

@@ -199,8 +199,8 @@
   });
 
   $effect(() => {
-    orientation;
-    panes;
+    void orientation;
+    void panes;
     if (rootElement) {
       measureRoot();
       return;

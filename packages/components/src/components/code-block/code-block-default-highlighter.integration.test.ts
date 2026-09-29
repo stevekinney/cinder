@@ -3,7 +3,7 @@ import { resolve as resolvePath } from 'node:path';
 
 import { describe, expect, mock, test } from 'bun:test';
 
-// Integration test: exercises the REAL `@lostgradient/cinder/highlighters/shiki` adapter
+// Integration test: exercises the REAL `@lostgradient/cinder` adapter
 // through CodeBlock's default-highlighter seam (no module mock). The fast unit
 // suite in `code-block.test.ts` mocks this seam for determinism — and because
 // Bun's `mock.module` is process-global, that mock would leak into this file
@@ -69,9 +69,7 @@ describe('CodeBlock default-highlighter seam (real Shiki adapter)', () => {
 
       expect(first).toBe(second);
       expect(shikiHighlighter).toHaveBeenCalledTimes(1);
-      await expect(Promise.resolve(first('const x: number = 1;', 'typescript'))).resolves.toContain(
-        '<pre>',
-      );
+      expect(await Promise.resolve(first('const x: number = 1;', 'typescript'))).toContain('<pre>');
       expect(highlighter).toHaveBeenCalledWith('const x: number = 1;', 'typescript');
     } finally {
       mock.restore();

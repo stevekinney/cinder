@@ -4,6 +4,11 @@
   .cinder-data-grid {
     --_cinder-data-grid-template-columns: none;
     --_cinder-data-grid-content-width: max-content;
+    /* Multiplier applied to row height, header height, column width, and
+       cell text size together (COR-1139). `1` when a grid does not opt
+       into `zoom` (the default `100`), so an existing grid renders
+       identically to before this feature existed. */
+    --_cinder-data-grid-zoom-scale: 1;
 
     display: block;
     inline-size: 100%;
@@ -14,7 +19,7 @@
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-surface);
     color: var(--cinder-text-default);
-    font-size: var(--cinder-text-sm);
+    font-size: calc(var(--cinder-text-sm) * var(--_cinder-data-grid-zoom-scale));
     overscroll-behavior-inline: contain;
     -webkit-overflow-scrolling: touch;
   }
@@ -51,8 +56,11 @@
 
   .cinder-data-grid__header-row {
     /* Round the 13px type's 1.5 line-height plus padding and border to a whole
-       pixel so sticky and pinned layers share a stable raster boundary. */
-    min-block-size: 2.3125rem;
+       pixel so sticky and pinned layers share a stable raster boundary.
+       Scaled by `--_cinder-data-grid-zoom-scale` (COR-1139) — this is a
+       floor, not a fixed height, so a larger zoom's bigger header text can
+       still grow the row past it. */
+    min-block-size: calc(2.3125rem * var(--_cinder-data-grid-zoom-scale));
     background: var(--cinder-surface-inset);
     box-shadow: var(--_cinder-data-grid-overflow-shadow, none);
   }
@@ -109,6 +117,7 @@
   }
 
   .cinder-data-grid__header-cell {
+    position: relative;
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-text-muted);
     text-wrap: balance;
@@ -116,6 +125,67 @@
 
   .cinder-data-grid__header-cell[data-cinder-sortable] {
     padding: 0;
+  }
+
+  .cinder-data-grid__header-cell[data-cinder-header-active] {
+    outline: var(--cinder-ring-width) solid transparent;
+    outline-offset: -2px;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-data-grid__header-cell[data-cinder-header-active] {
+      outline: var(--cinder-ring-width) solid ButtonText;
+    }
+  }
+
+  .cinder-data-grid__header-cell[data-cinder-drag-source] {
+    opacity: 0.5;
+  }
+
+  /*
+   * `data-cinder-drop-indicator` names the resulting array-order position
+   * ("before" or "after" this header), not a physical screen side — in a
+   * right-to-left grid the physical left/right edges are swapped, since the
+   * first column in order renders at the physical right. The `:dir(rtl)`
+   * overrides below flip the painted edge to match, mirroring how
+   * `updateColumnDragTarget` already inverts which side of a target counts
+   * as "before" for right-to-left pointer drags.
+   */
+  .cinder-data-grid__header-cell[data-cinder-drop-indicator='before'] {
+    box-shadow: inset 2px 0 0 0 var(--cinder-ring-color);
+  }
+
+  .cinder-data-grid__header-cell[data-cinder-drop-indicator='after'] {
+    box-shadow: inset -2px 0 0 0 var(--cinder-ring-color);
+  }
+
+  .cinder-data-grid__header-cell[data-cinder-drop-indicator='before']:dir(rtl) {
+    box-shadow: inset -2px 0 0 0 var(--cinder-ring-color);
+  }
+
+  .cinder-data-grid__header-cell[data-cinder-drop-indicator='after']:dir(rtl) {
+    box-shadow: inset 2px 0 0 0 var(--cinder-ring-color);
+  }
+
+  .cinder-data-grid__resize-handle {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: -3px;
+    inline-size: 6px;
+    cursor: col-resize;
+    touch-action: none;
+    z-index: 1;
+  }
+
+  .cinder-data-grid__resize-handle:active {
+    background: color-mix(in srgb, var(--cinder-text-default) 16%, transparent);
+  }
+
+  @media (hover: hover) {
+    .cinder-data-grid__resize-handle:hover {
+      background: color-mix(in srgb, var(--cinder-text-default) 16%, transparent);
+    }
   }
 
   .cinder-data-grid__sort-button {
@@ -203,6 +273,49 @@
       inset 0 0 0 calc(max(2px, var(--cinder-ring-width)) + 2px) var(--cinder-ring-color);
   }
 
+  /* The Input's FormFieldFrame wrapper is sized to fill the cell it
+     replaces, in place of the cell's own now-zeroed padding. */
+  .cinder-data-grid__cell[data-cinder-editing] {
+    padding: 0;
+    overflow: visible;
+  }
+
+  .cinder-data-grid__cell[data-cinder-editing] .cinder-form-field {
+    display: flex;
+    align-items: stretch;
+    inline-size: 100%;
+    block-size: 100%;
+  }
+
+  .cinder-data-grid__cell[data-cinder-editing] .cinder-form-field__control {
+    inline-size: 100%;
+  }
+
+  .cinder-data-grid__cell[data-cinder-editing] .cinder-form-field__error {
+    display: none;
+  }
+
+  .cinder-data-grid__cell-editor-input {
+    inline-size: 100%;
+    block-size: 100%;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: var(--cinder-surface-raised);
+    font: inherit;
+    color: inherit;
+    padding-block: var(--cinder-space-2);
+    padding-inline: var(--cinder-space-3);
+  }
+
+  .cinder-data-grid__cell-editor-input:focus-visible {
+    /* cinder-focus-ring-owner: parent — the editing cell is always the
+       active cell, so .cinder-data-grid__cell[data-cinder-active] already
+       paints the ring; the input's own ring would double it up. */
+    outline: none;
+    box-shadow: none;
+  }
+
   .cinder-data-grid__header-cell[data-cinder-pin],
   .cinder-data-grid__cell[data-cinder-pin] {
     position: sticky;
@@ -240,7 +353,7 @@
   }
 
   .cinder-data-grid[data-cinder-density='compact'] .cinder-data-grid__header-row {
-    min-block-size: 1.8125rem;
+    min-block-size: calc(1.8125rem * var(--_cinder-data-grid-zoom-scale));
   }
 
   .cinder-data-grid[data-cinder-density='compact']
@@ -260,7 +373,7 @@
   }
 
   .cinder-data-grid[data-cinder-density='spacious'] .cinder-data-grid__header-row {
-    min-block-size: 2.8125rem;
+    min-block-size: calc(2.8125rem * var(--_cinder-data-grid-zoom-scale));
   }
 
   .cinder-data-grid[data-cinder-density='spacious']
@@ -281,6 +394,66 @@
     clip: rect(0 0 0 0);
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+
+  .cinder-data-grid__toolbar {
+    margin-block-end: var(--cinder-space-2);
+  }
+
+  .cinder-data-grid__toolbar-search-group {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-data-grid__search-status {
+    flex: 0 0 auto;
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
+    white-space: nowrap;
+  }
+
+  .cinder-data-grid__toolbar-zoom-group {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-data-grid__toolbar-counts,
+  .cinder-data-grid__zoom-level {
+    flex: 0 0 auto;
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-sm);
+    white-space: nowrap;
+  }
+
+  .cinder-data-grid__zoom-level {
+    min-inline-size: 3.5em;
+    text-align: center;
+  }
+
+  /* Same warning-surface pair `.cinder-autocomplete__match` uses to
+     highlight a matched substring — legible against either theme and
+     against the active row's raised surface.
+
+     The doubled `.cinder-data-grid__cell` compound raises this to the same
+     (0,2,0) specificity as `.cinder-data-grid__cell[data-cinder-selected]`
+     above, with this rule appearing later so it wins the tie — otherwise a
+     matched cell that is also the active/anchor cell (true for the current
+     match right after search navigation moves the active cell onto it, or
+     for any match inside a range selection) would have its search-match
+     background silently overridden by the selection background, and the
+     one cell a searching user is most likely to be looking at would show
+     no match highlight at all. */
+  .cinder-data-grid__cell.cinder-data-grid__cell--search-match {
+    background: var(--cinder-status-warning-background);
+    color: var(--cinder-status-warning-text);
+  }
+
+  .cinder-data-grid__cell.cinder-data-grid__cell--search-match-current {
+    box-shadow:
+      var(--_cinder-data-grid-pin-shadow),
+      inset 0 0 0 max(2px, var(--cinder-ring-width)) var(--cinder-accent-solid);
   }
 
   @media (forced-colors: active) {
@@ -315,6 +488,23 @@
     .cinder-data-grid__header-cell[data-cinder-pin='right'],
     .cinder-data-grid__cell[data-cinder-pin='right'] {
       border-inline-start: 1px solid ButtonText;
+    }
+
+    /* Doubled compound, and declared after `[data-cinder-selected]` above,
+       so a matched cell that is also selected (true for the current match
+       right after search navigation moves the active cell onto it) still
+       shows as a match instead of being silently overridden by the
+       higher-specificity selected background. */
+    .cinder-data-grid__cell.cinder-data-grid__cell--search-match {
+      forced-color-adjust: none;
+      background: Mark;
+      color: MarkText;
+    }
+
+    .cinder-data-grid__cell.cinder-data-grid__cell--search-match-current {
+      outline: 2px solid ButtonText;
+      outline-offset: -2px;
+      box-shadow: none;
     }
   }
 }

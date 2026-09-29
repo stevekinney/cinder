@@ -10,7 +10,7 @@
     debounceMs?: number;
   } = $props();
 
-  const announcer = useAnnouncer(untrack(() => ({ clearDelay, debounceMs })));
+  const announcer = untrack(() => useAnnouncer({ clearDelay, debounceMs }));
 </script>
 
 <button type="button" onclick={() => announcer.announce('Saved')}>announce saved</button>

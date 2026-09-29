@@ -142,7 +142,7 @@
     const ownerDocument = inputElement?.ownerDocument;
     if (!ownerDocument) return;
     let associatedForm: HTMLFormElement | null = null;
-    let removeResetListener = () => {};
+    let removeResetListener: (() => void) | undefined;
     function handleFormReset(event: Event) {
       queueMicrotask(async () => {
         if (event.defaultPrevented) return;
@@ -160,9 +160,9 @@
     function bindAssociatedForm() {
       const nextForm = inputElement?.form ?? null;
       if (nextForm === associatedForm) return;
-      removeResetListener();
+      removeResetListener?.();
       associatedForm = nextForm;
-      removeResetListener = nextForm ? on(nextForm, 'reset', handleFormReset) : () => {};
+      removeResetListener = nextForm ? on(nextForm, 'reset', handleFormReset) : undefined;
     }
     bindAssociatedForm();
     const observer = new MutationObserver(bindAssociatedForm);
@@ -174,7 +174,7 @@
     });
     return () => {
       observer.disconnect();
-      removeResetListener();
+      removeResetListener?.();
     };
   });
 

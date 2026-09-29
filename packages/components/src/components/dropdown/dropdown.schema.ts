@@ -8,10 +8,6 @@ const schema = {
       type: 'string',
       description: 'HTML id applied to the dropdown root element. Auto-generated when omitted.',
     },
-    class: {
-      type: 'string',
-      description: "Additional class names merged with the component's root class.",
-    },
     open: {
       type: 'boolean',
       description: 'Controls the open state of the dropdown menu; bindable for controlled usage.',
@@ -20,6 +16,10 @@ const schema = {
       enum: ['top-start', 'top-end', 'bottom-start', 'bottom-end'],
       description:
         'Preferred menu placement relative to the trigger. Default `bottom-start`.\nThe rendered menu may still flip to stay within the viewport.',
+    },
+    class: {
+      type: 'string',
+      description: "Additional class names merged with the component's root class.",
     },
   },
   additionalProperties: false,

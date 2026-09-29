@@ -1,7 +1,7 @@
 {
   "$comment": [
-    "The expected branch-protection state for `main`, asserted against the live GitHub API by",
-    "`packages/components/scripts/check-branch-protection.ts` on main-red-watch's daily schedule.",
+    "The expected branch-protection state for `main`, checked against the live GitHub API by",
+    "`packages/components/scripts/check-branch-protection.ts` during mirror cutover and audits.",
     "",
     "This file exists because prose drifted from reality twice in one day. On 2026-08-05",
     "docs/validation-topology.md asserted both `strict: true` and that a merge queue was the",
@@ -16,22 +16,12 @@
     "exists — the failure that turned `main` red on 2026-07-28 (#972 added a stylelint rule,",
     "#1011 merged CSS violating it fourteen minutes later, both green).",
     "",
-    "docs/validation-topology.md's bulk-drain protocol lifts `strict` deliberately and restores",
-    "it by hand. That manual restore is exactly what failed. Drift here is therefore EXPECTED",
-    "during a drain and must be restored after it — the check runs daily rather than per-pull-",
-    "request so a short drain window does not page anyone, while a lift that was never restored",
-    "surfaces within a day."
+    "The public mirror requires the generated package verifier and target-owned MCP verifier.",
+    "Their job names are distinct so GitHub can enforce both as required checks."
   ],
   "branch": "main",
   "requiredStatusChecks": {
     "strict": true,
-    "contexts": [
-      "unit-tests",
-      "typecheck",
-      "playwright",
-      "playwright-visual",
-      "baseline-coverage",
-      "Pre-1.0 changeset bump guard"
-    ]
+    "contexts": ["verify", "verify-mcp"]
   }
 }

@@ -6,7 +6,7 @@ Free-form text input with suggestion hints.
 
 ```svelte
 <script lang="ts">
-  import Autocomplete from '@lostgradient/cinder/autocomplete';
+  import { Autocomplete } from '@lostgradient/cinder';
 
   const fruits = [
     { value: 'apple', label: 'Apple', description: 'Classic pie filling' },
@@ -61,5 +61,4 @@ Free-form text input with suggestion hints.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->

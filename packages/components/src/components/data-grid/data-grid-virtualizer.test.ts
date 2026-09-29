@@ -1,25 +1,20 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import type { Component } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
-import { renderThenHydrate } from '../../test/hydrate.ts';
+import { prepareSvelteServerSource, renderThenHydrate, setupHappyDom } from '@lostgradient/testing';
+import { makeMetricColumns, makeRows, type LogRow } from './data-grid-hydration-data.ts';
 import type { DataGridColumnDef, DataGridProps } from './data-grid.types.ts';
 
 setupHappyDom();
 
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { default: DataGrid } = await import('./data-grid.svelte');
-const sourcePath = new URL('./data-grid.svelte', import.meta.url).pathname;
+const { default: DataGridHydrationFixture } = await import('./_data-grid-hydration-test.svelte');
+const sourcePath = new URL('./_data-grid-hydration-test.svelte', import.meta.url).pathname;
+await prepareSvelteServerSource(sourcePath);
 
 afterEach(() => cleanup());
-
-type LogRow = {
-  id: string;
-  message: string;
-  owner: string;
-  [key: `metric${number}`]: string | number;
-};
 
 const columns: DataGridColumnDef<LogRow>[] = [
   { key: 'message', header: 'Message', width: 180 },
@@ -33,14 +28,6 @@ const sortableColumns: DataGridColumnDef<LogRow>[] = [
 const getLogRowId = (row: LogRow) => row.id;
 const LogDataGrid = DataGrid as Component<DataGridProps<LogRow>>;
 
-function makeRows(count: number): LogRow[] {
-  return Array.from({ length: count }, (_, index) => ({
-    id: `row-${index}`,
-    message: `Message ${index}`,
-    owner: `Owner ${index % 5}`,
-  }));
-}
-
 function dataRows(container: HTMLElement): HTMLElement[] {
   return Array.from(
     container.querySelectorAll<HTMLElement>('.cinder-data-grid__body [role="row"]'),
@@ -49,20 +36,6 @@ function dataRows(container: HTMLElement): HTMLElement[] {
 
 function gridCells(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>('[role="gridcell"]'));
-}
-
-function makeMetricColumns(count: number): DataGridColumnDef<LogRow>[] {
-  return Array.from({ length: count }, (_, index) => {
-    const column: DataGridColumnDef<LogRow> = {
-      key: `metric${index}`,
-      header: `Metric ${index}`,
-      width: 100,
-      getValue: (row: LogRow) => row[`metric${index}`],
-    };
-    if (index === 0) column.pin = 'left';
-    if (index === count - 1) column.pin = 'right';
-    return column;
-  });
 }
 
 function makeWidePinnedMetricColumns(count: number): DataGridColumnDef<LogRow>[] {
@@ -152,15 +125,7 @@ type HydrationSnapshot = {
 };
 
 async function captureVirtualizedGridHydrationSnapshot(): Promise<HydrationSnapshot> {
-  const result = await renderThenHydrate(LogDataGrid, sourcePath, {
-    rows: makeRows(100),
-    columns: makeMetricColumns(4),
-    getRowId: getLogRowId,
-    virtualizeRows: true,
-    virtualizeColumns: true,
-    rowHeight: 20,
-    'aria-label': 'Logs',
-  });
+  const result = await renderThenHydrate(DataGridHydrationFixture, sourcePath, { mode: 'logs' });
 
   try {
     const grid = result.container.querySelector('[role="grid"]');
@@ -170,7 +135,7 @@ async function captureVirtualizedGridHydrationSnapshot(): Promise<HydrationSnaps
       columnCount: grid?.getAttribute('aria-colcount'),
     };
   } finally {
-    result.cleanup();
+    await result.cleanup();
   }
 }
 
@@ -573,6 +538,99 @@ describe('DataGrid row virtualization', () => {
     }
   });
 
+  test('COR-1131: resizing a virtualized unpinned column re-measures the column virtualizer', async () => {
+    const restoreMeasurement = measureDataGrid(520);
+    const columnCount = 40;
+    try {
+      const { container } = render(LogDataGrid, {
+        rows: makeMetricRows(1, columnCount),
+        columns: makeMetricColumns(columnCount),
+        getRowId: getLogRowId,
+        virtualizeColumns: true,
+        resizableColumns: true,
+        'aria-label': 'Metrics',
+      });
+
+      const grid = container.querySelector<HTMLElement>('[role="grid"]');
+      if (!grid) throw new Error('Expected DataGrid root');
+      await waitFor(() => expect(gridCells(container).length).toBeGreaterThan(0));
+
+      const totalWidthBefore = grid.style.getPropertyValue('--_cinder-data-grid-content-width');
+
+      // metric1 is unpinned (only index 0 and the last column are pinned by
+      // makeMetricColumns), so resizing it exercises the column
+      // virtualizer's own `totalWidth` re-measurement, not just pinned width.
+      const handle = container.querySelector<HTMLElement>(
+        '[data-cinder-column-key="metric1"] [data-cinder-resize-handle]',
+      );
+      if (!handle) throw new Error('Expected a resize handle on metric1');
+      (handle as unknown as { setPointerCapture: () => void }).setPointerCapture = () => {};
+
+      await fireEvent.pointerDown(handle, { pointerId: 1, clientX: 0 });
+      await fireEvent.pointerMove(handle, { pointerId: 1, clientX: 100 });
+      await fireEvent.pointerUp(handle, { pointerId: 1, clientX: 100 });
+      await waitFor(() =>
+        expect(
+          container
+            .querySelector<HTMLElement>('[data-cinder-column-key="metric1"]')
+            ?.style.getPropertyValue('--_cinder-data-grid-column-width'),
+        ).toBe('200px'),
+      );
+
+      // The column virtualizer's total measured width grew with the resize.
+      const totalWidthAfter = grid.style.getPropertyValue('--_cinder-data-grid-content-width');
+      expect(totalWidthAfter).not.toBe(totalWidthBefore);
+    } finally {
+      restoreMeasurement();
+    }
+  });
+
+  test('COR-1131 regression: a grid that opts out of virtualizeColumns never subscribes the column virtualizer', async () => {
+    // The resize/reorder work added an $effect that re-syncs the column
+    // virtualizer's measured widths (`resizeColumn`) whenever resolved
+    // column widths change. `resizeColumn` subscribes to the underlying
+    // `@tanstack/virtual-core` virtualizer, which lazily creates both
+    // virtualizers and attaches their ResizeObserver/scroll listeners on
+    // first subscription — so calling it unconditionally would force that
+    // eager setup onto every DataGrid, not just ones that opt into
+    // `virtualizeColumns`, breaking "a grid that doesn't opt in renders
+    // exactly as before."
+    const { DataGridVirtualizationAdapter } =
+      await import('./_internal/virtualization-adapter.svelte.ts');
+    const resizeColumnSpy = spyOn(DataGridVirtualizationAdapter.prototype, 'resizeColumn');
+    try {
+      const columnCount = 5;
+      const { container, rerender } = render(LogDataGrid, {
+        rows: makeMetricRows(3, columnCount),
+        columns: makeMetricColumns(columnCount),
+        getRowId: getLogRowId,
+        'aria-label': 'Metrics',
+      });
+      await waitFor(() => expect(gridCells(container).length).toBeGreaterThan(0));
+
+      // Also re-render with a `columnSizing` change, the exact kind of
+      // update the effect reacts to — it still must not subscribe.
+      await rerender({
+        rows: makeMetricRows(3, columnCount),
+        columns: makeMetricColumns(columnCount),
+        columnSizing: { metric1: 260 },
+        getRowId: getLogRowId,
+        'aria-label': 'Metrics',
+      });
+      await waitFor(() =>
+        expect(
+          container
+            .querySelector<HTMLElement>('[data-cinder-column-key="metric1"]')
+            ?.style.getPropertyValue('--_cinder-data-grid-column-width'),
+        ).toBe('260px'),
+      );
+
+      expect(resizeColumnSpy).not.toHaveBeenCalled();
+    } finally {
+      resizeColumnSpy.mockRestore();
+    }
+  });
+
   test('wide pinned columns do not shift the unpinned scroll window', async () => {
     const restoreMeasurement = measureDataGrid(520);
     const columnCount = 40;
@@ -639,7 +697,10 @@ describe('DataGrid row virtualization', () => {
       expect(firstLeftPinnedCell?.style.gridColumn).toBe('1');
       expect(firstLeftPinnedCell?.getAttribute('aria-colindex')).toBe('1');
       expect(laterLeftPinnedCell?.style.gridColumn).toBe('2');
-      expect(laterLeftPinnedCell?.getAttribute('aria-colindex')).toBe('6');
+      // `aria-colindex` matches `style.gridColumn` here — both are the
+      // column's actual rendered position (1st and 2nd left-pinned track),
+      // not metric5's declaration position (6th in `columns`) (COR-1145).
+      expect(laterLeftPinnedCell?.getAttribute('aria-colindex')).toBe('2');
     } finally {
       restoreMeasurement();
     }

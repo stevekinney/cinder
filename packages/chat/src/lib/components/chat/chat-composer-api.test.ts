@@ -1,5 +1,5 @@
 /**
- * Composer public API — clearInput(), getComposerValue(), insertAtRange(), oncomposerinput.
+ * Composer public API — clearInput(), getComposerValue(), insertAtRange(), onComposerInput.
  *
  * The public `Chat` wrapper already forwarded a streaming/scroll imperative
  * API (beginStreaming/pushToken/endStreaming/scrollToBottom/scrollToTop/
@@ -13,7 +13,7 @@
  *   1. getComposerValue() reflects what the user has typed.
  *   2. clearInput() empties the composer and getComposerValue() reflects it.
  *   3. insertAtRange() replaces composer text through both forwarding layers.
- *   4. oncomposerinput fires with the current value on every composer input
+ *   4. onComposerInput fires with the current value on every composer input
  *      event.
  *   5. Imperative methods are safe no-ops before mount / after
  *      unmount, matching the existing forwarded-method contract.
@@ -23,7 +23,7 @@
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 import { flushSync, mount, tick, unmount } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -33,7 +33,7 @@ class TestResizeObserver {
   disconnect(): void {}
 }
 const originalResizeObserver = globalThis.ResizeObserver;
-globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
+globalThis.ResizeObserver = TestResizeObserver;
 
 class TestIntersectionObserver {
   observe(): void {}
@@ -214,12 +214,12 @@ describe('Chat — composer API', () => {
     target.remove();
   });
 
-  test('oncomposerinput fires with the current value on every composer input event', async () => {
+  test('onComposerInput fires with the current value on every composer input event', async () => {
     const values: string[] = [];
     const target = document.createElement('div');
     document.body.append(target);
     const { instance } = mountChat(target, {
-      oncomposerinput: (value: string) => values.push(value),
+      onComposerInput: (value: string) => values.push(value),
     });
 
     const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;

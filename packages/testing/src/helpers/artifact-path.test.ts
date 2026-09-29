@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { axeJsonPath, screenshotPath, snapshotPath, type ArtifactKey } from './artifact-path.ts';
+import { axeJsonPath, screenshotPath, type ArtifactKey } from './artifact-path.ts';
 
 const BASE_KEY: ArtifactKey = {
   slug: 'button',
@@ -49,42 +49,6 @@ describe('screenshotPath', () => {
 });
 
 // ---------------------------------------------------------------------------
-// snapshotPath
-// ---------------------------------------------------------------------------
-
-describe('snapshotPath', () => {
-  it('includes snapshots directory (not screenshots)', () => {
-    const path = snapshotPath(BASE_KEY);
-    expect(path).toContain('snapshots');
-    expect(path).not.toContain('screenshots');
-  });
-
-  it('has the same filename pattern as screenshotPath but under snapshots/', () => {
-    const snapshotFilename = snapshotPath(BASE_KEY).split('/').at(-1);
-    const screenshotFilename = screenshotPath(BASE_KEY).split('/').at(-1);
-    // Same filename, different parent directories
-    expect(snapshotFilename).toBe(screenshotFilename);
-    expect(snapshotPath(BASE_KEY)).not.toBe(screenshotPath(BASE_KEY));
-  });
-
-  it('includes slug, theme, viewport, and fixture', () => {
-    const path = snapshotPath(BASE_KEY);
-    expect(path).toContain('button');
-    expect(path).toContain('light-desktop-default.png');
-  });
-
-  it('uses fixture name in the filename for non-default fixtures', () => {
-    const path = snapshotPath({ ...BASE_KEY, fixture: 'open' });
-    expect(path).toContain('light-desktop-open.png');
-  });
-
-  it('places the file inside a slug-named subdirectory under snapshots/', () => {
-    const path = snapshotPath(BASE_KEY);
-    expect(path).toMatch(/snapshots[/\\]button[/\\]light-desktop-default\.png$/);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // axeJsonPath
 // ---------------------------------------------------------------------------
 
@@ -116,23 +80,20 @@ describe('axeJsonPath', () => {
 // ---------------------------------------------------------------------------
 
 describe('path consistency across key dimensions', () => {
-  it('all three paths share the same theme-viewport-fixture basename pattern', () => {
+  it('both paths share the same theme-viewport-fixture basename pattern', () => {
     const key: ArtifactKey = { slug: 'badge', theme: 'dark', viewport: 'tablet', fixture: 'open' };
     const screenshotFilename = screenshotPath(key).split('/').at(-1)!;
-    const snapshotFilename = snapshotPath(key).split('/').at(-1)!;
     const axeFilename = axeJsonPath(key).split('/').at(-1)!.replace('.json', '.png');
 
     expect(screenshotFilename).toBe('dark-tablet-open.png');
-    expect(snapshotFilename).toBe('dark-tablet-open.png');
     expect(axeFilename).toBe('dark-tablet-open.png');
   });
 
-  it('changing only the fixture produces a distinct path for all three functions', () => {
+  it('changing only the fixture produces a distinct path for both functions', () => {
     const keyA: ArtifactKey = { ...BASE_KEY, fixture: 'default' };
     const keyB: ArtifactKey = { ...BASE_KEY, fixture: 'disabled' };
 
     expect(screenshotPath(keyA)).not.toBe(screenshotPath(keyB));
-    expect(snapshotPath(keyA)).not.toBe(snapshotPath(keyB));
     expect(axeJsonPath(keyA)).not.toBe(axeJsonPath(keyB));
   });
 });

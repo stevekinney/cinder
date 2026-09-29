@@ -1,6 +1,6 @@
+import { setupHappyDom } from '@lostgradient/testing';
 import { describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 const { render, fireEvent } = await import('@testing-library/svelte');
 const { default: Form } = await import('./form.svelte');

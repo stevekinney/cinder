@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
 // reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
@@ -71,9 +71,10 @@ describe('Pagination', () => {
       },
     });
 
-    const nextButton = container.querySelector(
-      'button[aria-label="Go to next page"]',
-    ) as HTMLButtonElement;
+    const nextButton = requiredInstance(
+      container.querySelector('button[aria-label="Go to next page"]'),
+      HTMLButtonElement,
+    );
     expect(nextButton).not.toBeNull();
     await fireEvent.click(nextButton);
     expect(currentPage).toBe(6);
@@ -124,9 +125,10 @@ describe('Pagination', () => {
       },
     });
 
-    const previousButton = container.querySelector(
-      'button[aria-label="Go to previous page"]',
-    ) as HTMLButtonElement;
+    const previousButton = requiredInstance(
+      container.querySelector('button[aria-label="Go to previous page"]'),
+      HTMLButtonElement,
+    );
     await fireEvent.click(previousButton);
     expect(currentPage).toBe(4);
   });
@@ -236,12 +238,14 @@ describe('Pagination', () => {
       },
     });
 
-    const previousButton = container.querySelector(
-      'button[aria-label="Go to previous page"]',
-    ) as HTMLButtonElement;
-    const nextButton = container.querySelector(
-      'button[aria-label="Go to next page"]',
-    ) as HTMLButtonElement;
+    const previousButton = requiredInstance(
+      container.querySelector('button[aria-label="Go to previous page"]'),
+      HTMLButtonElement,
+    );
+    const nextButton = requiredInstance(
+      container.querySelector('button[aria-label="Go to next page"]'),
+      HTMLButtonElement,
+    );
     const currentPageIndicator = container.querySelector('[aria-current="page"]');
 
     expect(previousButton.hasAttribute('disabled')).toBe(true);
@@ -266,9 +270,10 @@ describe('Pagination', () => {
       },
     });
 
-    const previousButton = container.querySelector(
-      'button[aria-label="Go to previous page"]',
-    ) as HTMLButtonElement;
+    const previousButton = requiredInstance(
+      container.querySelector('button[aria-label="Go to previous page"]'),
+      HTMLButtonElement,
+    );
 
     expect(previousButton.hasAttribute('disabled')).toBe(true);
     await fireEvent.click(previousButton);
@@ -290,12 +295,14 @@ describe('Pagination', () => {
       },
     });
 
-    const previousButton = container.querySelector(
-      'button[aria-label="Go to previous page"]',
-    ) as HTMLButtonElement;
-    const nextButton = container.querySelector(
-      'button[aria-label="Go to next page"]',
-    ) as HTMLButtonElement;
+    const previousButton = requiredInstance(
+      container.querySelector('button[aria-label="Go to previous page"]'),
+      HTMLButtonElement,
+    );
+    const nextButton = requiredInstance(
+      container.querySelector('button[aria-label="Go to next page"]'),
+      HTMLButtonElement,
+    );
 
     expect(previousButton.hasAttribute('disabled')).toBe(false);
     expect(nextButton.hasAttribute('disabled')).toBe(false);
@@ -336,9 +343,10 @@ describe('Pagination', () => {
       },
     });
 
-    const nextButton = container.querySelector(
-      'button[aria-label="Go to next page"]',
-    ) as HTMLButtonElement;
+    const nextButton = requiredInstance(
+      container.querySelector('button[aria-label="Go to next page"]'),
+      HTMLButtonElement,
+    );
 
     expect(nextButton.hasAttribute('disabled')).toBe(true);
     await fireEvent.click(nextButton);

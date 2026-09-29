@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "scope": "all",
+  "reviewTitle": "Review feedback",
+  "reviewNote": "Overall this looks good; a few docs nits below.",
+  "totals": {
+    "records": 2,
+    "messageBodies": 2,
+    "open": 2,
+    "resolved": 0,
+    "outdated": 0
+  },
+  "records": [
+    {
+      "recordKind": "diff",
+      "exportId": "[\"diff\",\"comment-normalized\"]",
+      "commentId": "comment-normalized",
+      "targetId": "md-normalized",
+      "current": true,
+      "targetKind": "markdown",
+      "targetLabel": "README.md",
+      "repositoryLabel": null,
+      "baseRevisionLabel": null,
+      "headRevisionLabel": null,
+      "snapshotId": "md-normalized-snapshot",
+      "fileOccurrence": 0,
+      "oldPath": null,
+      "newPath": "README.md",
+      "anchor": {
+        "kind": "range",
+        "side": "new",
+        "startLine": 3,
+        "endLine": 3,
+        "coordinateSpace": "normalized-markdown",
+        "hunkOccurrence": 0,
+        "selectedText": "Updated body.",
+        "contextBefore": [],
+        "contextAfter": []
+      },
+      "rawMapping": {
+        "status": "unavailable",
+        "reason": "normalization"
+      },
+      "body": "Consider linking the migration guide.",
+      "resolved": false,
+      "outdated": false,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "recordKind": "diff",
+      "exportId": "[\"diff\",\"comment-raw\"]",
+      "commentId": "comment-raw",
+      "targetId": "md-raw",
+      "current": true,
+      "targetKind": "markdown",
+      "targetLabel": "CHANGELOG.md",
+      "repositoryLabel": null,
+      "baseRevisionLabel": null,
+      "headRevisionLabel": null,
+      "snapshotId": "md-raw-snapshot",
+      "fileOccurrence": 0,
+      "oldPath": "CHANGELOG.md",
+      "newPath": null,
+      "anchor": {
+        "kind": "range",
+        "side": "old",
+        "startLine": 8,
+        "endLine": 9,
+        "coordinateSpace": "raw-source",
+        "hunkOccurrence": 0,
+        "selectedText": "## Unreleased\n- old entry",
+        "contextBefore": [],
+        "contextAfter": []
+      },
+      "rawMapping": {
+        "status": "exact"
+      },
+      "body": "Keep this entry; it is still accurate.",
+      "resolved": false,
+      "outdated": false,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ]
+}

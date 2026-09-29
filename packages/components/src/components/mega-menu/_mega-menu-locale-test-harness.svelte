@@ -1,5 +1,5 @@
 <script lang="ts">
-  import LocaleProvider from '@lostgradient/cinder/locale-provider';
+  import { default as LocaleProvider } from '../locale-provider/index.ts';
   import MegaMenu from './mega-menu.svelte';
   import type { MegaMenuProps } from './mega-menu.types.ts';
 

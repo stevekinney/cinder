@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { parseFixtureFile } from '../../../components/scripts/lib/visual-fixtures/schema.ts';
+import { parseFixtureFile } from '../visual-fixtures.ts';
 
 // ---------------------------------------------------------------------------
 // Helpers

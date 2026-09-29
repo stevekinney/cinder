@@ -1,12 +1,13 @@
 /// <reference lib="dom" />
+import { setupHappyDom } from '@lostgradient/testing';
 import { afterEach, describe, expect, test } from 'bun:test';
-import { anchorPluginKey, createAnchorPlugin } from './anchor-decorations.js';
+import { anchorPluginKey } from './anchor-plugin-state.js';
+import { createAnchorPlugin } from './anchor-plugin.js';
 import type { Thread } from './comments/types.js';
 import { createEditor } from './editor/editor.js';
 import type { EditorState } from './editor/types.js';
 import type { FakeClock } from './test/fake-clock.js';
 import { drainMount, installFakeClock } from './test/fake-clock.js';
-import { setupHappyDom } from './test/happy-dom.js';
 
 setupHappyDom();
 
@@ -83,6 +84,18 @@ function makeThread(): Thread {
   };
 }
 
+function assertNonElementHandlers(view: NonNullable<EditorState['view']>): void {
+  const plugin = view.state.plugins.find((candidate) => candidate.spec.key === anchorPluginKey);
+  if (!plugin) throw new Error('anchor plugin missing from editor state');
+  const handlers = plugin.props.handleDOMEvents;
+  if (!handlers) throw new Error('anchor DOM handlers missing');
+  // A native Event that has not been dispatched has a null target. Every
+  // handler must treat that non-Element target as an ignored event.
+  expect(handlers.mouseover?.call(plugin, view, new MouseEvent('mouseover'))).toBe(false);
+  expect(handlers.mouseout?.call(plugin, view, new MouseEvent('mouseout'))).toBe(false);
+  expect(handlers.click?.call(plugin, view, new PointerEvent('click'))).toBe(false);
+}
+
 describe('comment-anchor decoration accessibility attrs (cinder#1304)', () => {
   test('the rendered span carries role="mark" and an aria-description, not just class/data-thread-id', async () => {
     const container = document.createElement('div');
@@ -126,5 +139,7 @@ describe('comment-anchor decoration accessibility attrs (cinder#1304)', () => {
     // itself flags as the fragile, likely-wrong fix for an inline
     // decoration inside a contenteditable surface.
     expect(span?.hasAttribute('tabindex')).toBe(false);
+
+    assertNonElementHandlers(view);
   });
 });

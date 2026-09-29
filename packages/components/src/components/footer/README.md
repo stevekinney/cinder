@@ -6,7 +6,7 @@ Footer layout primitive for brand text, grouped links, and a legal row.
 
 ```svelte
 <script lang="ts">
-  import { Footer } from '@lostgradient/cinder/footer';
+  import { Footer } from '@lostgradient/cinder';
 
   const groups = [
     { id: 'product', title: 'Product', links: [{ id: 'docs', label: 'Docs', href: '/docs' }] },
@@ -37,5 +37,4 @@ Footer layout primitive for brand text, grouped links, and a legal row.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->

@@ -419,7 +419,7 @@ export function useChatScrollState(options?: UseChatScrollStateOptions): UseChat
     viewport: HTMLElement | null,
     sentinel: HTMLElement | null,
   ): (() => void) | undefined {
-    if (!viewport || !sentinel) return;
+    if (!viewport || !sentinel) return undefined;
 
     const observer = new IntersectionObserver(
       ([entry]) => {

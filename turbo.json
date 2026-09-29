@@ -51,9 +51,8 @@
     // declared files, env vars, and engines — there is no platform component (confirmed absent from
     // `--dry=json`'s `globalCacheInputs`). Once macOS laptops and Linux CI share one remote
     // namespace, a platform-conditioned test can have its success replayed on the OS that never
-    // executed that branch; `packages/testing/scripts/start-server.test.ts` and
-    // `packages/components/scripts/husky/utilities.test.ts` both derive assertions from
-    // `process.platform`.
+    // executed that branch; `packages/components/scripts/husky/utilities.test.ts` derives
+    // assertions from `process.platform`.
     //
     // Two variables because no single one covers both environments. GitHub defines `RUNNER_OS` in
     // every job automatically, so CI needs no workflow wiring (and `${{ runner.os }}` could not be
@@ -145,12 +144,12 @@
       "outputs": [],
       "inputs": ["$TURBO_DEFAULT$"]
     },
-    // `@cinder/testing` reaches the other way across the boundary: `scripts/changed-components.ts`
+    // `@lostgradient/testing` reaches the other way across the boundary: `scripts/changed-components.ts`
     // imports `packages/playground/src/component-sources.ts`, and testing does not depend on
     // playground, so `^build` cannot fold that hash in. Scoped to testing's own tasks rather than
     // added to the base inputs — playground/src is the most-edited tree in the repo, and hashing it
     // into every package's tasks would gut the cache for changes that cannot possibly affect them.
-    "@cinder/testing#test": {
+    "@lostgradient/testing#test": {
       "dependsOn": ["^build"],
       "outputs": [],
       "inputs": [
@@ -165,7 +164,7 @@
       ],
       "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
     },
-    "@cinder/testing#typecheck": {
+    "@lostgradient/testing#typecheck": {
       "dependsOn": ["^build"],
       "outputs": [],
       "inputs": [
@@ -177,7 +176,7 @@
     },
     // Cinder's lint reaches editor types, which is an edge `^build`
     // cannot supply (editor depends on cinder, not the reverse). Appended to `^build` rather than
-    // replacing it, so the `@cinder/testing#build` and markdown edges survive.
+    // replacing it, so the `@lostgradient/testing#build` and markdown edges survive.
     "@lostgradient/cinder#lint": {
       "dependsOn": ["^build", "@lostgradient/editor#build"],
       "outputs": [],

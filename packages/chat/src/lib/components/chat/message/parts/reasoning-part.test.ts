@@ -24,7 +24,7 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { flushSync } from 'svelte';
 
-import { setupHappyDom } from '../../../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import type { ReasoningMessagePart } from '../../utilities/types.ts';
 
 setupHappyDom();

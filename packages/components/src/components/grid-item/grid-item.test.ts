@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -51,7 +51,7 @@ describe('GridItem', () => {
     const { container } = render(GridItem, {
       props: { children: textSnippet('content') },
     });
-    const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-grid-item'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-grid-item-column-span')).toBe('');
     expect(root.style.getPropertyValue('--cinder-grid-item-column-start')).toBe('');
     expect(root.style.getPropertyValue('--cinder-grid-item-column-end')).toBe('');
@@ -69,7 +69,7 @@ describe('GridItem', () => {
     const { container } = render(GridItem, {
       props: { span: 2, children: textSnippet('content') },
     });
-    const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-grid-item'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-grid-item-column-span')).toBe('2');
     expect(root.getAttribute('data-cinder-column-span')).toBe('true');
   });
@@ -82,7 +82,7 @@ describe('GridItem', () => {
         children: textSnippet('content'),
       },
     });
-    const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-grid-item'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-grid-item-column-start')).toBe('2');
     expect(root.style.getPropertyValue('--cinder-grid-item-column-end')).toBe('span 4');
   });
@@ -91,7 +91,7 @@ describe('GridItem', () => {
     const { container } = render(GridItem, {
       props: { span: 2, columnStart: 3, children: textSnippet('content') },
     });
-    const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-grid-item'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-grid-item-column-start')).toBe('3');
     expect(root.style.getPropertyValue('--cinder-grid-item-column-span')).toBe('2');
     expect(root.getAttribute('data-cinder-column-span')).toBe('true');
@@ -101,7 +101,7 @@ describe('GridItem', () => {
     const { container } = render(GridItem, {
       props: { span: 2, columnEnd: 5, children: textSnippet('content') },
     });
-    const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-grid-item'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-grid-item-column-span')).toBe('2');
     expect(root.style.getPropertyValue('--cinder-grid-item-column-end')).toBe('5');
     expect(root.hasAttribute('data-cinder-column-span')).toBe(false);
@@ -111,7 +111,7 @@ describe('GridItem', () => {
     const { container } = render(GridItem, {
       props: { rowSpan: 3, rowStart: 2, children: textSnippet('content') },
     });
-    const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-grid-item'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-grid-item-row-span')).toBe('3');
     expect(root.style.getPropertyValue('--cinder-grid-item-row-start')).toBe('2');
     expect(root.getAttribute('data-cinder-row-span')).toBe('true');
@@ -121,7 +121,7 @@ describe('GridItem', () => {
     const { container } = render(GridItem, {
       props: { rowEnd: 'span 4', children: textSnippet('content') },
     });
-    const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-grid-item'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-grid-item-row-end')).toBe('span 4');
   });
 
@@ -129,7 +129,7 @@ describe('GridItem', () => {
     const { container } = render(GridItem, {
       props: { rowSpan: 2, rowEnd: 5, children: textSnippet('content') },
     });
-    const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-grid-item'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-grid-item-row-span')).toBe('2');
     expect(root.style.getPropertyValue('--cinder-grid-item-row-end')).toBe('5');
     expect(root.hasAttribute('data-cinder-row-span')).toBe(false);
@@ -139,7 +139,7 @@ describe('GridItem', () => {
     const { container } = render(GridItem, {
       props: { rowSpan: 2, rowEnd: '', children: textSnippet('content') },
     });
-    const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-grid-item'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-grid-item-row-end')).toBe('auto');
     expect(root.style.getPropertyValue('--cinder-grid-item-row-span')).toBe('2');
     expect(root.getAttribute('data-cinder-row-span')).toBe('true');
@@ -149,7 +149,10 @@ describe('GridItem', () => {
     const zeroCase = render(GridItem, {
       props: { rowSpan: 2, rowEnd: 0, children: textSnippet('content') },
     });
-    const zeroRoot = zeroCase.container.querySelector('.cinder-grid-item') as HTMLElement;
+    const zeroRoot = requiredInstance(
+      zeroCase.container.querySelector('.cinder-grid-item'),
+      HTMLElement,
+    );
     expect(zeroRoot.style.getPropertyValue('--cinder-grid-item-row-end')).toBe('auto');
     expect(zeroRoot.style.getPropertyValue('--cinder-grid-item-row-span')).toBe('2');
     expect(zeroRoot.getAttribute('data-cinder-row-span')).toBe('true');
@@ -158,9 +161,10 @@ describe('GridItem', () => {
     const fractionalCase = render(GridItem, {
       props: { rowSpan: 2, rowEnd: 1.5, children: textSnippet('content') },
     });
-    const fractionalRoot = fractionalCase.container.querySelector(
-      '.cinder-grid-item',
-    ) as HTMLElement;
+    const fractionalRoot = requiredInstance(
+      fractionalCase.container.querySelector('.cinder-grid-item'),
+      HTMLElement,
+    );
     expect(fractionalRoot.style.getPropertyValue('--cinder-grid-item-row-end')).toBe('auto');
     expect(fractionalRoot.style.getPropertyValue('--cinder-grid-item-row-span')).toBe('2');
     expect(fractionalRoot.getAttribute('data-cinder-row-span')).toBe('true');
@@ -175,7 +179,7 @@ describe('GridItem', () => {
         children: textSnippet('content'),
       },
     });
-    const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-grid-item'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-grid-item-column-start')).toBe('');
     expect(root.style.getPropertyValue('--cinder-grid-item-column-end')).toBe('');
     expect(root.style.getPropertyValue('--cinder-grid-item-row-start')).toBe('');
@@ -186,7 +190,7 @@ describe('GridItem', () => {
       const { container, unmount } = render(GridItem, {
         props: { span: invalidSpan, children: textSnippet('content') },
       });
-      const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+      const root = requiredInstance(container.querySelector('.cinder-grid-item'), HTMLElement);
       expect(root.style.getPropertyValue('--cinder-grid-item-column-span')).toBe('');
       expect(root.hasAttribute('data-cinder-column-span')).toBe(false);
       unmount();
@@ -197,7 +201,7 @@ describe('GridItem', () => {
     const { container } = render(GridItem, {
       props: { span: 2, children: textSnippet('content') },
     });
-    const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-grid-item'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-grid-item-column-span')).toBe('2');
     expect(root.getAttribute('data-cinder-column-span')).toBe('true');
   });
@@ -207,7 +211,7 @@ describe('GridItem', () => {
       const { container, unmount } = render(GridItem, {
         props: { rowSpan: invalidRowSpan, children: textSnippet('content') },
       });
-      const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+      const root = requiredInstance(container.querySelector('.cinder-grid-item'), HTMLElement);
       expect(root.style.getPropertyValue('--cinder-grid-item-row-span')).toBe('');
       expect(root.hasAttribute('data-cinder-row-span')).toBe(false);
       unmount();
@@ -218,7 +222,7 @@ describe('GridItem', () => {
     const { container } = render(GridItem, {
       props: { rowSpan: 2, children: textSnippet('content') },
     });
-    const root = container.querySelector('.cinder-grid-item') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-grid-item'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-grid-item-row-span')).toBe('2');
     expect(root.getAttribute('data-cinder-row-span')).toBe('true');
   });

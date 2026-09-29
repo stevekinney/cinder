@@ -1,7 +1,7 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "tag-input",
-  "import": "@lostgradient/cinder/tag-input",
+  "import": "@lostgradient/cinder",
   "examples": [
     {
       "id": "basic",

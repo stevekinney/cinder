@@ -28,6 +28,8 @@
     UnifiedDiffOptions,
     UnifiedDiffResult,
   } from '../../export/types.ts';
+  import type { DiffReviewExportOptions } from '../../export/diff-review-export-types.ts';
+  import type { DiffReviewResult } from '../../diff-review-state/index.ts';
 
   let {
     class: customClassName,
@@ -96,6 +98,16 @@
   }
   export function getFormData(): ReviewFormData {
     return requireImplementation().getFormData();
+  }
+  export function exportAggregateReviewMarkdown(
+    options: DiffReviewExportOptions | undefined = undefined,
+  ): DiffReviewResult<string> {
+    return requireImplementation().exportAggregateReviewMarkdown(options);
+  }
+  export function exportAggregateReviewJson(
+    options: DiffReviewExportOptions | undefined = undefined,
+  ): DiffReviewResult<string> {
+    return requireImplementation().exportAggregateReviewJson(options);
   }
   export function reset(): void {
     requireImplementation().reset();

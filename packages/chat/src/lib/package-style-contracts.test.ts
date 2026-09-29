@@ -4,25 +4,36 @@ import { join } from 'node:path';
 const componentsRoot = join(import.meta.dir, 'components');
 
 describe('Chat package style contracts', () => {
-  test('ChatComposerPopover imports the Cinder CommandMenu style subpath', async () => {
-    const source = await Bun.file(
-      join(componentsRoot, 'chat-composer-popover', 'chat-composer-popover.css'),
-    ).text();
-    expect(source).toMatch(/@import\s+['"]@lostgradient\/cinder\/command-menu\/styles['"]/);
-  });
-
-  test('ChatConversationHeader imports the Cinder Dropdown style subpath', async () => {
-    const source = await Bun.file(
-      join(componentsRoot, 'chat-conversation-header', 'chat-conversation-header.css'),
-    ).text();
-    expect(source).toMatch(/@import\s+['"]@lostgradient\/cinder\/dropdown\/styles['"]/);
-  });
+  for (const [component, dependency, stylesheet] of [
+    ['chat-composer-popover', 'CommandMenu', 'command-menu'],
+    ['chat/export/conversation-export-actions', 'Dropdown', 'dropdown'],
+  ]) {
+    test(`${component} receives Cinder styles through its public component import`, async () => {
+      if (!component || !dependency || !stylesheet)
+        throw new Error('Missing style contract fixture');
+      const source = await Bun.file(
+        join(
+          componentsRoot,
+          component.includes('/') ? `${component}.svelte` : `${component}/${component}.svelte`,
+        ),
+      ).text();
+      expect(source).toMatch(
+        new RegExp(
+          `import\\s*\\{[^}]*\\b${dependency}\\b[^}]*\\}\\s*from\\s*['"]@lostgradient/cinder['"]`,
+        ),
+      );
+      const dependencyEntry = await Bun.file(
+        join(import.meta.dir, '../../../cinder/src/components', stylesheet, 'index.ts'),
+      ).text();
+      expect(dependencyEntry).toContain(`import './${stylesheet}.css'`);
+    });
+  }
 
   test('Chat status surfaces do not mix solid status tokens into soft surfaces', async () => {
     const auditedFiles = [
       join(componentsRoot, 'chat', 'input', 'chat-input.svelte'),
       join(componentsRoot, 'chat', 'message', 'chat-message.svelte'),
-      join(componentsRoot, 'chat', 'message', 'tool-call-group.svelte'),
+      join(componentsRoot, 'chat', 'message', 'tool-call-timeline.svelte'),
     ];
     const forbiddenStatusMixPattern =
       /color-mix\((?:(?!;).|\r|\n)*?var\(\s*--cinder-(info|success|warning|danger)\s*(?:[,)\s])/m;

@@ -13,7 +13,22 @@
    * @avoidWhen Diffing non-Markdown source code where syntax-aware highlighting matters more than prose-aware rendering.
    * @related diff-statistics, code-block
    */
-  export type { DiffToolbarContext, DiffViewerMode, DiffViewerProps } from './diff-viewer.types.ts';
+  export type {
+    DiffToolbarContext,
+    DiffViewerAnnotationCoordinateSpace,
+    DiffViewerAnnotationRejection,
+    DiffViewerAnnotationRejectionReason,
+    DiffViewerAnnotationResult,
+    DiffViewerAnnotationSelection,
+    DiffViewerAnnotationSide,
+    DiffViewerFocusResult,
+    DiffViewerFrontMatterAnnotationContext,
+    DiffViewerLineAnnotationContext,
+    DiffViewerMode,
+    DiffViewerProps,
+    DiffViewerRawMapping,
+    DiffViewerRef,
+  } from './diff-viewer.types.ts';
 </script>
 
 <script lang="ts">
@@ -31,29 +46,40 @@
    * - >100KB: Manual trigger only, shows stale diff with "Outdated" badge
    */
 
-  import {
-    computeLineDiff,
-    getDiffStats,
-    groupIntoHunks,
-  } from '@lostgradient/markdown/diff/line-diff';
-  import type { DiffHunk } from '@lostgradient/markdown/diff/line-diff';
+  import { computeLineDiff, getDiffStats, groupIntoHunks } from '@lostgradient/markdown';
+  import type { DiffHunk, LineDiff } from '@lostgradient/markdown';
 
   import { classNames } from '../../utilities/class-names.ts';
-  import Button from '@lostgradient/cinder/button';
-  import { RotateCcw } from '@lostgradient/cinder/icons';
+  import { Button, RotateCcw, Surface } from '@lostgradient/cinder';
   import {
     composeDisplayedDocument,
     formatComputedUnifiedDiff,
-    generateUnifiedDiff,
-  } from '../../export/unified-diff.ts';
-  import { onDestroy } from 'svelte';
+  } from '../../export/unified-diff-format.ts';
+  import { generateUnifiedDiff } from '../../export/unified-diff-generation.ts';
+  import { flushSync, onDestroy } from 'svelte';
 
-  import Surface from '@lostgradient/cinder/surface';
+  import {
+    buildDiffViewerLineSelection,
+    extendDiffViewerSelection,
+    isSideCommentable,
+    numberDiffViewerRows,
+    type DiffViewerAnnotationContext,
+    type DiffViewerAnnotationPoint,
+  } from './diff-viewer.annotation.ts';
   import { createDiffController } from './diff-controller.svelte';
   import DiffFrontMatter from './diff-front-matter.svelte';
   import DiffLine from './diff-line.svelte';
+  import type { DiffLineAnnotationTarget } from './diff-line.svelte';
   import DiffToolbar from './diff-toolbar.svelte';
-  import type { DiffToolbarContext, DiffViewerMode, DiffViewerProps } from './diff-viewer.types.ts';
+  import type {
+    DiffToolbarContext,
+    DiffViewerAnnotationSelection,
+    DiffViewerAnnotationSide,
+    DiffViewerFocusResult,
+    DiffViewerMode,
+    DiffViewerProps,
+    DiffViewerRef,
+  } from './diff-viewer.types.ts';
 
   type LocalFrontMatterBlock = {
     hasFrontMatter: boolean;
@@ -105,13 +131,18 @@
     original,
     current,
     normalizeInputs = true,
-    onrevertall,
-    onreverthunk,
+    onRevertAll,
+    onRevertHunk,
     readonly = false,
     hunks: bindableHunks = $bindable<DiffHunk[]>([]),
     viewMode = $bindable<DiffViewerMode>('unified'),
     toolbarActions,
     toolbar,
+    fileAnnotation,
+    lineAnnotation,
+    annotationSelection,
+    onAnnotationSelectionChange,
+    ref = $bindable<DiffViewerRef | undefined>(),
     class: className,
   }: DiffViewerProps = $props();
 
@@ -122,6 +153,20 @@
   // viewMode is now a $bindable prop (see props destructuring above)
   // User's explicit selection (null means "use default")
   let userSelectedIndex = $state<number | null>(null);
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Annotation selection state (COR-514 / DR-4)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const annotationEnabled = $derived(Boolean(onAnnotationSelectionChange));
+
+  let annotationOrigin: DiffViewerAnnotationPoint | null = $state(null);
+  let annotationPendingEnd: DiffViewerAnnotationPoint | null = $state(null);
+  let annotationRejectionMessage: string | null = $state(null);
+  // Compared by VALUE, not by reference -- see SourceDiffViewer's identical
+  // `lastEmittedSelection` for why: a host storing the emitted selection in
+  // `$state` gets back a new reactive proxy wrapping the same values.
+  let lastEmittedSelection: DiffViewerAnnotationSelection | null = null;
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Front Matter State (DEP-61)
@@ -175,6 +220,24 @@
   // Expose controller state
   const diffState = $derived(diffController.state);
   const lineDiffs = $derived(diffState.diffs);
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Annotation row numbering (COR-514 / DR-4)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // Front matter's own line count offsets the body's direct line numbers, per
+  // side independently -- the two sides' front matter can differ in length.
+  // CRLF is one line separator, matching the contract's counting rule.
+  const frontMatterLineCounts = $derived({
+    old: originalParsed.hasFrontMatter ? originalFrontMatterText.split(/\r\n|\r|\n/).length : 0,
+    new: currentParsed.hasFrontMatter ? currentFrontMatterText.split(/\r\n|\r|\n/).length : 0,
+  });
+  const numberedRows = $derived(numberDiffViewerRows(lineDiffs, frontMatterLineCounts));
+  const annotationContext = $derived<DiffViewerAnnotationContext>({
+    lineDiffs,
+    numbered: numberedRows,
+    normalizeInputs,
+  });
 
   // Filter to only navigable lines based on view mode (single-pass for performance)
   // In 'final' mode, removed lines are hidden; in 'original' mode, added lines are hidden
@@ -300,6 +363,241 @@
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // Annotation selection (COR-514 / DR-4)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  // Resync the controlled `annotationSelection` prop whenever the host sets a
+  // genuinely new value (not our own echoed emission) -- mirrors
+  // SourceDiffViewer's identical effect. See its comments for why structural
+  // equality (not `===`) is required here.
+  $effect(() => {
+    if (
+      annotationSelection === undefined ||
+      selectionsEqual(annotationSelection, lastEmittedSelection)
+    )
+      return;
+
+    if (annotationSelection === null) {
+      annotationOrigin = null;
+      annotationPendingEnd = null;
+      annotationRejectionMessage = null;
+      return;
+    }
+
+    annotationOrigin = { side: annotationSelection.side, line: annotationSelection.startLine };
+    annotationPendingEnd = null;
+    annotationRejectionMessage = null;
+    lastEmittedSelection = annotationSelection;
+  });
+
+  function contextLinesEqual(a: readonly string[], b: readonly string[]): boolean {
+    return a.length === b.length && a.every((value, index) => value === b[index]);
+  }
+
+  function selectionsEqual(
+    a: DiffViewerAnnotationSelection | null | undefined,
+    b: DiffViewerAnnotationSelection | null | undefined,
+  ): boolean {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    return (
+      a.fileOccurrence === b.fileOccurrence &&
+      a.hunkOccurrence === b.hunkOccurrence &&
+      a.side === b.side &&
+      a.startLine === b.startLine &&
+      a.endLine === b.endLine &&
+      a.coordinateSpace === b.coordinateSpace &&
+      a.rawMapping.status === b.rawMapping.status &&
+      a.selectedText === b.selectedText &&
+      contextLinesEqual(a.contextBefore, b.contextBefore) &&
+      contextLinesEqual(a.contextAfter, b.contextAfter)
+    );
+  }
+
+  function controlId(point: DiffViewerAnnotationPoint): string {
+    return `${instanceId}-annotation-${point.side}-${point.line}`;
+  }
+
+  function focusControl(point: DiffViewerAnnotationPoint): void {
+    getElementByAnnotationId(controlId(point))?.focus();
+  }
+
+  /**
+   * `Surface` (the root element) has no bindable DOM-element ref, but every
+   * annotation control's id is generated from `$props.id()`, which is
+   * globally unique per instance -- so `document.getElementById` is exactly
+   * as instance-scoped as a `rootElement.querySelector` would be, without
+   * requiring `Surface` to expose one.
+   */
+  function getElementByAnnotationId(id: string): HTMLElement | null {
+    return typeof document === 'undefined' ? null : document.getElementById(id);
+  }
+
+  function emitSelection(selection: DiffViewerAnnotationSelection): void {
+    lastEmittedSelection = selection;
+    onAnnotationSelectionChange?.(selection);
+  }
+
+  function commitSelection(
+    origin: DiffViewerAnnotationPoint,
+    target: DiffViewerAnnotationPoint,
+  ): void {
+    const result = extendDiffViewerSelection(annotationContext, origin, target);
+    if (!result.ok) {
+      annotationRejectionMessage = result.message;
+      return;
+    }
+    annotationRejectionMessage = null;
+    emitSelection(result.selection);
+  }
+
+  function handleAnnotationClick(point: DiffViewerAnnotationPoint, event: MouseEvent): void {
+    if (diffState.isStale) return;
+    if (event.shiftKey && annotationOrigin) {
+      commitSelection(annotationOrigin, point);
+      annotationPendingEnd = null;
+      return;
+    }
+
+    const selection = buildDiffViewerLineSelection(annotationContext, point);
+    if (!selection) return;
+    annotationOrigin = point;
+    annotationPendingEnd = null;
+    annotationRejectionMessage = null;
+    emitSelection(selection);
+  }
+
+  function handleAnnotationKeydown(point: DiffViewerAnnotationPoint, event: KeyboardEvent): void {
+    if (diffState.isStale) return;
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (annotationOrigin && annotationPendingEnd) {
+        commitSelection(annotationOrigin, annotationPendingEnd);
+        annotationPendingEnd = null;
+        return;
+      }
+      annotationOrigin = point;
+      annotationPendingEnd = point;
+      annotationRejectionMessage = null;
+      return;
+    }
+
+    if (event.key === 'Escape' && annotationPendingEnd && annotationOrigin) {
+      event.preventDefault();
+      annotationPendingEnd = null;
+      annotationRejectionMessage = null;
+      focusControl(annotationOrigin);
+      return;
+    }
+
+    if (
+      event.shiftKey &&
+      annotationOrigin &&
+      annotationPendingEnd &&
+      (event.key === 'ArrowDown' || event.key === 'ArrowUp')
+    ) {
+      event.preventDefault();
+      const candidate: DiffViewerAnnotationPoint = {
+        ...annotationPendingEnd,
+        line: annotationPendingEnd.line + (event.key === 'ArrowDown' ? 1 : -1),
+      };
+      const result = extendDiffViewerSelection(annotationContext, annotationOrigin, candidate);
+      if (!result.ok) {
+        annotationRejectionMessage = result.message;
+        return;
+      }
+      annotationRejectionMessage = null;
+      annotationPendingEnd = candidate;
+      focusControl(candidate);
+    }
+  }
+
+  function annotationControlLabel(side: DiffViewerAnnotationSide, line: number): string {
+    return `Add comment on ${side === 'old' ? 'removed or unchanged' : 'added or unchanged'} line ${line}`;
+  }
+
+  const staleAnnotationExplanation =
+    'The diff is outdated. Recompute it to add a new comment; existing comments remain available.';
+
+  /**
+   * Builds this row's annotation target(s) (0, 1, or 2 -- a `modified` row's
+   * old/new sides are independent targets). Returns `undefined` when
+   * annotation is disabled so `DiffLine` renders no controls at all,
+   * preserving default behavior exactly.
+   */
+  function annotationTargetsForRow(
+    diff: LineDiff,
+    index: number,
+  ): DiffLineAnnotationTarget[] | undefined {
+    if (!annotationEnabled) return undefined;
+    const numbered = numberedRows[index];
+    if (!numbered) return undefined;
+
+    const targets: DiffLineAnnotationTarget[] = [];
+    for (const side of ['old', 'new'] as const) {
+      if (!isSideCommentable(diff, side)) continue;
+      const line = side === 'old' ? numbered.oldLine : numbered.newLine;
+      if (line === null) continue;
+      const point: DiffViewerAnnotationPoint = { side, line };
+      targets.push({
+        side,
+        line,
+        id: controlId(point),
+        label: annotationControlLabel(side, line),
+        disabled: diffState.isStale,
+        disabledReason: diffState.isStale ? staleAnnotationExplanation : undefined,
+        onactivate: (event) => handleAnnotationClick(point, event),
+        onkeydown: (event) => handleAnnotationKeydown(point, event),
+      });
+    }
+    return targets;
+  }
+
+  /**
+   * Forces any pending reactive update (e.g. a `viewMode` switch made by
+   * `focusAnchor` itself, in the same call) to apply before querying the DOM.
+   * Mirrors SourceDiffViewer's identical helper.
+   */
+  function flushPendingUpdates(): void {
+    try {
+      flushSync();
+    } catch {
+      // Already inside a synchronous flush (e.g. called from an `$effect`).
+    }
+  }
+
+  function focusAnchor(
+    anchor: Pick<DiffViewerAnnotationSelection, 'side' | 'startLine'>,
+  ): DiffViewerFocusResult {
+    // A `final`-mode viewer hides the old side of removed/modified rows; an
+    // `original`-mode viewer hides the new side of added/modified rows.
+    // `unified` always shows both, so it's the universal safe target.
+    if (
+      (anchor.side === 'old' && viewMode === 'final') ||
+      (anchor.side === 'new' && viewMode === 'original')
+    ) {
+      viewMode = 'unified';
+    }
+    flushPendingUpdates();
+    const control = getElementByAnnotationId(
+      controlId({ side: anchor.side, line: anchor.startLine }),
+    );
+    if (!control) return { status: 'unavailable' };
+    control.focus();
+    return { status: 'focused' };
+  }
+
+  const viewerRef: DiffViewerRef = { focusAnchor };
+
+  $effect(() => {
+    ref = viewerRef;
+    return () => {
+      ref = undefined;
+    };
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Navigation
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -322,7 +620,7 @@
   }
 
   function handleRevertHunk(hunk: DiffHunk) {
-    onreverthunk?.(hunk.index, hunk);
+    onRevertHunk?.(hunk.index, hunk);
   }
 
   let copyStatus = $state<'idle' | 'copied' | 'failed'>('idle');
@@ -442,7 +740,7 @@
       {diffState}
       onjumpnext={jumpToNext}
       onjumpprevious={jumpToPrevious}
-      {onrevertall}
+      {onRevertAll}
       ontriggercompute={() => diffController.triggerCompute()}
       oncopydiff={copyUnifiedDiff}
     >
@@ -457,6 +755,14 @@
     <div class="cinder-sr-only" role="status">Unified diff copied.</div>
   {:else if copyStatus === 'failed'}
     <div class="diff-copy-error" role="status">Unable to copy unified diff.</div>
+  {/if}
+
+  <!-- Annotation status (COR-514 / DR-4): rejection explanations and the
+       stale-diff creation-disabled explanation. -->
+  {#if annotationEnabled}
+    <div class="diff-annotation-status" role="status">
+      {annotationRejectionMessage ?? (diffState.isStale ? staleAnnotationExplanation : '')}
+    </div>
   {/if}
 
   <!-- Size warning banner (DEP-47) -->
@@ -480,6 +786,7 @@
         bind:expanded={frontMatterExpanded}
         badgeLabel={hasFrontMatterChanges ? 'Changed' : null}
         badgeVariant="warning"
+        {fileAnnotation}
       />
     {/if}
 
@@ -487,9 +794,10 @@
     {#each lineDiffs as lineDiff, idx (idx)}
       {@const isSelected = selectedLineIndex === idx}
       {@const hunkAtLine = hunkStartMap.get(idx)}
+      {@const rowAnnotationTargets = annotationTargetsForRow(lineDiff, idx)}
 
       <!-- Hunk header with revert button (shown at first change of each hunk) -->
-      {#if hunkAtLine && !readonly && onreverthunk}
+      {#if hunkAtLine && !readonly && onRevertHunk}
         <div class="hunk-header">
           <span class="hunk-range">
             @@ -{hunkAtLine.originalStart},{hunkAtLine.originalCount} +{hunkAtLine.currentStart},{hunkAtLine.currentCount}
@@ -508,7 +816,14 @@
         </div>
       {/if}
 
-      <DiffLine diff={lineDiff} {viewMode} selected={isSelected} onselect={() => selectLine(idx)} />
+      <DiffLine
+        diff={lineDiff}
+        {viewMode}
+        selected={isSelected}
+        onselect={() => selectLine(idx)}
+        annotationTargets={rowAnnotationTargets}
+        {lineAnnotation}
+      />
     {/each}
   </div>
 </Surface>
@@ -548,6 +863,16 @@
   .compute-time {
     color: var(--cinder-text-muted);
     font-family: var(--cinder-font-mono);
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────────
+   * Annotation status (COR-514 / DR-4)
+   * ───────────────────────────────────────────────────────────────────────────── */
+
+  .diff-annotation-status:not(:empty) {
+    padding: var(--cinder-space-1) var(--cinder-space-3);
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-muted);
   }
 
   /* ─────────────────────────────────────────────────────────────────────────────

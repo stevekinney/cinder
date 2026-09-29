@@ -36,6 +36,7 @@
     align-items: center;
     justify-content: center;
     border-radius: var(--cinder-radius-full);
+    font: inherit;
   }
 
   .cinder-avatar-group[data-cinder-shape='square'] .cinder-avatar-group__trigger {

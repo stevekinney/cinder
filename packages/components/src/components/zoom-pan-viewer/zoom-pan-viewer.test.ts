@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 const { createEvent, fireEvent, render } = await import('@testing-library/svelte');
 const { default: ZoomPanViewer } = await import('./zoom-pan-viewer.svelte');
@@ -34,7 +34,7 @@ describe('ZoomPanViewer', () => {
       scale: 100,
       onTransformChange,
     });
-    const viewer = container.querySelector('[role="region"]') as HTMLElement;
+    const viewer = requiredInstance(container.querySelector('[role="region"]'), HTMLElement);
     expect(viewer).not.toBeNull();
     expect(
       container.querySelector('.cinder-zoom-pan-viewer__viewport')?.getAttribute('style'),
@@ -156,8 +156,11 @@ describe('ZoomPanViewer', () => {
 
   test('anchors pinch zoom at the gesture midpoint', async () => {
     const { container } = render(ZoomPanViewer, { children: textSnippet('diagram') });
-    const viewer = container.querySelector('[role="region"]') as HTMLDivElement;
-    const viewport = container.querySelector('.cinder-zoom-pan-viewer__viewport') as HTMLElement;
+    const viewer = requiredInstance(container.querySelector('[role="region"]'), HTMLDivElement);
+    const viewport = requiredInstance(
+      container.querySelector('.cinder-zoom-pan-viewer__viewport'),
+      HTMLElement,
+    );
     viewer.getBoundingClientRect = () => ({
       x: 0,
       y: 0,
@@ -181,7 +184,7 @@ describe('ZoomPanViewer', () => {
 
   test('resumes one-pointer panning after a pinch pointer is released', async () => {
     const { container } = render(ZoomPanViewer, { children: textSnippet('diagram') });
-    const viewer = container.querySelector('[role="region"]') as HTMLDivElement;
+    const viewer = requiredInstance(container.querySelector('[role="region"]'), HTMLDivElement);
     const viewport = container.querySelector('.cinder-zoom-pan-viewer__viewport')!;
     await fireEvent.pointerDown(viewer, { pointerId: 1, clientX: 10, clientY: 10 });
     await fireEvent.pointerDown(viewer, { pointerId: 2, clientX: 30, clientY: 30 });

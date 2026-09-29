@@ -15,37 +15,62 @@ import { beforeEach, describe, expect, it } from 'bun:test';
 
 import { createKeymapBindings } from './keymap-plugin.js';
 
-// The bindings only touch `.key` on each command, so string stand-ins are enough.
-const runtime = new Proxy(
-  {},
-  {
-    get: (_target, property: string) => ({ key: property }),
-  },
-) as Parameters<typeof createKeymapBindings>[0];
-
 const SINK = 'sinkListItemCommand';
 const LIFT = 'liftListItemCommand';
+
+const schema = new Schema({
+  nodes: {
+    doc: { content: 'block+' },
+    paragraph: { content: 'inline*', group: 'block', toDOM: () => ['p', 0] },
+    bullet_list: { content: 'list_item+', group: 'block', toDOM: () => ['ul', 0] },
+    list_item: { content: 'paragraph block*', toDOM: () => ['li', 0] },
+    text: { group: 'inline' },
+  },
+});
+
+// The bindings only touch `.key` on each command, so string stand-ins are enough.
+const runtime: Parameters<typeof createKeymapBindings>[0] = {
+  toggleStrongCommand: { key: 'toggleStrongCommand' },
+  toggleEmphasisCommand: { key: 'toggleEmphasisCommand' },
+  toggleInlineCodeCommand: { key: 'toggleInlineCodeCommand' },
+  wrapInHeadingCommand: { key: 'wrapInHeadingCommand' },
+  wrapInBulletListCommand: { key: 'wrapInBulletListCommand' },
+  wrapInOrderedListCommand: { key: 'wrapInOrderedListCommand' },
+  wrapInBlockquoteCommand: { key: 'wrapInBlockquoteCommand' },
+  insertHrCommand: { key: 'insertHrCommand' },
+  sinkListItemCommand: { key: SINK },
+  liftListItemCommand: { key: LIFT },
+  toggleStrikethroughCommand: { key: 'toggleStrikethroughCommand' },
+  goToNextTableCellCommand: { key: 'goToNextTableCellCommand' },
+  goToPrevTableCellCommand: { key: 'goToPrevTableCellCommand' },
+  undoCommand: { key: 'undoCommand' },
+  redoCommand: { key: 'redoCommand' },
+};
 
 /**
  * A stand-in EditorState. `doc` and `selection` are distinct objects per state,
  * mirroring ProseMirror's immutability: a new one exists only where a real
  * transaction would have produced one.
  */
-function editorState(document_: object, selectionHead: number): EditorState {
-  return {
-    doc: document_,
-    selection: {
-      head: selectionHead,
-      eq: (other: { head: number }) => other.head === selectionHead,
-    },
-  } as unknown as EditorState;
+const documentNodes = new WeakMap<object, ReturnType<typeof schema.node>>();
+
+function editorState(documentNode: object, selectionHead: number): EditorState {
+  const doc =
+    documentNodes.get(documentNode) ??
+    schema.node('doc', null, [schema.node('paragraph', null, [schema.text('x'.repeat(40))])]);
+  documentNodes.set(documentNode, doc);
+  return EditorState.create({
+    schema,
+    doc,
+    selection: TextSelection.create(doc, Math.min(selectionHead, doc.content.size)),
+  });
 }
 
 describe('editor keymap: Tab inside a list item', () => {
   let calls: string[];
   let inListItem: boolean;
   let bindings: ReturnType<typeof createKeymapBindings>;
-  let document_: object;
+  let documentNode: object;
   let state: EditorState;
 
   // Optional call, so a build with no Escape binding fails on the Tab
@@ -55,8 +80,8 @@ describe('editor keymap: Tab inside a list item', () => {
   beforeEach(() => {
     calls = [];
     inListItem = true;
-    document_ = { id: 'doc' };
-    state = editorState(document_, 10);
+    documentNode = { id: 'doc' };
+    state = editorState(documentNode, 10);
     bindings = createKeymapBindings(runtime, (key) => {
       // The probe records which commands were attempted. `key` is only ever one
       // of the string command identifiers in this harness, so record it as-is
@@ -118,7 +143,7 @@ describe('editor keymap: Tab inside a list item', () => {
 
   it('drops the release when the caret moved in between', () => {
     pressEscape(state);
-    const afterArrowKey = editorState(document_, 24);
+    const afterArrowKey = editorState(documentNode, 24);
 
     expect(bindings['Tab']!(afterArrowKey)).toBe(true);
     expect(calls).toEqual([SINK]);
@@ -129,6 +154,25 @@ describe('editor keymap: Tab inside a list item', () => {
     expect(calls).toEqual([SINK]);
   });
 });
+
+function focusSurface() {
+  const listeners = new Set<EventListener>();
+  const dom = {
+    addEventListener: (type: string, listener: EventListener) => {
+      if (type === 'blur') listeners.add(listener);
+    },
+    removeEventListener: (type: string, listener: EventListener) => {
+      if (type === 'blur') listeners.delete(listener);
+    },
+  };
+  return {
+    view: { dom },
+    blur: () => {
+      for (const listener of listeners) listener(new Event('blur'));
+    },
+    listenerCount: () => listeners.size,
+  };
+}
 
 /**
  * Focus leaving the editor has to invalidate the escape, and is the one
@@ -144,32 +188,6 @@ describe('editor keymap: the Tab escape does not outlive focus', () => {
   let state: EditorState;
   let surface: ReturnType<typeof focusSurface>;
 
-  /**
-   * Stands in for the editor's editable element, and counts the listeners left
-   * on it so a test can catch both a leak and a stacked duplicate.
-   */
-  function focusSurface() {
-    const listeners = new Set<EventListener>();
-
-    const dom = {
-      addEventListener: (type: string, listener: EventListener) => {
-        if (type === 'blur') listeners.add(listener);
-      },
-      removeEventListener: (type: string, listener: EventListener) => {
-        if (type === 'blur') listeners.delete(listener);
-      },
-    };
-
-    return {
-      view: { dom } as unknown as EditorView,
-      blur: () => {
-        // Each listener detaches itself as it runs, which Set iteration allows.
-        for (const listener of listeners) listener(new Event('blur'));
-      },
-      listenerCount: () => listeners.size,
-    };
-  }
-
   beforeEach(() => {
     calls = [];
     surface = focusSurface();
@@ -181,39 +199,41 @@ describe('editor keymap: the Tab escape does not outlive focus', () => {
   });
 
   it('indents a Tab pressed after focus left and came back', () => {
-    bindings['Escape']!(state, undefined, surface.view);
+    Reflect.apply(bindings['Escape']!, null, [state, undefined, surface.view]);
     surface.blur();
 
     // Same doc, same caret — the state check alone would still call this valid.
-    expect(bindings['Tab']!(state, undefined, surface.view)).toBe(true);
+    expect(Reflect.apply(bindings['Tab']!, null, [state, undefined, surface.view])).toBe(true);
     expect(calls).toEqual([SINK]);
   });
 
   it('outdents a Shift-Tab pressed after focus left and came back', () => {
-    bindings['Escape']!(state, undefined, surface.view);
+    Reflect.apply(bindings['Escape']!, null, [state, undefined, surface.view]);
     surface.blur();
 
-    expect(bindings['Shift-Tab']!(state, undefined, surface.view)).toBe(true);
+    expect(Reflect.apply(bindings['Shift-Tab']!, null, [state, undefined, surface.view])).toBe(
+      true,
+    );
     expect(calls).toEqual([LIFT]);
   });
 
   it('still releases the Tab that follows Escape while focus stays put', () => {
-    bindings['Escape']!(state, undefined, surface.view);
+    Reflect.apply(bindings['Escape']!, null, [state, undefined, surface.view]);
 
-    expect(bindings['Tab']!(state, undefined, surface.view)).toBe(false);
+    expect(Reflect.apply(bindings['Tab']!, null, [state, undefined, surface.view])).toBe(false);
     expect(calls).toEqual([]);
   });
 
   it('stops watching focus once the Tab is spent', () => {
-    bindings['Escape']!(state, undefined, surface.view);
-    bindings['Tab']!(state, undefined, surface.view);
+    Reflect.apply(bindings['Escape']!, null, [state, undefined, surface.view]);
+    Reflect.apply(bindings['Tab']!, null, [state, undefined, surface.view]);
 
     expect(surface.listenerCount()).toBe(0);
   });
 
   it('does not stack a listener per Escape', () => {
-    bindings['Escape']!(state, undefined, surface.view);
-    bindings['Escape']!(state, undefined, surface.view);
+    Reflect.apply(bindings['Escape']!, null, [state, undefined, surface.view]);
+    Reflect.apply(bindings['Escape']!, null, [state, undefined, surface.view]);
 
     expect(surface.listenerCount()).toBe(1);
   });
@@ -232,16 +252,6 @@ describe('editor keymap: the Tab escape does not outlive focus', () => {
  * round trip that does not move the caret dispatches no transaction at all.
  */
 describe('editor keymap: focus departure in a real editor view', () => {
-  const schema = new Schema({
-    nodes: {
-      doc: { content: 'block+' },
-      paragraph: { content: 'inline*', group: 'block', toDOM: () => ['p', 0] },
-      bullet_list: { content: 'list_item+', group: 'block', toDOM: () => ['ul', 0] },
-      list_item: { content: 'paragraph block*', toDOM: () => ['li', 0] },
-      text: { group: 'inline' },
-    },
-  });
-
   function mountListEditor() {
     const mount = document.createElement('div');
     document.body.append(mount);

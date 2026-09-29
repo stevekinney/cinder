@@ -73,7 +73,7 @@
 
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
-  import CodeBlock from '@lostgradient/cinder/code-block';
+  import { CodeBlock } from '@lostgradient/cinder';
   import { preloadMarkdownPipeline } from './markdown-pipeline.ts';
 
   let { content, markdownNode, class: className, ...rest }: ChatMarkdownPreviewProps = $props();
@@ -116,7 +116,7 @@
       if (!pipelinePromise) return;
       void pipelinePromise
         .then(async (pipeline) => {
-          if (!pipeline || cancelled) return;
+          if (!pipeline || cancelled) return undefined;
           const { renderMarkdownWithMath } = pipeline;
           try {
             const result = await renderMarkdownWithMath(snapshot, { nodePlaceholders: true });
@@ -134,6 +134,7 @@
           } catch {
             if (!cancelled && snapshot === content) renderedHtml = '';
           }
+          return undefined;
         })
         .catch(() => {
           if (!cancelled && snapshot === content) renderedHtml = '';

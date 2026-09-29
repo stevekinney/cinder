@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
 // reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
@@ -204,7 +204,7 @@ describe('FloatingAction — disabled state', () => {
         children: iconSnippet(),
       },
     });
-    const anchor = container.querySelector('a') as HTMLElement;
+    const anchor = requiredInstance(container.querySelector('a'), HTMLElement);
     await fireEvent.click(anchor);
     expect(fired).toBe(0);
   });
@@ -219,7 +219,7 @@ describe('FloatingAction — disabled state', () => {
         children: iconSnippet(),
       },
     });
-    await fireEvent.click(container.querySelector('a') as HTMLElement);
+    await fireEvent.click(requiredInstance(container.querySelector('a'), HTMLElement));
     expect(fired).toBe(1);
   });
 });

@@ -1,7 +1,7 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "portal",
-  "import": "@lostgradient/cinder/portal",
+  "import": "@lostgradient/cinder",
   "examples": [
     {
       "id": "basic",

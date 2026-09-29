@@ -14,10 +14,10 @@ import { Toolbar } from './index.ts';
 import ToolbarGroup from './toolbar-group.svelte';
 import ToolbarSpacer from './toolbar-spacer.svelte';
 
-const _group: typeof ToolbarGroup = Toolbar.Group;
-const _spacer: typeof ToolbarSpacer = Toolbar.Spacer;
+const group: typeof ToolbarGroup = Toolbar.Group;
+const spacer: typeof ToolbarSpacer = Toolbar.Spacer;
 
 Toolbar satisfies Component<never>;
 
-void _group;
-void _spacer;
+void group;
+void spacer;

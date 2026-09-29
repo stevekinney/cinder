@@ -1,5 +1,5 @@
 import { Glob } from 'bun';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { cp, mkdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
@@ -33,6 +33,7 @@ export type PackageManifest = {
 };
 
 const PACKAGE_ROOT = join(import.meta.dir, '..');
+const WORKSPACE_ROOT = join(PACKAGE_ROOT, '..', '..');
 const STAGING_ROOT = join(PACKAGE_ROOT, 'node_modules', '.cache', 'publish-staging');
 // Every framework-level runtime need — Cinder, Markdown, Svelte, and the
 // milkdown/prosemirror stack — is a host-supplied singleton: a consuming app
@@ -55,10 +56,88 @@ const REQUIRED_PEERS = new Set([
   'prosemirror-view',
   'svelte',
 ]);
+// Values are the RAW specifiers the synced source manifest carries (see
+// chat's copy of this script for the full explanation of why): the two
+// intra-target edges are `workspace:*`, the milkdown/prosemirror stack is
+// resolved from corvidae's root catalog (`catalog:`), and `@floating-ui/dom`
+// / `esm-env` are plain third-party ranges the target already declared,
+// which the sync leaves untouched. `resolveDependencySpecifiers` (below)
+// resolves `workspace:*`/`catalog:` to real ranges before packing.
 const REQUIRED_DEPENDENCIES: Record<string, string> = {
   '@floating-ui/dom': '1.7.6',
+  '@lostgradient/cinder': 'workspace:*',
+  '@lostgradient/markdown': 'workspace:*',
+  '@milkdown/kit': 'catalog:',
+  '@milkdown/prose': 'catalog:',
+  '@noble/hashes': 'catalog:',
   'esm-env': '^1.2.0',
+  'prosemirror-inputrules': 'catalog:',
+  'prosemirror-model': 'catalog:',
+  'prosemirror-state': 'catalog:',
+  'prosemirror-view': 'catalog:',
 };
+
+/** Narrows `value` to an object carrying a string `version` field. */
+function hasStringVersion(value: unknown): value is { version: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'version' in value &&
+    typeof (value as { version: unknown }).version === 'string'
+  );
+}
+
+/** Mirrors packages/components/scripts/pack-for-publish.ts's `resolveWorkspaceSiblingVersion`. */
+function resolveWorkspaceSiblingVersion(name: string): string {
+  const manifestPath = join(WORKSPACE_ROOT, 'node_modules', name, 'package.json');
+  if (!existsSync(manifestPath)) {
+    throw new Error(
+      `Cannot resolve workspace sibling "${name}": ${manifestPath} does not exist. ` +
+        'Run `bun install` at the workspace root first.',
+    );
+  }
+  const parsed: unknown = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  if (!hasStringVersion(parsed)) {
+    throw new Error(`Workspace sibling "${name}"'s package.json is missing a string "version".`);
+  }
+  return parsed.version;
+}
+
+/** The root workspace manifest's `catalog` block. */
+function readRootCatalog(): Readonly<Record<string, string>> {
+  const parsed: unknown = JSON.parse(readFileSync(join(WORKSPACE_ROOT, 'package.json'), 'utf8'));
+  if (typeof parsed !== 'object' || parsed === null) return {};
+  const catalog = (parsed as { catalog?: unknown }).catalog;
+  return typeof catalog === 'object' && catalog !== null ? (catalog as Record<string, string>) : {};
+}
+
+/** Resolves `workspace:*`/`catalog:` specifiers to real, publishable ranges. */
+function resolveDependencySpecifiers(
+  record: Record<string, string> | undefined,
+  catalog: Readonly<Record<string, string>>,
+): Record<string, string> | undefined {
+  if (!record) return record;
+  const out: Record<string, string> = {};
+  for (const [name, specifier] of Object.entries(record)) {
+    if (specifier === 'workspace:*') {
+      out[name] = `^${resolveWorkspaceSiblingVersion(name)}`;
+      continue;
+    }
+    if (specifier === 'catalog:') {
+      const range = catalog[name];
+      if (range === undefined) {
+        throw new Error(
+          `"${name}" is "catalog:" in the source manifest, but the root package.json's ` +
+            'catalog carries no entry for it.',
+        );
+      }
+      out[name] = range;
+      continue;
+    }
+    out[name] = specifier;
+  }
+  return out;
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -154,6 +233,42 @@ export function runtimeExternalSpecifiers(
   return names.flatMap((name) => [name, `${name}/*`]);
 }
 
+export function serverEntrypointsFromManifest(
+  manifest: Pick<PackageManifest, 'exports'>,
+): { sourceRelativePath: string; outputRelativePath: string }[] {
+  const entries: { sourceRelativePath: string; outputRelativePath: string }[] = [];
+  for (const [subpath, entry] of Object.entries(manifest.exports)) {
+    if (typeof entry === 'string' || !entry.node?.startsWith('./dist/server/')) continue;
+    const source = entry.svelte;
+    if (!source?.startsWith('./src/lib/') || !source.endsWith('.ts')) {
+      throw new Error(`${subpath} has a Node export without a TypeScript source entry`);
+    }
+    const expectedNode = source.replace('./src/lib/', './dist/server/').replace(/\.ts$/u, '.js');
+    if (entry.node !== expectedNode) {
+      throw new Error(`${subpath} Node export ${entry.node} does not match ${expectedNode}`);
+    }
+    entries.push({
+      sourceRelativePath: source.slice('./src/lib/'.length),
+      outputRelativePath: entry.node.slice('./dist/server/'.length),
+    });
+  }
+  return entries;
+}
+
+export function styleDeclarationPathsFromManifest(
+  manifest: Pick<PackageManifest, 'exports'>,
+): string[] {
+  const declarations: string[] = [];
+  for (const [subpath, entry] of Object.entries(manifest.exports)) {
+    if (typeof entry === 'string' || !entry.default?.endsWith('.css')) continue;
+    if (!entry.default.startsWith('./dist/') || entry.types !== `${entry.default}.d.ts`) {
+      throw new Error(`${subpath} CSS export lacks a matching dist declaration`);
+    }
+    declarations.push(`${entry.default.slice(2)}.d.ts`);
+  }
+  return declarations;
+}
+
 function publishedExport(entry: string | ConditionalExport): string | ConditionalExport {
   if (typeof entry === 'string') return entry;
   const published: ConditionalExport = {};
@@ -190,7 +305,7 @@ export function buildPublishedManifest(
       '!dist/**/*.fixture.*',
       '!dist/**/*-fixture.*',
       '!dist/**/*-fixtures.*',
-      '!dist/**/fixtures.*',
+      '!dist/session/fixtures.*',
       '!dist/**/test/**',
       '!dist/**/*.map',
       'components.json',
@@ -198,8 +313,18 @@ export function buildPublishedManifest(
     ],
   };
 
-  // `dependencies` is retained: it is how npm/bun install conversationalist
-  // and zod for a host application without that host declaring them itself.
+  // `dependencies` is retained: it is how npm/bun install
+  // `@floating-ui/dom`/`esm-env` (and, since the sync, the milkdown/prosemirror
+  // stack's dependencies edge and the workspace:* edges to cinder/markdown)
+  // for a host application without that host declaring them itself —
+  // resolved to real ranges first, since the synced source manifest carries
+  // `workspace:*`/`catalog:` rather than installable specifiers.
+  const resolvedDependencies = resolveDependencySpecifiers(source.dependencies, readRootCatalog());
+  if (resolvedDependencies === undefined) {
+    delete published.dependencies;
+  } else {
+    published.dependencies = resolvedDependencies;
+  }
   delete published.devDependencies;
   delete published.optionalDependencies;
   delete published.scripts;

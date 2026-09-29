@@ -6,7 +6,7 @@ Full-width announcement strip for page-level alerts, promotions, or system messa
 
 ```svelte
 <script lang="ts">
-  import Banner from '@lostgradient/cinder/banner';
+  import { Banner } from '@lostgradient/cinder';
 </script>
 
 <Banner>Your message here.</Banner>
@@ -32,7 +32,6 @@ Full-width announcement strip for page-level alerts, promotions, or system messa
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

@@ -95,88 +95,74 @@ describe("resolveVisualDiffMode — defaults to 'off'", () => {
 // ---------------------------------------------------------------------------
 
 describe("resolveVisualDiffMode — invalid values fall back to 'off'", () => {
-  it("returns 'off' for an unrecognised value ('turbo')", () => {
-    setMode('turbo');
-    expect(resolveVisualDiffMode()).toBe('off');
+  it("returns 'off' for an unrecognised value ('turbo') and emits a warning", () => {
+    expectInvalidMode('turbo');
   });
 
-  it("returns 'off' for a numeric string ('1')", () => {
-    setMode('1');
-    expect(resolveVisualDiffMode()).toBe('off');
+  it("returns 'off' for a numeric string ('1') and emits a warning", () => {
+    expectInvalidMode('1');
   });
 
-  it("returns 'off' for uppercase 'OFF'", () => {
+  it("returns 'off' for uppercase 'OFF' and emits a warning", () => {
     // Mode matching is case-sensitive; 'OFF' ≠ 'off'.
-    setMode('OFF');
-    expect(resolveVisualDiffMode()).toBe('off');
+    expectInvalidMode('OFF');
   });
 
-  it("returns 'off' for 'BLOCK' (wrong case)", () => {
-    setMode('BLOCK');
-    expect(resolveVisualDiffMode()).toBe('off');
+  it("returns 'off' for 'BLOCK' (wrong case) and emits a warning", () => {
+    expectInvalidMode('BLOCK');
   });
 
-  it('emits a console.warn for an invalid value', () => {
-    const warnSpy = spyOn(console, 'warn').mockImplementation(() => undefined);
-    setMode('invalid-value');
-
-    resolveVisualDiffMode();
-
-    expect(warnSpy).toHaveBeenCalledTimes(1);
-    const [firstArg] = warnSpy.mock.calls[0] as [string];
-    expect(firstArg).toContain('CINDER_VISUAL_DIFF');
-    expect(firstArg).toContain('invalid-value');
-
-    warnSpy.mockRestore();
+  it('emits a process warning for an invalid value', () => {
+    expectInvalidMode('invalid-value');
   });
 
-  it('does NOT emit a console.warn for a valid value', () => {
-    const warnSpy = spyOn(console, 'warn').mockImplementation(() => undefined);
-    setMode('block');
-
-    resolveVisualDiffMode();
-
-    expect(warnSpy).not.toHaveBeenCalled();
-    warnSpy.mockRestore();
+  it('does NOT emit a process warning for a valid value', () => {
+    const warningSpy = spyOn(process, 'emitWarning').mockImplementation(() => undefined);
+    try {
+      setMode('block');
+      expect(resolveVisualDiffMode()).toBe('block');
+      expect(warningSpy).not.toHaveBeenCalled();
+    } finally {
+      warningSpy.mockRestore();
+    }
   });
 
-  it('does NOT emit a console.warn when the var is unset', () => {
-    const warnSpy = spyOn(console, 'warn').mockImplementation(() => undefined);
-    setMode(undefined);
-
-    resolveVisualDiffMode();
-
-    expect(warnSpy).not.toHaveBeenCalled();
-    warnSpy.mockRestore();
+  it('does NOT emit a process warning when the var is unset', () => {
+    const warningSpy = spyOn(process, 'emitWarning').mockImplementation(() => undefined);
+    try {
+      setMode(undefined);
+      expect(resolveVisualDiffMode()).toBe('off');
+      expect(warningSpy).not.toHaveBeenCalled();
+    } finally {
+      warningSpy.mockRestore();
+    }
   });
 });
+
+function expectInvalidMode(value: string): void {
+  const warningSpy = spyOn(process, 'emitWarning').mockImplementation(() => undefined);
+  try {
+    setMode(value);
+    expect(resolveVisualDiffMode()).toBe('off');
+    expect(warningSpy).toHaveBeenCalledTimes(1);
+    const [firstArg] = warningSpy.mock.calls[0] as [string];
+    expect(firstArg).toContain('CINDER_VISUAL_DIFF');
+    expect(firstArg).toContain(value);
+  } finally {
+    warningSpy.mockRestore();
+  }
+}
 
 // ---------------------------------------------------------------------------
 // blockBaselineGuard — actionable "update baselines" failure in block mode
 // ---------------------------------------------------------------------------
 
 const BASELINE = '/repo/packages/testing/snapshots/button/light-desktop-default.png';
-const DOCKER_ENVIRONMENT: NodeJS.ProcessEnv = {
-  CINDER_PLAYWRIGHT_VERSION: '1.60.0',
-  PLAYWRIGHT_DOCKER: '1',
-};
 const KNOWN_SLUGS = new Set(['badge', 'button', 'popover']);
 
 describe('blockBaselineGuard — validating (updateSnapshots: none)', () => {
-  it('passes when the baseline exists inside the canonical Docker image', () => {
-    expect(blockBaselineGuard(BASELINE, true, 'none', false, DOCKER_ENVIRONMENT)).toEqual({
-      ok: true,
-    });
-  });
-
-  it('fails with an actionable message when a host run reaches a committed baseline', () => {
-    const result = blockBaselineGuard(BASELINE, true, 'none', false, {});
-    expect(result.ok).toBe(false);
-    if (result.ok) throw new Error('expected guard to fail');
-
-    expect(result.message).toContain('canonical cinder-playwright Docker image');
-    expect(result.message).toContain('test:browser:docker');
-    expect(result.message).toContain('test:browser:update:docker');
+  it('passes when the baseline exists', () => {
+    expect(blockBaselineGuard(BASELINE, true, 'none')).toEqual({ ok: true });
   });
 
   it('fails with an actionable message when the baseline is missing', () => {
@@ -188,10 +174,8 @@ describe('blockBaselineGuard — validating (updateSnapshots: none)', () => {
     expect(result.message).toContain(BASELINE);
     // Names the block-mode env var that triggered the comparison.
     expect(result.message).toContain('CINDER_VISUAL_DIFF=block');
-    // Points at the Docker update workflow rather than Playwright's generic text.
-    expect(result.message).toContain('test:browser:update:docker');
-    expect(result.message).toContain('update-baselines');
-    expect(result.message).toContain('docs/visual-regression/baselines.md');
+    expect(result.message).toContain('bun run test:browser:update');
+    expect(result.message).toContain('bun run test:browser:visual');
   });
 });
 

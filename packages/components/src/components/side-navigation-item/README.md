@@ -4,11 +4,7 @@ Individual link within a side navigation, supporting nesting and active highligh
 
 ## Usage
 
-`SideNavigationItem` is a compose-only leaf of [`SideNavigation`](../side-navigation/README.md).
-The idiomatic API is `SideNavigation.Item`, reached through the parent
-namespace — see the [side-navigation README](../side-navigation/README.md#usage) for the composed
-snippet. The flat `@lostgradient/cinder/side-navigation-item` subpath remains exported for
-à-la-carte builds that import the leaf directly.
+`SideNavigationItem` is a compose-only leaf of [`SideNavigation`](../side-navigation/README.md). The idiomatic API is `SideNavigation.Item`, reached through the parent namespace — see the [side-navigation README](../side-navigation/README.md#usage) for the composed snippet. The leaf is also a named export of `@lostgradient/cinder`.
 
 ## Props
 
@@ -18,7 +14,7 @@ snippet. The flat `@lostgradient/cinder/side-navigation-item` subpath remains ex
 | --------------- | ------------------------------------------------------------------------ | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `active`        | `boolean`                                                                | no       | —       | Marks this item as the currently active destination; emits `aria-current` and applies active visual styling.                                                                                                                                                                                                                                                   |
 | `class`         | `string`                                                                 | no       | —       | Additional class merged onto the `.cinder-navigation-item` root element.                                                                                                                                                                                                                                                                                       |
-| `current`       | `"true"` \| `"page"` \| `"step"` \| `"location"` \| `"date"` \| `"time"` | no       | —       | The `aria-current` token emitted while `active` is true. Defaults to `'page'`, which is correct for navigation bars and breadcrumb-adjacent links. Use `'true'` (or another standard token such as `'step'` / `'location'`) for section/view switchers, where `'page'` would mislabel the current section as the current page in the browsing context.         |
+| `current`       | `"page"` \| `"step"` \| `"location"` \| `"date"` \| `"time"` \| `"true"` | no       | —       | The `aria-current` token emitted while `active` is true. Defaults to `'page'`, which is correct for navigation bars and breadcrumb-adjacent links. Use `'true'` (or another standard token such as `'step'` / `'location'`) for section/view switchers, where `'page'` would mislabel the current section as the current page in the browsing context.         |
 | `disabled`      | `boolean`                                                                | no       | —       | Prevents interaction: removes the item from the tab order, blocks clicks, and applies disabled visual styling.                                                                                                                                                                                                                                                 |
 | `href`          | `string`                                                                 | no       | —       | Destination URL. Providing this prop renders the item as an `<a>` element instead of a `<button>`.                                                                                                                                                                                                                                                             |
 | `listItemClass` | `string`                                                                 | no       | —       | Class merged onto the outer <li>.                                                                                                                                                                                                                                                                                                                              |
@@ -32,7 +28,6 @@ snippet. The flat `@lostgradient/cinder/side-navigation-item` subpath remains ex
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

@@ -1,14 +1,12 @@
 # SpeedDialAction
 
-SpeedDialAction is the `SpeedDial.Action` leaf. It must be rendered inside a
-`SpeedDial` parent so it can participate in roving keyboard navigation and close
-the owning dial after activation.
+SpeedDialAction is the `SpeedDial.Action` leaf. It must be rendered inside a `SpeedDial` parent so it can participate in roving keyboard navigation and close the owning dial after activation.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import { SpeedDial } from '@lostgradient/cinder/speed-dial';
+  import { SpeedDial } from '@lostgradient/cinder';
 </script>
 
 <SpeedDial aria-label="Quick actions">
@@ -39,7 +37,6 @@ the owning dial after activation.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

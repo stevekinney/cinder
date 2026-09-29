@@ -4,7 +4,7 @@
  * `bun pm pack` runs against the source `packages/components/package.json`,
  * which carries:
  *   - `devDependencies` on upstream workspace-only packages (`@lostgradient/markdown`,
- *     `@lostgradient/editor`, `@cinder/testing`) — cinder's build bundles their
+ *     `@lostgradient/editor`, `@lostgradient/testing`) — cinder's build bundles their
  *     source into `dist/`, so they must NOT appear in any published dep field.
  *   - `exports` entries for the 30 upstream re-export sub-paths whose
  *     `svelte` condition points at `./src/<pkg>/<subpath>.ts`. The published
@@ -159,7 +159,7 @@ function resolveWorkspaceSiblingVersion(name: string): string {
  * Transform every `workspace:*` entry in a dependency-field record.
  *
  * `devDependencies` entries are always source-only, local-resolution
- * pointers (`@cinder/testing`; formerly `@lostgradient/markdown` before it
+ * pointers (`@lostgradient/testing`; formerly `@lostgradient/markdown` before it
  * became a real dependency) — the published tarball must never reference
  * the `workspace:` protocol, so these are STRIPPED entirely (mode
  * `'strip'`).
@@ -180,6 +180,7 @@ function resolveWorkspaceSiblingVersion(name: string): string {
 function transformDependencyField(
   record: Record<string, string> | undefined,
   mode: 'strip' | 'rewrite',
+  catalog: Readonly<Record<string, string>>,
 ): Record<string, string> | undefined {
   if (!record) return record;
   const out: Record<string, string> = {};
@@ -192,10 +193,49 @@ function transformDependencyField(
       }
       continue;
     }
+    if (value === 'catalog:') {
+      touched = true;
+      const range = catalog[key];
+      if (range === undefined) {
+        throw new Error(
+          `"${key}" is "catalog:" in the source manifest, but the root package.json's ` +
+            'catalog carries no entry for it. The sync computes that catalog from ' +
+            "corvidae's own root catalog plus resolved cross-target edges; run the " +
+            'sync again or check root package.json directly.',
+        );
+      }
+      out[key] = range;
+      continue;
+    }
     out[key] = value;
   }
   if (!touched) return record;
   return Object.keys(out).length === 0 ? undefined : out;
+}
+
+/**
+ * The root workspace manifest's `catalog` block, read fresh so a staged pack
+ * always resolves `catalog:` specifiers against whatever the most recent
+ * sync computed there (root `package.json`'s `catalog` is transform-owned;
+ * see `manifests.ts`'s `insideFiles.manifestKeys` in corvidae).
+ *
+ * Needed because `bun pm pack` runs from `stagingRoot`, a fresh directory
+ * with no `bun.lock` of its own — an unresolved `catalog:` specifier
+ * anywhere in the staged manifest fails pack outright ("catalogs require a
+ * lockfile"), the same way an unresolved `workspace:*` would.
+ */
+function readRootCatalog(): Readonly<Record<string, string>> {
+  const rootManifestPath = join(workspaceRoot, 'package.json');
+  const parsed: unknown = JSON.parse(readFileSync(rootManifestPath, 'utf8'));
+  if (typeof parsed !== 'object' || parsed === null) return {};
+  const catalog = (parsed as { catalog?: unknown }).catalog;
+  if (typeof catalog !== 'object' || catalog === null) return {};
+  const entries: Record<string, string> = {};
+  for (const [name, version] of Object.entries(catalog)) {
+    if (typeof version !== 'string') throw new Error(`Invalid catalog version for ${name}`);
+    entries[name] = version;
+  }
+  return entries;
 }
 
 function rewriteComponentMetadataNodeEntry(
@@ -215,6 +255,7 @@ function rewriteComponentMetadataNodeEntry(
 function buildPublishedManifest(
   source: SourceManifest,
   provenance?: ReleaseProvenance,
+  catalog: Readonly<Record<string, string>> = {},
 ): SourceManifest {
   const transformedExports: ExportsMap = {};
   for (const [key, entry] of Object.entries(source.exports)) {
@@ -230,14 +271,18 @@ function buildPublishedManifest(
   // semver range — see {@link transformDependencyField}.
   const published: SourceManifest = { ...source };
   for (const field of ['dependencies', 'peerDependencies', 'optionalDependencies'] as const) {
-    const transformed = transformDependencyField(source[field], 'rewrite');
+    const transformed = transformDependencyField(source[field], 'rewrite', catalog);
     if (transformed === undefined) {
       delete published[field];
     } else {
       published[field] = transformed;
     }
   }
-  const strippedDevDependencies = transformDependencyField(source.devDependencies, 'strip');
+  const strippedDevDependencies = transformDependencyField(
+    source.devDependencies,
+    'strip',
+    catalog,
+  );
   if (strippedDevDependencies === undefined) {
     delete published.devDependencies;
   } else {
@@ -292,8 +337,13 @@ export const PUBLISHED_SOURCE_FILES_GLOBS: readonly string[] = [
   '!dist/**/_*-test-harness.*',
   '!dist/**/test/**',
   'src/index.ts',
+  'src/exports/**/*.ts',
   'src/schema-types.ts',
   'src/components/**/*.ts',
+  '!src/components/**/*-test-helpers.ts',
+  '!src/components/**/*-test-support.ts',
+  '!src/components/**/*-test-support.svelte.ts',
+  '!src/components/**/*-snippet-helpers.ts',
   'src/components/**/*.svelte',
   '!src/components/**/*.test.ts',
   '!src/components/**/*.spec.ts',
@@ -313,9 +363,13 @@ export const PUBLISHED_SOURCE_FILES_GLOBS: readonly string[] = [
   'src/components/**/*.css',
   'src/_internal/**/*.ts',
   '!src/_internal/**/*.test.ts',
+  '!src/_internal/**/*-test-helpers.ts',
+  '!src/_internal/**/*-test-support.ts',
   'src/_internal/**/*.svelte',
   'src/utilities/**/*.ts',
   '!src/utilities/**/*.test.ts',
+  '!src/utilities/**/*-test-helpers.ts',
+  '!src/utilities/**/*-test-support.ts',
   // Non-component static sub-paths whose exports map carries a `svelte`
   // condition pointing at `./src/highlighters/<name>/index.ts` (the
   // first-party Shiki adapter today; future siblings live here too).
@@ -627,6 +681,7 @@ export async function packForPublish(): Promise<PackForPublishResult> {
   const publishedManifest = buildPublishedManifest(
     sourceManifest,
     resolvePackProvenance(packageRoot),
+    readRootCatalog(),
   );
 
   // Stage from the PUBLISHED manifest's `files` list, not the source's.

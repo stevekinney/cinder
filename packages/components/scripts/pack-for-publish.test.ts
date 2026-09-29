@@ -15,6 +15,14 @@ import {
 } from './pack-for-publish.ts';
 
 describe('removeBuildCacheMarker', () => {
+  it('keeps the temporary knowledge compiler configuration outside published dist', () => {
+    const buildSource = readFileSync(join(import.meta.dir, 'build.ts'), 'utf8');
+    expect(buildSource).toContain("join(repositoryRoot, '.knowledge-declarations-')");
+    expect(buildSource).not.toContain(
+      '`${distributionDirectory}/.knowledge-declarations.tsconfig.json`',
+    );
+  });
+
   // Regression guard for a previously shipped bug: the build-cache marker
   // file `dist/.build-input-hash` leaked into the published npm tarball
   // because `node:fs` `cp(..., { recursive: true })` does not skip dotfiles
@@ -551,7 +559,7 @@ describe('buildPublishedManifest', () => {
         shiki: '^3.21.0',
       },
       devDependencies: {
-        '@cinder/testing': 'workspace:*',
+        '@lostgradient/testing': 'workspace:*',
         typescript: '^5.9.0',
       },
     };
@@ -571,7 +579,7 @@ describe('buildPublishedManifest', () => {
       version: '0.0.0',
       exports: {},
       devDependencies: {
-        '@cinder/testing': 'workspace:*',
+        '@lostgradient/testing': 'workspace:*',
       },
     };
 

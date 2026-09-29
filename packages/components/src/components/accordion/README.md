@@ -4,12 +4,11 @@ A vertically stacked set of disclosure regions. The `Accordion` parent owns expa
 
 ## Usage
 
-`Accordion` is a compound component. Import the parent and compose
-`Accordion.Item` via the namespace API.
+`Accordion` is a compound component. Import the parent and compose `Accordion.Item` via the namespace API.
 
 ```svelte
 <script lang="ts">
-  import { Accordion } from '@lostgradient/cinder/accordion';
+  import { Accordion } from '@lostgradient/cinder';
 
   let expandedIds = $state<string[]>([]);
 </script>
@@ -20,8 +19,7 @@ A vertically stacked set of disclosure regions. The `Accordion` parent owns expa
 </Accordion>
 ```
 
-The leaf remains importable individually for à-la-carte builds — see
-`@lostgradient/cinder/accordion-item`.
+The leaf is also a named export of `@lostgradient/cinder`.
 
 ## Props
 
@@ -40,15 +38,13 @@ The leaf remains importable individually for à-la-carte builds — see
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents
 
 <!-- generated:subcomponents:start -->
 
-- `Accordion.Item` — child disclosure panel; receives the accordion context via
-  Svelte's context API. See [`accordion-item`](../accordion-item/README.md).
+- `Accordion.Item` — child disclosure panel; receives the accordion context via Svelte's context API. See [`accordion-item`](../accordion-item/README.md).
 
 <!-- generated:subcomponents:end -->
 

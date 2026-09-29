@@ -10,12 +10,7 @@ export type BadgeSeverity = 'info' | 'low' | 'medium' | 'high' | 'critical';
 
 /** Billing lifecycle states that Badge can render as an opinionated preset. */
 export type BadgeSubscriptionState =
-  | 'active'
-  | 'trialing'
-  | 'past-due'
-  | 'canceled'
-  | 'expired'
-  | 'refunded';
+  'active' | 'trialing' | 'past-due' | 'canceled' | 'expired' | 'refunded';
 
 /** Props for the Badge component. */
 export type BadgeProps =

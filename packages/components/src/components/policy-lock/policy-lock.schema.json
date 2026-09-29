@@ -3,19 +3,24 @@
   "type": "object",
   "properties": {
     "id": {
-      "type": "string"
+      "type": "string",
+      "description": "Stable id for the lock explanation."
     },
     "reason": {
-      "type": "string"
+      "type": "string",
+      "description": "Required explanation of why the setting is managed."
     },
     "source": {
-      "type": "string"
+      "type": "string",
+      "description": "Name of the policy source, when the host can name it."
     },
     "scope": {
-      "type": "string"
+      "type": "string",
+      "description": "Policy scope, rendered as a Badge when non-empty—`scope=\"\"` renders nothing, the same as omitted (`{#if scope}`)."
     },
     "class": {
-      "type": "string"
+      "type": "string",
+      "description": "Additional class merged with the component's root class."
     }
   },
   "additionalProperties": false,

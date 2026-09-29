@@ -87,7 +87,7 @@ const styles = {
   message: loadSvelteStyle('../components/chat/message/chat-message.svelte'),
   messageAttachments: loadSvelteStyle('../components/chat/message/message-attachments.svelte'),
   searchBar: loadSvelteStyle('../components/chat/container/chat-search-bar.svelte'),
-  toolCallGroup: loadSvelteStyle('../components/chat/message/tool-call-group.svelte'),
+  toolCallTimeline: loadSvelteStyle('../components/chat/message/tool-call-timeline.svelte'),
   chatImplementation: loadSvelteStyle('../components/chat/container/chat.svelte'),
 };
 
@@ -101,14 +101,13 @@ describe('Chat focus-ring recipes', () => {
       styles.messageAttachments,
       '.message-attachment-button:focus-visible',
     ],
-    ['tool-call header', styles.toolCallGroup, ':global(.tool-call-header:focus-visible)'],
   ] as const;
 
   for (const [name, style, selector] of insetCases) {
     test(`${name} uses the inset recipe`, () => assertInsetRecipe(style, selector));
   }
-
   const outerCases = [
+    ['tool-call timeline', styles.toolCallTimeline, '.chat-tool-call-timeline:focus-visible'],
     [
       'chat export trigger',
       styles.exportActions,

@@ -10,7 +10,14 @@
 // Pure functions (for direct use/testing)
 export { generateCommentsExport, generateCommentsJSON } from './comments-export.js';
 export { generateMarkdownSummary } from './markdown-summary.js';
-export { generateUnifiedDiff } from './unified-diff.js';
+export { generateUnifiedDiff } from './unified-diff-generation.js';
+
+/**
+ * The diff-review agent handoff exporters (DR-5). Pure, DOM-free Markdown/JSON exporters for a
+ * `DiffReviewState` — see `diff-review-export.ts`'s module doc.
+ */
+export { diffReviewExportJsonSchema } from './diff-review-export-schema.js';
+export { exportDiffReviewJson, exportDiffReviewMarkdown } from './diff-review-export.js';
 
 /**
  * Front-matter-aware document normalization shared by every export that diffs
@@ -24,6 +31,21 @@ export { generateUnifiedDiff } from './unified-diff.js';
 export { normalizeDocument, splitDocument } from './normalize-document.js';
 
 // Types
+export { DIFF_REVIEW_EXPORT_SCHEMA_VERSION } from './diff-review-export-types.js';
+export type {
+  DiffReviewExportAnchor,
+  DiffReviewExportDiffRecord,
+  DiffReviewExportDocumentAnchor,
+  DiffReviewExportDocumentMessageRecord,
+  DiffReviewExportDocumentRecord,
+  DiffReviewExportDocumentThread,
+  DiffReviewExportDocumentThreadMessage,
+  DiffReviewExportModel,
+  DiffReviewExportOptions,
+  DiffReviewExportRecord,
+  DiffReviewExportScope,
+  DiffReviewExportTotals,
+} from './diff-review-export-types.js';
 export type { DocumentParts } from './normalize-document.js';
 export type {
   CommentsExportOptions,

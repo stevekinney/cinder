@@ -38,9 +38,9 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { formatColor, parseCssColor } from '../../utilities/color-format.ts';
   import Input from '../input/input.svelte';
-  import Button from '@lostgradient/cinder/button';
-  import ColorPicker from '@lostgradient/cinder/color-picker';
-  import Popover from '@lostgradient/cinder/popover';
+  import { default as Button } from '../button/index.ts';
+  import { default as ColorPicker } from '../color-picker/index.ts';
+  import { default as Popover } from '../popover/index.ts';
   import Pipette from 'lucide-svelte/icons/pipette';
   import type {
     ColorFieldFormat,
@@ -116,7 +116,7 @@
   function formatsEqual(a: readonly ColorFieldFormat[], b: readonly ColorFieldFormat[]): boolean {
     if (a === b) return true;
     if (a.length !== b.length) return false;
-    return a.every((value, index) => value === b[index]);
+    return a.every((formatValue, index) => formatValue === b[index]);
   }
 
   const HEX_RE = /^#[0-9a-f]{3}([0-9a-f]([0-9a-f]{2})?([0-9a-f]{2})?)?$/i;
@@ -181,7 +181,7 @@
       hwb: 'hwb()',
       oklch: 'oklch()',
     };
-    const accepted = acceptedFormats.map((format) => labels[format]);
+    const accepted = acceptedFormats.map((formatValue) => labels[formatValue]);
     if (accepted.length === 1) return `Enter a valid ${accepted[0]} color.`;
     if (accepted.length === 2) return `Enter a valid ${accepted[0]} or ${accepted[1]} color.`;
     return `Enter a valid ${accepted.slice(0, -1).join(', ')}, or ${accepted.at(-1)} color.`;

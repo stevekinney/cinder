@@ -18,8 +18,7 @@
 
 <script lang="ts">
   import { tick, untrack } from 'svelte';
-  import { ChevronLeft, ChevronRight, X } from '@lostgradient/cinder/icons';
-  import { Modal } from '@lostgradient/cinder/modal';
+  import { ChevronLeft, ChevronRight, X, Modal } from '@lostgradient/cinder';
 
   let { images, initialIndex = 0, open = $bindable(false), onClose }: ImageLightboxProps = $props();
 
@@ -540,6 +539,7 @@
         sessionImage = null;
         frozenImageCount = null;
       }
+      return undefined;
     });
   }
 

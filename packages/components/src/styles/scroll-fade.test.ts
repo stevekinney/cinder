@@ -6,7 +6,7 @@ async function readCss(): Promise<string> {
   return Bun.file(cssPath).text();
 }
 
-/** Strips `/* … *​/` comments so assertions never accidentally match commentary. */
+// Strips CSS comments so assertions never accidentally match commentary.
 function stripComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, '');
 }

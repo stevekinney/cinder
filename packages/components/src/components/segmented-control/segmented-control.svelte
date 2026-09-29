@@ -91,7 +91,7 @@
 
   setSegmentedControlContext(contextValue);
 
-  // See docs/decisions/segmented-control-tablist-variant.md for why tablist remains a SegmentedControl variant.
+  // See documentation/decisions/segmented-control-tablist-variant.md for why tablist remains a SegmentedControl variant.
   const groupRole = $derived(
     selectionMode === 'multiple'
       ? 'group'

@@ -1,45 +1,28 @@
 {
   "$comment": "GENERATED FILE. Do not edit by hand. Regenerate: bun run --filter=@lostgradient/cinder tokens:generate",
   "version": "2025.10",
+  "package": "@lostgradient/cinder",
   "tokenCount": 310,
-  "resolver": "@lostgradient/cinder/tokens/resolver",
-  "registry": "@lostgradient/cinder/tokens/registry",
+  "resolver": "tokenResolver",
+  "registry": "TOKEN_REGISTRY",
   "sources": [
-    {
-      "file": "modes/motion-default.tokens.json",
-      "subpath": "@lostgradient/cinder/tokens/modes/motion-default"
-    },
+    { "file": "modes/motion-default.tokens.json", "exportName": "motionDefaultTokens" },
     {
       "file": "modes/motion-forced-reduced.tokens.json",
-      "subpath": "@lostgradient/cinder/tokens/modes/motion-forced-reduced"
+      "exportName": "motionForcedReducedTokens"
     },
-    {
-      "file": "modes/motion-reduced.tokens.json",
-      "subpath": "@lostgradient/cinder/tokens/modes/motion-reduced"
-    },
-    { "file": "sets/colors.tokens.json", "subpath": "@lostgradient/cinder/tokens/sets/colors" },
-    {
-      "file": "sets/components.tokens.json",
-      "subpath": "@lostgradient/cinder/tokens/sets/components"
-    },
-    {
-      "file": "sets/foundation.tokens.json",
-      "subpath": "@lostgradient/cinder/tokens/sets/foundation"
-    },
-    { "file": "sets/semantic.tokens.json", "subpath": "@lostgradient/cinder/tokens/sets/semantic" },
-    { "file": "themes/dark.tokens.json", "subpath": "@lostgradient/cinder/tokens/themes/dark" },
-    { "file": "themes/light.tokens.json", "subpath": "@lostgradient/cinder/tokens/themes/light" }
+    { "file": "modes/motion-reduced.tokens.json", "exportName": "motionReducedTokens" },
+    { "file": "sets/colors.tokens.json", "exportName": "colorTokens" },
+    { "file": "sets/components.tokens.json", "exportName": "componentTokens" },
+    { "file": "sets/foundation.tokens.json", "exportName": "foundationTokens" },
+    { "file": "sets/semantic.tokens.json", "exportName": "semanticTokens" },
+    { "file": "themes/dark.tokens.json", "exportName": "darkThemeTokens" },
+    { "file": "themes/light.tokens.json", "exportName": "lightThemeTokens" }
   ],
   "resolvedContexts": [
-    { "name": "light", "subpath": "@lostgradient/cinder/tokens/resolved/light" },
-    { "name": "dark", "subpath": "@lostgradient/cinder/tokens/resolved/dark" },
-    {
-      "name": "light-reduced-motion",
-      "subpath": "@lostgradient/cinder/tokens/resolved/light-reduced-motion"
-    },
-    {
-      "name": "dark-reduced-motion",
-      "subpath": "@lostgradient/cinder/tokens/resolved/dark-reduced-motion"
-    }
+    { "name": "light", "exportName": "resolvedLightTokens" },
+    { "name": "dark", "exportName": "resolvedDarkTokens" },
+    { "name": "light-reduced-motion", "exportName": "resolvedLightReducedMotionTokens" },
+    { "name": "dark-reduced-motion", "exportName": "resolvedDarkReducedMotionTokens" }
   ]
 }

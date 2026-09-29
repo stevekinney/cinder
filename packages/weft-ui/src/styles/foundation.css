@@ -1,0 +1,662 @@
+/* API-key entry surface (T1.1, plan §6) — full-page auth-required
+ * treatment per §10.4's fault-presentation rules. */
+.weft-ui-api-key-entry {
+  display: flex;
+  min-height: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: var(--cinder-space-4, 1rem);
+}
+
+.weft-ui-api-key-entry__card {
+  width: 100%;
+  max-width: 24rem;
+}
+
+.weft-ui-api-key-entry form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-4, 1rem);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Shell layout (plan §13 T1.6; design `Weft UI.dc.html`)             */
+/* ---------------------------------------------------------------------- */
+
+.weft-shell-boot-skeleton {
+  display: block;
+  height: 100vh;
+}
+
+.weft-shell {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  background: var(--cinder-bg);
+  color: var(--cinder-text);
+  font-size: var(--cinder-text-base);
+}
+
+.weft-shell-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.weft-shell-outlet {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px;
+}
+
+.weft-shell-outlet__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-3, 0.75rem);
+  max-width: 60rem;
+}
+
+/* Sidebar (design: 232px, surface-inset background — Cinder's Sidebar
+ * defaults to `--cinder-surface`; the class this component already accepts
+ * is where an app overrides the background token, not a fork).
+ *
+ * The 232px width is scoped to the plain expanded-desktop state
+ * (`:not(.weft-shell-sidebar--mobile):not(.weft-shell-sidebar--collapsed)`)
+ * rather than applied unconditionally. Cinder's own collapsed-width (`4rem`)
+ * and mobile-drawer-width (`100%`) rules live inside `@layer
+ * cinder.components` (`sidebar.css`), and every rule in this file is
+ * unlayered — unlayered CSS always wins a cascade-layer conflict regardless
+ * of selector specificity, so an unconditional `width: 232px` here silently
+ * overrode Cinder's own per-state sizing while every OTHER collapsed-mode
+ * rule (label hide/reposition, icon-only sizing) kept applying normally,
+ * since none of those set `width`/`inline-size` on this element. The visible
+ * symptom: toggling the icon rail (or loading at a narrow width that starts
+ * collapsed) rendered a full-width sidebar shell with its nav labels
+ * squashed to 0-height and shifted hundreds of pixels off-screen — verified
+ * live via the dev harness (confirmed empirically: `getComputedStyle` on
+ * the nav-item label reported `position: absolute` with a nonsensical
+ * `width`/`x` matching Cinder's collapsed styling, while the `<aside>`
+ * itself stayed pinned at this rule's 232px).
+ *
+ * `weft-shell-sidebar--collapsed`/`--mobile` are app-owned modifier classes
+ * (`src/app/shell/sidebar.svelte`) derived from the app's own `collapsed`
+ * state and a `MediaQuery` on Cinder's public `SIDEBAR_MOBILE_MEDIA_QUERY`
+ * breakpoint export, not read back from Cinder's rendered mobile class or
+ * collapsed-state attribute on the sidebar root. */
+
+.weft-shell-sidebar {
+  flex: none;
+  background: var(--cinder-surface-inset);
+}
+
+.weft-shell-sidebar:not(.weft-shell-sidebar--mobile):not(.weft-shell-sidebar--collapsed) {
+  width: 232px;
+}
+
+.weft-shell-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  min-width: 0;
+}
+
+.weft-shell-nav-item__icon {
+  flex: none;
+}
+
+.weft-shell-nav-item__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weft-shell-engine-pill {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: var(--cinder-radius-md);
+  background: var(--cinder-surface);
+  border: 1px solid var(--cinder-border);
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .weft-shell-engine-pill:hover {
+    background: var(--cinder-surface-hover);
+  }
+}
+
+.weft-shell-engine-pill__chevron {
+  flex: none;
+  color: var(--cinder-text-subtle);
+  margin-inline-start: auto;
+}
+
+/* Topbar (design: 53px, surface background). */
+
+.weft-shell-topbar {
+  height: 53px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--cinder-border);
+  background: var(--cinder-surface);
+}
+
+.weft-shell-topbar__domain {
+  font-size: var(--cinder-text-sm);
+  font-weight: 600;
+  flex: none;
+  white-space: nowrap;
+}
+
+.weft-shell-search-trigger {
+  margin-inline-start: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 300px;
+  flex: 0 1 auto;
+  padding: 7px 11px;
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md);
+  background: var(--cinder-surface-inset);
+  color: var(--cinder-text-subtle);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--cinder-text-sm);
+}
+
+@media (hover: hover) {
+  .weft-shell-search-trigger:hover {
+    background: var(--cinder-surface-hover);
+    color: var(--cinder-text);
+  }
+}
+
+.weft-shell-search-trigger span:not(.weft-shell-search-trigger__kbd) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weft-shell-search-trigger__kbd {
+  margin-inline-start: auto;
+  display: flex;
+  gap: 3px;
+  flex: none;
+}
+
+.weft-shell-search-trigger__kbd kbd {
+  font-family: var(--cinder-font-mono);
+  font-size: 10px;
+  padding: 2px 5px;
+  border: 1px solid var(--cinder-border);
+  border-radius: 4px;
+  background: var(--cinder-surface);
+}
+
+.weft-shell-scope-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  padding: 5px 9px;
+  border: 1px solid var(--cinder-color-warning-border);
+  border-radius: var(--cinder-radius-md);
+  background: var(--cinder-color-warning-bg);
+  color: var(--cinder-color-warning-fg);
+  font-size: var(--cinder-text-xs);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.weft-shell-icon-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: var(--cinder-radius-md);
+  background: transparent;
+  color: var(--cinder-text-subtle);
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .weft-shell-icon-button:hover {
+    background: var(--cinder-surface-hover);
+    color: var(--cinder-text);
+  }
+}
+
+/* Mobile navigation-drawer trigger — hidden above Cinder Sidebar's own
+ * mobile breakpoint (`SIDEBAR_MOBILE_BREAKPOINT`, `47.99rem`); below it,
+ * `Sidebar` renders no trigger of its own, so this is the only way to
+ * reopen the drawer once closed (`shell.svelte`'s module doc). */
+.weft-shell-menu-trigger {
+  display: none;
+}
+
+/* Responsive: PROJECT-BRIEF binding rules — no page-level horizontal
+ * scroll ever; topbar condenses (icon-only ⌘K, menu trigger appears);
+ * interactive targets ≥40px on touch. Kept aligned with Cinder Sidebar's
+ * own `47.99rem` mobile breakpoint (cinder#735/#801) so the menu trigger
+ * appears exactly when `Sidebar` actually becomes a drawer. */
+@media (max-width: 47.99rem) {
+  .weft-shell-menu-trigger {
+    display: grid;
+  }
+
+  .weft-shell-topbar {
+    gap: 8px;
+    padding: 0 10px;
+  }
+
+  .weft-shell-topbar__domain {
+    display: none;
+  }
+
+  .weft-shell-search-trigger {
+    min-width: 0;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .weft-shell-search-trigger span,
+  .weft-shell-search-trigger__kbd {
+    display: none;
+  }
+
+  .weft-shell-scope-pill span {
+    display: none;
+  }
+
+  .weft-shell-icon-button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .weft-shell-outlet {
+    padding: 14px 14px 40px;
+  }
+}
+
+/* Notification bell + dropdown panel (design `Weft New Surfaces.dc.html` §C). */
+
+.weft-notification-bell__count {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  background: var(--cinder-danger);
+  color: var(--cinder-danger-contrast);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.weft-notification-panel {
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  background: var(--cinder-surface-raised);
+  border-radius: var(--cinder-radius-lg);
+  overflow: hidden;
+}
+
+.weft-notification-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--cinder-border-muted);
+}
+
+/*
+ * WFC-11 design-fidelity fix: the panel's own `overflow: hidden` (copied
+ * faithfully from `Weft New Surfaces.dc.html`'s §C mockup, which only ever
+ * shows a handful of static sample items) has no paired `max-height`, so a
+ * live feed with dozens of notifications rendered as one unbounded panel —
+ * confirmed live at 50 seeded notifications: a 2842px-tall, unscrollable
+ * dropdown whose footer (the Connection Indicator §0 second instance and
+ * "Open alerts view" link) sat entirely off-screen with no way to reach it.
+ * Capping and scrolling just the item list, not the header/footer, keeps
+ * both always visible regardless of feed size.
+ */
+.weft-notification-panel__list {
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+}
+
+.weft-notification-panel__title {
+  font-size: var(--cinder-text-sm);
+  font-weight: 600;
+}
+
+.weft-notification-panel__mark-read {
+  margin-inline-start: auto;
+  border: 0;
+  background: transparent;
+  color: var(--cinder-accent-text);
+  font: inherit;
+  font-size: var(--cinder-text-2xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.weft-notification-panel__group-label {
+  padding: 7px 14px 3px;
+  font-size: var(--cinder-text-2xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cinder-text-subtle);
+  border-top: 1px solid var(--cinder-border-muted);
+}
+
+.weft-notification-panel__group-label:first-of-type {
+  border-top: 0;
+}
+
+.weft-notification-panel__group-label[data-tier='critical'] {
+  color: var(--cinder-color-danger-fg);
+}
+
+.weft-notification-panel__group-label[data-tier='warning'] {
+  color: var(--cinder-color-warning-fg);
+}
+
+.weft-notification-panel__item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 9px 14px;
+  text-decoration: none;
+  color: var(--cinder-text);
+  border-inline-start: 2px solid transparent;
+}
+
+@media (hover: hover) {
+  .weft-notification-panel__item:hover {
+    background: var(--cinder-surface-hover);
+  }
+}
+
+.weft-notification-panel__item[data-tier='critical'] {
+  border-inline-start-color: var(--cinder-danger);
+}
+
+.weft-notification-panel__item[data-tier='warning'] {
+  border-inline-start-color: var(--cinder-warning);
+}
+
+.weft-notification-panel__item-icon {
+  flex: none;
+  margin-top: 2px;
+  color: var(--cinder-text-subtle);
+}
+
+.weft-notification-panel__item[data-tier='critical'] .weft-notification-panel__item-icon {
+  color: var(--cinder-color-danger-fg);
+}
+
+.weft-notification-panel__item[data-tier='warning'] .weft-notification-panel__item-icon {
+  color: var(--cinder-color-warning-fg);
+}
+
+.weft-notification-panel__item-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.weft-notification-panel__item-title {
+  display: block;
+  font-size: var(--cinder-text-xs);
+  font-weight: 600;
+}
+
+/**
+ * T9.4 accessibility pass: this used to be a blanket `opacity: 0.65` on the
+ * whole `.weft-notification-panel__item` row (design §C: "read at 0.65
+ * opacity"). Measured in a real browser with `ctx.globalAlpha` (canvas 2D
+ * composites exactly like CSS `opacity`, in gamma-encoded sRGB — a naive
+ * `color-mix(in oklch, …)` stand-in reads noticeably higher and is NOT
+ * trustworthy near a 4.5:1 threshold), both themes: `--cinder-text` (this
+ * title) holds AA at 0.65 opacity (5.61:1 light / 5.98:1 dark), but the
+ * icon/detail/time already render in `--cinder-text-subtle`/
+ * `--cinder-text-disabled` — dimming THOSE further dropped body text to
+ * ~3.3–3.5:1, under WCAG AA's 4.5:1 for normal text. Scoping the opacity to
+ * the title only (which also already gets the `font-weight: 400` non-color
+ * signal below) keeps the read/unread distinction — now doubly non-color,
+ * weight AND opacity — without taking the icon/detail/time below AA.
+ */
+.weft-notification-panel__item[data-read='true'] .weft-notification-panel__item-title {
+  font-weight: 400;
+  opacity: 0.65;
+}
+
+.weft-notification-panel__item-detail {
+  display: block;
+  font-size: var(--cinder-text-2xs);
+  color: var(--cinder-text-subtle);
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weft-notification-panel__item-time {
+  flex: none;
+  font-size: var(--cinder-text-2xs);
+  color: var(--cinder-text-disabled);
+  white-space: nowrap;
+}
+
+.weft-notification-panel__empty {
+  padding: 20px 14px;
+  margin: 0;
+  text-align: center;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text-subtle);
+}
+
+.weft-notification-panel__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-top: 1px solid var(--cinder-border-muted);
+}
+
+.weft-notification-panel__alerts-link {
+  border: 0;
+  background: transparent;
+  color: var(--cinder-accent-text);
+  font: inherit;
+  font-size: var(--cinder-text-2xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Critical-alert strip (design §C: "below header, dismissible"). */
+
+.weft-critical-strip {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 18px;
+}
+
+.weft-critical-strip__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  background: var(--cinder-color-danger-bg);
+  border: 1px solid var(--cinder-color-danger-border);
+  border-radius: var(--cinder-radius-md);
+  color: var(--cinder-color-danger-fg);
+  font-size: var(--cinder-text-xs);
+}
+
+.weft-critical-strip__icon {
+  flex: none;
+}
+
+.weft-critical-strip__message {
+  flex: 1;
+  min-width: 0;
+}
+
+.weft-critical-strip__link {
+  flex: none;
+  font-weight: 600;
+  color: inherit;
+}
+
+.weft-critical-strip__dismiss {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* Unauthenticated-mode banner (plan §6, §10; design "auth-mode banner"). */
+
+.weft-shell-auth-banner {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+  background: var(--cinder-color-warning-bg);
+  border-bottom: 1px solid var(--cinder-color-warning-border);
+  color: var(--cinder-color-warning-fg);
+  font-size: var(--cinder-text-xs);
+}
+
+.weft-shell-auth-banner[data-variant='allow'] {
+  background: var(--cinder-surface-inset);
+  border-bottom-color: var(--cinder-border);
+  color: var(--cinder-text-subtle);
+}
+
+.weft-shell-auth-banner__icon {
+  flex: none;
+}
+
+.weft-shell-auth-banner__dismiss {
+  margin-inline-start: auto;
+  width: 22px;
+  height: 22px;
+}
+
+/* Command palette result groups (skeleton: id-prefix search). */
+
+.weft-command-group__label {
+  display: block;
+  padding: 7px 14px 3px;
+  font-size: var(--cinder-text-2xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cinder-text-subtle);
+}
+
+/* Fault treatment (plan §10.4) — shared by `src/app/fault-boundary.svelte`
+ * and `src/routes/system/query-fault-banner.svelte`, so these rules live in
+ * this plain global stylesheet, not a component's scoped \3c style> block
+ * (scoped styles never apply to another component's markup). */
+
+.weft-fault-boundary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cinder-space-2, 0.5rem);
+  padding: 11px 14px;
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md);
+  background: var(--cinder-surface-raised);
+}
+
+.weft-fault-boundary[data-tone='warning'] {
+  border-color: var(--cinder-color-warning-border);
+  background: var(--cinder-color-warning-bg);
+}
+
+.weft-fault-boundary[data-tone='danger'] {
+  border-color: var(--cinder-color-danger-border);
+  background: var(--cinder-color-danger-bg);
+}
+
+.weft-fault-boundary__banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.weft-fault-boundary__icon {
+  flex: none;
+  color: var(--cinder-text-subtle);
+}
+
+.weft-fault-boundary[data-tone='warning'] .weft-fault-boundary__icon {
+  color: var(--cinder-color-warning-fg);
+}
+
+.weft-fault-boundary[data-tone='danger'] .weft-fault-boundary__icon {
+  color: var(--cinder-color-danger-fg);
+}
+
+.weft-fault-boundary__message {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text);
+}
+
+.weft-fault-boundary__note,
+.weft-fault-boundary__field-errors {
+  margin: 0;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text-muted);
+}
+
+.weft-fault-boundary__field-errors {
+  padding-inline-start: 1.25rem;
+}
+
+.weft-fault-boundary__stack {
+  margin: 0;
+  overflow-x: auto;
+  font-family: var(--cinder-font-mono);
+  font-size: var(--cinder-text-2xs);
+  color: var(--cinder-text-muted);
+}

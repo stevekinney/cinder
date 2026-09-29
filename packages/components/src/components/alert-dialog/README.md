@@ -2,8 +2,7 @@
 
 Sticky blocking acknowledgement dialog that cannot be dismissed by Escape or backdrop click. The user must click an explicit action button to proceed.
 
-See the [dialog preset boundary](https://github.com/stevekinney/cinder/blob/main/docs/decisions/dialog-presets.md)
-for the preserved role, acknowledgement, and dismissal contract.
+See the [dialog preset boundary](https://github.com/stevekinney/cinder/blob/main/docs/decisions/dialog-presets.md) for the preserved role, acknowledgement, and dismissal contract.
 
 ## Dialog model
 
@@ -36,8 +35,8 @@ The key distinction between AlertDialog and ConfirmDialog is _who initiates_ the
 
 ```svelte
 <script lang="ts">
-  import AlertDialog from '@lostgradient/cinder/alert-dialog';
-  import Button from '@lostgradient/cinder/button';
+  import { AlertDialog } from '@lostgradient/cinder';
+  import { Button } from '@lostgradient/cinder';
 
   let open = $state(false);
 </script>
@@ -77,7 +76,6 @@ The key distinction between AlertDialog and ConfirmDialog is _who initiates_ the
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

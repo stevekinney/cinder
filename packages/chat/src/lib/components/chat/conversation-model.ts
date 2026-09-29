@@ -40,6 +40,7 @@ export type {
   ToolAction,
   ToolCall,
   ToolCallInput,
+  ToolCallPair,
   ToolError,
   ToolErrorCategory,
   ToolInteraction,
@@ -47,7 +48,6 @@ export type {
   ToolResultInput,
   WebSearchToolResultContent,
 } from 'conversationalist';
-export type { ToolCallPair } from 'conversationalist/utilities';
 
 /** Base options shared by all transcript export operations. */
 export type ExportOptions = Omit<ConversationalistToMarkdownOptions, 'includeMetadata'>;

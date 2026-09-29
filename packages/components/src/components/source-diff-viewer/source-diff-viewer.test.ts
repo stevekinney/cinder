@@ -2,7 +2,7 @@
 import { describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -401,17 +401,17 @@ copy to two b/bar
 
   test('preserves real path segments after default git prefixes', () => {
     const parsed =
-      parseUnifiedPatch(`diff --git a/packages/components/foo.ts b/packages/components/foo.ts
---- a/packages/components/foo.ts
-+++ b/packages/components/foo.ts
+      parseUnifiedPatch(`diff --git a/components/cinder/foo.ts b/components/cinder/foo.ts
+--- a/components/cinder/foo.ts
++++ b/components/cinder/foo.ts
 @@ -1 +1 @@
 -old();
 +new();
 `);
 
-    expect(parsed.files[0]?.oldPath).toBe('packages/components/foo.ts');
-    expect(parsed.files[0]?.newPath).toBe('packages/components/foo.ts');
-    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('packages/components/foo.ts');
+    expect(parsed.files[0]?.oldPath).toBe('components/cinder/foo.ts');
+    expect(parsed.files[0]?.newPath).toBe('components/cinder/foo.ts');
+    expect(getSourceDiffFileLabel(parsed.files[0]!)).toBe('components/cinder/foo.ts');
   });
 
   test('preserves shared path segments after custom git diff prefixes', () => {
@@ -620,7 +620,7 @@ copy to two b/bar
 @@ -1 +1 @@
 -old();
 +new();
--- 
+--\x20
 2.50.0
 `);
 
@@ -1117,10 +1117,10 @@ Common subdirectories: old/sub and new/sub
   });
 
   test('preserves significant trailing spaces in rename metadata paths', () => {
-    const parsed = parseUnifiedPatch(`diff --git a/foo b/foo 
+    const parsed = parseUnifiedPatch(`diff --git a/foo b/foo\x20
 similarity index 100%
 rename from foo
-rename to foo 
+rename to foo\x20
 `);
 
     expect(parsed.files[0]?.oldPath).toBe('foo');
@@ -1130,10 +1130,10 @@ rename to foo
 
   test('renders significant trailing spaces in file labels', () => {
     const { container } = render(SourceDiffViewer, {
-      patch: `diff --git a/foo b/foo 
+      patch: `diff --git a/foo b/foo\x20
 similarity index 100%
 rename from foo
-rename to foo 
+rename to foo\x20
 `,
     });
 

@@ -6,15 +6,15 @@ Button that copies a given text value to the clipboard with visual feedback.
 
 ```svelte
 <script lang="ts">
-  import CopyButton from '@lostgradient/cinder/copy-button';
+  import { CopyButton } from '@lostgradient/cinder';
 </script>
 
 <div style="display: flex; align-items: center; gap: 0.5rem;">
   <code
     style="padding: 0.25rem 0.5rem; background-color: var(--cinder-surface-inset); color: var(--cinder-text-default); border-radius: 4px;"
-    >npx cinder install</code
+    >bun run validate</code
   >
-  <CopyButton value="npx cinder install" label="Copy install command" />
+  <CopyButton value="bun run validate" label="Copy validation command" />
 </div>
 ```
 
@@ -43,7 +43,6 @@ Button that copies a given text value to the clipboard with visual feedback.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

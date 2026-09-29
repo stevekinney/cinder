@@ -1,13 +1,13 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "donut-chart",
-  "import": "@lostgradient/cinder/donut-chart",
+  "import": "@lostgradient/cinder",
   "examples": [
     {
       "id": "basic",
       "title": "Basic donut chart",
       "description": "A compact breakdown of workload by category.",
-      "code": "<script lang=\"ts\">\n  import { DonutChart } from '@lostgradient/cinder/donut-chart';\n  const data = [\n    { label: 'Build', value: 42 },\n    { label: 'Review', value: 28 },\n    { label: 'Test', value: 18 },\n    { label: 'Docs', value: 12 },\n  ];\n</script>\n\n<DonutChart label=\"Workload\" {data} centerLabel=\"Tasks\" valueLabels />\n"
+      "code": "<script lang=\"ts\">\n  import { DonutChart } from '@lostgradient/cinder';\n  const data = [\n    { id: 'build', label: 'Build', value: 42 },\n    { id: 'review', label: 'Review', value: 28 },\n    { id: 'test', label: 'Test', value: 18 },\n    { id: 'docs', label: 'Docs', value: 12 },\n  ];\n</script>\n\n<DonutChart label=\"Workload\" {data} centerLabel=\"Tasks\" valueLabels />\n"
     }
   ]
 }

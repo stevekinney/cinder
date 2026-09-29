@@ -14,10 +14,10 @@ export type ServerComponentBoundary = {
 };
 
 /**
- * Components allowed to compile a real `<style>` block instead of routing
+ * Domain components allowed to compile a real `<style>` block instead of routing
  * styles through `src/styles/`.
  *
- * This is NOT dead code, even though none of these four names are directories
+ * This is NOT dead code, even though these names are not directories
  * under `packages/components/src/components` — `allowsStyleBlock`'s path
  * match is package-agnostic (it matches the first path segment under any
  * `.../components/<name>/` directory), and this file is imported
@@ -26,7 +26,7 @@ export type ServerComponentBoundary = {
  * names protect live components in THOSE packages' own `src/lib/components/`
  * trees: `packages/chat/src/lib/components/chat/**` (e.g. `chat.svelte`,
  * `chat-message.svelte`) and `packages/editor/src/lib/components/
- * {diff-viewer,markdown-editor,review-editor}/**` (e.g. `diff-viewer.svelte`,
+ * {diff-viewer,diff-review,diff-review-comments,markdown-editor,review-editor}/**` (e.g. `diff-viewer.svelte`,
  * `review-editor-impl.svelte`) — dozens of files, confirmed non-empty
  * `<style>` blocks as of this comment. `source-diff-viewer`, the surviving
  * `packages/components` name closest to `diff-viewer`, needs no entry here:
@@ -35,6 +35,8 @@ export type ServerComponentBoundary = {
 const DOMAIN_SUITE_STYLE_COMPONENTS = new Set([
   'chat',
   'diff-viewer',
+  'diff-review',
+  'diff-review-comments',
   'markdown-editor',
   'review-editor',
 ]);
@@ -108,12 +110,15 @@ export function allowsStyleBlock(path: string): boolean {
   // cascade. Allow them to keep scoped styles local to the fixture.
   if (normalizedPath.includes('/packages/components/src/test/fixtures/')) return true;
   // Visual-regression fixture hosts colocated with their component
-  // (`src/components/<name>/<name>.fixture.svelte`, e.g. `accordion.fixture.svelte`)
+  // (`src/components/<name>/<name>.fixture.svelte` or `*-fixture.svelte`, e.g.
+  // `accordion.fixture.svelte` and `data-grid-selection-bind-fixtures.svelte`)
   // are dev-only mounting scaffolding for Playwright/visual fixtures and are
   // never shipped in dist — same rationale as the `/test/fixtures/` carve-out
   // above, extended to this established naming convention (`extract-fixtures.ts`
   // already requires fixture hosts to end in `.fixture.svelte`).
-  if (/\/src\/components\/[^/]+\/[^/]+\.fixture\.svelte$/.test(normalizedPath)) return true;
+  if (/\/src\/components\/[^/]+\/[^/]*(?:\.fixture|-fixtures?)\.svelte$/.test(normalizedPath)) {
+    return true;
+  }
 
   const componentPathMatch = normalizedPath.match(
     /\/(?:src\/(?:lib\/)?|dist\/)components\/([^/]+)(?:\/|\.svelte$)/,

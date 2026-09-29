@@ -142,8 +142,8 @@ describe('resolveCountryList', () => {
   test('falls back to ["US"] when allow-list is empty after filtering', () => {
     const { countries, usedFallback } = resolveCountryList([
       // intentionally junk codes
-      'ZZ' as never,
-      'XX' as never,
+      'ZZ',
+      'XX',
     ]);
     expect(countries).toEqual(['US']);
     expect(usedFallback).toBe(true);
@@ -160,7 +160,7 @@ describe('displayNameForCountry', () => {
   });
 
   test('falls back to the country code when DisplayNames cannot resolve it', () => {
-    expect(displayNameForCountry('XX' as never, 'en-US')).toBe('XX');
+    expect(displayNameForCountry('XX', 'en-US')).toBe('XX');
   });
 
   test('falls back to the country code when DisplayNames.of throws', () => {

@@ -60,7 +60,6 @@ describe('testPathsForScope', () => {
     expect(paths).toContain('src/highlighters');
     expect(paths).toContain('src/styles');
     // Package-level invariant tests (export drift, manifest, conventions).
-    expect(paths).toContain('src/exports-drift.test.ts');
     expect(paths).toContain('src/api-contract.test.ts');
     expect(paths).toContain('src/manifest.test.ts');
     // The scoped component dirs.
@@ -73,7 +72,7 @@ describe('testPathsForScope', () => {
     expect(paths).toContain('src/test');
     expect(paths).toContain('src/utilities');
     expect(paths).toContain('src/styles');
-    expect(paths).toContain('src/exports-drift.test.ts');
+    expect(paths).toContain('src/api-contract.test.ts');
     // scripts/ tooling tests run only when scripts/ changes (which force-fulls).
     expect(paths).not.toContain('scripts');
     expect(paths).toContain('src/components/accordion/');
@@ -86,7 +85,6 @@ describe('fullSuiteTestPathGroups', () => {
     expect(groups[0]).toContain('scripts');
     expect(groups[0]).toContain('src/cli');
     expect(groups[0]).toContain('src/test');
-    expect(groups[0]).toContain('src/exports-drift.test.ts');
     expect(groups[0]).toContain('src/root-type-exports.test.ts');
     expect(groups[0]).toContain('src/components/svg-data-uri-color-literals.test.ts');
     expect(groups[0]).toContain(

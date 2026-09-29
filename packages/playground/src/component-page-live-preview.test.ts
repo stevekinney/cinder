@@ -41,7 +41,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
-import { setupHappyDom } from '../../components/src/test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import {
   createLivePreviewMount,
   LIVE_MOUNT_CONTAINER_ID,

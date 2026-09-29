@@ -8,8 +8,8 @@
 </script>
 
 <script lang="ts">
-  import type { LineDiff } from '@lostgradient/markdown/diff/line-diff';
-  import { computeLineDiff } from '@lostgradient/markdown/diff/line-diff';
+  import type { LineDiff } from '@lostgradient/markdown';
+  import { computeLineDiff } from '@lostgradient/markdown';
 
   import { classNames } from '../../utilities/class-names.ts';
   import Alert from '../alert/alert.svelte';

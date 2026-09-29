@@ -12,25 +12,29 @@ export {
 export * from './components/chat/index.ts';
 export {
   ChatRunFailureError,
-  createChatSession,
-  createChatSessionController,
-  createSessionController,
+  type ChatExecutionOwner,
+  type ChatHistoryToken,
   type ChatSessionController,
   type ChatSessionControllerOptions,
   type ChatSessionHooks,
   type ChatSessionRequest,
   type ChatSessionTransport,
   type ChatSessionTransportResult,
+} from './session/session-controller-support.ts';
+export {
+  createChatSession,
+  createChatSessionController,
+  createSessionController,
 } from './session/session-controller.ts';
 export {
+  decodeChatStreamEvent,
   decodeChatStreamEvents,
+  decodeStreamEvent,
   decodeStreamEvents,
+  encodeChatStreamEvent,
+  encodeStreamEvent,
   guardChatStreamEvents,
-  type ChatStreamDecodeOptions,
-} from './session/stream-event-codec.ts';
-export {
   type ChatSerializedRunError,
+  type ChatStreamDecodeOptions,
   type ChatStreamEvent,
-} from './session/stream-event-contract.ts';
-export { decodeChatStreamEvent, decodeStreamEvent } from './session/stream-event-decoder.ts';
-export { encodeChatStreamEvent, encodeStreamEvent } from './session/stream-event-encoder.ts';
+} from './session/stream-event-codec.ts';

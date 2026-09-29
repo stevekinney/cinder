@@ -1,11 +1,14 @@
 import { describe, expect, test } from 'bun:test';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
+import { throwingRejectionOf } from '@lostgradient/testing';
 import { formatGenerated } from './component-artifact-operations.ts';
 import { assertPrettierResolvesToRoot } from './lib/prettier-resolution.ts';
 
 const repositoryRoot = resolve(import.meta.dirname, '../../..');
+const packageRoot = resolve(import.meta.dirname, '..');
 
 /**
  * The happy path -- `formatGenerated` producing correctly formatted artifacts --
@@ -24,7 +27,7 @@ describe('formatGenerated prettier resolution', () => {
    * `prettier` range once made bun nest a newer prettier under this package, and
    * the artifact pipeline formatted with it while the root stayed locked on
    * another version -- ~150 READMEs reported stale on a branch that never
-   * touched `packages/components`. The pipeline must format with the root's copy.
+   * touched `components/cinder`. The pipeline must format with the root's copy.
    */
   test('resolves prettier to the version the repository root locks', () => {
     const parsed: unknown = JSON.parse(
@@ -45,7 +48,7 @@ describe('formatGenerated prettier resolution', () => {
     expect(version).toBe(rootVersion);
     expect(resolvedFrom).toContain('/node_modules/prettier/');
     // A copy nested under this package would resolve from a different tree.
-    expect(resolvedFrom).not.toContain('/packages/components/node_modules/');
+    expect(resolvedFrom).not.toContain(`${packageRoot}/node_modules/`);
   });
 
   /**
@@ -57,8 +60,8 @@ describe('formatGenerated prettier resolution', () => {
   test('surfaces a formatting failure naming the file and the resolved prettier', async () => {
     const attempt = formatGenerated('export const = ;', '/generated/broken.ts');
 
-    await expect(attempt).rejects.toThrow(/failed to format \/generated\/broken\.ts/);
-    await expect(attempt).rejects.toThrow(
+    expect(await throwingRejectionOf(attempt)).toThrow(/failed to format \/generated\/broken\.ts/);
+    expect(await throwingRejectionOf(attempt)).toThrow(
       /prettier \d+\.\d+\.\d+ \(file:.*\/node_modules\/prettier\//,
     );
     // The underlying error's own message is in the string, not only in `cause`,
@@ -86,5 +89,65 @@ describe('formatGenerated prettier resolution', () => {
       // expected
     }
     expect(result).toBeUndefined();
+  });
+
+  test('resolves prettier overrides per generated file in one component directory', async () => {
+    const temporaryDirectory = mkdtempSync(join(tmpdir(), 'cinder-format-generated-'));
+    const scriptPath = join(temporaryDirectory, 'probe.ts');
+    const operationsPath = join(packageRoot, 'scripts/component-artifact-operations.ts');
+    const componentDirectory = join(packageRoot, 'src/components/run-step-timeline');
+    const markdownInput =
+      '| Name | Description |\n' +
+      '| --- | --- |\n' +
+      '| `RunStepDetail` | A detail with enough prose to make Prettier want to wrap the table cell when proseWrap is not never. |\n';
+
+    writeFileSync(
+      scriptPath,
+      [
+        "import * as prettier from 'prettier';",
+        `import { formatGenerated } from ${JSON.stringify(operationsPath)};`,
+        `const componentDirectory = ${JSON.stringify(componentDirectory)};`,
+        `const markdownInput = ${JSON.stringify(markdownInput)};`,
+        'const jsonPath = `${componentDirectory}/run-step-timeline.schema.json`;',
+        'const markdownPath = `${componentDirectory}/README.md`;',
+        'await formatGenerated(\'{"b":2,"a":1}\', jsonPath);',
+        'const formattedMarkdown = await formatGenerated(markdownInput, markdownPath);',
+        'const markdownOptions = await prettier.resolveConfig(markdownPath);',
+        'const freshMarkdown = await prettier.format(markdownInput, { ...markdownOptions, filepath: markdownPath });',
+        'console.log(JSON.stringify({ formattedMarkdown, freshMarkdown, proseWrap: markdownOptions?.proseWrap }));',
+      ].join('\n'),
+    );
+
+    try {
+      const subprocess = Bun.spawn({
+        cmd: [process.execPath, scriptPath],
+        cwd: repositoryRoot,
+        stdout: 'pipe',
+        stderr: 'pipe',
+        env: process.env,
+      });
+      const [stdout, stderr, exitCode] = await Promise.all([
+        new Response(subprocess.stdout).text(),
+        new Response(subprocess.stderr).text(),
+        subprocess.exited,
+      ]);
+
+      expect(stderr).toBe('');
+      expect(exitCode).toBe(0);
+      const parsed = JSON.parse(stdout) as {
+        formattedMarkdown: string;
+        freshMarkdown: string;
+        proseWrap?: string;
+      };
+      expect(parsed.formattedMarkdown).toBe(parsed.freshMarkdown);
+      expect(parsed.formattedMarkdown).toMatch(/\|\s*`RunStepDetail`\s*\|/);
+      if (parsed.proseWrap === 'never') {
+        expect(parsed.formattedMarkdown).toContain('| Name | Description |');
+      } else {
+        expect(parsed.formattedMarkdown).toContain('| Name            | Description');
+      }
+    } finally {
+      rmSync(temporaryDirectory, { recursive: true, force: true });
+    }
   });
 });

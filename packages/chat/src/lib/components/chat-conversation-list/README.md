@@ -6,7 +6,7 @@ Conversation navigation list for switching among Chat transcripts without embedd
 
 ```svelte
 <script lang="ts">
-  import ChatConversationList from '@lostgradient/chat/conversation-list';
+  import { ChatConversationList } from '@lostgradient/chat';
 </script>
 
 <ChatConversationList

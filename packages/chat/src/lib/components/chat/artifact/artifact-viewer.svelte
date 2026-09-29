@@ -12,7 +12,7 @@
 
 <script lang="ts">
   import type { ArtifactViewerProps } from './artifact-viewer.types.ts';
-  import CodeBlock from '@lostgradient/cinder/code-block';
+  import { CodeBlock } from '@lostgradient/cinder';
 
   let { type, content, language, title, mermaidRenderer, codeRenderer }: ArtifactViewerProps =
     $props();

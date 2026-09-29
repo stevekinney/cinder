@@ -9,14 +9,11 @@
  * dissolved, since they are consumed by the headless template pipeline too.
  */
 
-import type { Root } from '@lostgradient/markdown/pipeline';
-import type {
-  PlaceholderCompletionConfiguration,
-  PlaceholderDecorationConfiguration,
-} from '@lostgradient/markdown/templates/types';
+import type { Root } from '@lostgradient/markdown';
 import type { MilkdownPlugin } from '@milkdown/ctx';
 import type { Editor } from '@milkdown/kit/core';
 import type { EditorView } from '@milkdown/kit/prose/view';
+import type { PlaceholderEditorConfiguration } from './template-placeholder-configuration.ts';
 
 /**
  * Source coordinate for a position in markdown text.
@@ -49,7 +46,7 @@ export interface EditorConfig {
   /** Callback when link keyboard shortcut (Mod-k) is pressed */
   onlinkshortcut?: () => void;
   /** Callback when comment shortcut (Ctrl-Alt-c) is pressed (DEP-47) */
-  oncommentshortcut?: () => void;
+  onCommentShortcut?: () => void;
   /**
    * Additional Milkdown plugins to load.
    *
@@ -64,16 +61,18 @@ export interface EditorConfig {
   plugins?: MilkdownPlugin[];
 
   /**
-   * Placeholder completion configuration (DEP-583).
-   * When provided, enables inline suggestion menu for `{{…}}` tokens in WYSIWYG mode.
+   * Placeholder configuration installed when the editor is created: either
+   * high-level `definitions` or the low-level `completion`/`decoration`
+   * options, never both. Replace it later with
+   * {@link EditorState.setPlaceholderConfiguration}.
    */
-  placeholderCompletion?: PlaceholderCompletionConfiguration;
+  placeholders?: PlaceholderEditorConfiguration;
 
-  /**
-   * Placeholder decoration configuration (DEP-583).
-   * When provided, decorates invalid `{{…}}` tokens with CSS class and data attributes.
-   */
-  placeholderDecoration?: PlaceholderDecorationConfiguration;
+  /** ID for the placeholder completion listbox; option IDs append `-${path}`. */
+  placeholderListboxId?: string;
+
+  /** Receives text for a persistent polite status region describing completion results. */
+  onPlaceholderStatusChange?: (message: string) => void;
 }
 
 /**
@@ -135,6 +134,27 @@ export interface EditorState {
   /** Whether a live document change is awaiting the debounced onchange callback. */
   hasPendingInternalChange(): boolean;
   setMarkdown(content: string): void;
+  /**
+   * Take a live document change that is still waiting for its debounced
+   * `onchange`: cancel that notification and return the serialized Markdown,
+   * or `null` when nothing is pending. Milkdown's listener may still report
+   * the same document afterwards; that late report never reaches `onchange`.
+   */
+  flushPendingChange(): string | null;
+  /**
+   * Replace the document as a new baseline: the undo history is emptied, the
+   * caret moves to the end, pending and late change notifications are
+   * dropped, and the current placeholder configuration stays installed. No
+   * `onchange` fires.
+   */
+  resetDocument(content: string): void;
+  /**
+   * Replace the placeholder configuration without recreating the editor.
+   * Installs it with a metadata-only transaction that adds no undo history,
+   * leaves the document and selection unchanged and fires no content
+   * callback. Passing the object that is already installed does nothing.
+   */
+  setPlaceholderConfiguration(configuration: PlaceholderEditorConfiguration | undefined): void;
   /** Clear any pending debounce timers (called on destroy) */
   clearPendingTimers(): void;
   /** Mark the editor as destroyed to prevent callbacks from firing after cleanup */
@@ -160,7 +180,7 @@ export interface EditorAttachmentOptions {
   /** Called when link keyboard shortcut (Mod-k) is pressed */
   onlinkshortcut?: () => void;
   /** Called when comment shortcut (Ctrl-Alt-c) is pressed (DEP-47) */
-  oncommentshortcut?: () => void;
+  onCommentShortcut?: () => void;
   /** Debounce delay for onchange in ms */
   debounceMs?: number;
   /**
@@ -170,16 +190,17 @@ export interface EditorAttachmentOptions {
   getPlugins?: () => MilkdownPlugin[];
 
   /**
-   * Get placeholder completion configuration (DEP-583).
-   * Returns undefined to disable, or a configuration object to enable.
+   * Get the placeholder configuration. Read when the editor is created and
+   * tracked afterwards: each new configuration object is installed in the
+   * live editor without recreating it.
    */
-  getPlaceholderCompletion?: () => PlaceholderCompletionConfiguration | undefined;
+  getPlaceholderConfiguration?: () => PlaceholderEditorConfiguration | undefined;
 
-  /**
-   * Get placeholder decoration configuration (DEP-583).
-   * Returns undefined to disable, or a configuration object to enable.
-   */
-  getPlaceholderDecoration?: () => PlaceholderDecorationConfiguration | undefined;
+  /** ID for the placeholder completion listbox. */
+  placeholderListboxId?: string;
+
+  /** Receives text for a persistent polite status region describing completion results. */
+  onPlaceholderStatusChange?: (message: string) => void;
 }
 
 /** Default debounce for content changes (matches DiffViewer) */

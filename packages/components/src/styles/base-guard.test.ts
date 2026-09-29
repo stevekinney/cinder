@@ -123,7 +123,7 @@ describe('guard wires correctly: isBaseLoaded proves the failure case', () => {
     try {
       // import() returns a Promise — await it to assert resolution, not just
       // that the call was made. A rejected promise would cause this to throw.
-      await expect(import('./base-guard.ts')).resolves.toBeDefined();
+      expect(await import('./base-guard.ts')).toBeDefined();
     } finally {
       console.warn = originalWarn;
     }
@@ -302,21 +302,12 @@ describe('consumer fixture: component style imported without the base', () => {
     expect(MISSING_BASE_WARNING).toContain('@lostgradient/cinder/<component>/styles');
   });
 
-  // Package-boundary tripwire: the simulation above would keep passing even if
-  // the guard stopped being wired into the package. Assert the real export
-  // surface the BAD/GOOD sequences depend on actually exists, so deleting
-  // `@lostgradient/cinder/styles/guard`, the base `@lostgradient/cinder/styles`, or a component `/styles`
-  // subpath fails here. The base stylesheet's `--cinder-base-loaded` marker
-  // itself is covered in css-tree-shake.test.ts.
-  test('the package exports the entry points the guard sequence relies on', async () => {
-    const packageManifest = (await import('../../package.json', {
-      with: { type: 'json' },
-    })) as unknown as { default: { exports: Record<string, unknown> } };
-    const { exports } = packageManifest.default;
-    // The base that sets the marker, the guard module, and at least one
-    // per-component style subpath must all be exported.
-    expect(exports['./styles']).toBeDefined();
-    expect(exports['./styles/guard']).toBeDefined();
-    expect(exports['./button/styles']).toBeDefined();
-  });
+  // Upstream closed this describe with a package-boundary tripwire that read
+  // `../../package.json` and asserted `./styles`, `./styles/guard` and
+  // `./button/styles` were all exported. Corvidae's manifests keep a one-key
+  // `exports` map by COR-1186's ruling, pinned by
+  // `scripts/workspace-contract.test.ts`, so that assertion cannot hold here.
+  // The equivalent boundary is enforced instead by `scripts/mirror/surface.ts`,
+  // whose coverage gate fails when a published subpath — `./styles/guard`
+  // among them — names a target with no source in this checkout.
 });

@@ -7,12 +7,12 @@ import type { SegmentProps } from './segment.types.ts';
 
 declare const children: Snippet;
 
-const _buttonValid: SegmentProps = {
+const buttonValid: SegmentProps = {
   value: 'actual',
   children,
 };
 
-const _navigationValid: SegmentProps = {
+const navigationValid: SegmentProps = {
   href: '/costs?source=actual',
   current: true,
   currentToken: 'page',
@@ -21,7 +21,7 @@ const _navigationValid: SegmentProps = {
   children,
 };
 
-const _navigationTrueToken: SegmentProps = {
+const navigationTrueToken: SegmentProps = {
   href: '/costs?source=actual',
   current: true,
   currentToken: 'true',
@@ -29,11 +29,11 @@ const _navigationTrueToken: SegmentProps = {
 };
 
 // @ts-expect-error - button segments require a value.
-const _buttonMissingValue: SegmentProps = {
+const buttonMissingValue: SegmentProps = {
   children,
 };
 
-const _navigationFalseToken: SegmentProps = {
+const navigationFalseToken: SegmentProps = {
   href: '/costs?source=actual',
   current: true,
   // @ts-expect-error - current links must use a positive aria-current token.
@@ -42,15 +42,15 @@ const _navigationFalseToken: SegmentProps = {
 };
 
 // @ts-expect-error - link-only attributes require href.
-const _buttonWithLinkOnlyAttribute: SegmentProps = {
+const buttonWithLinkOnlyAttribute: SegmentProps = {
   value: 'actual',
   target: '_blank',
   children,
 };
 
-void _buttonValid;
-void _navigationValid;
-void _navigationTrueToken;
-void _buttonMissingValue;
-void _navigationFalseToken;
-void _buttonWithLinkOnlyAttribute;
+void buttonValid;
+void navigationValid;
+void navigationTrueToken;
+void buttonMissingValue;
+void navigationFalseToken;
+void buttonWithLinkOnlyAttribute;

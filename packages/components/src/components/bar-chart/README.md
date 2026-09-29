@@ -6,7 +6,7 @@ Responsive SVG bar chart for grouped or stacked category comparisons.
 
 ```svelte
 <script lang="ts">
-  import BarChart from '@lostgradient/cinder/bar-chart';
+  import { BarChart } from '@lostgradient/cinder';
 
   const data = [
     { week: 'Week 1', open: 34, resolved: 70 },
@@ -76,7 +76,6 @@ Set `tooltip={true}` for the default focus-aware visual tooltip, or pass a `Snip
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

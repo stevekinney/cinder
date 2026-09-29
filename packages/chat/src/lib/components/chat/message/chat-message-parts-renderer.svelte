@@ -17,12 +17,12 @@
 
   let {
     parts,
+    messageId,
     messagePart,
     markdownNode,
     expanded = false,
     onToggle,
-    onapprove,
-    ondeny,
+    onApprovalResolve,
     reasoningExpanded = false,
     onreasoning,
     stepsExpanded = true,
@@ -83,11 +83,11 @@
   {#if part.type === 'markdown'}
     <MarkdownPart {part} {markdownNode} />
   {:else if part.type === 'tool-call'}
-    <ToolCallPart {part} {expanded} {onToggle} activityActive={toolActivityActive} />
+    <ToolCallPart {part} {messageId} {expanded} {onToggle} activityActive={toolActivityActive} />
   {:else if part.type === 'tool-result'}
     <ToolResultPart {part} />
   {:else if part.type === 'tool-approval'}
-    <ToolApprovalPart {part} {onapprove} {ondeny} />
+    <ToolApprovalPart {part} {onApprovalResolve} />
   {:else if part.type === 'reasoning'}
     <ReasoningPart {part} expanded={reasoningExpanded} onToggle={onreasoning} />
   {:else if part.type === 'transcript-entry'}

@@ -84,7 +84,8 @@ describe('initializeWorkerHighlighter', () => {
   });
 
   it('returns false when Worker is unavailable', async () => {
-    await expect(initializeWorkerHighlighter()).resolves.toBe(false);
+    const initialized = await initializeWorkerHighlighter();
+    expect(initialized).toBe(false);
   });
 });
 

@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import type { MasonryElement } from './masonry.types.ts';
 
 setupHappyDom();
@@ -51,7 +51,7 @@ describe('Masonry', () => {
     const { container } = render(Masonry, {
       props: { children: textSnippet('content') },
     });
-    const root = container.querySelector('.cinder-masonry') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-masonry'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-masonry-columns')).toBe('');
     expect(root.style.getPropertyValue('--cinder-masonry-gap')).toBe('');
   });
@@ -60,7 +60,7 @@ describe('Masonry', () => {
     const { container } = render(Masonry, {
       props: { columns: '4', gap: '1.5rem', children: textSnippet('content') },
     });
-    const root = container.querySelector('.cinder-masonry') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-masonry'), HTMLElement);
     expect(root.style.getPropertyValue('--cinder-masonry-columns')).toBe('4');
     expect(root.style.getPropertyValue('--cinder-masonry-gap')).toBe('1.5rem');
   });
@@ -95,23 +95,23 @@ describe('Masonry', () => {
 
     // Void elements cannot contain masonry children.
     // @ts-expect-error 'img' is not a layout-safe MasonryElement
-    const _img: MasonryElement = 'img';
+    const img: MasonryElement = 'img';
     // @ts-expect-error 'input' is not a layout-safe MasonryElement
-    const _input: MasonryElement = 'input';
+    const input: MasonryElement = 'input';
     // @ts-expect-error 'br' is not a layout-safe MasonryElement
-    const _br: MasonryElement = 'br';
+    const br: MasonryElement = 'br';
     // @ts-expect-error 'hr' is not a layout-safe MasonryElement
-    const _hr: MasonryElement = 'hr';
+    const hr: MasonryElement = 'hr';
     // Inline / non-container elements that cannot validly host block children.
     // @ts-expect-error 'span' is not a layout-safe MasonryElement
-    const _span: MasonryElement = 'span';
+    const span: MasonryElement = 'span';
     // @ts-expect-error 'button' is not a layout-safe MasonryElement
-    const _button: MasonryElement = 'button';
+    const button: MasonryElement = 'button';
 
     // A representative allowed value DOES type-check (sanity anchor for the test).
-    const _div: MasonryElement = 'div';
+    const div: MasonryElement = 'div';
 
     // Touch the bindings so they are not flagged as unused at runtime lint level.
-    expect([_img, _input, _br, _hr, _span, _button, _div]).toHaveLength(7);
+    expect([img, input, br, hr, span, button, div]).toHaveLength(7);
   });
 });

@@ -20,11 +20,7 @@ Single metric tile displaying a labelled numeric value with optional trend or un
 
 ## Usage
 
-`Statistic` is a compose-only leaf of [`StatisticGroup`](../statistic-group/README.md).
-The idiomatic API is `StatisticGroup.Statistic`, reached through the parent
-namespace — see the [statistic-group README](../statistic-group/README.md#usage) for the composed
-snippet. The flat `@lostgradient/cinder/statistic` subpath remains exported for
-à-la-carte builds that import the leaf directly.
+`Statistic` is a compose-only leaf of [`StatisticGroup`](../statistic-group/README.md). The idiomatic API is `StatisticGroup.Statistic`, reached through the parent namespace — see the [statistic-group README](../statistic-group/README.md#usage) for the composed snippet. The leaf is also a named export of `@lostgradient/cinder`.
 
 ## Theming
 
@@ -64,6 +60,7 @@ Change direction remains visible through its arrow glyph, signed value, descript
 - `--cinder-statistic-value-font-size`
 - `--cinder-statistic-value-font-weight`
 - `--cinder-statistic-value-line-height`
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

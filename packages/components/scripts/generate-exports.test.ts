@@ -61,14 +61,14 @@ describe('orderedExportEntry', () => {
 });
 
 describe('computeRootExport', () => {
-  it('points node at the shared server root and default at the root barrel', () => {
+  it('points the published import at the built root barrel', () => {
     const root = computeRootExport();
     expect(root).toEqual({
       types: './dist/index.d.ts',
       browser: './src/index.ts',
       svelte: './src/index.ts',
       node: './dist/server/index.js',
-      import: './src/index.ts',
+      import: './dist/index.js',
       default: './dist/index.js',
     });
     expect(Object.keys(root)).toEqual(['types', 'browser', 'svelte', 'node', 'import', 'default']);
@@ -466,6 +466,22 @@ describe('computeFiles', () => {
   it('keeps the static globs verbatim and in order at the front', () => {
     const files = computeFiles(exportsWithManifest);
     expect(files.slice(0, STATIC_FILES_GLOBS.length)).toEqual([...STATIC_FILES_GLOBS]);
+  });
+
+  it('keeps mirrored source imports and test-only helpers out of the published surface', () => {
+    expect(STATIC_FILES_GLOBS).toContain('src/exports/**/*.ts');
+    for (const exclusion of [
+      '!src/components/**/*-test-helpers.ts',
+      '!src/components/**/*-test-support.ts',
+      '!src/components/**/*-test-support.svelte.ts',
+      '!src/components/**/*-snippet-helpers.ts',
+      '!src/_internal/**/*-test-helpers.ts',
+      '!src/_internal/**/*-test-support.ts',
+      '!src/utilities/**/*-test-helpers.ts',
+      '!src/utilities/**/*-test-support.ts',
+    ]) {
+      expect(STATIC_FILES_GLOBS).toContain(exclusion);
+    }
   });
 
   it('appends both explicit root JSON entries', () => {

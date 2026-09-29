@@ -1,3 +1,4 @@
+import { requiredValue } from '@lostgradient/testing';
 /**
  * Tests for the pure anchor constructors and the persistence converter pair.
  *
@@ -170,20 +171,20 @@ describe('toPersistedThreads', () => {
 describe('toRuntimeThreads', () => {
   test('round-trips thread identity, comments, and every quote field', () => {
     const original = createTestThread(createTestAnchor());
-    const [restored] = toRuntimeThreads(toPersistedThreads([original]));
+    const restored = requiredValue(toRuntimeThreads(toPersistedThreads([original]))[0]);
 
     expect(restored).toBeDefined();
-    expect(restored?.id).toBe(original.id);
-    expect(restored?.createdAt).toBe(original.createdAt);
-    expect(restored?.comments).toEqual(original.comments);
-    expect(restored?.anchor.quote).toBe(original.anchor.quote);
-    expect(restored?.anchor.prefix).toBe(original.anchor.prefix);
-    expect(restored?.anchor.suffix).toBe(original.anchor.suffix);
-    expect(restored?.anchor.status).toBe(original.anchor.status);
-    expect(restored?.anchor.originalQuote).toBe(original.anchor.originalQuote);
-    expect(restored?.anchor.lastKnownOffset).toBe(original.anchor.lastKnownOffset);
-    expect(restored?.anchor.blockId).toBe(original.anchor.blockId);
-    expect(restored?.anchor.originalPosition).toEqual(original.anchor.originalPosition);
+    expect(restored.id).toBe(original.id);
+    expect(restored.createdAt).toBe(original.createdAt);
+    expect(restored.comments).toEqual(original.comments);
+    expect(restored.anchor.quote).toBe(original.anchor.quote);
+    expect(restored.anchor.prefix).toBe(original.anchor.prefix);
+    expect(restored.anchor.suffix).toBe(original.anchor.suffix);
+    expect(restored.anchor.status).toBe(original.anchor.status);
+    expect(restored.anchor.originalQuote).toBe(original.anchor.originalQuote);
+    expect(restored.anchor.lastKnownOffset).toBe(original.anchor.lastKnownOffset);
+    expect(restored.anchor.blockId).toBe(original.anchor.blockId);
+    expect(restored.anchor.originalPosition).toEqual(original.anchor.originalPosition);
   });
 
   test('seeds from/to with the unplaced sentinel rather than a guessed position', () => {
@@ -209,7 +210,7 @@ describe('toRuntimeThreads', () => {
     const stray = {
       ...createTestThread(createTestAnchor()),
       anchor: { ...createTestAnchor(), from: 3, to: 21 },
-    } as unknown as PersistedThread;
+    };
 
     const [restored] = toRuntimeThreads([stray]);
 

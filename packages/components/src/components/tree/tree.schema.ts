@@ -34,7 +34,8 @@ const schema = {
     },
     virtualizationEstimatedRowHeight: {
       type: 'number',
-      description: 'Estimated row height for virtualized Tree rows. Default: 36.',
+      description:
+        'Estimated row height for virtualized Tree rows, used before a row is\nmeasured and as the fallback while none of its content has mounted yet.\nDefault: 36.\n\nRows are genuinely variable-height: the virtualized row carries no imposed\n`block-size`, so a row whose content renders taller than this estimate is\nmeasured and accommodated rather than clipped to it.',
     },
     virtualizationOverscan: {
       type: 'number',

@@ -1,10 +1,9 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "@lostgradient/typescript/library.json",
   "compilerOptions": {
-    "tsBuildInfoFile": "node_modules/.cache/tsconfig.tsbuildinfo",
     "lib": ["ESNext"],
     "types": ["node", "bun"],
     "noEmit": true
   },
-  "include": ["src/**/*", "tests/**/*", "scripts/**/*", "playwright.config.ts"]
+  "include": ["src/**/*", "scripts/**/*"]
 }

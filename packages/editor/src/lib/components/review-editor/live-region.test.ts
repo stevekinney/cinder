@@ -1,9 +1,8 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
-import { mount, unmount } from 'svelte';
+import { mount, tick, unmount } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
-import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
+import { expectNoLeakedTimers, setupHappyDom, trackTimers } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -32,6 +31,26 @@ describe('LiveRegion', () => {
     }
   });
 
+  test('announces the malformed front-matter recovery sentence politely', async () => {
+    const target = document.createElement('div');
+    document.body.appendChild(target);
+    try {
+      const instance = mount(LiveRegion, { target });
+
+      instance.announce('Front matter could not be parsed; showing as plain text.', 'polite');
+      await Promise.resolve();
+      await tick();
+
+      const region = target.querySelector('[aria-live="polite"]');
+      expect(region?.textContent).toBe('Front matter could not be parsed; showing as plain text.');
+      expect(target.querySelector('[role="alert"]')).toBeNull();
+
+      unmount(instance);
+    } finally {
+      target.remove();
+    }
+  });
+
   test('unmounting after announce() leaves no pending clear-message timer', async () => {
     // announce() calls queueMicrotask, then inside the microtask schedules
     // clearTimeoutId = setTimeout(..., 1000). The $effect cleanup runs
@@ -46,11 +65,7 @@ describe('LiveRegion', () => {
       // Call the exported announce() function to schedule the 1000ms timer.
       // The timer is set inside queueMicrotask, so await a microtask boundary
       // before unmounting to ensure it is actually pending at unmount time.
-      (
-        instance as unknown as {
-          announce: (text: string, announcePriority?: 'polite' | 'assertive') => void;
-        }
-      ).announce('Comment added', 'polite');
+      instance.announce('Comment added', 'polite');
 
       // Let the queueMicrotask callback run so the 1000ms setTimeout is scheduled.
       await Promise.resolve();

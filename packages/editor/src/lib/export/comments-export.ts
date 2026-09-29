@@ -86,75 +86,7 @@ export function generateCommentsExport(
     };
   }
 
-  // Separate document-level and text-anchored threads
-  const documentThreads = threads.filter((t) => isDocumentAnchor(t.anchor));
-  const textThreads = threads.filter((t) => !isDocumentAnchor(t.anchor));
-
-  const lines: string[] = [];
-  let totalCommentCount = 0;
-  let documentCommentCount = 0;
-
-  // Header with brief explanation for LLM
-  lines.push('# Review Comments\n');
-
-  // Document-level comments first
-  if (documentThreads.length > 0) {
-    lines.push('## Document-Level Comments\n');
-    lines.push('General feedback about the entire document:\n');
-
-    for (const thread of documentThreads) {
-      const visibleComments = thread.comments.filter((c) => !c.deletedAt);
-      if (visibleComments.length === 0) continue;
-
-      documentCommentCount += visibleComments.length;
-      totalCommentCount += visibleComments.length;
-
-      lines.push(formatDocumentThread(visibleComments, { includeTimestamps, includeAuthorIds }));
-    }
-  }
-
-  // Text-anchored comments
-  if (textThreads.length > 0) {
-    if (documentThreads.length > 0) {
-      lines.push('## Text-Anchored Comments\n');
-    }
-
-    lines.push('Comments on specific text selections:\n');
-
-    // Sort text threads by position (line number or offset)
-    const sortedThreads = textThreads.toSorted((a, b) => {
-      const lineA = a.anchor.originalPosition?.line ?? a.anchor.lastKnownOffset ?? 0;
-      const lineB = b.anchor.originalPosition?.line ?? b.anchor.lastKnownOffset ?? 0;
-      return lineA - lineB;
-    });
-
-    for (const thread of sortedThreads) {
-      const visibleComments = thread.comments.filter((c) => !c.deletedAt);
-      if (visibleComments.length === 0) continue;
-
-      totalCommentCount += visibleComments.length;
-
-      // Generate thread entry
-      lines.push(formatThread(thread, visibleComments, { includeTimestamps, includeAuthorIds }));
-    }
-  }
-
-  // Add summary at the end
-  lines.push('---\n');
-  lines.push(`**Total threads:** ${threads.length}`);
-  lines.push(`**Total comments:** ${totalCommentCount}`);
-  if (documentCommentCount > 0) {
-    lines.push(`**Document-level comments:** ${documentCommentCount}`);
-  }
-
-  return {
-    markdown: lines.join('\n'),
-    stats: {
-      threadCount: threads.length,
-      commentCount: totalCommentCount,
-      documentCommentCount,
-    },
-  };
+  return buildMarkdownExport(threads, { includeTimestamps, includeAuthorIds });
 }
 
 /**
@@ -178,70 +110,22 @@ export function generateCommentsJSON(
     return thread.comments.some((comment) => !comment.deletedAt);
   });
 
-  const exportedThreads: ExportedThread[] = [];
-  let totalCommentCount = 0;
-  let documentThreadCount = 0;
-
-  for (const thread of threads) {
-    const visibleComments = thread.comments.filter((c) => !c.deletedAt);
-    if (visibleComments.length === 0) continue;
-
-    totalCommentCount += visibleComments.length;
-    const isDocument = isDocumentAnchor(thread.anchor);
-    if (isDocument) documentThreadCount++;
-
-    const exportedComments: ExportedComment[] = visibleComments.map((comment) => {
-      const exported: ExportedComment = {
-        id: comment.id,
-        body: comment.body,
-      };
-      if (includeAuthorIds) exported.authorId = comment.authorId;
-      if (includeTimestamps) {
-        exported.createdAt = comment.createdAt;
-        if (comment.editedAt) exported.updatedAt = comment.editedAt;
-      }
-      return exported;
-    });
-
-    const exportedThread: ExportedThread = {
-      id: thread.id,
-      type: isDocument ? 'document' : 'text',
-      comments: exportedComments,
-    };
-
-    // Add selection info for text-anchored threads. An orphaned thread keeps
-    // its comments and its quote, but reports both the status and the fact that
-    // the offsets are historical rather than a place to act on.
-    if (!isDocument) {
-      if (isOrphanedAnchor(thread.anchor)) {
-        exportedThread.status = 'orphaned';
-        const lastKnownSelection = buildLastKnownSelection(thread.anchor);
-        if (lastKnownSelection) exportedThread.lastKnownSelection = lastKnownSelection;
-      } else {
-        const selection: ExportedSelection = {
-          text: thread.anchor.quote,
-          from: thread.anchor.lastKnownOffset ?? 0,
-          to: (thread.anchor.lastKnownOffset ?? 0) + thread.anchor.quote.length,
-        };
-        if (thread.anchor.originalPosition) {
-          selection.line = thread.anchor.originalPosition.line;
-          selection.column = thread.anchor.originalPosition.column;
-        }
-        exportedThread.selection = selection;
-      }
-    }
-
-    exportedThreads.push(exportedThread);
-  }
-
+  const exportedThreads = threads.flatMap((thread) => {
+    const visibleComments = thread.comments.filter((comment) => !comment.deletedAt);
+    return visibleComments.length === 0
+      ? []
+      : [exportThread(thread, visibleComments, { includeTimestamps, includeAuthorIds })];
+  });
   const data = { threads: exportedThreads };
+  const commentCount = exportedThreads.reduce((count, thread) => count + thread.comments.length, 0);
+  const documentThreadCount = exportedThreads.filter((thread) => thread.type === 'document').length;
 
   return {
     json: JSON.stringify(data, null, 2),
     data,
     stats: {
       threadCount: exportedThreads.length,
-      commentCount: totalCommentCount,
+      commentCount,
       documentThreadCount,
     },
   };
@@ -407,4 +291,121 @@ function formatTimestamp(isoString: string): string {
   } catch {
     return '';
   }
+}
+
+type FormatOptions = { includeTimestamps: boolean; includeAuthorIds: boolean };
+
+function buildMarkdownExport(
+  threads: PersistedThread[],
+  options: FormatOptions,
+): CommentsExportResult {
+  const documentThreads = threads.filter((thread) => isDocumentAnchor(thread.anchor));
+  const textThreads = threads.filter((thread) => !isDocumentAnchor(thread.anchor));
+  const lines = ['# Review Comments\n'];
+  const documentCommentCount = appendDocumentThreads(lines, documentThreads, options);
+  const textCommentCount = appendTextThreads(
+    lines,
+    textThreads,
+    documentThreads.length > 0,
+    options,
+  );
+  const commentCount = documentCommentCount + textCommentCount;
+
+  lines.push(
+    '---\n',
+    `**Total threads:** ${threads.length}`,
+    `**Total comments:** ${commentCount}`,
+  );
+  if (documentCommentCount > 0) lines.push(`**Document-level comments:** ${documentCommentCount}`);
+
+  return {
+    markdown: lines.join('\n'),
+    stats: { threadCount: threads.length, commentCount, documentCommentCount },
+  };
+}
+
+function appendDocumentThreads(
+  lines: string[],
+  threads: PersistedThread[],
+  options: FormatOptions,
+): number {
+  if (threads.length === 0) return 0;
+  lines.push('## Document-Level Comments\n', 'General feedback about the entire document:\n');
+  let count = 0;
+  for (const thread of threads) {
+    const comments = thread.comments.filter((comment) => !comment.deletedAt);
+    if (comments.length === 0) continue;
+    count += comments.length;
+    lines.push(formatDocumentThread(comments, options));
+  }
+  return count;
+}
+
+function appendTextThreads(
+  lines: string[],
+  threads: PersistedThread[],
+  hasDocumentThreads: boolean,
+  options: FormatOptions,
+): number {
+  if (threads.length === 0) return 0;
+  if (hasDocumentThreads) lines.push('## Text-Anchored Comments\n');
+  lines.push('Comments on specific text selections:\n');
+  const sortedThreads = threads.toSorted((a, b) => threadPosition(a) - threadPosition(b));
+  let count = 0;
+  for (const thread of sortedThreads) {
+    const comments = thread.comments.filter((comment) => !comment.deletedAt);
+    if (comments.length === 0) continue;
+    count += comments.length;
+    lines.push(formatThread(thread, comments, options));
+  }
+  return count;
+}
+
+function threadPosition(thread: PersistedThread): number {
+  return thread.anchor.originalPosition?.line ?? thread.anchor.lastKnownOffset ?? 0;
+}
+
+function exportThread(
+  thread: PersistedThread,
+  visibleComments: PersistedThread['comments'],
+  options: FormatOptions,
+): ExportedThread {
+  const isDocument = isDocumentAnchor(thread.anchor);
+  const exportedThread: ExportedThread = {
+    id: thread.id,
+    type: isDocument ? 'document' : 'text',
+    comments: visibleComments.map((comment) => exportComment(comment, options)),
+  };
+  if (isDocument) return exportedThread;
+  if (isOrphanedAnchor(thread.anchor)) {
+    exportedThread.status = 'orphaned';
+    const selection = buildLastKnownSelection(thread.anchor);
+    if (selection) exportedThread.lastKnownSelection = selection;
+  } else {
+    exportedThread.selection = buildSelection(thread.anchor);
+  }
+  return exportedThread;
+}
+
+function exportComment(
+  comment: PersistedThread['comments'][number],
+  options: FormatOptions,
+): ExportedComment {
+  const exported: ExportedComment = { id: comment.id, body: comment.body };
+  if (options.includeAuthorIds) exported.authorId = comment.authorId;
+  if (options.includeTimestamps) {
+    exported.createdAt = comment.createdAt;
+    if (comment.editedAt) exported.updatedAt = comment.editedAt;
+  }
+  return exported;
+}
+
+function buildSelection(anchor: PersistedAnchor): ExportedSelection {
+  const from = anchor.lastKnownOffset ?? 0;
+  const selection: ExportedSelection = { text: anchor.quote, from, to: from + anchor.quote.length };
+  if (anchor.originalPosition) {
+    selection.line = anchor.originalPosition.line;
+    selection.column = anchor.originalPosition.column;
+  }
+  return selection;
 }

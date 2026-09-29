@@ -4,7 +4,7 @@ import { cleanup, render, waitFor } from '@testing-library/svelte';
 import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { tick } from 'svelte';
 
-import { setupHappyDom } from '../../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import LinkPopover from './link-popover.svelte';
 
 setupHappyDom();
@@ -143,7 +143,7 @@ describe('LinkPopover — Floating UI positioning', () => {
       expect(computePositionSpy).toHaveBeenCalled();
     });
 
-    const options = computePositionSpy.mock.calls[0]?.at(2) as { strategy?: string } | undefined;
+    const options = computePositionSpy.mock.calls[0]?.[2];
     expect(options?.strategy).toBe('fixed');
   });
 
@@ -159,7 +159,7 @@ describe('LinkPopover — Floating UI positioning', () => {
       expect(computePositionSpy).toHaveBeenCalled();
     });
 
-    const options = computePositionSpy.mock.calls[0]?.at(2) as { placement?: string } | undefined;
+    const options = computePositionSpy.mock.calls[0]?.[2];
     expect(options?.placement).toBe('bottom-start');
   });
 
@@ -263,18 +263,214 @@ describe('LinkPopover — CSS contract', () => {
     expect(primaryRule).not.toMatch(/translateX/);
   });
 
-  test('close button uses --cinder-touch-target-min token for 44px target', async () => {
+  test('close button is 28px on a fine pointer, with a 44px coarse-pointer override (COR-463)', async () => {
     const source = await Bun.file(
       new URL('./link-popover.svelte', import.meta.url).pathname,
     ).text();
-    // The close button CSS must reference the touch target token
-    expect(source).toMatch(/--cinder-touch-target-min/);
-    // Both width and height must use the token
-    expect(source).toMatch(
-      /\.link-popover-close\s*\{[^}]*width:\s*var\(--cinder-touch-target-min/s,
+    // Fine-pointer default: 28px, not the 44px touch target unconditionally.
+    expect(source).toMatch(/\.link-popover-close\s*\{[^}]*width:\s*28px/s);
+    expect(source).toMatch(/\.link-popover-close\s*\{[^}]*height:\s*28px/s);
+    // The existing pointer-aware convention (number-input's stepper) bumps it
+    // to the 44px WCAG 2.2 AA target under `@media (pointer: coarse)`.
+    const coarseBlockMatch = source.match(
+      /@media \(pointer: coarse\)\s*\{\s*\.link-popover-close\s*\{([^}]*)\}/,
     );
-    expect(source).toMatch(
-      /\.link-popover-close\s*\{[^}]*height:\s*var\(--cinder-touch-target-min/s,
+    expect(coarseBlockMatch).not.toBeNull();
+    expect(coarseBlockMatch![1]).toMatch(/width:\s*var\(--cinder-touch-target-min\)/);
+    expect(coarseBlockMatch![1]).toMatch(/height:\s*var\(--cinder-touch-target-min\)/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// COR-463 — semantic and density regressions
+// ---------------------------------------------------------------------------
+
+describe('LinkPopover — nonmodal semantics (COR-463)', () => {
+  test('does not declare aria-modal', () => {
+    render(LinkPopover, { props: { id: 'test-link-popover', mode: 'insert' } });
+    const panel = queryLinkPopover();
+    expect(panel?.getAttribute('role')).toBe('dialog');
+    expect(panel?.hasAttribute('aria-modal')).toBe(false);
+  });
+
+  test('keeps its visible-title aria-labelledby', () => {
+    render(LinkPopover, { props: { id: 'test-link-popover', mode: 'insert' } });
+    const panel = queryLinkPopover();
+    expect(panel?.getAttribute('aria-labelledby')).toBe('test-link-popover-title');
+    expect(document.getElementById('test-link-popover-title')).not.toBeNull();
+  });
+
+  test('does not attach a focus trap: Tab from the last control is not intercepted or wrapped', async () => {
+    const anchor = document.createElement('button');
+    attachScratch(anchor);
+    render(LinkPopover, {
+      props: { id: 'test-link-popover', mode: 'insert', anchorElement: anchor },
+    });
+
+    // Let the component's own initial-focus effect land on the URL input
+    // first — it moves focus asynchronously (a `tick()` after positioning is
+    // ready), and racing it with the manual `.focus()` below would let it
+    // clobber the manual placement instead of the other way around.
+    await waitFor(() => {
+      expect(document.activeElement?.id).toBe('test-link-popover-url');
+    });
+
+    const panel = queryLinkPopover()!;
+    const focusable = panel.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
     );
+    const last = focusable[focusable.length - 1]!;
+    last.focus();
+    expect(document.activeElement).toBe(last);
+
+    const tabEvent = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      cancelable: true,
+    });
+    const notPrevented = last.dispatchEvent(tabEvent);
+
+    // A focus trap would call preventDefault() and synchronously wrap focus
+    // back to the first tabbable element. Neither should happen now.
+    expect(notPrevented).toBe(true);
+    expect(document.activeElement).toBe(last);
+  });
+
+  test('does not attach a focus trap: Shift+Tab from the first control is not intercepted or wrapped', async () => {
+    const anchor = document.createElement('button');
+    attachScratch(anchor);
+    render(LinkPopover, {
+      props: { id: 'test-link-popover', mode: 'insert', anchorElement: anchor },
+    });
+
+    await waitFor(() => {
+      expect(document.activeElement?.id).toBe('test-link-popover-url');
+    });
+
+    const panel = queryLinkPopover()!;
+    const focusable = panel.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    const first = focusable[0]!;
+    first.focus();
+
+    const shiftTabEvent = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    const notPrevented = first.dispatchEvent(shiftTabEvent);
+
+    expect(notPrevented).toBe(true);
+    expect(document.activeElement).toBe(first);
+  });
+
+  test('moves initial focus to the URL input once anchored positioning is ready', async () => {
+    const anchor = document.createElement('button');
+    attachScratch(anchor);
+    render(LinkPopover, {
+      props: { id: 'test-link-popover', mode: 'insert', anchorElement: anchor },
+    });
+
+    await waitFor(() => {
+      expect(document.activeElement?.id).toBe('test-link-popover-url');
+    });
+  });
+
+  test('moves initial focus to the URL input in standalone (no-anchor) rendering too', async () => {
+    render(LinkPopover, { props: { id: 'test-link-popover', mode: 'insert' } });
+
+    await waitFor(() => {
+      expect(document.activeElement?.id).toBe('test-link-popover-url');
+    });
+  });
+
+  test('outside click calls onOutsideDismiss, not onclose', async () => {
+    const anchor = document.createElement('button');
+    attachScratch(anchor);
+    const outsideButton = document.createElement('button');
+    outsideButton.textContent = 'Some other toolbar control';
+    attachScratch(outsideButton);
+
+    const onclose = mock(() => {});
+    const onOutsideDismiss = mock(() => {});
+    render(LinkPopover, {
+      props: {
+        id: 'test-link-popover',
+        mode: 'insert',
+        anchorElement: anchor,
+        onclose,
+        onOutsideDismiss,
+      },
+    });
+
+    await waitFor(() => {
+      expect(document.activeElement?.id).toBe('test-link-popover-url');
+    });
+
+    outsideButton.focus();
+    outsideButton.click();
+
+    expect(onOutsideDismiss).toHaveBeenCalledTimes(1);
+    expect(onclose).not.toHaveBeenCalled();
+    // The clicked control keeps focus — LinkPopover itself never moves it.
+    expect(document.activeElement).toBe(outsideButton);
+  });
+
+  test('outside click falls back to onclose when onOutsideDismiss is not provided (standalone usage)', async () => {
+    const anchor = document.createElement('button');
+    attachScratch(anchor);
+    const outsideButton = document.createElement('button');
+    attachScratch(outsideButton);
+    const onclose = mock(() => {});
+    render(LinkPopover, {
+      props: { id: 'test-link-popover', mode: 'insert', anchorElement: anchor, onclose },
+    });
+
+    await waitFor(() => {
+      expect(document.activeElement?.id).toBe('test-link-popover-url');
+    });
+
+    outsideButton.click();
+    expect(onclose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('LinkPopover — density (COR-463)', () => {
+  test('root composes the shared floating-surface treatment', async () => {
+    render(LinkPopover, { props: { id: 'test-link-popover', mode: 'insert' } });
+    const panel = queryLinkPopover();
+    expect(panel?.classList.contains('cinder-_floating-surface')).toBe(true);
+  });
+
+  test('header and footer use at-most-40px-high padding (space-1-5 block / space-3 inline)', async () => {
+    const source = await Bun.file(
+      new URL('./link-popover.svelte', import.meta.url).pathname,
+    ).text();
+    const headerBlock = source.match(/\.link-popover-header\s*\{([^}]*)\}/)?.[1] ?? '';
+    const footerBlock = source.match(/\.link-popover-footer\s*\{([^}]*)\}/)?.[1] ?? '';
+    for (const block of [headerBlock, footerBlock]) {
+      expect(block).toMatch(/padding:\s*var\(--cinder-space-1-5\)\s*var\(--cinder-space-3\)/);
+      expect(block).toMatch(/box-sizing:\s*border-box/);
+    }
+  });
+
+  test('content padding and gap are at most --cinder-space-3 (12px)', async () => {
+    const source = await Bun.file(
+      new URL('./link-popover.svelte', import.meta.url).pathname,
+    ).text();
+    const contentBlock = source.match(/\.link-popover-content\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(contentBlock).toMatch(/padding:\s*var\(--cinder-space-3\)/);
+    expect(contentBlock).toMatch(/gap:\s*var\(--cinder-space-3\)/);
+    expect(contentBlock).not.toMatch(/--cinder-space-4/);
+  });
+
+  test('title and action icons use the 16px icon utility class', () => {
+    render(LinkPopover, { props: { id: 'test-link-popover', mode: 'edit' } });
+    const panel = queryLinkPopover()!;
+    const icons = panel.querySelectorAll('.cinder-icon-sm');
+    // LinkIcon (title), Unlink (Remove, edit mode), X (Close) — all 16px.
+    expect(icons.length).toBeGreaterThanOrEqual(3);
   });
 });

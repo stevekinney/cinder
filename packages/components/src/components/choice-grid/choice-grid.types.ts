@@ -14,6 +14,14 @@ export type ChoiceGridItemState = 'neutral' | 'correct' | 'incorrect' | 'pending
 export type ChoiceGridColumns = 'responsive' | 1 | 2 | 3 | 4;
 
 /**
+ * Compact-cell size variant. Only `'sm'` is defined today — the type is its
+ * own alias (rather than an inline `'sm'` literal on the prop) so widening
+ * it to `'sm' | 'md' | 'lg'` later is additive for consumers already passing
+ * `'sm'`, not a breaking change.
+ */
+export type ChoiceGridSize = 'sm';
+
+/**
  * Shape of the context object provided to ChoiceGridItem children.
  *
  * All members are getter properties on the context object so reads remain
@@ -33,6 +41,9 @@ export type ChoiceGridContext = {
 
   /** True when ALL items are disabled (the grid-level disabled prop). */
   readonly disabled: boolean;
+
+  /** The grid's compact size variant, propagated so items can size themselves. `undefined` is the default (uncompacted) presentation. */
+  readonly size: ChoiceGridSize | undefined;
 
   /**
    * True when `candidate` is currently selected (works for both single- and
@@ -105,9 +116,21 @@ export type ChoiceGridProps = Omit<
 
   /**
    * Minimum cell width for `columns="responsive"`. Accepts any CSS
-   * `<length>` (e.g. `"12rem"`, `"200px"`). Default: `"10rem"`.
+   * `<length>` (e.g. `"12rem"`, `"200px"`). Default: `"10rem"`, or `"6rem"`
+   * when `size="sm"` — passing `minColumnWidth` explicitly always wins over
+   * either default.
    */
   minColumnWidth?: string;
+
+  /**
+   * Compact-only size variant. Omitting it (the default) keeps the current
+   * appearance. `"sm"` shrinks each item's block-size to Cinder's `button`
+   * `sm` height under a fine pointer, and to a 44×44 CSS pixel minimum touch
+   * target under a coarse pointer; it does not change selection, hover,
+   * focus, or feedback-state styling. See the ChoiceGrid README's "Compact
+   * size" section for the full sizing contract.
+   */
+  size?: ChoiceGridSize;
 
   /** Accessible label for the grid (required unless `ariaLabelledby` is set). */
   ariaLabel?: string;

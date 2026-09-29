@@ -168,14 +168,12 @@ function validateValue(
             addIssue(issues, path, `unknown duration member ${name}`);
       return;
     case 'fontFamily':
-      if (
-        !(
-          typeof value === 'string' ||
-          (Array.isArray(value) &&
-            value.length > 0 &&
-            value.every((entry) => typeof entry === 'string'))
-        )
-      )
+      if (!(
+        typeof value === 'string' ||
+        (Array.isArray(value) &&
+          value.length > 0 &&
+          value.every((entry) => typeof entry === 'string'))
+      ))
         addIssue(issues, path, 'fontFamily must be a string or string array');
       return;
     case 'fontWeight':
@@ -801,7 +799,7 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
         issues,
         '$.resolutionOrder',
         `set "${setName}" is reachable from more than one ordered set ` +
-          `(${[...orderedAncestors].sort().join(', ')}) and would be expanded more than once`,
+          `(${[...orderedAncestors].toSorted().join(', ')}) and would be expanded more than once`,
       );
     }
   }

@@ -2,8 +2,7 @@
 
 Pre-wired modal dialog for user-initiated binary decisions: "proceed" or "cancel". Focus defaults to the cancel button — the industry-standard guard against accidental destructive confirms.
 
-See the [dialog preset boundary](https://github.com/stevekinney/cinder/blob/main/docs/decisions/dialog-presets.md)
-for the preserved role, acknowledgement, and dismissal contract.
+See the [dialog preset boundary](https://github.com/stevekinney/cinder/blob/main/docs/decisions/dialog-presets.md) for the preserved role, acknowledgement, and dismissal contract.
 
 ## Dialog model
 
@@ -40,8 +39,8 @@ The key distinction between ConfirmDialog and AlertDialog is _who initiates_ the
 
 ```svelte
 <script lang="ts">
-  import Button from '@lostgradient/cinder/button';
-  import ConfirmDialog from '@lostgradient/cinder/confirm-dialog';
+  import { Button } from '@lostgradient/cinder';
+  import { ConfirmDialog } from '@lostgradient/cinder';
 
   let open = $state(false);
   let triggerRef: HTMLElement | null = $state(null);
@@ -104,7 +103,6 @@ The key distinction between ConfirmDialog and AlertDialog is _who initiates_ the
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

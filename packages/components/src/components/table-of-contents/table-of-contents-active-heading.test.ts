@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -11,20 +11,19 @@ const { TableOfContentsActiveHeadingTracker, pickActiveId } =
 function headingAt(id: string, top: number): HTMLElement {
   const element = document.createElement('h2');
   element.id = id;
-  element.getBoundingClientRect = () =>
-    ({
-      top,
-      bottom: top,
-      left: 0,
-      right: 0,
-      width: 0,
-      height: 0,
-      x: 0,
-      y: top,
-      toJSON() {
-        return {};
-      },
-    }) as DOMRect;
+  element.getBoundingClientRect = () => ({
+    top,
+    bottom: top,
+    left: 0,
+    right: 0,
+    width: 0,
+    height: 0,
+    x: 0,
+    y: top,
+    toJSON() {
+      return {};
+    },
+  });
   return element;
 }
 

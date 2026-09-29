@@ -1,5 +1,10 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes, HTMLButtonAttributes } from 'svelte/elements';
+import type {
+  DataAttributes,
+  PadUnion,
+  WithoutDataAttributes,
+} from '../../_internal/union-props.ts';
 import type { BadgeVariant } from '../badge/badge.types.ts';
 export type ChipVariant = BadgeVariant;
 export type ChipSize = 'sm' | 'md';
@@ -98,4 +103,81 @@ export type ChipRemovableProps = Omit<HTMLAttributes<HTMLSpanElement>, 'class'> 
   pressed?: never;
   onPressedChange?: never;
 };
-export type ChipProps = ChipDisplayProps | ChipToggleProps | ChipRemovableProps;
+// COR-239: keyof Props became too complex for TypeScript to represent (TS2590) once a consumer
+// type-checked `ChipDisplayProps | ChipToggleProps | ChipRemovableProps` under
+// `skipLibCheck: false` — each arm forwarded a FULL svelte/elements attribute interface
+// (including its `data-*` index signature), and the three arms have different key sets.
+// `ChipDisplayProps`/`ChipToggleProps`/`ChipRemovableProps` above are UNCHANGED and still fully
+// exported (they're part of the public API, and chip.svelte casts its internal `props` to them
+// with `as`; neither use is fed through `Component<Props, ...>`, so they were never the source
+// of the defect) — only `ChipProps`, the type actually wrapped in `Component<>`, is rebuilt
+// below: the attribute surface common to all three render paths hoisted into one non-union type
+// with `data-*` removed (`SharedHtmlAttributes`), `data-*` forwarding restored via a single
+// non-distributed `DataAttributes` intersected once, and only the mode-SPECIFIC fields kept
+// inline inside the (padded) small union (naming this union's shapes, rather than writing them
+// inline, was measured to reintroduce TS2590; see `src/_internal/union-props.ts` and
+// button.types.ts/card.types.ts for the general mechanism). No prop was added, removed, widened,
+// or narrowed — arbitrary `data-*` props are still accepted on every arm, exactly as before.
+type SharedHtmlAttributes = WithoutDataAttributes<
+  Omit<HTMLAttributes<HTMLSpanElement | HTMLButtonElement>, 'class'>
+>;
+
+type ChipDiscriminant =
+  | {
+      /** Rendering and interaction mode. Default `"display"`. */
+      mode?: 'display';
+      /** Visible text content of the chip. */
+      label: string;
+      pressed?: never;
+      disabled?: never;
+      onPressedChange?: never;
+      onRemove?: never;
+      removeAriaLabel?: never;
+    }
+  | (Omit<
+      HTMLButtonAttributes,
+      keyof HTMLAttributes<HTMLButtonElement> | 'disabled' | 'aria-pressed' | 'type'
+    > & {
+      /** Rendering and interaction mode. Must be `"toggle"` for this variant. */
+      mode: 'toggle';
+      /** Visible text content of the chip. */
+      label: string;
+      /** Toggle mode only. Whether the chip is currently in the pressed (selected) state. Reflected as `aria-pressed`. */
+      pressed: boolean;
+      onPressedChange?: (pressed: boolean) => void;
+      /** Toggle mode only. When true, disables the toggle button and prevents interaction. */
+      disabled?: boolean;
+      onRemove?: never;
+      removeAriaLabel?: never;
+    })
+  | {
+      /** Rendering and interaction mode. Must be `"removable"` for this variant. */
+      mode: 'removable';
+      /** Visible text content of the chip and fallback accessible name for the remove button. */
+      label: string;
+      onRemove?: () => void;
+      /** Removable mode only. When true, disables the remove button and prevents removal. */
+      disabled?: boolean;
+      /** Removable mode only. Accessible label for the remove button. Defaults to `Remove` followed by the chip's `label`. */
+      removeAriaLabel?: string;
+      pressed?: never;
+      onPressedChange?: never;
+    };
+
+export type ChipProps = SharedHtmlAttributes &
+  DataAttributes &
+  PadUnion<ChipDiscriminant> & {
+    /** Color variant applied to the chip. Default `"neutral"`. */
+    variant?: ChipVariant;
+    /** Optional third-party brand color mixed toward the foreground for legibility. */
+    brandColor?: string;
+    /** Allow long entity URLs to wrap at any character. */
+    breakable?: boolean;
+    /** Size of the chip. Default `"md"`. */
+    size?: ChipSize;
+    /** When set to `"toolbar"`, opts the chip into compact toolbar sizing to align with sibling toolbar controls. */
+    density?: ChipDensity;
+    leadingIcon?: Snippet;
+    /** Additional class names merged onto the chip element. */
+    class?: string;
+  };

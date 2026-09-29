@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -18,7 +18,7 @@ const { default: TagInputControlledFormFixture } =
 afterEach(() => cleanup());
 
 function getInput(container: HTMLElement): HTMLInputElement {
-  return container.querySelector('.cinder-tag-input__input') as HTMLInputElement;
+  return requiredInstance(container.querySelector('.cinder-tag-input__input'), HTMLInputElement);
 }
 
 // Committed tags render as a plain list (implicit role="list") of listitems,
@@ -26,7 +26,7 @@ function getInput(container: HTMLElement): HTMLInputElement {
 // the historical names but target the list / chip elements so existing
 // count/text assertions stay meaningful across the model change.
 function getListbox(container: HTMLElement): HTMLElement {
-  return container.querySelector('.cinder-tag-input__listbox') as HTMLElement;
+  return requiredInstance(container.querySelector('.cinder-tag-input__listbox'), HTMLElement);
 }
 
 function getOptions(container: HTMLElement): HTMLElement[] {
@@ -640,7 +640,7 @@ describe('TagInput form participation', () => {
         onsubmit,
       },
     });
-    const form = container.querySelector('form') as HTMLFormElement;
+    const form = requiredInstance(container.querySelector('form'), HTMLFormElement);
     const input = getInput(container);
 
     await fireEvent.input(input, { target: { value: 'Bun' } });
@@ -900,7 +900,7 @@ describe('TagInput ARIA live announcements', () => {
 
   test('announces "<tag> added." in the live region after committing via Enter', async () => {
     const { container } = render(TagInput, { id: 'live-add' });
-    const input = container.querySelector('input') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
 
     await fireEvent.input(input, { target: { value: 'Svelte' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
@@ -913,7 +913,10 @@ describe('TagInput ARIA live announcements', () => {
   test('announces "<tag> removed." after clicking the remove button', async () => {
     const { container } = render(TagInput, { id: 'live-remove', value: ['Svelte'] });
 
-    const removeButton = container.querySelector('.cinder-tag-input__remove') as HTMLElement;
+    const removeButton = requiredInstance(
+      container.querySelector('.cinder-tag-input__remove'),
+      HTMLElement,
+    );
     expect(removeButton).not.toBeNull();
 
     await fireEvent.click(removeButton);
@@ -930,7 +933,7 @@ describe('TagInput ARIA live announcements', () => {
     // assignment of the same string would be a no-op for the AT; blank-then-set
     // is the only mechanism that guarantees re-announcement.
     const { container } = render(TagInput, { id: 'live-repeat', duplicateValuesAllowed: true });
-    const input = container.querySelector('input') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
 
     // First add — live region should show "Svelte added."
     await fireEvent.input(input, { target: { value: 'Svelte' } });
@@ -960,6 +963,148 @@ describe('TagInput ARIA live announcements', () => {
     // After the macro-task the content must be back to "Svelte added." — proving the
     // identical message was genuinely re-announced.
     expect(container.querySelector('[role="status"]')?.textContent).toContain('Svelte added.');
+  });
+});
+
+describe('TagInput controlled value reconciliation (chip focus identity)', () => {
+  test('a controlled prepend keeps the same DOM node and real focus on the focused chip', async () => {
+    const { container, rerender } = render(TagInput, {
+      props: { value: ['alpha', 'beta'] },
+    });
+    const betaButton = getRemoveButtons(container)[1]!;
+    // `fireEvent.focus` only dispatches the event; it does not move real
+    // `document.activeElement` in happy-dom. Call the native method so the
+    // reconciliation effect's real-focus check has something genuine to see.
+    betaButton.focus();
+    await tick();
+    expect(document.activeElement).toBe(betaButton);
+
+    // Fresh array reference, prepended — a genuine controlled (parent-driven) write.
+    await rerender({ value: ['new', 'alpha', 'beta'] });
+    await tick();
+
+    const buttonsAfter = getRemoveButtons(container);
+    expect(buttonsAfter).toHaveLength(3);
+    // Same physical DOM node still holds real browser focus.
+    expect(document.activeElement).toBe(betaButton);
+    expect(buttonsAfter[2]).toBe(betaButton);
+    // The roving tab stop moved with it, to beta's new index.
+    expect(buttonsAfter[2]?.getAttribute('tabindex')).toBe('0');
+    expect(buttonsAfter[0]?.getAttribute('tabindex')).toBe('-1');
+  });
+
+  test('reordering keeps the focused chip identity so Delete removes the originally focused tag', async () => {
+    const onValueChange = mock((_tags: string[]) => {});
+    const { container, rerender } = render(TagInput, {
+      props: { value: ['alpha', 'beta', 'gamma'], onValueChange },
+    });
+    const betaButton = getRemoveButtons(container)[1]!;
+    betaButton.focus();
+    await tick();
+
+    // Reorder so beta moves from index 1 to index 2, with a brand-new array.
+    await rerender({ value: ['gamma', 'alpha', 'beta'], onValueChange });
+    await tick();
+
+    const buttonsAfter = getRemoveButtons(container);
+    expect(document.activeElement).toBe(betaButton);
+    expect(buttonsAfter[2]).toBe(betaButton);
+
+    // Delete on the still-focused button removes beta, not whatever tag now
+    // sits at beta's *old* index.
+    await fireEvent.keyDown(betaButton, { key: 'Delete' });
+    expect(onValueChange).toHaveBeenCalledWith(['gamma', 'alpha']);
+  });
+
+  test('duplicate-count changes reuse ids left-to-right without a duplicate-key crash', async () => {
+    const { container, rerender } = render(TagInput, {
+      props: { value: ['alpha', 'beta'] },
+    });
+    const betaButton = getRemoveButtons(container)[1]!;
+    betaButton.focus();
+    await tick();
+
+    await rerender({ value: ['new', 'alpha', 'beta'] });
+    await tick();
+    expect(document.activeElement).toBe(betaButton);
+
+    // Collapse to two occurrences of the same value. Beta (real DOM focus) is
+    // gone from the reconciled list; this must not throw a Svelte
+    // each_key_duplicate error, and the surviving alpha occurrences render.
+    await rerender({ value: ['alpha', 'alpha'] });
+    await tick();
+
+    expect(getOptions(container)).toHaveLength(2);
+    // Beta held real DOM focus and disappeared, so focus moves to the input.
+    expect(document.activeElement).toBe(getInput(container));
+  });
+
+  test('removing the focused chip leaves focus untouched when the user has focus elsewhere on the page', async () => {
+    const outsideButton = document.createElement('button');
+    outsideButton.textContent = 'Outside';
+    document.body.appendChild(outsideButton);
+
+    try {
+      const { container, rerender } = render(TagInput, {
+        props: { value: ['alpha', 'beta'] },
+      });
+      const betaButton = getRemoveButtons(container)[1]!;
+      await fireEvent.focus(betaButton);
+      // User moves focus away from the chip list entirely before the controlled update lands.
+      outsideButton.focus();
+      expect(document.activeElement).toBe(outsideButton);
+
+      await rerender({ value: ['alpha'] });
+      await tick();
+
+      // Focus must stay exactly where the user left it — never redirected to the input.
+      expect(document.activeElement).toBe(outsideButton);
+    } finally {
+      outsideButton.remove();
+    }
+  });
+
+  test('reconciliation never calls onValueChange for prepend, reorder, or removal', async () => {
+    const onValueChange = mock((_tags: string[]) => {});
+    const { container, rerender } = render(TagInput, {
+      props: { value: ['alpha', 'beta'], onValueChange },
+    });
+    await fireEvent.focus(getRemoveButtons(container)[1]!);
+
+    await rerender({ value: ['new', 'alpha', 'beta'], onValueChange });
+    await tick();
+    await rerender({ value: ['beta', 'alpha', 'new'], onValueChange });
+    await tick();
+    await rerender({ value: ['alpha'], onValueChange });
+    await tick();
+
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
+
+  test('hidden inputs keep controlled order, names, and values across a reorder', async () => {
+    const { container, rerender } = render(TagInput, {
+      props: { name: 'tags', value: ['alpha', 'beta', 'gamma'] },
+    });
+    await fireEvent.focus(getRemoveButtons(container)[1]!);
+
+    await rerender({ name: 'tags', value: ['gamma', 'alpha', 'beta'] });
+    await tick();
+
+    expect(hiddenValues(container, 'tags')).toEqual(['gamma', 'alpha', 'beta']);
+  });
+
+  test('user-driven Backspace deletion still moves focus via focusAfterRemove(index - 1), unaffected by reconciliation', async () => {
+    // Guards against a regression where the id-survival reconciliation effect
+    // races with (or overrides) the existing internal-write focus handling.
+    const { container } = render(TagInput, {
+      props: { value: ['alpha', 'beta', 'gamma'] },
+    });
+    const middleButton = getRemoveButtons(container)[1]!;
+    await fireEvent.keyDown(middleButton, { key: 'Backspace' });
+    await tick();
+
+    expect(getOptions(container)).toHaveLength(2);
+    expect(document.activeElement).toBe(getRemoveButtons(container)[0]!);
   });
 });
 

@@ -136,4 +136,43 @@
     background: var(--cinder-status-warning-background);
     color: var(--cinder-status-warning-text);
   }
+
+  /* ----------------------------------------
+   * Compact size (`size="sm"`, COR-330)
+   *
+   * `size` is the ONLY thing that changes cell dimensions. Every state rule
+   * above (selected, hover, focus, disabled, feedback) stays color-only, so
+   * a state change never reflows a compact cell either.
+   *
+   * Fine pointer (the default — no coarse-pointer media match): matches
+   * Cinder's `button` `sm` scale. Block-size, padding, and font-size shrink
+   * together, not just height: the item's 2px border plus its normal
+   * (non-compact) padding alone already exceeds `--cinder-button-height-sm`
+   * (28px), so a fixed 28px cell is only achievable by adopting the same
+   * token family `button` `sm` uses for padding and font-size too.
+   *
+   * Coarse pointer: floors the cell at the accessibility-standard 44×44 CSS
+   * pixel touch target instead of the 28px fine-pointer height. This floor
+   * is deliberately unconditional on `columns` — whether the grid uses a
+   * fixed column count or `responsive`, a minimum touch target is an
+   * accessibility requirement, not a layout-mode-conditional feature.
+   * ---------------------------------------- */
+
+  .cinder-choice-grid-item[data-cinder-size='sm'] {
+    min-block-size: 0;
+    block-size: var(--cinder-button-height-sm);
+    padding: var(--cinder-button-padding-y-sm) var(--cinder-button-padding-x-sm);
+  }
+
+  .cinder-choice-grid-item[data-cinder-size='sm'] .cinder-choice-grid-item__content {
+    font-size: var(--cinder-button-font-size-sm);
+  }
+
+  @media (pointer: coarse) {
+    .cinder-choice-grid-item[data-cinder-size='sm'] {
+      block-size: auto;
+      min-block-size: 44px;
+      min-inline-size: 44px;
+    }
+  }
 }

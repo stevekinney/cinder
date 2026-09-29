@@ -8,7 +8,7 @@
 
 ```svelte
 <script lang="ts">
-  import RelativeTime from '@lostgradient/cinder/relative-time';
+  import { RelativeTime } from '@lostgradient/cinder';
 </script>
 
 <RelativeTime date="2026-08-28T18:00:00Z" />
@@ -32,9 +32,7 @@
 
 <!-- generated:authoring:start -->
 
-Before publishing this component, complete the live
-[component authoring pre-flight](../../../AGENTS.md#component-authoring-pre-flight).
-
+Before publishing this component, complete the live [component authoring pre-flight](../../../README.md#component-authoring-checklist).
 <!-- generated:authoring:end -->
 
 ## CSS Variables
@@ -42,7 +40,6 @@ Before publishing this component, complete the live
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

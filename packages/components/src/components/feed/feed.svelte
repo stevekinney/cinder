@@ -21,7 +21,7 @@
     FeedProps,
   } from './feed.types.ts';
 
-  // See docs/decisions/chronological-display-boundaries.md for this family's boundary.
+  // See documentation/decisions/chronological-display-boundaries.md for this family's boundary.
 </script>
 
 <script lang="ts">
@@ -30,7 +30,7 @@
 
   import type { FeedProps } from './feed.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import StatusDot from '@lostgradient/cinder/status-dot';
+  import { default as StatusDot } from '../status-dot/index.ts';
 
   let {
     kind = 'list',
@@ -136,6 +136,7 @@
     // role="log" viewport after the re-render.
     void tick().then(() => {
       viewportElement?.focus();
+      return undefined;
     });
   }
 

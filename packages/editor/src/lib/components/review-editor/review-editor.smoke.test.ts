@@ -1,5 +1,16 @@
 import { describe, expect, test } from 'bun:test';
 
+// These APIs are published under `./review-editor`, not the package root: the published root is the
+// narrower `src/lib/index.ts`, so a self-import through `@lostgradient/editor` fails in the mirror.
+import {
+  buildFormDataFromValues,
+  createReviewEditorState,
+  ReviewEditor as ExportedReviewEditor,
+  toPersistedThreads,
+  toRuntimeThreads,
+} from './index.ts';
+import ReviewEditor from './review-editor.svelte';
+
 const implementationSource = await Bun.file(
   new URL('./review-editor-impl.svelte', import.meta.url).pathname,
 ).text();
@@ -38,31 +49,32 @@ describe('review-editor original bindable regression', () => {
 });
 
 describe('review-editor public entrypoint', () => {
-  test('exports the component from the package subpath', async () => {
+  test('exports review APIs from this workspace’s own source entry', async () => {
     const packageJson = await Bun.file(`${import.meta.dir}/../../../../package.json`).json();
-    const [{ default: ReviewEditor }, reviewEditorModule] = await Promise.all([
-      import('./review-editor.svelte'),
-      import('./index.ts'),
-    ]);
-
-    // After the per-directory migration, the public subpath keeps source
-    // conditions for browser/Svelte tooling and a `node` condition for SSR.
-    // `types` stays first per TypeScript nodenext requirements.
-    expect(packageJson.exports['./review-editor']).toEqual({
-      types: './dist/components/review-editor/index.d.ts',
-      browser: './src/lib/components/review-editor/index.ts',
-      node: './dist/server/components/review-editor/index.js',
-      svelte: './src/lib/components/review-editor/index.ts',
-      import: './src/lib/components/review-editor/index.ts',
-      default: './dist/components/review-editor/index.js',
-    });
+    expect(packageJson.exports).toEqual({ '.': './src/index.ts' });
     expect(ReviewEditor).toBeDefined();
-    expect(reviewEditorModule.ReviewEditor).toBeDefined();
-    expect(reviewEditorModule.createReviewEditorState).toBeTypeOf('function');
-    expect(reviewEditorModule.buildFormDataFromValues).toBeTypeOf('function');
-    // Both directions of the persistence round trip must reach the subpath a
+    expect(ExportedReviewEditor).toBeDefined();
+    expect(createReviewEditorState).toBeTypeOf('function');
+    expect(buildFormDataFromValues).toBeTypeOf('function');
+    // Both directions of the persistence round trip must reach the root a
     // consumer restoring a saved ReviewState actually imports from.
-    expect(reviewEditorModule.toPersistedThreads).toBeTypeOf('function');
-    expect(reviewEditorModule.toRuntimeThreads).toBeTypeOf('function');
+    expect(toPersistedThreads).toBeTypeOf('function');
+    expect(toRuntimeThreads).toBeTypeOf('function');
+  });
+
+  // Moving these APIs onto the published root, or off the subpath, should be a deliberate change.
+  test('the published package root does not carry these APIs; only the review-editor subpath does', async () => {
+    const publishedRoot = await Bun.file(
+      new URL('../../index.ts', import.meta.url).pathname,
+    ).text();
+    for (const name of [
+      'ReviewEditor',
+      'createReviewEditorState',
+      'buildFormDataFromValues',
+      'toPersistedThreads',
+      'toRuntimeThreads',
+    ]) {
+      expect(publishedRoot).not.toContain(name);
+    }
   });
 });

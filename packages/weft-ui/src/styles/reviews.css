@@ -1,0 +1,501 @@
+/* ---------------------------------------------------------------------- */
+/* Route shell (index.svelte)                                             */
+/* ---------------------------------------------------------------------- */
+
+.weft-reviews-route {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 14px;
+}
+
+.weft-reviews-route__header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.weft-reviews-route__title {
+  margin: 0;
+  font-size: var(--cinder-text-xl);
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Inbox (reviews-inbox.svelte)                                           */
+/* ---------------------------------------------------------------------- */
+
+.weft-reviews-inbox {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 12px;
+}
+
+.weft-reviews-inbox__toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.weft-reviews-inbox__live {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.weft-reviews-inbox__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.weft-reviews-inbox .weft-reviews-inbox__panels {
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-lg);
+  overflow: hidden;
+}
+
+.weft-reviews-inbox__list-pane {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--cinder-surface);
+}
+
+.weft-reviews-inbox__list-pane .weft-reviews-inbox__empty-state {
+  padding: 24px;
+}
+
+.weft-reviews-inbox__count {
+  padding: 11px 15px;
+  border-bottom: 1px solid var(--cinder-border);
+  font-size: var(--cinder-text-xs);
+  font-weight: 600;
+  color: var(--cinder-text-subtle);
+}
+
+.weft-reviews-inbox__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.weft-reviews-inbox__detail-pane {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px 60px;
+}
+
+.weft-reviews-inbox__detail-pane .weft-reviews-inbox__empty-state {
+  padding: 24px;
+}
+
+/* Query fault banner (shared by the inbox list pane and the archive table —
+ * `query-fault-banner.svelte`). Mirrors the Workflows track's
+ * `.weft-query-fault` rules (`src/styles/workflows.css`) so every
+ * `createQuery` error renders the same six-treatment banner instead of a
+ * misleading "no data" empty state. */
+.weft-query-fault {
+  display: flex;
+  align-items: center;
+  gap: var(--cinder-space-2-5, 10px);
+  margin: 16px;
+  padding: 11px 14px;
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md);
+  background: var(--cinder-surface-raised);
+  flex-wrap: wrap;
+}
+
+.weft-query-fault[data-tone='warning'] {
+  border-color: var(--cinder-color-warning-border);
+  background: var(--cinder-color-warning-bg);
+}
+
+.weft-query-fault[data-tone='danger'] {
+  border-color: var(--cinder-color-danger-border);
+  background: var(--cinder-color-danger-bg);
+}
+
+.weft-query-fault__icon {
+  flex: none;
+  color: var(--cinder-text-subtle);
+}
+
+.weft-query-fault[data-tone='warning'] .weft-query-fault__icon {
+  color: var(--cinder-color-warning-fg);
+}
+
+.weft-query-fault[data-tone='danger'] .weft-query-fault__icon {
+  color: var(--cinder-color-danger-fg);
+}
+
+.weft-query-fault__message {
+  flex: 1 1 auto;
+  min-width: 160px;
+  margin: 0;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text);
+}
+
+/* Two-panel layouts stack vertically below 900px (PROJECT-BRIEF binding
+ * responsive rule). `ResizablePanels`'s own `orientation` prop is bound to
+ * a `MediaQuery` at the same breakpoint in the component, so this media
+ * query only needs to relax the fixed pixel list-pane sizing that would
+ * otherwise fight a stacked layout. */
+@media (max-width: 899px) {
+  .weft-reviews-inbox .weft-reviews-inbox__panels {
+    height: auto;
+  }
+
+  .weft-reviews-inbox__list-pane {
+    max-height: 40vh;
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Review rows (pending-review-row.svelte / completed-review-row.svelte)  */
+/* ---------------------------------------------------------------------- */
+
+.weft-review-row {
+  display: block;
+  width: 100%;
+  padding: 12px 15px;
+  border: 0;
+  border-bottom: 1px solid var(--cinder-border-muted);
+  border-inline-start: 3px solid transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+@media (hover: hover) {
+  .weft-review-row:hover {
+    background: var(--cinder-surface-hover);
+  }
+}
+
+.weft-review-row:focus-visible {
+  outline: var(--cinder-ring-width) solid transparent;
+  box-shadow: var(--_cinder-focus-ring-shadow);
+  outline-offset: -2px;
+}
+
+@media (forced-colors: active) {
+  .weft-review-row:focus-visible {
+    outline: var(--cinder-ring-width) solid Highlight;
+    box-shadow: none;
+  }
+}
+
+.weft-review-row--selected {
+  border-inline-start-color: var(--cinder-accent);
+  background: color-mix(in oklch, var(--cinder-accent), transparent 92%);
+}
+
+.weft-review-row__top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.weft-review-row__type {
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-muted);
+}
+
+.weft-review-row__id {
+  font-family: var(--cinder-font-mono);
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-subtle);
+  margin-bottom: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weft-review-row__bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.weft-review-row__created,
+.weft-review-row__completed {
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-disabled);
+}
+
+.weft-review-row__countdown {
+  font-size: var(--cinder-text-xs);
+  font-weight: 600;
+  color: var(--cinder-text-subtle);
+  white-space: nowrap;
+}
+
+.weft-review-row__countdown--urgent,
+.weft-review-row__countdown--expired {
+  color: var(--cinder-color-danger-fg);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Decision surface (review-detail-panel.svelte / review-decision-form.svelte) */
+/* ---------------------------------------------------------------------- */
+
+.weft-review-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 46rem;
+}
+
+.weft-review-detail__header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.weft-review-detail__title {
+  margin: 0;
+  font-size: var(--cinder-text-lg);
+  font-weight: 600;
+}
+
+.weft-review-detail__meta {
+  margin: 0;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text-subtle);
+}
+
+.weft-review-detail__id {
+  font-family: var(--cinder-font-mono);
+}
+
+.weft-review-artifact-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.weft-review-artifact-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.weft-review-artifact-section__title {
+  margin: 0;
+  font-size: var(--cinder-text-sm);
+  font-weight: 600;
+}
+
+.weft-review-recorded-feedback {
+  padding: 16px;
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-lg);
+  background: var(--cinder-surface-inset);
+}
+
+.weft-review-recorded-feedback__label {
+  display: block;
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-subtle);
+  margin-bottom: 6px;
+}
+
+.weft-review-recorded-feedback__body {
+  margin: 0 0 10px;
+  font-size: var(--cinder-text-sm);
+}
+
+.weft-review-recorded-sections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.weft-review-sections {
+  display: flex;
+  flex-direction: column;
+}
+
+.weft-review-section-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--cinder-border-muted);
+}
+
+.weft-review-section-row:last-child {
+  border-bottom: 0;
+}
+
+.weft-review-section-label {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--cinder-text-sm);
+}
+
+.weft-review-decision {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.weft-review-decision .weft-review-decision-segments {
+  width: 100%;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Artifact rendering (artifact-view.svelte)                              */
+/* ---------------------------------------------------------------------- */
+
+.weft-artifact-text {
+  margin: 0;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text);
+  white-space: pre-wrap;
+}
+
+.weft-artifact-markdown {
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-text);
+  overflow-x: auto;
+}
+
+.weft-artifact-markdown pre {
+  overflow-x: auto;
+}
+
+.weft-artifact-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--cinder-radius-md);
+  border: 1px solid var(--cinder-border);
+}
+
+.weft-artifact-html {
+  width: 100%;
+  min-height: 12rem;
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-md);
+  background: var(--cinder-bg);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Archive (reviews-archive.svelte)                                       */
+/* ---------------------------------------------------------------------- */
+
+.weft-reviews-archive-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-lg);
+}
+
+.weft-reviews-archive {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--cinder-text-sm);
+}
+
+.weft-reviews-archive th {
+  padding: 9px 16px;
+  background: var(--cinder-surface-inset);
+  border-bottom: 1px solid var(--cinder-border);
+  text-align: start;
+  font-size: var(--cinder-text-2xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cinder-text-subtle);
+}
+
+.weft-reviews-archive td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--cinder-border-muted);
+  white-space: nowrap;
+}
+
+.weft-reviews-archive tr:last-child td {
+  border-bottom: 0;
+}
+
+.weft-reviews-archive__id {
+  font-family: var(--cinder-font-mono);
+  font-size: var(--cinder-text-xs);
+  color: var(--cinder-text-muted);
+}
+
+.weft-reviews-archive__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Dashboard card (cards/dashboard-card.svelte)                           */
+/* ---------------------------------------------------------------------- */
+
+.weft-reviews-card-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.weft-reviews-card__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.weft-reviews-card__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.weft-reviews-card__error {
+  margin: 0;
+  font-size: var(--cinder-text-sm);
+  color: var(--cinder-color-danger-fg);
+}
+
+/* Responsive: no page-level horizontal scroll (PROJECT-BRIEF binding
+ * rule); interactive targets ≥40px on touch below tablet width. */
+@media (max-width: 47.99rem) {
+  .weft-review-row {
+    min-height: 48px;
+  }
+
+  .weft-reviews-inbox__toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .weft-reviews-inbox__live {
+    justify-content: space-between;
+  }
+
+  .weft-reviews-inbox__detail-pane {
+    padding: 16px 16px 40px;
+  }
+}

@@ -10,12 +10,12 @@ Cinder does not execute, validate, or persist rules. The consumer provides the c
 
 ```svelte
 <script lang="ts">
-  import { InvocationRuleBuilder } from '@lostgradient/cinder/invocation-rule-builder';
+  import { InvocationRuleBuilder } from '@lostgradient/cinder';
   import type {
     InvocationRule,
     InvocationRuleChange,
     InvocationRuleOption,
-  } from '@lostgradient/cinder/invocation-rule-builder';
+  } from '@lostgradient/cinder';
 
   let rules = $state<InvocationRule[]>([]);
 
@@ -92,12 +92,12 @@ Pass `mode="conditions"` to render conditions without actions — for example, a
 
 ```svelte
 <script lang="ts">
-  import { InvocationRuleBuilder } from '@lostgradient/cinder/invocation-rule-builder';
+  import { InvocationRuleBuilder } from '@lostgradient/cinder';
   import type {
     InvocationRule,
     InvocationRuleChange,
     InvocationRuleOption,
-  } from '@lostgradient/cinder/invocation-rule-builder';
+  } from '@lostgradient/cinder';
 
   let rules = $state<InvocationRule[]>([]);
 
@@ -158,7 +158,6 @@ A rule created in this mode still has an `actions` array on its data shape (so `
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

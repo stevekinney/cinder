@@ -2,7 +2,7 @@
 import { describe, expect, test } from 'bun:test';
 import { createRawSnippet, mount, unmount } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -169,7 +169,10 @@ describe('AccordionItem', () => {
       onExpandedChange: (ids) => changes.push([...ids]),
     });
 
-    const button = container.querySelector('.cinder-accordion-item__trigger') as HTMLButtonElement;
+    const button = requiredInstance(
+      container.querySelector('.cinder-accordion-item__trigger'),
+      HTMLButtonElement,
+    );
     expect(button).not.toBeNull();
 
     // Initially collapsed — click to open
@@ -184,7 +187,10 @@ describe('AccordionItem', () => {
       disabled: true,
     });
 
-    const button = container.querySelector('.cinder-accordion-item__trigger') as HTMLButtonElement;
+    const button = requiredInstance(
+      container.querySelector('.cinder-accordion-item__trigger'),
+      HTMLButtonElement,
+    );
     expect(button?.disabled).toBe(true);
   });
 
@@ -320,7 +326,10 @@ describe('AccordionItem', () => {
       expandedIds: [],
     });
 
-    const button = container.querySelector('.cinder-accordion-item__trigger') as HTMLButtonElement;
+    const button = requiredInstance(
+      container.querySelector('.cinder-accordion-item__trigger'),
+      HTMLButtonElement,
+    );
     expect(button).not.toBeNull();
     expect(button.getAttribute('role') ?? button.tagName.toLowerCase()).toMatch(/button/i);
     expect(button.getAttribute('aria-expanded')).toBe('false');
@@ -336,7 +345,10 @@ describe('AccordionItem', () => {
       expandedIds: [],
     });
 
-    const button = container.querySelector('.cinder-accordion-item__trigger') as HTMLButtonElement;
+    const button = requiredInstance(
+      container.querySelector('.cinder-accordion-item__trigger'),
+      HTMLButtonElement,
+    );
     expect(button).not.toBeNull();
     expect(button.getAttribute('role') ?? button.tagName.toLowerCase()).toMatch(/button/i);
     expect(button.getAttribute('aria-expanded')).toBe('false');

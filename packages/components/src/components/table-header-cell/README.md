@@ -4,11 +4,7 @@ th cell within a table header row, supporting sort indicators and column labels.
 
 ## Usage
 
-`TableHeaderCell` is a compose-only leaf of [`Table`](../table/README.md).
-The idiomatic API is `Table.HeaderCell`, reached through the parent
-namespace — see the [table README](../table/README.md#usage) for the composed
-snippet. The flat `@lostgradient/cinder/table-header-cell` subpath remains exported for
-à-la-carte builds that import the leaf directly.
+`TableHeaderCell` is a compose-only leaf of [`Table`](../table/README.md). The idiomatic API is `Table.HeaderCell`, reached through the parent namespace — see the [table README](../table/README.md#usage) for the composed snippet. The leaf is also a named export of `@lostgradient/cinder`.
 
 ## Props
 
@@ -31,7 +27,6 @@ snippet. The flat `@lostgradient/cinder/table-header-cell` subpath remains expor
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

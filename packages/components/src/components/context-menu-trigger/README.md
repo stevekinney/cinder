@@ -6,10 +6,10 @@ Compose-only trigger region that opens a context-menu on right-click or touch lo
 
 ```svelte
 <script lang="ts">
-  import ContextMenu from '@lostgradient/cinder/context-menu';
-  import ContextMenuTrigger from '@lostgradient/cinder/context-menu-trigger';
-  import DropdownItem from '@lostgradient/cinder/dropdown-item';
-  import DropdownMenu from '@lostgradient/cinder/dropdown-menu';
+  import { ContextMenu } from '@lostgradient/cinder';
+  import { ContextMenuTrigger } from '@lostgradient/cinder';
+  import { DropdownItem } from '@lostgradient/cinder';
+  import { DropdownMenu } from '@lostgradient/cinder';
 </script>
 
 <ContextMenu>
@@ -51,7 +51,6 @@ Compose-only trigger region that opens a context-menu on right-click or touch lo
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

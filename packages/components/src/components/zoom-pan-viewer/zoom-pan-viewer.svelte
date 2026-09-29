@@ -12,7 +12,7 @@
 </script>
 
 <script lang="ts">
-  import Button from '@lostgradient/cinder/button';
+  import { default as Button } from '../button/index.ts';
   import Plus from 'lucide-svelte/icons/plus';
   import Minus from 'lucide-svelte/icons/minus';
   import RotateCcw from 'lucide-svelte/icons/rotate-ccw';

@@ -14,7 +14,7 @@
     type ConversationHistory,
     type MessageRole,
   } from '@lostgradient/chat';
-  import { Button } from '@lostgradient/cinder/button';
+  import { Button } from '@lostgradient/cinder';
 
   type ArchivedMessageInput = { role: MessageRole; content: string };
 

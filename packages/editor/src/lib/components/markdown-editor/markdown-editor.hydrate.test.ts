@@ -13,20 +13,19 @@
 
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { renderThenHydrate } from '../../test/hydrate.ts';
+import { prepareSvelteServerSource, renderThenHydrate } from '@lostgradient/testing';
+import { flushSync, tick } from 'svelte';
+import MarkdownEditor from './markdown-editor.svelte';
+import type { MarkdownEditorProps } from './markdown-editor.types.ts';
 
-// SSR contract verification via source analysis
-// The server render produces EditorSkeleton because `browser` is false.
-// We verify this contract by reading the component source rather than
-// attempting to dynamically compile+import it (which is blocked per above).
+const sourcePath = new URL('./markdown-editor.svelte', import.meta.url).pathname;
+const SVELTE_SOURCE = await Bun.file(sourcePath).text();
+const { createReactiveProps } = await import('./markdown-editor-reactive-props-harness.svelte.ts');
 
-const SVELTE_SOURCE = await Bun.file(
-  new URL('./markdown-editor.svelte', import.meta.url).pathname,
-).text();
-const HYDRATE_HELPER_SOURCE = await Bun.file(
-  new URL('../../test/hydrate.ts', import.meta.url).pathname,
-).text();
-
+// Compile the server graph before the timed hydration assertion. The editor's
+// first server compilation can exceed Bun's per-test timeout when the complete
+// package suite is cold; the test should measure render and hydrate behavior.
+await prepareSvelteServerSource(sourcePath);
 describe('MarkdownEditor SSR contract', () => {
   test('renders EditorSkeleton in the {:else} branch of {#if browser}', () => {
     // The component has: {#if browser} ... {:else} <EditorSkeleton .../> {/if}
@@ -34,15 +33,18 @@ describe('MarkdownEditor SSR contract', () => {
     expect(SVELTE_SOURCE).toMatch(/\{:else\}[\s\S]*?EditorSkeleton/);
   });
 
-  test('EditorSkeleton is in the {:else} immediately before the closing {/if}', () => {
+  test('EditorSkeleton is in the server branch immediately before the closing {/if}', () => {
     // The component structure is:
     //   {#if browser}
     //     ... live editor ...
-    //   {:else}
+    //   {:else if currentMode !== 'preview'}
     //     <EditorSkeleton .../>
     //   {/if}
-    // Verify the else→skeleton→close-if sequence exists directly.
-    expect(SVELTE_SOURCE).toMatch(/\{:else\}\s*\n\s*<EditorSkeleton[^>]*\/>\s*\n\s*\{\/if\}/);
+    // A preview-mode server render shows the preview's loading region instead
+    // (COR-525). Verify the else→skeleton→close-if sequence exists directly.
+    expect(SVELTE_SOURCE).toMatch(
+      /\{:else if currentMode !== 'preview'\}\s*\n\s*<EditorSkeleton[^>]*\/>\s*\n\s*\{\/if\}/,
+    );
   });
 
   test('BROWSER import guard: effects use `if (!browser) return` early-return pattern', () => {
@@ -63,7 +65,7 @@ describe('MarkdownEditor SSR contract', () => {
     expect(ifBrowserStart).toBeGreaterThan(-1);
     // The EditorSkeleton {:else} is the server branch; match it without
     // depending on indentation so layout wrappers can move around it.
-    const elseSkeletonMatch = /\{:else\}\s*\n\s*<EditorSkeleton/.exec(
+    const elseSkeletonMatch = /\{:else if currentMode !== 'preview'\}\s*\n\s*<EditorSkeleton/.exec(
       SVELTE_SOURCE.slice(ifBrowserStart),
     );
     const elseStart = elseSkeletonMatch === null ? -1 : ifBrowserStart + elseSkeletonMatch.index;
@@ -79,10 +81,10 @@ describe('MarkdownEditor SSR contract', () => {
 });
 
 describe('MarkdownEditor hydration status', () => {
-  let cleanup: (() => void) | undefined;
+  let cleanup: (() => Promise<void>) | undefined;
 
-  afterEach(() => {
-    cleanup?.();
+  afterEach(async () => {
+    await cleanup?.();
     cleanup = undefined;
   });
 
@@ -92,13 +94,20 @@ describe('MarkdownEditor hydration status', () => {
       resolveReady = resolve;
     });
     const result = await renderThenHydrate(
-      new URL('./markdown-editor.svelte', import.meta.url).pathname,
+      MarkdownEditor,
+      sourcePath,
       {
         id: 'hydration-editor',
         label: 'Hydration editor',
-        showToolbar: false,
+        toolbarEnabled: false,
         value: '# Hydration',
-        onready: () => resolveReady?.(),
+        onReady: () => resolveReady?.(),
+      },
+      {
+        id: 'hydration-editor',
+        label: 'Hydration editor',
+        toolbarEnabled: false,
+        value: '# Hydration',
       },
     );
     cleanup = result.cleanup;
@@ -111,18 +120,76 @@ describe('MarkdownEditor hydration status', () => {
   });
 });
 
-test('server runtime shim rejects fork on the server', () => {
-  expect(HYDRATE_HELPER_SOURCE).toContain(
-    `export function fork() { errors.lifecycle_function_unavailable('fork'); }`,
-  );
-});
+describe('MarkdownEditor preview hydration (COR-525)', () => {
+  const previewProps = {
+    id: 'preview-hydration',
+    label: 'Template',
+    mode: 'preview',
+    value: 'Hello {{name}}',
+    placeholderDefinitions: { candidates: [{ path: 'name', types: ['string'] }] },
+    placeholderValues: { name: 'Ada' },
+  } as const;
+  let cleanup: (() => Promise<void>) | undefined;
 
-test('imports the server bundle before restoring DOM globals', () => {
-  const serverImportIndex = HYDRATE_HELPER_SOURCE.indexOf(
-    'const serverModule = (await import(pathToFileURL(modulePath).href))',
-  );
-  const restoreDomIndex = HYDRATE_HELPER_SOURCE.indexOf('globalThis.document = originalDocument;');
+  afterEach(async () => {
+    await cleanup?.();
+    cleanup = undefined;
+  });
 
-  expect(serverImportIndex).toBeGreaterThan(-1);
-  expect(restoreDomIndex).toBeGreaterThan(serverImportIndex);
+  async function untilTrue(condition: () => boolean): Promise<void> {
+    for (let iteration = 0; iteration < 200; iteration += 1) {
+      if (condition()) return;
+      await tick();
+    }
+    throw new Error('untilTrue: condition did not become true within 200 ticks');
+  }
+
+  test('server output and the first hydration pass render the same inert loading region', async () => {
+    const result = await renderThenHydrate(MarkdownEditor, sourcePath, { ...previewProps });
+    cleanup = result.cleanup;
+
+    const server = document.createElement('div');
+    server.innerHTML = result.ssrHtml;
+    const serverRegion = server.querySelector('#preview-hydration-preview');
+    expect(serverRegion?.textContent?.trim()).toBe('Loading preview');
+    expect(serverRegion?.querySelector('.markdown-editor-preview-loading[inert]')).not.toBeNull();
+    expect(result.ssrHtml).not.toContain('editor-skeleton');
+
+    const hydratedRegion = result.container.querySelector('#preview-hydration-preview');
+    expect(hydratedRegion?.outerHTML).toBe(serverRegion?.outerHTML);
+    expect(result.warnings).toEqual([]);
+
+    await untilTrue(
+      () => result.container.querySelector('.markdown-editor-preview-content') !== null,
+    );
+    expect(hydratedRegion?.textContent).toContain('Hello Ada');
+    expect(result.container.querySelector('.ProseMirror')).toBeNull();
+  });
+
+  test('rapid mode changes right after hydration settle on the latest mode', async () => {
+    const reactive = createReactiveProps({ ...previewProps });
+    const result = await renderThenHydrate(
+      MarkdownEditor,
+      sourcePath,
+      reactive.props as unknown as MarkdownEditorProps,
+      { ...previewProps },
+    );
+    cleanup = result.cleanup;
+
+    for (const mode of ['source', 'preview', 'source', 'preview']) {
+      reactive.set('mode', mode);
+      flushSync();
+    }
+    await untilTrue(
+      () => result.container.querySelector('.markdown-editor-preview-content') !== null,
+    );
+    const wrapper = result.container.querySelector<HTMLElement>('.markdown-editor-wrapper');
+    expect(wrapper?.dataset['mode']).toBe('preview');
+    expect(result.container.textContent).toContain('Hello Ada');
+    expect(result.container.querySelectorAll('.markdown-editor-preview')).toHaveLength(1);
+    expect(result.container.querySelector<HTMLElement>('.markdown-editor-surface')?.hidden).toBe(
+      true,
+    );
+    expect(result.warnings).toEqual([]);
+  });
 });

@@ -1,15 +1,13 @@
 # NavigationBar
 
-Top-level navigation bar for primary site or app destinations. Use
-`placement="top"` for header navigation and `placement="bottom"` for a mobile
-tab-bar composition.
+Top-level navigation bar for primary site or app destinations. Use `placement="top"` for header navigation and `placement="bottom"` for a mobile tab-bar composition.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import { NavigationBar } from '@lostgradient/cinder/navigation-bar';
-  import { NavigationItem } from '@lostgradient/cinder/navigation-item';
+  import { NavigationBar } from '@lostgradient/cinder';
+  import { NavigationItem } from '@lostgradient/cinder';
 </script>
 
 <NavigationBar>
@@ -20,8 +18,7 @@ tab-bar composition.
 </NavigationBar>
 ```
 
-Bottom placement keeps the same link semantics and leaves viewport pinning to
-the app shell:
+Bottom placement keeps the same link semantics and leaves viewport pinning to the app shell:
 
 ```svelte
 <div style="position: sticky; bottom: 0;">
@@ -40,10 +37,7 @@ the app shell:
 </div>
 ```
 
-When a top navigation bar collapses behind a `menuToggle`, activating an enabled
-navigation item closes the mobile menu and returns focus to the toggle. Item or
-bar-level click handlers can call `event.preventDefault()` to keep the menu open
-for guarded navigation, local state changes, or custom routing.
+When a top navigation bar collapses behind a `menuToggle`, activating an enabled navigation item closes the mobile menu and returns focus to the toggle. Item or bar-level click handlers can call `event.preventDefault()` to keep the menu open for guarded navigation, local state changes, or custom routing.
 
 ## Props
 
@@ -69,7 +63,6 @@ for guarded navigation, local state changes, or custom routing.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

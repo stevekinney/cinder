@@ -3,7 +3,7 @@ import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { createRawSnippet } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -111,6 +111,74 @@ describe('Toolbar', () => {
     expect(buttons[0]!.tabIndex).toBe(0);
     expect(buttons[1]!.tabIndex).toBe(-1);
     expect(buttons[2]!.tabIndex).toBe(-1);
+  });
+
+  test('an entirely disabled toolbar gains one tab stop when a control becomes enabled', async () => {
+    render(Toolbar, {
+      props: {
+        'aria-label': 'Controls',
+        children: rawSnippet('<button disabled>Undo</button><button disabled>Format</button>'),
+      },
+    });
+    await flushEffects();
+    const undo = screen.getByRole<HTMLButtonElement>('button', { name: 'Undo' });
+    const format = screen.getByRole<HTMLButtonElement>('button', { name: 'Format' });
+    expect([undo.tabIndex, format.tabIndex]).toEqual([-1, -1]);
+    format.disabled = false;
+    await flushEffects();
+    expect([undo.tabIndex, format.tabIndex]).toEqual([-1, 0]);
+  });
+
+  test('disabling the preferred control transfers the tab stop to an enabled control', async () => {
+    render(Toolbar, {
+      props: {
+        'aria-label': 'Controls',
+        children: rawSnippet('<button>Undo</button><button>Format</button>'),
+      },
+    });
+    await flushEffects();
+    const undo = screen.getByRole('button', { name: 'Undo' });
+    const format = screen.getByRole('button', { name: 'Format' });
+    undo.focus();
+    undo.setAttribute('aria-disabled', 'true');
+    await flushEffects();
+    expect([undo.tabIndex, format.tabIndex]).toEqual([-1, 0]);
+  });
+
+  test('Escape skips disabled neighbors in both directions and stays when no other control is enabled', async () => {
+    render(Toolbar, {
+      props: {
+        'aria-label': 'Controls',
+        children: rawSnippet(`
+          <input aria-label="Previous" value="abc" />
+          <button disabled>Unavailable previous</button>
+          <input aria-label="Current" value="def" />
+          <button aria-disabled="true">Unavailable next</button>
+          <input aria-label="Next" value="ghi" />
+        `),
+      },
+    });
+    await flushEffects();
+    const previous = screen.getByRole<HTMLInputElement>('textbox', { name: 'Previous' });
+    const current = screen.getByRole<HTMLInputElement>('textbox', { name: 'Current' });
+    const next = screen.getByRole<HTMLInputElement>('textbox', { name: 'Next' });
+    current.focus();
+    await fireEvent.keyDown(current, { key: 'Escape' });
+    expect(document.activeElement).toBe(next);
+    expect(next.selectionStart).toBe(0);
+
+    next.disabled = true;
+    await flushEffects();
+    current.focus();
+    await fireEvent.keyDown(current, { key: 'Escape' });
+    expect(document.activeElement).toBe(previous);
+    expect(previous.selectionStart).toBe(previous.value.length);
+
+    previous.disabled = true;
+    await flushEffects();
+    current.focus();
+    await fireEvent.keyDown(current, { key: 'Escape' });
+    expect(document.activeElement).toBe(current);
   });
 
   test('ArrowRight roves focus horizontally and skips disabled items', async () => {

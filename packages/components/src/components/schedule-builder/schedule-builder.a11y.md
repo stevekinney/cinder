@@ -35,14 +35,7 @@ Clicking a mode tab switches the visible panel. Clicking a cron pattern selector
 
 ## Structured cron review outcome
 
-The structured cron editor was reviewed against a raw five-field cron form and
-the preset authoring mode. Presets remain the neighbour for common schedules;
-the structured cron panel is justified for field-level cron control without
-requiring users to memorize expression syntax. The review accepted native
-Select, NumberInput, Grid, and details/Input composition with the standard chevron, provided validation is
-visible on the active controls, raw editing switches to Advanced, and no focus is
-moved automatically. The roles, focus order, keyboard behavior, validation
-announcements, and disclosure behavior are recorded above and covered by tests.
+The structured cron editor was reviewed against a raw five-field cron form and the preset authoring mode. Presets remain the neighbour for common schedules; the structured cron panel is justified for field-level cron control without requiring users to memorize expression syntax. The review accepted native Select, NumberInput, Grid, and details/Input composition with the standard chevron, provided validation is visible on the active controls, raw editing switches to Advanced, and no focus is moved automatically. The roles, focus order, keyboard behavior, validation announcements, and disclosure behavior are recorded above and covered by tests.
 
 ## Hard scope caps
 

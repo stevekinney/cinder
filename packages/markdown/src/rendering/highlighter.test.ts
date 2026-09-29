@@ -16,7 +16,7 @@ import {
   PLAINTEXT_LANGUAGE,
   resetHighlighter,
   SUPPORTED_LANGUAGES,
-} from './highlighter.js';
+} from '../index.js';
 
 describe('highlighter', () => {
   describe('initialization', () => {

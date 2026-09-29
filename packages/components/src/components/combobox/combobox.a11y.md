@@ -43,6 +43,10 @@ Options can carry optional `description` and `avatar` fields to render richer ro
 
 **Selection from a rich option.** Selecting a rich option sets `value` to `option.value` and `textInputValue` to `option.label` — the description is not appended to the text input.
 
+## Empty result set (COR-499)
+
+When `filteredOptions` is empty, the open listbox renders zero `role="option"` elements — no fake disabled option. The single visible "No results" line renders as plain, roleless text inside the listbox surface; the one status description that names the empty state for assistive technology lives outside the listbox (`.cinder-combobox__empty-status`, `role="status"`) and is referenced from the text field's own `aria-describedby`, the same describedby-based association CommandMenu uses from its `role="listbox"` element (`command-menu.svelte`'s `emptyStateId`). Focus stays on the text field throughout; `aria-activedescendant` is absent; Arrow keys and Enter cannot select or emit a value change while empty. Clearing the filter removes the empty description and restores normal option rows, active-descendant navigation, and selection.
+
 ## Hard scope caps (v1)
 
 These are deliberate non-goals for the first version. Consumers who need them should compose their own combobox or open an issue tracking demand.

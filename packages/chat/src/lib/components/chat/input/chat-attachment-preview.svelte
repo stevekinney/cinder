@@ -10,7 +10,7 @@
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
   import { formatBytes } from '../../../utilities/format-bytes.ts';
-  import { FileCode, FileText } from '@lostgradient/cinder/icons';
+  import { FileCode, FileText } from '@lostgradient/cinder';
 
   let { attachment, class: className }: ChatAttachmentPreviewProps = $props();
 

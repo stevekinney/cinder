@@ -20,25 +20,30 @@
      * When null/undefined the popover falls back to its previous fixed-center positioning.
      */
     anchorElement?: HTMLElement | import('@floating-ui/dom').VirtualElement | null;
-    /** Called when popover should close */
+    /** Called when popover should close (Escape, Cancel, the Close button, a successful Insert/Update, or Remove) */
     onclose?: () => void;
     /** Called when link should be inserted */
     oninsert?: (url: string, text?: string) => void;
     /** Called when link should be removed */
     onremove?: () => void;
+    /**
+     * Called when the user dismisses the popover by interacting outside it.
+     * Distinct from `onclose`: outside interaction targets some OTHER
+     * control (a different toolbar button, a click into the document), and
+     * that control's own focus must win. Falls back to `onclose` when not
+     * provided, for standalone usage that treats every dismissal alike.
+     */
+    onOutsideDismiss?: () => void;
   };
 </script>
 
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import type { Placement, VirtualElement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../../_internal/anchored-overlay.svelte.ts';
   import { classNames } from '../../../utilities/class-names.ts';
-  import { createFocusTrap } from '@lostgradient/cinder/focus-trap';
+  import { Button, Input, LinkIcon, Unlink, X } from '@lostgradient/cinder';
   import { createClickOutside } from '../../../utilities/attachments.ts';
-  import Button from '@lostgradient/cinder/button';
-  import Input from '@lostgradient/cinder/input';
-  import { Link, Unlink, X } from '@lostgradient/cinder/icons';
 
   let {
     id,
@@ -51,6 +56,7 @@
     onclose,
     oninsert,
     onremove,
+    onOutsideDismiss,
   }: LinkPopoverProps = $props();
 
   let popoverElement = $state<HTMLDivElement | null>(null);
@@ -68,21 +74,44 @@
   // the incoming props here captures the correct values for this open session.
   // A prop-sync $effect would be redundant and would clobber the user's
   // in-progress edits if `initialUrl` / `initialText` recomputed mid-open.
-  // svelte-ignore state_referenced_locally -- capture initial values for this open session.
-  let url = $state(initialUrl);
-  // svelte-ignore state_referenced_locally -- capture initial values for this open session.
-  let text = $state(initialText);
+  let url = $state(untrack(() => initialUrl));
+  let text = $state(untrack(() => initialText));
   let initialFocusApplied = false;
+
+  // `tick()` only guarantees the `data-position-ready` ATTRIBUTE has committed
+  // to the DOM, not that a real browser has finished the separate style-recalc
+  // pass that applies the `[data-position-ready='true']` CSS rule (below) —
+  // measured on real Chromium as anywhere from under a frame up to ~100ms
+  // after `tick()` resolves, most likely while `@floating-ui/dom`'s dynamic
+  // import is still settling on its first use. `.focus()` on an element the
+  // browser still computes `visibility: hidden` for silently no-ops, so this
+  // polls actual computed visibility across animation frames (bounded, so a
+  // popover that's somehow never made visible doesn't retry forever) instead
+  // of guessing a fixed number of ticks/frames. Not reproducible in
+  // happy-dom's simplified layout model, only in a real browser (COR-463).
+  const MAX_INITIAL_FOCUS_FRAMES = 60;
+
+  function focusUrlInputWhenVisible(framesRemaining: number): void {
+    if (initialFocusApplied || !popoverElement) return;
+    const isVisible = getComputedStyle(popoverElement).visibility !== 'hidden';
+    if (!isVisible && framesRemaining > 0) {
+      requestAnimationFrame(() => focusUrlInputWhenVisible(framesRemaining - 1));
+      return;
+    }
+    document.getElementById(`${id}-url`)?.focus();
+    initialFocusApplied = true;
+  }
 
   $effect(() => {
     if (initialFocusApplied) return;
     if (!popoverElement) return;
     if (anchorElement && !anchoredOverlay.positionReady) return;
-    tick().then(() => {
-      if (initialFocusApplied) return;
-      document.getElementById(`${id}-url`)?.focus();
-      initialFocusApplied = true;
-    });
+    void tick()
+      .then(() => {
+        focusUrlInputWhenVisible(MAX_INITIAL_FOCUS_FRAMES);
+        return undefined;
+      })
+      .catch(() => undefined);
   });
 
   // Allowed URL protocols (safe for links)
@@ -126,12 +155,14 @@
 
     // Try to validate as absolute URL
     try {
-      new URL(url);
+      const parsedUrl = new URL(url);
+      void parsedUrl;
       return undefined;
     } catch {
       // Try with https:// prefix for convenience
       try {
-        new URL(`https://${url}`);
+        const parsedUrl = new URL(`https://${url}`);
+        void parsedUrl;
         return undefined;
       } catch {
         return 'Please enter a valid URL';
@@ -179,24 +210,31 @@
   }
 </script>
 
+<!--
+  Deliberately `role="dialog"` WITHOUT `aria-modal="true"` and without a focus
+  trap. This is an anchored, non-modal toolbar panel — the same nonmodal
+  pattern as ReviewEditor's ThreadPopover (cinder#1305) and Cinder's own
+  Popover — not a blocking modal: the surrounding editor stays reachable, so
+  nothing here makes it `inert` or otherwise unavailable. Tab and Shift+Tab
+  follow normal document order and can leave the popup without closing it;
+  Escape/Cancel/Close/outside-click remain the explicit ways to dismiss.
+-->
 <div
   bind:this={popoverElement}
   {id}
   role="dialog"
-  aria-modal="true"
   aria-labelledby={`${id}-title`}
   tabindex="-1"
-  class={classNames('link-popover', className)}
+  class={classNames('cinder-_floating-surface', 'link-popover', className)}
   style={anchorElement ? anchoredOverlay.positionStyle : undefined}
   data-position-ready={anchorElement ? anchoredOverlay.positionReady : undefined}
   inert={anchorElement && !anchoredOverlay.positionReady ? true : undefined}
-  {@attach createFocusTrap({ active: () => !anchorElement || anchoredOverlay.positionReady })}
-  {@attach createClickOutside({ handler: () => onclose?.() })}
+  {@attach createClickOutside({ handler: () => (onOutsideDismiss ?? onclose)?.() })}
   onkeydown={handleKeyDown}
 >
   <header class="link-popover-header">
     <h2 id={`${id}-title`} class="link-popover-title">
-      <Link class="cinder-icon-sm" />
+      <LinkIcon class="cinder-icon-sm" />
       {mode === 'insert' ? 'Insert Link' : 'Edit Link'}
     </h2>
     <button type="button" class="link-popover-close" onclick={onclose} aria-label="Close">
@@ -245,21 +283,25 @@
 </div>
 
 <style>
+  /* Composes `cinder-_floating-surface` (see the class list on the root
+   * element) for the shared border, medium radius, raised surface, elevation
+   * shadow, and viewport-height cap — the same treatment Cinder's own Popover
+   * and ChatNavigationRail's preview surface use. `.link-popover` below only
+   * adds what that shared treatment does not already own: positioning,
+   * width, and overriding the shared wrapper padding to 0 so the header,
+   * content, and footer bands own their own padding once instead of stacking
+   * on top of a wrapper inset. */
   .link-popover {
     position: fixed;
     /* Positioned by Floating UI when anchorElement is provided (inline style).
      * Visibility is hidden until the first position compute completes so that
      * focus is never visibly misplaced. */
     visibility: hidden;
-    z-index: var(--cinder-z-dropdown);
     display: flex;
     flex-direction: column;
     width: 320px;
     max-width: calc(100vw - 2rem);
-    background: var(--cinder-surface);
-    border: 1px solid var(--cinder-border);
-    border-radius: var(--cinder-radius-lg);
-    box-shadow: var(--cinder-shadow-lg);
+    padding: 0;
     overflow: hidden;
   }
 
@@ -277,12 +319,16 @@
     visibility: visible;
   }
 
+  /* Header/footer target at most 40px high on a fine pointer: 6px block
+   * padding (--cinder-space-1-5) on either side of a 28px row (the sm Button
+   * height and the close button below share that same 28px), 6+6+28=40. */
   .link-popover-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--cinder-space-2);
-    padding: var(--cinder-space-3) var(--cinder-space-4);
+    box-sizing: border-box;
+    padding: var(--cinder-space-1-5) var(--cinder-space-3);
     border-bottom: 1px solid var(--cinder-border);
     background: var(--cinder-surface-raised);
   }
@@ -297,12 +343,17 @@
     color: var(--cinder-text-default);
   }
 
+  /* 28px on a fine pointer (matches the sm Button height in the footer, and
+   * keeps the header within its 40px budget); the existing pointer-aware
+   * convention (see number-input's `.cinder-number-input__stepper`) bumps it
+   * to the 44px WCAG 2.2 AA touch target on a coarse pointer instead of
+   * enlarging every desktop icon. */
   .link-popover-close {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: var(--cinder-touch-target-min, 44px);
-    height: var(--cinder-touch-target-min, 44px);
+    width: 28px;
+    height: 28px;
     flex-shrink: 0;
     color: var(--cinder-text-muted);
     background: transparent;
@@ -312,6 +363,13 @@
     transition:
       background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
       color var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  @media (pointer: coarse) {
+    .link-popover-close {
+      width: var(--cinder-touch-target-min);
+      height: var(--cinder-touch-target-min);
+    }
   }
 
   @media (hover: hover) {
@@ -336,11 +394,16 @@
     }
   }
 
+  /* `background` is explicit here (rather than inherited from the root's now
+   * `--cinder-surface-raised` floating-surface background) so the content
+   * band keeps reading as the plain surface it always has, distinct from the
+   * raised header/footer bands. */
   .link-popover-content {
     display: flex;
     flex-direction: column;
-    gap: var(--cinder-space-4);
-    padding: var(--cinder-space-4);
+    gap: var(--cinder-space-3);
+    padding: var(--cinder-space-3);
+    background: var(--cinder-surface);
   }
 
   .link-popover-footer {
@@ -348,7 +411,8 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--cinder-space-2);
-    padding: var(--cinder-space-3) var(--cinder-space-4);
+    box-sizing: border-box;
+    padding: var(--cinder-space-1-5) var(--cinder-space-3);
     border-top: 1px solid var(--cinder-border);
     background: var(--cinder-surface-raised);
   }

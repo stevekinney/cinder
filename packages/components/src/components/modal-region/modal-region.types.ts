@@ -1,1 +1,4 @@
-export type ModalRegionProps = { children?: import('svelte').Snippet };
+export type ModalRegionProps = {
+  /** Descendant application surface that opens modals through `useModal()`. */
+  children?: import('svelte').Snippet;
+};

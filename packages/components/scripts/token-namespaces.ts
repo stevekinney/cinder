@@ -38,5 +38,5 @@ export function readTokenNamespaces(): string[] {
     const [namespace] = path.split('.');
     if (namespace !== undefined) namespaces.add(namespace);
   }
-  return [...namespaces].sort();
+  return [...namespaces].toSorted();
 }

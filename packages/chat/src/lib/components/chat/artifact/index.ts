@@ -6,5 +6,6 @@ export type {
   ChatArtifact,
   CodeRenderer,
   MermaidRenderer,
+  ResolvedChatArtifact,
 } from './artifact-viewer.types.ts';
 export { default as ChatArtifactLayout } from './chat-artifact-layout.svelte';

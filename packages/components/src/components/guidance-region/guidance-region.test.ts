@@ -3,12 +3,12 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { createRawSnippet } from 'svelte';
 
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import {
   createModalSlot,
   isRelevant,
   type GuidanceClaim,
 } from '../../_internal/guidance-context.ts';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
@@ -77,7 +77,7 @@ describe('GuidanceRegion', () => {
   test('settles an active modal claim when dismissed or reset', () => {
     const source = readFileSync(new URL('./guidance-region.svelte', import.meta.url), 'utf8');
     expect(source).toContain('modalApi?.dismiss(modalEntryId(id))');
-    expect(source).toContain('modalApi.dismiss(modalEntryId(claim.id))');
+    expect(source).toContain('modalApi.dismiss(modalEntryId(initialClaim.id))');
     expect(source).toContain('storage?.set(key, false)');
     expect(source).toContain('modalApi?.dismiss(modalEntryId(claim.id))');
     expect(source).toContain('anchor.isConnected');
@@ -104,7 +104,7 @@ describe('GuidanceRegion', () => {
         api = value;
       },
     });
-    const anchor = container.querySelector('button') as HTMLButtonElement;
+    const anchor = requiredInstance(container.querySelector('button'), HTMLButtonElement);
 
     await fireEvent.click(anchor);
     expect(api?.claims()).toHaveLength(1);

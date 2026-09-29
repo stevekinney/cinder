@@ -1,0 +1,47 @@
+/*
+ * Console entry stylesheet.
+ *
+ * Import order matters: Cinder's base stylesheet declares the `@layer`
+ * order (tokens → foundation → components → utilities) and must load
+ * first, before any app-owned CSS. Cinder component entrypoints load their
+ * own styles; this file keeps only the base stylesheet plus the app's
+ * shared and domain-level rules. Per `@import` rules having to precede
+ * every other CSS rule, all imports stay grouped at the top of this file.
+ */
+@import './foundation.css';
+@import './dashboard.css';
+@import './workflows.css';
+@import './workers.css';
+@import './reviews.css';
+@import './storage.css';
+
+/* Theme contract: `color-scheme: light dark` lets the browser/OS pick a
+ * default; an explicit `data-theme="light" | "dark"` attribute on <html>
+ * (set by the shell's theme toggle) overrides it via Cinder's
+ * `light-dark()`-based tokens. See design/README.md "Theming". */
+:root {
+  color-scheme: light dark;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--cinder-bg);
+  color: var(--cinder-text);
+}
+
+#app {
+  height: 100%;
+}

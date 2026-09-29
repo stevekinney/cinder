@@ -18,18 +18,18 @@ import DropdownSeparator from '../dropdown-separator/dropdown-separator.svelte';
 import DropdownTrigger from '../dropdown-trigger/dropdown-trigger.svelte';
 import { Dropdown } from './index.ts';
 
-const _trigger: typeof DropdownTrigger = Dropdown.Trigger;
-const _menu: typeof DropdownMenu = Dropdown.Menu;
-const _item: typeof DropdownItem = Dropdown.Item;
-const _label: typeof DropdownLabel = Dropdown.Label;
-const _separator: typeof DropdownSeparator = Dropdown.Separator;
-const _group: typeof DropdownGroup = Dropdown.Group;
+const trigger: typeof DropdownTrigger = Dropdown.Trigger;
+const menu: typeof DropdownMenu = Dropdown.Menu;
+const item: typeof DropdownItem = Dropdown.Item;
+const label: typeof DropdownLabel = Dropdown.Label;
+const separator: typeof DropdownSeparator = Dropdown.Separator;
+const group: typeof DropdownGroup = Dropdown.Group;
 
 Dropdown satisfies Component<never>;
 
-void _trigger;
-void _menu;
-void _item;
-void _label;
-void _separator;
-void _group;
+void trigger;
+void menu;
+void item;
+void label;
+void separator;
+void group;

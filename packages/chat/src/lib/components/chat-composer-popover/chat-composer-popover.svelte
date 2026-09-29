@@ -37,10 +37,11 @@
 </script>
 
 <script lang="ts" generics="TItem extends ChatComposerPopoverItem">
-  import CommandMenu, {
+  import {
+    CommandMenu,
     detectTrigger as detectCommandTrigger,
-  } from '@lostgradient/cinder/command-menu';
-  import CommandItem from '@lostgradient/cinder/command-item';
+    CommandItem,
+  } from '@lostgradient/cinder';
   import { onDestroy, tick } from 'svelte';
   import { filterFuzzySubsequence } from './chat-composer-popover-filter.ts';
   import type {
@@ -91,12 +92,15 @@
   const filteredItems = $derived.by(() => {
     if (!activeMatch) return [] as Array<{ item: TItem; selectionValue: string }>;
     const staticItems = filter(itemDefinitions, activeMatch.query, activeMatch.trigger).map(
-      (item, index) => ({ item, selectionValue: JSON.stringify(['static', index, item.value]) }),
+      (definition, index) => ({
+        item: definition,
+        selectionValue: JSON.stringify(['static', index, definition.value]),
+      }),
     );
     const sourcedItems = sourceGroups.flatMap((group) =>
-      group.items.map((item, index) => ({
-        item,
-        selectionValue: JSON.stringify([group.id, index, item.value]),
+      group.items.map((candidate, index) => ({
+        item: candidate,
+        selectionValue: JSON.stringify([group.id, index, candidate.value]),
       })),
     );
     return [...staticItems, ...sourcedItems];
@@ -132,29 +136,27 @@
           });
         } catch {
           resolvedGroups.delete(source.id);
-        } finally {
+        }
+        if (requestId !== sourceRequestId) return;
+        const preservedSelectionValue = activeSelectionValue;
+        sourceGroups = sources.flatMap((candidate) => {
+          const group = resolvedGroups.get(candidate.id);
+          return group ? [group] : [];
+        });
+        pendingSourceCount -= 1;
+        loadingSources = pendingSourceCount > 0;
+        sourceGeneration += 1;
+        if (preservedSelectionValue) {
+          await tick();
           if (requestId !== sourceRequestId) return;
-          const preservedSelectionValue = activeSelectionValue;
-          sourceGroups = sources.flatMap((candidate) => {
-            const group = resolvedGroups.get(candidate.id);
-            return group ? [group] : [];
-          });
-          pendingSourceCount -= 1;
-          loadingSources = pendingSourceCount > 0;
-          sourceGeneration += 1;
-          if (preservedSelectionValue) {
-            await tick();
-            if (requestId !== sourceRequestId) return;
-            const optionIndex = filteredItems.findIndex(
-              (candidate) => candidate.selectionValue === preservedSelectionValue,
-            );
-            const option = Array.from(
-              document
-                .getElementById(listboxId)
-                ?.querySelectorAll<HTMLElement>('[role="option"]') ?? [],
-            )[optionIndex];
-            option?.dispatchEvent(new Event('pointerenter'));
-          }
+          const optionIndex = filteredItems.findIndex(
+            (candidate) => candidate.selectionValue === preservedSelectionValue,
+          );
+          const option = Array.from(
+            document.getElementById(listboxId)?.querySelectorAll<HTMLElement>('[role="option"]') ??
+              [],
+          )[optionIndex];
+          option?.dispatchEvent(new Event('pointerenter'));
         }
       })();
     }
@@ -166,7 +168,7 @@
     composerAriaControls: open ? listboxId : undefined,
     composerAriaActiveDescendant: open ? (activeItemId ?? undefined) : undefined,
     composerAriaAutocomplete: 'list',
-    oncomposerinput: handleComposerInput,
+    onComposerInput: handleComposerInput,
     oncomposerkeydown: handleComposerKeydown,
     oncomposerselectionchange: handleComposerSelectionChange,
     oncomposerblur: handleComposerBlur,

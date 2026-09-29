@@ -1,8 +1,9 @@
 /// <reference lib="dom" />
 import * as matchers from '@testing-library/jest-dom/matchers';
 import { afterEach, beforeEach, describe, expect, spyOn, test } from 'bun:test';
+import { flushSync } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 expect.extend(matchers as Parameters<typeof expect.extend>[0]);
 setupHappyDom();
@@ -16,7 +17,7 @@ const {
 const { default: MultiSelect } = await import('./multi-select.svelte');
 const { default: FormFieldMultiSelectFixture } =
   await import('../../test/fixtures/form-field-multi-select-fixture.svelte');
-const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
+const { pushEscapeHandler, resetEscapeStack } = await import('../../_internal/overlay.ts');
 
 // The panel now portals to `document.body` (see multi-select.svelte) so an
 // ancestor with `overflow: hidden` cannot clip it. Render into the shared
@@ -40,7 +41,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
-  _resetEscapeStack();
+  resetEscapeStack();
 });
 
 async function openMenu(container: HTMLElement): Promise<void> {
@@ -68,7 +69,7 @@ describe('MultiSelect', () => {
   test('owns checkbox box styles so a standalone import stays visible', async () => {
     const css = await Bun.file(new URL('./multi-select.css', import.meta.url)).text();
 
-    // A consumer importing only `@lostgradient/cinder/multi-select` never loads
+    // A consumer importing only `@lostgradient/cinder` never loads
     // checkbox.css, so the box shape and checked/disabled backgrounds must live
     // on MultiSelect's own `__checkbox-box` class here too -- not just the
     // floating checkmark indicator, and not by redefining Checkbox's own
@@ -329,7 +330,7 @@ describe('MultiSelect', () => {
     });
   });
 
-  test('empty list row is exposed as a disabled option', async () => {
+  test('empty filtered list exposes zero option elements and one status description outside the listbox (COR-499)', async () => {
     const { container } = render(MultiSelect, {
       id: 'fruits',
       items,
@@ -341,10 +342,63 @@ describe('MultiSelect', () => {
     if (!filter) throw new Error('filter input not found');
     await fireEvent.input(filter, { target: { value: 'zzz' } });
 
+    // Semantic assertion, not a fake-disabled-option check: no option
+    // elements exist at all while the filtered set is empty.
+    expect(container.querySelectorAll('[role="option"]')).toHaveLength(0);
+
+    const listbox = container.querySelector<HTMLElement>('[role="listbox"]');
     const empty = container.querySelector('.cinder-multi-select__empty');
-    expect(empty?.getAttribute('role')).toBe('option');
-    expect(empty?.getAttribute('aria-disabled')).toBe('true');
-    expect(empty?.getAttribute('aria-selected')).toBe('false');
+    expect(empty?.getAttribute('role')).toBe('status');
+    expect(listbox?.getAttribute('aria-describedby')).toBe(empty?.id);
+    expect(empty?.closest('[role="listbox"]')).toBeNull();
+    expect(filter.hasAttribute('aria-activedescendant')).toBe(false);
+  });
+
+  test('Arrow and Enter cannot select or emit while the filtered list is empty (COR-499)', async () => {
+    let changeCount = 0;
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      items,
+      filterable: true,
+      onValueChange: () => {
+        changeCount += 1;
+      },
+    });
+
+    await openMenu(container);
+    const filter = container.querySelector<HTMLInputElement>('.cinder-multi-select__filter');
+    if (!filter) throw new Error('filter input not found');
+    await fireEvent.input(filter, { target: { value: 'zzz' } });
+
+    await fireEvent.keyDown(filter, { key: 'ArrowDown' });
+    await fireEvent.keyDown(filter, { key: 'ArrowUp' });
+    await fireEvent.keyDown(filter, { key: 'Enter' });
+
+    expect(changeCount).toBe(0);
+    expect(filter.hasAttribute('aria-activedescendant')).toBe(false);
+  });
+
+  test('clearing the filter restores options with no stale empty description (COR-499)', async () => {
+    const { container } = render(MultiSelect, {
+      id: 'fruits',
+      items,
+      filterable: true,
+    });
+
+    await openMenu(container);
+    const filter = container.querySelector<HTMLInputElement>('.cinder-multi-select__filter');
+    if (!filter) throw new Error('filter input not found');
+    await fireEvent.input(filter, { target: { value: 'zzz' } });
+    expect(container.querySelectorAll('[role="option"]')).toHaveLength(0);
+
+    await fireEvent.input(filter, { target: { value: '' } });
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('[role="option"]').length).toBe(items.length);
+    });
+    const listbox = container.querySelector<HTMLElement>('[role="listbox"]');
+    expect(listbox?.hasAttribute('aria-describedby')).toBe(false);
+    expect(container.querySelector('.cinder-multi-select__empty')).toBeNull();
   });
 
   test('filter input has an accessible name and space does not toggle selection', async () => {
@@ -487,7 +541,8 @@ describe('MultiSelect', () => {
 
     await fireEvent.keyDown(listbox, { key: 'Escape' });
 
-    await waitFor(() => expect(container.querySelector('[role="listbox"]')).toBeNull());
+    flushSync();
+    expect(container.querySelector('[role="listbox"]')?.outerHTML ?? null).toBeNull();
     expect(document.activeElement).toBe(trigger);
   });
 
@@ -513,7 +568,8 @@ describe('MultiSelect', () => {
 
       expect(escapeEvent.defaultPrevented).toBe(true);
       expect(parentEscapeCount).toBe(0);
-      await waitFor(() => expect(container.querySelector('[role="listbox"]')).toBeNull());
+      flushSync();
+      expect(container.querySelector('[role="listbox"]')?.outerHTML ?? null).toBeNull();
 
       // Released when close begins: the parent handler (now top-most) sees
       // the very next Escape.
@@ -537,7 +593,8 @@ describe('MultiSelect', () => {
       window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 
       expect(parentEscapeCount).toBe(0);
-      await waitFor(() => expect(container.querySelector('[role="listbox"]')).toBeNull());
+      flushSync();
+      expect(container.querySelector('[role="listbox"]')?.outerHTML ?? null).toBeNull();
     } finally {
       releaseParent();
     }
@@ -555,7 +612,8 @@ describe('MultiSelect', () => {
 
     window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 
-    await waitFor(() => expect(container.querySelector('[role="listbox"]')).toBeNull());
+    flushSync();
+    expect(container.querySelector('[role="listbox"]')?.outerHTML ?? null).toBeNull();
     outside.remove();
   });
 
@@ -710,15 +768,17 @@ describe('MultiSelect', () => {
       filterable: true,
     });
     await openMenu(container);
+    flushSync();
+    expect(document.activeElement).toBe(container.querySelector('.cinder-multi-select__filter'));
 
     const outside = document.createElement('button');
     outside.type = 'button';
     document.body.append(outside);
     outside.focus();
+    await fireEvent.focusIn(outside);
 
-    await waitFor(() => {
-      expect(container.querySelector('#fruits-popover')).toBeNull();
-    });
+    flushSync();
+    expect(container.querySelector('#fruits-popover')?.outerHTML ?? null).toBeNull();
 
     const trigger = container.querySelector<HTMLButtonElement>('#fruits');
     expect(trigger?.getAttribute('aria-expanded')).toBe('false');
@@ -848,7 +908,7 @@ describe('MultiSelect', () => {
     if (!filter) throw new Error('filter input not found');
     await fireEvent.input(filter, { target: { value: 'zzz' } });
 
-    const status = container.querySelector('.cinder-multi-select__sr-status');
+    const status = container.querySelector('.cinder-multi-select__empty');
     expect(status?.getAttribute('role')).toBe('status');
     expect(status?.textContent).toContain('No matching options');
   });

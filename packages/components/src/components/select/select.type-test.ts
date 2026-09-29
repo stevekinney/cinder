@@ -18,20 +18,20 @@ const countryOptions = [
 ] satisfies SelectOption<'us' | 'ca' | 'gb'>[];
 
 // Valid: value is a member of the typed union.
-const _validValue: SelectProps<'us' | 'ca' | 'gb'> = {
+const validValue: SelectProps<'us' | 'ca' | 'gb'> = {
   id: 'country',
   options: countryOptions,
   value: 'us',
 };
 
 // Valid: value omitted — undefined is the unselected sentinel.
-const _undefinedValue: SelectProps<'us' | 'ca' | 'gb'> = {
+const undefinedValue: SelectProps<'us' | 'ca' | 'gb'> = {
   id: 'country',
   options: countryOptions,
 };
 
 // @ts-expect-error — 'invalid' is not assignable to NoInfer<'us' | 'ca' | 'gb'>
-const _invalidValue: SelectProps<'us' | 'ca' | 'gb'> = {
+const invalidValue: SelectProps<'us' | 'ca' | 'gb'> = {
   id: 'country',
   options: countryOptions,
   value: 'invalid',
@@ -44,7 +44,7 @@ const plainOptions: SelectOption[] = [
   { value: 'b', label: 'B' },
 ];
 
-const _plainUsage: SelectProps = {
+const plainUsage: SelectProps = {
   id: 'plain',
   options: plainOptions,
   value: 'a',
@@ -52,10 +52,10 @@ const _plainUsage: SelectProps = {
 
 // --- SelectOption is also generic ---
 
-const _typedOption: SelectOption<'x' | 'y'> = { value: 'x', label: 'X' };
+const typedOption: SelectOption<'x' | 'y'> = { value: 'x', label: 'X' };
 
 // @ts-expect-error — 'z' is not assignable to 'x' | 'y'
-const _invalidOption: SelectOption<'x' | 'y'> = { value: 'z', label: 'Z' };
+const invalidOption: SelectOption<'x' | 'y'> = { value: 'z', label: 'Z' };
 
 // --- INFERENCE-WIDENING GUARD (the case NoInfer<T> actually protects) ---
 //
@@ -96,9 +96,9 @@ mountSelect({
   value: 'invalid',
 });
 
-void _validValue;
-void _undefinedValue;
-void _invalidValue;
-void _plainUsage;
-void _typedOption;
-void _invalidOption;
+void validValue;
+void undefinedValue;
+void invalidValue;
+void plainUsage;
+void typedOption;
+void invalidOption;

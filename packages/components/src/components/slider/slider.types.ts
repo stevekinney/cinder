@@ -25,6 +25,20 @@ type SliderBaseProps = {
   name?: string;
   /** Extra class names merged with `.cinder-slider`. */
   class?: string;
+  /**
+   * Whether the header row renders the visible label span. Default `true`.
+   * Hides only the label — the visible value text always stays, with no
+   * layout gap left behind — and never affects the thumbs' accessible
+   * names, which come from `label` regardless.
+   *
+   * This composes with, rather than replaces, the automatic label
+   * suppression a Slider already performs inside `<FormField>` (the field
+   * owns the label there via `aria-labelledby`, so Slider's own label span
+   * is omitted independent of this prop). Setting `headerVisible={false}`
+   * inside a FormField is a no-op for the label — it's already hidden —
+   * but still governs the value span the same way it does standalone.
+   */
+  headerVisible?: boolean;
 };
 /**
  * Props for the single-thumb slider. `value` is a scalar and `onValueChange`
@@ -35,6 +49,12 @@ export type SliderSingleProps = SliderBaseProps & {
   mode?: 'single';
   value?: number;
   onValueChange?: (value: number) => void;
+  /**
+   * Formats the visible value text shown in the header. Replaces only the
+   * value display — the `valueText` ARIA formatter is untouched. Absent a
+   * formatter, the value renders with the current unit-based formatting.
+   */
+  displayValue?: (value: number) => string;
 };
 /**
  * Props for the two-thumb range slider. `value` is a `[low, high]` tuple and
@@ -45,6 +65,14 @@ export type SliderRangeProps = SliderBaseProps & {
   mode: 'range';
   value?: [number, number];
   onValueChange?: (value: [number, number]) => void;
+  /**
+   * Formats the visible value text shown in the header from the full
+   * `[low, high]` tuple (for example, `'0–22'` or `'7 notes · C4–B4'`).
+   * Replaces only the value display — the per-thumb `valueText` ARIA
+   * formatter is untouched. Absent a formatter, the value renders with the
+   * current unit-based formatting joined by an en dash.
+   */
+  displayValue?: (value: [number, number]) => string;
 };
 /**
  * Props for the Slider component.

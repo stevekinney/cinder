@@ -1,9 +1,12 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
-import { tick } from 'svelte';
+import { flushSync, tick } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
-import { renderToServerHtml } from '../../test/server-render.ts';
+import {
+  prepareSvelteServerSource,
+  renderSvelteOnServer,
+  setupHappyDom,
+} from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -12,6 +15,7 @@ const TREE_RENAME_FIXTURE_SOURCE = new URL(
   '../../test/fixtures/tree-rename-fixture.svelte',
   import.meta.url,
 ).pathname;
+await prepareSvelteServerSource(TREE_RENAME_FIXTURE_SOURCE);
 const { default: TreeRenameFixture } =
   await import('../../test/fixtures/tree-rename-fixture.svelte');
 
@@ -47,9 +51,8 @@ async function beginRenameWithF2(container: HTMLElement): Promise<HTMLInputEleme
   const item = itemById(container, 'alpha');
   item.focus();
   await fireEvent.keyDown(item, { key: 'F2' });
-  await waitFor(() => {
-    expect(document.activeElement).toBe(renameInput(container));
-  });
+  flushSync();
+  expect(document.activeElement).toBe(renameInput(container));
   return renameInput(container);
 }
 
@@ -81,9 +84,8 @@ describe('Tree — inline label rename', () => {
     expect(label).not.toBeNull();
     await fireEvent.dblClick(label!);
 
-    await waitFor(() => {
-      expect(document.activeElement).toBe(renameInput(container));
-    });
+    flushSync();
+    expect(document.activeElement).toBe(renameInput(container));
   });
 
   test('Enter commits, calls onRename, remounts with the new label, and restores focus', async () => {
@@ -100,14 +102,13 @@ describe('Tree — inline label rename', () => {
     await fireEvent.input(input, { target: { value: 'Renamed' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
 
-    await waitFor(() => {
-      expect(calls).toEqual([['alpha', 'Renamed']]);
-      expect(treeItem(container, 'Renamed')).toBe(itemById(container, 'alpha'));
-      const renamedItem = itemById(container, 'alpha');
-      expect(document.activeElement).toBe(renamedItem);
-      expect(renamedItem.isConnected).toBe(true);
-      expect(renamedItem.getAttribute('tabindex')).toBe('0');
-    });
+    flushSync();
+    expect(calls).toEqual([['alpha', 'Renamed']]);
+    expect(treeItem(container, 'Renamed')).toBe(itemById(container, 'alpha'));
+    const renamedItem = itemById(container, 'alpha');
+    expect(document.activeElement).toBe(renamedItem);
+    expect(renamedItem.isConnected).toBe(true);
+    expect(renamedItem.getAttribute('tabindex')).toBe('0');
     expect(treeItem(container, 'Renamed')).toBe(itemById(container, 'alpha'));
     const ids = [...container.querySelectorAll<HTMLElement>('[id]')].map((element) => element.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -125,11 +126,10 @@ describe('Tree — inline label rename', () => {
     await fireEvent.input(input, { target: { value: 'Second Renamed' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
 
-    await waitFor(() => {
-      const renamedItem = itemById(secondTree, 'alpha');
-      expect(treeItem(secondTree, 'Second Renamed')).toBe(renamedItem);
-      expect(document.activeElement).toBe(renamedItem);
-    });
+    flushSync();
+    const renamedItem = itemById(secondTree, 'alpha');
+    expect(treeItem(secondTree, 'Second Renamed')).toBe(renamedItem);
+    expect(document.activeElement).toBe(renamedItem);
     expect(document.activeElement).not.toBe(itemById(firstTree, 'alpha'));
   });
 
@@ -147,11 +147,10 @@ describe('Tree — inline label rename', () => {
     await fireEvent.input(input, { target: { value: 'Discarded' } });
     await fireEvent.keyDown(input, { key: 'Escape' });
 
-    await waitFor(() => {
-      expect(calls).toEqual([]);
-      expect(treeItem(container, 'Alpha')).toBe(itemById(container, 'alpha'));
-      expect(document.activeElement).toBe(itemById(container, 'alpha'));
-    });
+    flushSync();
+    expect(calls).toEqual([]);
+    expect(treeItem(container, 'Alpha')).toBe(itemById(container, 'alpha'));
+    expect(document.activeElement).toBe(itemById(container, 'alpha'));
   });
 
   test('blur commits the edit', async () => {
@@ -168,10 +167,9 @@ describe('Tree — inline label rename', () => {
     await fireEvent.input(input, { target: { value: 'Blurred' } });
     await fireEvent.blur(input);
 
-    await waitFor(() => {
-      expect(calls).toEqual([['alpha', 'Blurred']]);
-      expect(treeItem(container, 'Blurred')).toBe(itemById(container, 'alpha'));
-    });
+    flushSync();
+    expect(calls).toEqual([['alpha', 'Blurred']]);
+    expect(treeItem(container, 'Blurred')).toBe(itemById(container, 'alpha'));
   });
 
   test('empty labels are invalid on the input and keep edit mode active', async () => {
@@ -188,12 +186,11 @@ describe('Tree — inline label rename', () => {
     await fireEvent.input(input, { target: { value: '   ' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
 
-    await waitFor(() => {
-      expect(calls).toEqual([]);
-      expect(renameInput(container).getAttribute('aria-invalid')).toBe('true');
-      expect(renameInput(container).getAttribute('aria-describedby')).toBeTruthy();
-      expect(document.activeElement).toBe(renameInput(container));
-    });
+    flushSync();
+    expect(calls).toEqual([]);
+    expect(renameInput(container).getAttribute('aria-invalid')).toBe('true');
+    expect(renameInput(container).getAttribute('aria-describedby')).toBeTruthy();
+    expect(document.activeElement).toBe(renameInput(container));
     const describedBy = renameInput(container).getAttribute('aria-describedby');
     expect(container.querySelector(`#${describedBy}`)?.textContent).toBe('Label is required.');
 
@@ -217,15 +214,14 @@ describe('Tree — inline label rename', () => {
     await fireEvent.input(input, { target: { value: 'Duplicate' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
 
-    await waitFor(() => {
-      expect(calls).toEqual([['alpha', 'Duplicate']]);
-      expect(renameInput(container).value).toBe('Duplicate');
-      expect(renameInput(container).getAttribute('aria-invalid')).toBe('true');
-      expect(renameInput(container).getAttribute('aria-describedby')).toBeTruthy();
-      expect(document.activeElement).toBe(renameInput(container));
-      expect(itemById(container, 'alpha').getAttribute('aria-label')).toBe('Editing: Alpha');
-      expect(itemById(container, 'alpha').hasAttribute('data-cinder-editing')).toBe(true);
-    });
+    flushSync();
+    expect(calls).toEqual([['alpha', 'Duplicate']]);
+    expect(renameInput(container).value).toBe('Duplicate');
+    expect(renameInput(container).getAttribute('aria-invalid')).toBe('true');
+    expect(renameInput(container).getAttribute('aria-describedby')).toBeTruthy();
+    expect(document.activeElement).toBe(renameInput(container));
+    expect(itemById(container, 'alpha').getAttribute('aria-label')).toBe('Editing: Alpha');
+    expect(itemById(container, 'alpha').hasAttribute('data-cinder-editing')).toBe(true);
 
     const describedBy = renameInput(container).getAttribute('aria-describedby');
     expect(container.querySelector(`#${describedBy}`)?.textContent).toBe(
@@ -251,9 +247,8 @@ describe('Tree — inline label rename', () => {
 
     const item = itemById(container, 'alpha');
     await fireEvent.keyDown(item, { key: 'Enter' });
-    await waitFor(() => {
-      expect(document.activeElement).toBe(renameInput(container));
-    });
+    flushSync();
+    expect(document.activeElement).toBe(renameInput(container));
 
     cleanup();
 
@@ -284,10 +279,9 @@ describe('Tree — inline label rename', () => {
     await fireEvent.input(input, { target: { value: 'Tabbed' } });
     await fireEvent.keyDown(input, { key: 'Tab' });
 
-    await waitFor(() => {
-      expect(treeItem(container, 'Tabbed')).toBe(itemById(container, 'alpha'));
-      expect(document.activeElement).toBe(treeItem(container, 'Beta'));
-    });
+    flushSync();
+    expect(treeItem(container, 'Tabbed')).toBe(itemById(container, 'alpha'));
+    expect(document.activeElement).toBe(treeItem(container, 'Beta'));
   });
 
   test('Tab commits and releases native focus traversal at tree edges', async () => {
@@ -304,7 +298,7 @@ describe('Tree — inline label rename', () => {
 
     expect(defaultAllowed).toBe(true);
     await waitFor(() => {
-      expect(treeItem(container, 'Edge')).toBe(itemById(container, 'alpha'));
+      expect(treeItem(container, 'Edge') === itemById(container, 'alpha')).toBe(true);
     });
   });
 
@@ -315,15 +309,14 @@ describe('Tree — inline label rename', () => {
     await fireEvent.input(input, { target: { value: 'Branch Renamed' } });
     await fireEvent.keyDown(input, { key: 'Enter' });
 
-    await waitFor(() => {
-      const branchItem = treeItem(container, 'Branch Renamed');
-      expect(branchItem).toBe(itemById(container, 'alpha'));
-      expect(branchItem.getAttribute('aria-expanded')).toBe('true');
-    });
+    flushSync();
+    const branchItem = treeItem(container, 'Branch Renamed');
+    expect(branchItem).toBe(itemById(container, 'alpha'));
+    expect(branchItem.getAttribute('aria-expanded')).toBe('true');
   });
 
   test('SSR never emits a mid-rename input', async () => {
-    const html = await renderToServerHtml(TREE_RENAME_FIXTURE_SOURCE);
+    const html = await renderSvelteOnServer(TREE_RENAME_FIXTURE_SOURCE);
 
     expect(html).not.toContain('cinder-tree-item__rename-input');
   });

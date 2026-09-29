@@ -64,12 +64,9 @@ function chainIncludesScript(script: string, name: string): boolean {
 }
 
 describe('pipeline contract: commit stays cheap', () => {
-  it('hook wrappers execute the script from the current worktree', async () => {
+  it('does not mirror private repository hook wrappers into the public target', async () => {
     for (const hookName of ['post-checkout', 'post-merge', 'pre-commit', 'pre-push']) {
-      const source = await Bun.file(join(hookDirectory, hookName)).text();
-      expect(source).toContain('git rev-parse --show-toplevel');
-      expect(source).toContain('$WORKTREE_ROOT/packages/components/scripts/husky/');
-      expect(source).not.toContain('SCRIPT_DIR');
+      expect(await Bun.file(join(hookDirectory, hookName)).exists()).toBe(false);
     }
   });
 
@@ -89,22 +86,7 @@ describe('pipeline contract: commit stays cheap', () => {
 
   it('lint-staged runs formatters only', async () => {
     const manifest = await readPackageJson(join(REPO_ROOT, 'package.json'));
-    const lintStaged = manifest['lint-staged'];
-    expect(lintStaged).toBeDefined();
-    expect(typeof lintStaged).toBe('object');
-
-    const commands = Object.values(lintStaged as Record<string, unknown>).flatMap((entry) => {
-      if (typeof entry === 'string') return [entry];
-      return Array.isArray(entry)
-        ? entry.filter((command): command is string => typeof command === 'string')
-        : [];
-    });
-
-    expect(commands.some((command) => command.startsWith('prettier '))).toBe(true);
-    expect(commands).toContain('sort-package-json');
-    for (const command of commands) {
-      expect(command).not.toMatch(/\b(?:oxlint|stylelint|typecheck|test(?::[\w-]+)?|turbo)\b/);
-    }
+    expect(manifest['lint-staged']).toBeUndefined();
   });
 
   it('the commit-workflow simulation accepts both lint-staged command shapes', async () => {

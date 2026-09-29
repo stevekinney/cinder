@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -17,10 +17,10 @@ const { tick } = await import('svelte');
 const { default: ColorPicker } = await import('./color-picker.svelte');
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function q<T extends Element = HTMLElement>(root: ParentNode, selector: string): T {
-  const element = root.querySelector(selector);
+function q<T extends Element>(root: ParentNode, selector: string, _expectedType?: T): T {
+  const element = root.querySelector<T>(selector);
   if (!element) throw new Error(`Selector not found: ${selector}`);
-  return element as T;
+  return element;
 }
 
 describe('ColorPicker structure', () => {
@@ -29,7 +29,7 @@ describe('ColorPicker structure', () => {
       new URL('./color-picker-controls.svelte', import.meta.url),
     ).text();
 
-    expect(source).toContain("from '@lostgradient/cinder/copy-button'");
+    expect(source).toContain("from '../copy-button/index.ts';");
     expect(source).not.toContain("from '../copy-button/copy-button.svelte'");
   });
 
@@ -802,18 +802,17 @@ describe('ColorPicker pointer interaction', () => {
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     (hue as unknown as { releasePointerCapture: (id: number) => void }).releasePointerCapture =
       () => {};
-    hue.getBoundingClientRect = () =>
-      ({
-        left: 0,
-        top: 0,
-        width: 100,
-        height: 12,
-        right: 100,
-        bottom: 12,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }) as DOMRect;
+    hue.getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      width: 100,
+      height: 12,
+      right: 100,
+      bottom: 12,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
     await fireEvent.pointerDown(hue, { clientX: 50, clientY: 6, pointerId: 1 });
     expect(inputs.length).toBe(1);
     expect(changes.length).toBe(0);
@@ -838,18 +837,17 @@ describe('ColorPicker pointer interaction', () => {
     // eslint-disable-next-line @typescript-eslint/no-empty-function
     (hue as unknown as { releasePointerCapture: (id: number) => void }).releasePointerCapture =
       () => {};
-    hue.getBoundingClientRect = () =>
-      ({
-        left: 0,
-        top: 0,
-        width: 100,
-        height: 12,
-        right: 100,
-        bottom: 12,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }) as DOMRect;
+    hue.getBoundingClientRect = () => ({
+      left: 0,
+      top: 0,
+      width: 100,
+      height: 12,
+      right: 100,
+      bottom: 12,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
 
     await fireEvent.pointerDown(hue, { clientX: 50, clientY: 6, pointerId: 1 });
     await fireEvent.pointerCancel(hue, { clientX: 50, clientY: 6, pointerId: 1 });
@@ -1258,7 +1256,10 @@ describe('ColorPicker "Copy HEX format" stays genuinely hex (P1 regression)', ()
     expect(hexButton.textContent).toContain('#3366cc');
     expect(hexButton.textContent).not.toContain('oklch');
 
-    const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    const hidden = requiredInstance(
+      container.querySelector('input[type="hidden"]'),
+      HTMLInputElement,
+    );
     expect(hidden.value).toMatch(/^oklch\(/);
   });
 
@@ -1387,7 +1388,10 @@ describe('ColorPicker fractional alpha in the 0.9995–1 band (P1 regression)', 
     });
 
     // The emitted (configured-format) value treats 0.9996 as translucent.
-    const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    const hidden = requiredInstance(
+      container.querySelector('input[type="hidden"]'),
+      HTMLInputElement,
+    );
     expect(hidden.value).toBe('rgb(255 0 0 / 0.9996)');
 
     const rgbButton = q<HTMLButtonElement>(container, '[aria-label="Copy RGB format"]');
@@ -1408,7 +1412,10 @@ describe('ColorPicker fractional alpha in the 0.9995–1 band (P1 regression)', 
       format: 'rgb',
     });
 
-    const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    const hidden = requiredInstance(
+      container.querySelector('input[type="hidden"]'),
+      HTMLInputElement,
+    );
     expect(hidden.value).toBe('rgb(255 0 0)');
 
     const rgbButton = q<HTMLButtonElement>(container, '[aria-label="Copy RGB format"]');
@@ -1479,7 +1486,10 @@ describe('ColorPicker format="hex" alpha quantization agrees everywhere (P1 regr
     });
 
     // The emitted (hex) value is byte-opaque: no alpha suffix at all.
-    const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    const hidden = requiredInstance(
+      container.querySelector('input[type="hidden"]'),
+      HTMLInputElement,
+    );
     expect(hidden.value).toBe('#ff0000');
 
     // Every other surface must agree it's opaque too.
@@ -1501,7 +1511,10 @@ describe('ColorPicker format="hex" alpha quantization agrees everywhere (P1 regr
       format: 'rgb',
     });
 
-    const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    const hidden = requiredInstance(
+      container.querySelector('input[type="hidden"]'),
+      HTMLInputElement,
+    );
     expect(hidden.value).toBe('rgb(255 0 0 / 0.9996)');
 
     const preview = q(container, '.cinder-color-picker__preview');
@@ -1516,7 +1529,10 @@ describe('ColorPicker format="hex" alpha quantization agrees everywhere (P1 regr
       format: 'hex',
     });
 
-    const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    const hidden = requiredInstance(
+      container.querySelector('input[type="hidden"]'),
+      HTMLInputElement,
+    );
     expect(hidden.value).toMatch(/^#ff0000[0-9a-f]{2}$/);
 
     const preview = q(container, '.cinder-color-picker__preview');
@@ -1551,7 +1567,10 @@ describe('ColorPicker swatch commit preserves decimal alpha precision (P1 regres
 
     expect(committed).toBe('rgb(255 0 0 / 0.5)');
 
-    const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    const hidden = requiredInstance(
+      container.querySelector('input[type="hidden"]'),
+      HTMLInputElement,
+    );
     expect(hidden.value).toBe('rgb(255 0 0 / 0.5)');
   });
 

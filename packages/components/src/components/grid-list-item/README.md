@@ -4,11 +4,7 @@ Keyboard-navigable cell within a grid-list layout for selectable item grids.
 
 ## Usage
 
-`GridListItem` is a compose-only leaf of [`GridList`](../grid-list/README.md).
-The idiomatic API is `GridList.Item`, reached through the parent
-namespace — see the [grid-list README](../grid-list/README.md#usage) for the composed
-snippet. The flat `@lostgradient/cinder/grid-list-item` subpath remains exported for
-à-la-carte builds that import the leaf directly.
+`GridListItem` is a compose-only leaf of [`GridList`](../grid-list/README.md). The idiomatic API is `GridList.Item`, reached through the parent namespace — see the [grid-list README](../grid-list/README.md#usage) for the composed snippet. The leaf is also a named export of `@lostgradient/cinder`.
 
 ## Props
 
@@ -33,7 +29,6 @@ snippet. The flat `@lostgradient/cinder/grid-list-item` subpath remains exported
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

@@ -3,7 +3,7 @@
  * part of the public package surface: these helpers live outside
  * `package.json#exports`, alongside other test-only infrastructure like
  * `src/test/happy-dom.ts` and `src/test/css.ts`, and are reached from
- * `packages/playground` test files via the `packages/components/src/test/*`
+ * `packages/playground` test files via the `components/cinder/src/test/*`
  * relative-import allowance that `check-consumer-boundaries.ts` carves out.
  *
  * Parsing is done with PostCSS (a real CSS tokenizer) rather than a
@@ -31,7 +31,7 @@ export function extractRootBlock(css: string): string {
   let rootRule: Rule | undefined;
 
   root.walkRules(':root', (rule) => {
-    if (rule.parent?.type !== 'root') return;
+    if (rule.parent?.type !== 'root') return undefined;
     rootRule ??= rule;
     return false;
   });
@@ -59,7 +59,7 @@ export function readRootTokenNames(css: string): Set<string> {
 /**
  * Returns authored `--cinder-*` AND `--_cinder-*` values from the top-level
  * `:root` block. Both prefixes are in scope — `--_cinder-*` is
- * docs/tokens.md's own stated internal-token namespace (its intro:
+ * documentation/tokens.md's own stated internal-token namespace (its intro:
  * "Internal-only custom properties use `--_cinder-*`"), so a completeness
  * check built on this helper (`completeness.test.ts`) must see internal
  * declarations too, not just the public `--cinder-*` surface.
@@ -70,7 +70,7 @@ export function readRootTokenValues(css: string): Map<string, string> {
   let found = false;
 
   root.walkRules(':root', (rule) => {
-    if (found || rule.parent?.type !== 'root') return;
+    if (found || rule.parent?.type !== 'root') return undefined;
     found = true;
 
     for (const node of rule.nodes) {

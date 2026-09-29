@@ -6,7 +6,7 @@ Render continuously looping horizontal or vertical ticker content with pause and
 
 ```svelte
 <script lang="ts">
-  import { Marquee } from '@lostgradient/cinder/marquee';
+  import { Marquee } from '@lostgradient/cinder';
 </script>
 
 <Marquee label="Announcements">
@@ -41,6 +41,7 @@ Render continuously looping horizontal or vertical ticker content with pause and
 
 - `--cinder-marquee-duration`
 - `--cinder-marquee-gap`
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

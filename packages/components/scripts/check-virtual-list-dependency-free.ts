@@ -31,10 +31,8 @@
  *
  * Registered as `check:virtual-list-dependency-free` and wired into
  * `lint:invariants` so it is CI-gated, not merely runnable.
- * `check-pipeline-coverage.ts`'s `DECLARATION_TABLE` still needs a row for
- * this command naming the layers it runs in (`unit-tests`, `main-green`,
- * alongside its `lint:invariants` siblings) — that table lives outside this
- * script and is not edited here.
+ * `check-pipeline-coverage.ts` must retain the structural mirror workflow
+ * contract when this guard changes.
  * `_internal/dependency-free.test.ts` is a companion Bun regression asserting
  * the same invariant independently, so a local `bun test` run (not just CI)
  * catches a violation without needing this script.
@@ -540,6 +538,11 @@ export async function collectScanTargets(): Promise<string[]> {
   const glob = new Glob('**/*.{ts,svelte}');
   for await (const relativePath of glob.scan({ cwd: virtualListRoot })) {
     if (relativePath === SELF_TEST_RELATIVE_PATH) continue;
+    // Helpers named `*-test-helpers.ts` are reached from test roots, but are
+    // not production roots themselves. Keeping them out of the root set lets
+    // walkDependencyGraph apply the test-only dependency rule to their imports
+    // without allowing a helper to make a production dependency appear valid.
+    if (relativePath.endsWith('-test-helpers.ts')) continue;
     files.push(join(virtualListRoot, relativePath));
   }
   files.push(fixedVirtualWindowFile);

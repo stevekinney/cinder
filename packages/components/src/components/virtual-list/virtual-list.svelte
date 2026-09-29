@@ -92,6 +92,12 @@
     resolveEdgeProximity,
     type EdgeLatch,
   } from './_internal/edge-proximity.ts';
+  import { FrameBatcher } from './_internal/frame-scheduler.ts';
+  import {
+    resolveDocumentOffset,
+    resolveWindowScrollOffset,
+    resolveWindowScrollTarget,
+  } from './_internal/window-scroll.ts';
   import {
     classifyItemGrowth,
     shouldPinToEnd,
@@ -101,6 +107,7 @@
     classifyRtlScrollType,
     domWritingDirectionReader,
     normalizeInlineScrollOffset,
+    resolveObservedCrossAxisSize,
     resolveObservedMainAxisSize,
     resolveRowLayoutDescriptor,
     resolveWritingDirection,
@@ -116,6 +123,7 @@
     overscan = 5,
     height = '20rem',
     stickToBottom = false,
+    windowScroll = false,
     reverse = false,
     onEndReached,
     onStartReached,
@@ -158,6 +166,20 @@
   /** ~0.5s at 60fps: long enough for a smooth scroll to land, short enough to never hang. */
   const SCROLL_SETTLE_MAX_FRAMES = 30;
   /**
+   * COR-374: how many consecutive stable intervals `waitForScrollSettled`
+   * must see before the keyboard-destination watch treats the browser as
+   * having actually stopped — see that function's doc for why the plain,
+   * one-interval default is not enough here. Measured against real Chromium:
+   * a RE-TARGETED `scrollTo({ behavior: 'smooth' })` — issued by every
+   * keypress after the first, while an earlier one is still animating — can
+   * hold the read position still for a single interval before the
+   * retargeted animation visibly resumes. Two held that same false "settled"
+   * reading in testing; three did not, with a full interval of margin left
+   * over, so this is not a value picked to just barely clear what was
+   * measured.
+   */
+  const KEYBOARD_DESTINATION_STABLE_INTERVALS = 3;
+  /**
    * How long after the last scroll event adaptive overscan returns to its floor.
    * Comfortably past a fling's own event cadence, so it never fires mid-gesture.
    */
@@ -166,6 +188,23 @@
   let scrollElement: HTMLElement | undefined = $state();
   let scrollOffset = $state(0);
   let measuredViewportHeight = $state(0);
+  /**
+   * The list's top edge in document coordinates, under `windowScroll`. Cached
+   * rather than read live: `readScrollOffset` runs from the window's own
+   * `scroll` handler, which must never force a synchronous layout by calling
+   * `getBoundingClientRect` there (see COR-577) — so the layout-forcing read
+   * that produces this happens elsewhere (mount, window resize, the resize
+   * observer already in use) and this is what the scroll handler reads instead.
+   */
+  let documentOffset = $state(0);
+  /**
+   * Coalesces the `getBoundingClientRect` read `documentOffset` needs onto a
+   * single animation frame when `windowScroll`'s window resize listener and
+   * the component's own resize observer both fire for the same layout
+   * change — see `frame-scheduler.ts`, written for exactly this. Built lazily
+   * so a list that never turns `windowScroll` on never constructs it.
+   */
+  let windowMeasurementBatcher: FrameBatcher<void> | undefined;
   let hasObservedItemCount = false;
   let shouldStickAfterAppend = false;
   /**
@@ -204,6 +243,36 @@
    */
   let restoredId: string | undefined;
   /**
+   * Whether the current restore attempt is still waiting on a KEYED anchor that
+   * has not appeared in `items` yet. Drives the mutation-watch effect below,
+   * which is the only thing that pays to notice a same-length, in-place items
+   * mutation — everywhere else, `items.length` and array identity are enough.
+   */
+  let hasPendingKeyedRestore = $state(false);
+  /**
+   * Bumped by the mutation-watch effect when an item changes while a keyed
+   * restore is pending, so the restore effect re-evaluates even though neither
+   * `items.length` nor the array's identity moved. Read by the restore effect
+   * purely to be tracked — its value carries no information of its own.
+   */
+  let pendingRestoreMutationSignal = $state(0);
+  /**
+   * The saved intra-row remainder from a `dynamicSize` restore, held until the
+   * anchor row itself is actually measured.
+   *
+   * The offsets table is all estimates when the restore effect writes the
+   * initial scroll offset, so that write clamps the saved remainder to the
+   * row's ESTIMATED size — a reader deep into a row taller than `itemHeight`
+   * lands near its top rather than at their saved position. Once the anchor
+   * row is measured, the correction pass below re-applies the real remainder
+   * against its actual size and clears this.
+   */
+  let pendingRestoreRemainder: {
+    index: number;
+    key: VirtualListKey;
+    offsetWithinRow: number;
+  } | null = null;
+  /**
    * The tracker itself is a plain binding — nothing derives from it directly. The
    * velocity it produces IS `$state`, because `effectiveOverscan` reads it.
    */
@@ -223,11 +292,37 @@
   let previousCrossExtent = 0;
 
   /**
+   * Measured cross-axis (block, under `horizontal`) extent of every sticky row that
+   * has ever been observed, keyed by index. A plain `Map`, like the measurement
+   * store's own cache, with a separate `$state` version counter driving reactivity —
+   * the sticky-item count is small, so per-key subscription overhead is not the
+   * concern the main-axis cache avoids; this just follows the same shape.
+   *
+   * Populated independently of `dynamicSize`: `resolveObservedMainAxisSize`/
+   * `handleRowResize` only ever read the MAIN axis, and only while `dynamicSize` is
+   * on, but a pinned header can need its cross-axis extent fed back under `horizontal`
+   * with fixed-height rows too (see `handleStickyCrossAxisResize`).
+   */
+  let stickyCrossAxisSizes = new Map<number, number>();
+  let stickyCrossAxisVersion = $state(0);
+  let stickyCrossAxisResizeObserver: ResizeObserver | undefined;
+
+  /**
+   * `horizontal` as it actually applies. `windowScroll` does not compose with
+   * it — windowing the window's own horizontal scroll is not supported — so
+   * this silently degrades to vertical whenever both are set, rather than the
+   * two fighting over which axis owns the scroll offset. Every axis-dependent
+   * read below goes through this, not the raw prop, so the degrade is total:
+   * layout, offsets, and scroll reads and writes all agree.
+   */
+  const isHorizontal = $derived(horizontal && !windowScroll);
+
+  /**
    * Logical property names for the axis in play. Logical rather than physical so
    * the inline axis flips correctly under RTL with no separate branch: the browser
    * resolves `inset-inline-start` to the right edge on its own.
    */
-  const rowLayout = $derived(resolveRowLayoutDescriptor(horizontal ? 'horizontal' : 'vertical'));
+  const rowLayout = $derived(resolveRowLayoutDescriptor(isHorizontal ? 'horizontal' : 'vertical'));
   /**
    * The shared hook rather than an inline media query, per OVERLAY-POLICY and the
    * `check:no-inline-match-media` guard. It is reactive, so a preference changed
@@ -243,6 +338,35 @@
   // $state, not a plain let: arming the pin must itself re-run the re-pin effect.
   let isPinnedToBottom = $state(false);
   let scrollToIndexGeneration = 0;
+  /**
+   * COR-374: the row a held or rapidly-repeated arrow key is currently headed
+   * toward, kept in component state rather than re-derived from the live
+   * scroll position on every keypress.
+   *
+   * Under `smoothScroll` the live position LAGS the destination for as long
+   * as the animation is still running: `scrollOffset` only updates from the
+   * container's own `scroll` events, which a smooth scroll emits gradually as
+   * it animates, not the instant `writeScrollOffset` issues the write. A
+   * second ArrowDown that lands before the first has moved anything therefore
+   * reads `firstUncoveredIndex` as still pointing at the ORIGINAL row,
+   * resolves the exact same next-row target the first press already asked
+   * for, and the settle loop the second call starts simply supersedes the
+   * first's — two presses net one row of movement instead of two. Stepping
+   * from this instead of the live position — see `handleKeyDown` — makes
+   * each press advance the list rather than repeat the last one.
+   *
+   * Plain state, not `$state`: read only from `handleKeyDown` and from
+   * `watchPendingKeyboardIndex` below, both imperative, matching
+   * `pendingReanchor` just above.
+   */
+  let pendingKeyboardIndex: number | null = null;
+  /**
+   * Bumped whenever `pendingKeyboardIndex` is armed or explicitly retired, so
+   * a `watchPendingKeyboardIndex` call whose own destination has since been
+   * superseded — by a newer arrow press, or by an explicit retirement — knows
+   * not to clear a destination it no longer owns once its own wait resolves.
+   */
+  let pendingKeyboardIndexToken = 0;
 
   const resolvedItemHeight = $derived(resolveVirtualItemHeight(itemHeight));
   const resolvedOverscan = $derived(resolveVirtualOverscan(overscan));
@@ -331,6 +455,25 @@
     if (activeStickyIndex >= virtualWindow.startIndex && activeStickyIndex < virtualWindow.endIndex)
       return null;
     return activeStickyIndex;
+  });
+
+  /**
+   * The pinned row's measured cross-axis extent, under `horizontal` only — the
+   * dimension the CSS sidecar cannot size from flow once the row leaves it.
+   *
+   * `pinnedStickyIndex` going out of flow (`position: absolute`) drops it out of the
+   * flex layout the window's auto cross-size is otherwise computed from — see
+   * `resolveWindowStyle` — so a pinned header taller than the rows around it is
+   * clipped by the root's `overflow-y: hidden` unless that height is fed back
+   * explicitly. Reads
+   * `stickyCrossAxisSizes`, populated by `handleStickyCrossAxisResize` — not
+   * `locateRowSize`, which is the MAIN-axis table `dynamicSize` builds and does not
+   * exist in fixed mode, where this example lives.
+   */
+  const pinnedRowCrossAxisSize = $derived.by(() => {
+    void stickyCrossAxisVersion;
+    if (!isHorizontal || pinnedStickyIndex === null) return 0;
+    return stickyCrossAxisSizes.get(pinnedStickyIndex) ?? 0;
   });
 
   /**
@@ -438,6 +581,26 @@
   });
 
   /**
+   * Window-level listeners for `windowScroll`. The container renders no
+   * scrolling element of its own under this mode (see the CSS rule on
+   * `[data-cinder-window-scroll]`), so its scroll offset and viewport size
+   * come from `window` rather than a native `scroll`/resize on `scrollElement`.
+   *
+   * Passive and added on mount, exactly the deliverable asks for. Torn down
+   * on teardown AND whenever `windowScroll` itself flips off, so a disabled
+   * list is never driven by a listener nothing reads anymore.
+   */
+  $effect(() => {
+    if (!windowScroll || typeof window === 'undefined') return;
+    window.addEventListener('scroll', handleWindowScroll, { passive: true });
+    window.addEventListener('resize', handleWindowResize, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleWindowScroll);
+      window.removeEventListener('resize', handleWindowResize);
+    };
+  });
+
+  /**
    * Fires the infinite-scroll callbacks as the reader approaches either end.
    *
    * Depends on the window AND the item count: an append can bring the end into
@@ -486,7 +649,7 @@
     // `resolveAnchorIndexAtOffset` answers the question directly — which row occupies
     // a given offset — and is already independent of overscan and of edge clamping.
     const lastRenderedIndex = Math.max(0, itemCount - 1);
-    const firstVisibleIndex = Math.min(resolveAnchorIndexAtOffset(scrollOffset), lastRenderedIndex);
+    const visibleStartIndex = Math.min(resolveAnchorIndexAtOffset(scrollOffset), lastRenderedIndex);
     // The last row the viewport still touches, hence the -1: at a viewport whose
     // bottom edge falls exactly on a row boundary, the offset itself belongs to the
     // NEXT row, which is not visible yet.
@@ -499,7 +662,7 @@
       scrollOffset,
       viewportSize: currentViewportHeight,
       totalSize: currentWindow.totalSize,
-      firstVisibleIndex,
+      firstVisibleIndex: visibleStartIndex,
       lastVisibleIndex,
       itemCount,
       // The CONFIGURED overscan, deliberately not the effective one used just above.
@@ -534,7 +697,12 @@
   });
 
   const observeResize = useResizeObserver(() => {
-    if (scrollElement) syncViewport(scrollElement);
+    if (!scrollElement) return;
+    // Under `windowScroll` this goes through the same batcher as the window's own
+    // `resize` listener — both can fire for one layout change, and coalescing
+    // avoids paying for `getBoundingClientRect` twice in the same frame.
+    if (windowScroll) scheduleWindowMeasurement();
+    else syncViewport(scrollElement);
   });
 
   /**
@@ -572,6 +740,13 @@
     // item change would re-apply the saved position over wherever the reader had
     // since scrolled to.
     const itemCount = items.length;
+    // Tracked so a same-length, in-place mutation that introduces a still-missing
+    // keyed anchor re-triggers this effect too. `items.length` alone cannot see
+    // that: the count does not change, and comparing the array's own identity
+    // does not either, since the consumer mutated the same reference in place.
+    // This only ever increments while `hasPendingKeyedRestore` is true, so it
+    // costs nothing once a restore has resolved or given up.
+    void pendingRestoreMutationSignal;
     if (!element || !id || restoredId === id || itemCount === 0) return;
 
     untrack(() => {
@@ -581,10 +756,12 @@
         // A different collection: its attempt history is its own.
         restoredIdInProgress = id;
         lastRestoreAttemptCount = 0;
+        hasPendingKeyedRestore = false;
       }
 
       if (!saved) {
         restoredId = id;
+        hasPendingKeyedRestore = false;
         return;
       }
 
@@ -610,6 +787,25 @@
         if (items.length > lastRestoreAttemptCount) {
           lastRestoreAttemptCount = items.length;
           restoredId = undefined;
+          // Only for a KEYED anchor: the mutation watch below exists to notice a
+          // same-length mutation that introduces a missing KEY, which is the one
+          // case `items.length` cannot see at all. A plain index anchor is already
+          // re-checked whenever the count changes, and needs no extra tracking.
+          hasPendingKeyedRestore = saved.anchorKey !== undefined;
+          return;
+        }
+        // A KEYED anchor never gives up on length alone: the mutation watch below
+        // is what re-triggers THIS effect once a same-length mutation actually
+        // introduces the anchor, and re-running with no growth is exactly what
+        // that looks like BEFORE such a mutation has happened — not evidence the
+        // row is gone. Waiting costs nothing further unless a relevant mutation
+        // actually arrives, which is the whole point of that watch. What ends the
+        // wait instead is the reader: `handleReaderTakeover` drops it on their first
+        // wheel, pointer, touch, or scrolling key, so a late anchor cannot yank them
+        // back from wherever they have gone since.
+        if (saved.anchorKey !== undefined) {
+          restoredId = undefined;
+          hasPendingKeyedRestore = true;
           return;
         }
         // Growth has stopped and the row never appeared, so stop looking — the key
@@ -618,10 +814,12 @@
         // overwrites it with the reader's real position anyway. Deleting it was only
         // ever needed back when a missing anchor got clamped into range.
         restoredId = id;
+        hasPendingKeyedRestore = false;
         return;
       }
 
       restoredId = id;
+      hasPendingKeyedRestore = false;
 
       // Nothing queued for the old view may land after this. Two things can be in
       // flight: a correction the growth effect queued to preserve the pre-prepend
@@ -632,7 +830,11 @@
       // than where they left off.
       pendingScrollTarget = null;
       pendingReanchor = null;
+      pendingRestoreRemainder = null;
       retireSettleLoop();
+      // A restore is itself a programmatic scroll the reader's held arrow key
+      // knows nothing about — same class as COR-374's case 5 below.
+      retirePendingKeyboardIndex();
       // The append pin too. When the saved anchor arrives in an APPENDED page — under
       // `reverse`, or with `stickToBottom` still reading a short first page as being
       // at the end — the growth pass has already armed it, and its effect scrolls to
@@ -661,12 +863,19 @@
         // Strictly inside the row. An inclusive clamp lands on exactly the next row's
         // start — 30px into a 40px row becomes 20px into a 20px row, which IS row
         // 201 — defeating the anchor this whole branch exists to honour.
-        const withinRow = Math.min(
-          Math.max(0, saved.offsetWithinRow ?? 0),
-          Math.max(0, rowSize - 1),
-        );
+        const rawWithinRow = Math.max(0, saved.offsetWithinRow ?? 0);
+        const withinRow = Math.min(rawWithinRow, Math.max(0, rowSize - 1));
         writeScrollOffset(element, rowStart + withinRow, 'auto');
         scrollOffset = readScrollOffset(element);
+        // The row is only an ESTIMATE at this point, so a remainder deeper than
+        // that estimate just got clamped away above. Held here, keyed to the row
+        // rather than the index, so the measurement-correction pass can re-apply
+        // the full remainder once this specific row is actually measured — even
+        // if other rows measure, reflow, or prepend in between.
+        pendingRestoreRemainder =
+          rawWithinRow > withinRow
+            ? { index: anchorIndex, key: keyAt(anchorIndex), offsetWithinRow: rawWithinRow }
+            : null;
       } else {
         // From the row anchor, not the raw saved pixel offset. `itemHeight` can differ
         // between visits — a density setting, a responsive breakpoint — and the old
@@ -678,6 +887,30 @@
         writeScrollOffset(element, anchorIndex * resolvedItemHeight + withinRow, 'auto');
         scrollOffset = readScrollOffset(element);
       }
+    });
+  });
+
+  /**
+   * Wakes a pending keyed restore on a same-length, in-place items mutation.
+   *
+   * The restore effect above tracks `items.length` and the array's own identity,
+   * so a consumer that mutates an existing (reactive) items array in place —
+   * replacing a row without changing the count — never re-triggers it, and the
+   * anchor key that mutation just introduced is never looked for again. Reading
+   * every item here is O(n), so it runs only while a keyed restore is actually
+   * still pending; once resolved or abandoned, this touches nothing but the one
+   * boolean that gates it.
+   */
+  $effect.pre(() => {
+    if (!hasPendingKeyedRestore) return;
+    const currentItems = items;
+    for (let index = 0; index < currentItems.length; index += 1) void currentItems[index];
+    // Untracked write: reading `pendingRestoreMutationSignal` here, even as part
+    // of `+= 1`, would make THIS effect depend on the very value it writes —
+    // Svelte then reruns it forever chasing its own update ("effect_update_depth_exceeded").
+    // The restore effect below is the only thing that ever needs to read it.
+    untrack(() => {
+      pendingRestoreMutationSignal += 1;
     });
   });
 
@@ -819,6 +1052,27 @@
       }
     }
 
+    // A pending restore remainder is keyed to a row, but its INDEX also has to
+    // move with a prepend — same reasoning as the reanchor above — so the
+    // correction pass below still finds it at the right offset in the rebuilt
+    // table. The key check there is what catches it if this ever disagrees.
+    if (growth.kind === 'prepended' && pendingRestoreRemainder) {
+      pendingRestoreRemainder = {
+        ...pendingRestoreRemainder,
+        index: pendingRestoreRemainder.index + growth.prependedCount,
+      };
+    }
+
+    // COR-374: a pending keyboard destination is a row INDEX like the anchors
+    // above, and a prepend shifts it exactly the same way — the row the
+    // reader's held arrow key was headed toward now sits `prependedCount`
+    // further along the list. Left uncorrected, the destination would still
+    // resolve to whatever row now occupies the OLD index, several rows off
+    // from where the reader was actually headed.
+    if (growth.kind === 'prepended' && pendingKeyboardIndex !== null) {
+      pendingKeyboardIndex += growth.prependedCount;
+    }
+
     previousTotalSize = currentTotal;
     previousKeys = nextKeys;
   });
@@ -845,6 +1099,28 @@
   });
 
   /**
+   * Drops cached cross-axis sizes for indexes that are no longer sticky, mirroring
+   * the main-axis prune above. Keyed by INDEX rather than row key — unlike the
+   * measurement store, which must survive a prepend shifting every index — because
+   * this cache only ever needs the currently pinned row's extent, and a stale entry
+   * left behind by a reordered sticky set is simply never read again once its index
+   * drops out of `stickyIndexSet`.
+   */
+  $effect(() => {
+    const currentStickyIndexes = stickyIndexSet;
+    const itemCount = items.length;
+    if (stickyCrossAxisSizes.size === 0) return;
+    let removedAny = false;
+    for (const index of stickyCrossAxisSizes.keys()) {
+      if (index >= itemCount || !currentStickyIndexes.has(index)) {
+        stickyCrossAxisSizes.delete(index);
+        removedAny = true;
+      }
+    }
+    if (removedAny) stickyCrossAxisVersion += 1;
+  });
+
+  /**
    * Drops cached sizes when dynamic mode is switched off.
    *
    * Rows are no longer observed while fixed mode runs, so a row that changes
@@ -860,6 +1136,10 @@
     if (dynamicSize) return;
     measurementStore.reset();
     previousOffsets = undefined;
+    // No offsets table exists to re-measure a row against in fixed mode, so a
+    // remainder still waiting on one would otherwise apply against whatever
+    // geometry happens to exist if `dynamicSize` comes back on.
+    pendingRestoreRemainder = null;
   });
 
   /**
@@ -903,6 +1183,7 @@
       scrollOffset = readScrollOffset(element);
       shouldStickAfterAppend = false;
       isPinnedToBottom = true;
+      return undefined;
     });
   });
 
@@ -1016,6 +1297,30 @@
       if (delta !== 0) target = liveScrollOffset + delta;
     }
 
+    // A restored intra-row remainder, deliberately checked LAST so it overrides
+    // both the anchor and the correction-delta targets above: until the anchor
+    // row is actually measured, neither of those describes the reader's saved
+    // position — they describe where the ESTIMATE currently sits. Applied once,
+    // the moment the row's real size is known, then cleared.
+    if (
+      pendingRestoreRemainder !== null &&
+      pendingRestoreRemainder.index < items.length &&
+      measurementStore.sizes.has(pendingRestoreRemainder.key) &&
+      keyAt(pendingRestoreRemainder.index) === pendingRestoreRemainder.key
+    ) {
+      const anchorStart = currentOffsets[pendingRestoreRemainder.index] ?? 0;
+      const anchorSize = Math.max(
+        0,
+        (currentOffsets[pendingRestoreRemainder.index + 1] ?? anchorStart) - anchorStart,
+      );
+      const offsetWithinRow = Math.min(
+        pendingRestoreRemainder.offsetWithinRow,
+        Math.max(0, anchorSize - 1),
+      );
+      target = Math.max(0, anchorStart + offsetWithinRow);
+      pendingRestoreRemainder = null;
+    }
+
     if (target !== null) pendingScrollTarget = Math.max(0, target);
     previousOffsets = currentOffsets;
   });
@@ -1060,6 +1365,29 @@
       }
     }
     return Math.min(Math.max(0, saved.startIndex), lastIndex);
+  }
+
+  /**
+   * Inline style for the in-flow window: its leading offset, plus — under
+   * `horizontal`, once a sticky row is pinned out of flow — a minimum block size
+   * reserving the pinned row's own measured extent.
+   *
+   * Under `horizontal` the window is a flex container (see the CSS sidecar) whose
+   * own block-size is `auto`: the browser derives it from its IN-FLOW children. That
+   * is every rendered row while a sticky row is still inside the window, but the row
+   * leaves flow the instant it pins (`position: absolute`, so the rule holding it
+   * there can anchor one edge without squashing it to the others' height) — and from
+   * then on the window's auto cross-size is computed only from its remaining flow
+   * siblings. A pinned header taller than they are is clipped by the root's
+   * `overflow-y: hidden` unless this minimum stands in for the space it no longer
+   * contributes.
+   */
+  function resolveWindowStyle(): string {
+    const declarations = [`${rowLayout.offsetProperty}:${virtualWindow.leadingSize}px`];
+    if (pinnedRowCrossAxisSize > 0) {
+      declarations.push(`min-block-size:${pinnedRowCrossAxisSize}px`);
+    }
+    return `${declarations.join(';')};`;
   }
 
   /**
@@ -1159,8 +1487,12 @@
     if (velocityIdleTimer !== undefined) clearTimeout(velocityIdleTimer);
     rowResizeObserver?.disconnect();
     rowResizeObserver = undefined;
+    stickyCrossAxisResizeObserver?.disconnect();
+    stickyCrossAxisResizeObserver = undefined;
     measurementStore.reset();
     previousOffsets = undefined;
+    windowMeasurementBatcher?.dispose();
+    windowMeasurementBatcher = undefined;
   });
 
   function keyAt(index: number): VirtualListKey {
@@ -1179,9 +1511,18 @@
    * Under `horizontal` + RTL that is not simply `scrollLeft`: browsers disagree on
    * its sign and origin, so the raw value is normalized through the convention this
    * browser was measured to use. See `resolveRtlScrollType`.
+   *
+   * Under `windowScroll` `element` goes unused: there is no scrolling container to
+   * read from, so this reads `window.scrollY` instead and turns it into a
+   * list-relative offset with the cached `documentOffset` — deliberately never
+   * `getBoundingClientRect` here. This function runs from the window's own `scroll`
+   * handler on every event, and a `getBoundingClientRect` call there would force a
+   * synchronous layout on every scroll frame, exactly what COR-577 removed from this
+   * component's other scroll paths.
    */
   function readScrollOffset(element: HTMLElement): number {
-    if (!horizontal) return Math.max(0, element.scrollTop);
+    if (windowScroll) return resolveWindowScrollOffset(readWindowScrollPosition(), documentOffset);
+    if (!isHorizontal) return Math.max(0, element.scrollTop);
     // Normalization is the identity under ltr, and resolving the convention costs a
     // layout-forcing probe. Short-circuit so a left-to-right page never pays for an
     // answer it would discard.
@@ -1198,9 +1539,18 @@
     );
   }
 
-  /** Writes a start-edge-relative offset back along the active axis. */
+  /**
+   * Writes a start-edge-relative offset back along the active axis.
+   *
+   * Under `windowScroll` this scrolls the window itself, at the list's own
+   * offset in the document plus `offset` — see `resolveWindowScrollTarget`.
+   */
   function writeScrollOffset(element: HTMLElement, offset: number, behavior: ScrollBehavior): void {
-    if (!horizontal) {
+    if (windowScroll) {
+      writeWindowScrollPosition(offset, behavior);
+      return;
+    }
+    if (!isHorizontal) {
       if (behavior === 'smooth' && typeof element.scrollTo === 'function') {
         element.scrollTo({ top: offset, behavior: 'smooth' });
       } else {
@@ -1227,6 +1577,27 @@
       element.scrollTo({ left: raw, behavior: 'smooth' });
     } else {
       element.scrollLeft = raw;
+    }
+  }
+
+  /** `window.scrollY`, floored — never `undefined` outside a real `window`. */
+  function readWindowScrollPosition(): number {
+    return typeof window === 'undefined' ? 0 : Math.max(0, window.scrollY);
+  }
+
+  /** `window.innerHeight` — the `windowScroll` viewport size. */
+  function readWindowViewportSize(): number {
+    return typeof window === 'undefined' ? resolvedItemHeight * 10 : window.innerHeight;
+  }
+
+  /** Scrolls the window to the document position that puts `offset` at its top. */
+  function writeWindowScrollPosition(offset: number, behavior: ScrollBehavior): void {
+    if (typeof window === 'undefined') return;
+    const target = resolveWindowScrollTarget(offset, documentOffset);
+    if (behavior === 'smooth' && typeof window.scrollTo === 'function') {
+      window.scrollTo({ top: target, behavior: 'smooth' });
+    } else {
+      window.scrollTo(0, target);
     }
   }
 
@@ -1269,6 +1640,14 @@
    * Re-reads the container's size and scroll position, and returns the size it
    * measured so a caller acting in the same turn can use the fresh value rather
    * than the `viewportHeight` derived, which still holds the pre-patch number.
+   *
+   * This is the one place `windowScroll`'s layout-forcing reads —
+   * `getBoundingClientRect` for `documentOffset`, `window.innerHeight` for the
+   * viewport — are allowed to happen. Callers are mount, the window's `resize`
+   * listener (via `scheduleWindowMeasurement`, batched onto a frame), and the
+   * resize observer the component already runs — never the window's `scroll`
+   * listener, which reads only `readScrollOffset` and must stay cheap. See
+   * `readScrollOffset`.
    */
   function syncViewport(element: HTMLElement): number {
     const rect = element.getBoundingClientRect();
@@ -1277,11 +1656,14 @@
     // is the inline extent: the container's block-size is `auto` and collapses to
     // one row's height, which would badly under-report the viewport and render too
     // few columns. The `height` prop is reinterpreted as the inline size in that
-    // mode, so the fallback stays correct without a branch.
-    const measured =
-      (horizontal ? rect.width || element.clientWidth : rect.height || element.clientHeight) ||
-      parsePixelLength(height) ||
-      resolvedItemHeight * 10;
+    // mode, so the fallback stays correct without a branch. Under `windowScroll`
+    // neither applies: `height` is ignored outright and the viewport is the
+    // window's own.
+    const measured = windowScroll
+      ? readWindowViewportSize()
+      : (isHorizontal ? rect.width || element.clientWidth : rect.height || element.clientHeight) ||
+        parsePixelLength(height) ||
+        resolvedItemHeight * 10;
 
     // A CROSS-axis change re-wraps every row, so every cached main-axis size taken
     // at the old cross extent is now wrong. Offscreen rows would keep those stale
@@ -1294,6 +1676,10 @@
     // border-box extent never changes — so comparing the rect would miss it
     // entirely and leave offscreen rows holding sizes measured at the other extent.
     invalidateOnCrossAxisChange(element, rect);
+
+    // The list's own top edge in the document, re-derived from the SAME rect this
+    // call already paid the layout cost for — never a second, dedicated read.
+    if (windowScroll) documentOffset = resolveDocumentOffset(rect.top, readWindowScrollPosition());
 
     measuredViewportHeight = measured;
     scrollOffset = readScrollOffset(element);
@@ -1310,7 +1696,7 @@
     // adds or removes a non-overlay scrollbar and re-wraps every row while the
     // border-box extent never changes — so comparing the rect would miss it
     // entirely and leave offscreen rows holding sizes measured at the other extent.
-    const measuredCrossExtent = horizontal
+    const measuredCrossExtent = isHorizontal
       ? element.clientHeight || rect.height || 0
       : element.clientWidth || rect.width || 0;
     if (
@@ -1342,16 +1728,47 @@
 
   function handleScroll(event: UIEvent & { currentTarget: EventTarget & HTMLDivElement }): void {
     if (typeof onScroll === 'function') onScroll(event);
-    const element = event.currentTarget as HTMLElement;
+    processScrollOffsetChange(event.currentTarget as HTMLElement, event.timeStamp);
+  }
+
+  /**
+   * `windowScroll`'s counterpart to `handleScroll`: the window's `scroll`
+   * event carries no `currentTarget` naming the list, so this reads
+   * `scrollElement` itself instead — cheaply, only to hand `readScrollOffset`
+   * something to (not) read `scrollTop` from under `windowScroll`.
+   *
+   * There is no `onScroll` prop call here. That prop is typed against, and
+   * bound to, the internal container's own native scroll event — under
+   * `windowScroll` there is no such event, so a consumer's handler simply
+   * never fires; see the prop's doc comment.
+   */
+  function handleWindowScroll(event: Event): void {
+    const element = scrollElement;
+    if (!element) return;
+    processScrollOffsetChange(element, event.timeStamp);
+    // Content above the list can change size without resizing the window or the
+    // list itself — an image loading, an accordion collapsing — which moves the
+    // list's top edge and leaves `documentOffset` stale. Re-deriving it here would
+    // force a layout on the scroll frame, so it is queued onto the next animation
+    // frame instead, where the browser is about to lay out anyway; the batcher
+    // collapses every scroll event in that frame into one read.
+    scheduleWindowMeasurement();
+  }
+
+  /**
+   * Everything a fresh scroll offset drives, shared by the internal
+   * container's native handler and `windowScroll`'s window handler: the
+   * offset itself, the adaptive-overscan velocity tracker, and the
+   * stick-to-bottom pin. One body so the two paths cannot drift apart on what
+   * "a scroll happened" means.
+   */
+  function processScrollOffsetChange(element: HTMLElement, timestamp: number): void {
     scrollOffset = readScrollOffset(element);
     if (adaptiveOverscan) {
-      // `event.timeStamp` rather than a clock read: it is the time the browser
-      // associated with the scroll itself, so a handler delayed behind a long task
-      // does not report the delay as a slower scroll.
-      velocityTracker = trackScrollVelocity(velocityTracker, {
-        scrollOffset,
-        timestamp: event.timeStamp,
-      });
+      // `timestamp` rather than a clock read: it is the time the browser associated
+      // with the scroll itself, so a handler delayed behind a long task does not
+      // report the delay as a slower scroll.
+      velocityTracker = trackScrollVelocity(velocityTracker, { scrollOffset, timestamp });
       scrollVelocity = velocityTracker.velocityInPixelsPerMillisecond;
       // Velocity only updates when ANOTHER scroll event arrives, so a reader who
       // stops mid-fling would otherwise hold the enlarged overscan indefinitely —
@@ -1371,6 +1788,36 @@
   }
 
   /**
+   * `windowScroll`'s counterpart to the resize observer: re-measures
+   * `documentOffset` and the viewport when the WINDOW itself resizes, rather
+   * than when the list's own box does.
+   *
+   * Routed through `scheduleWindowMeasurement` rather than calling
+   * `syncViewport` directly — a window resize and the resize observer firing
+   * for the same layout change would otherwise each force their own
+   * `getBoundingClientRect`, and batching collapses that to one.
+   */
+  function handleWindowResize(): void {
+    scheduleWindowMeasurement();
+  }
+
+  /**
+   * Coalesces `windowScroll`'s document-offset remeasurement onto a single
+   * animation frame via `FrameBatcher` (see `frame-scheduler.ts`, written for
+   * exactly this). Multiple triggers in one frame — a window resize alongside
+   * the list's own resize observer firing for the same layout change — commit
+   * as one `syncViewport` call instead of one apiece.
+   */
+  function scheduleWindowMeasurement(): void {
+    windowMeasurementBatcher ??= new FrameBatcher<void>(() => {
+      if (isDestroyed) return;
+      const element = scrollElement;
+      if (element) syncViewport(element);
+    });
+    windowMeasurementBatcher.recordRead(undefined);
+  }
+
+  /**
    * Abandons any in-flight `scrollToIndex` settle loop, because the user has taken
    * over the viewport.
    *
@@ -1385,22 +1832,113 @@
     scrollToIndexGeneration += 1;
   }
 
-  function handleWheel(event: WheelEvent & { currentTarget: EventTarget & HTMLDivElement }): void {
+  /**
+   * Everything a reader's own input supersedes: the settle loop, and any restore
+   * still waiting to land. A keyed anchor waits for as long as it takes to appear,
+   * and a restored remainder waits for its row to be measured — so either one could
+   * otherwise fire long after the reader had scrolled somewhere else, and drag them
+   * back to a position they have already left.
+   */
+  function handleReaderTakeover(): void {
     retireSettleLoop();
+    pendingRestoreRemainder = null;
+    if (hasPendingKeyedRestore) {
+      hasPendingKeyedRestore = false;
+      restoredId = restoredIdInProgress;
+    }
+  }
+
+  /**
+   * COR-374, case 1: drops the pending keyboard destination outright.
+   *
+   * A wheel, pointer, or touch input is the reader taking the scroll back by
+   * some means this list does not track the row arithmetic for — unlike an
+   * arrow press, which replaces `pendingKeyboardIndex` with a new destination
+   * of its own, none of these produce one. The next arrow press has to
+   * resolve from wherever they actually are, not from a destination three
+   * gestures stale.
+   *
+   * Deliberately separate from `handleReaderTakeover`, which
+   * `handleKeyDown` also calls for every key that merely SHARES an axis with
+   * this list — including the very arrow press this destination exists to
+   * serve. Folding this in there would retire the destination a line before
+   * `handleKeyDown` reads it.
+   */
+  function retirePendingKeyboardIndex(): void {
+    pendingKeyboardIndex = null;
+    pendingKeyboardIndexToken += 1;
+  }
+
+  /**
+   * COR-374: keeps `pendingKeyboardIndex` alive for exactly as long as the
+   * browser is still visibly moving toward it, then lets it go — case 5.
+   *
+   * This is the one signal that tells "a smooth animation that has not yet
+   * emitted its first scroll event" apart from "something reset the scroll
+   * to where this run started": the component cannot otherwise distinguish
+   * them, which is why a previous fix for this bug tracked the destination
+   * but invalidated it by guessing at causes, missed a programmatic write
+   * (a consumer setting `scrollTop`, a fragment link, find-in-page) that
+   * triggers none of them, and was removed rather than shipped that way.
+   * Tying the destination's lifetime to the browser's own motion signal
+   * needs no such guessing: whatever stops the motion — arriving, or being
+   * overridden — is exactly when the destination stops meaning anything, so
+   * this expires it right there regardless of which one happened.
+   *
+   * Passes `KEYBOARD_DESTINATION_STABLE_INTERVALS`, not
+   * `waitForScrollSettled`'s plain default — see that constant's doc. The
+   * default (one stable interval) is enough to keep a bare one-frame check
+   * from expiring the destination before a smooth scroll has moved at all,
+   * but COR-374's actual failure mode was subtler than that: RETARGETING an
+   * animation already in flight, which is what every press after the first
+   * does, can itself hold the read position still for one interval before
+   * the retargeted animation visibly resumes — indistinguishable from
+   * genuinely settled at that threshold. Requiring more consecutive stable
+   * intervals is what tells the two apart.
+   *
+   * Runs unconditionally, in fixed-height mode too. `runScrollToIndex` skips
+   * its own settle-and-retry pass there because fixed rows never need a
+   * second write, but this needs the same motion signal regardless of
+   * sizing mode to know when the destination has stopped being meaningful.
+   *
+   * Correct under `windowScroll` with no special case: `waitForScrollSettled`
+   * reads through `readScrollOffset`, which already resolves to
+   * `window.scrollY` there instead of the element's own `scrollTop` — so the
+   * motion this waits on is already the window's own, the one the reader is
+   * actually watching.
+   */
+  async function watchPendingKeyboardIndex(index: number): Promise<void> {
+    const element = scrollElement;
+    if (!element) return;
+    pendingKeyboardIndex = index;
+    const token = (pendingKeyboardIndexToken += 1);
+    await waitForScrollSettled(element, KEYBOARD_DESTINATION_STABLE_INTERVALS);
+    // Superseded by a newer press or an explicit retirement while this was
+    // waiting — either already holds whatever destination is now correct,
+    // so clearing it here would erase one this call does not own.
+    if (isDestroyed || pendingKeyboardIndexToken !== token) return;
+    pendingKeyboardIndex = null;
+  }
+
+  function handleWheel(event: WheelEvent & { currentTarget: EventTarget & HTMLDivElement }): void {
+    handleReaderTakeover();
+    retirePendingKeyboardIndex();
     if (typeof onWheel === 'function') onWheel(event);
   }
 
   function handlePointerDown(
     event: PointerEvent & { currentTarget: EventTarget & HTMLDivElement },
   ): void {
-    retireSettleLoop();
+    handleReaderTakeover();
+    retirePendingKeyboardIndex();
     if (typeof onPointerDown === 'function') onPointerDown(event);
   }
 
   function handleTouchStart(
     event: TouchEvent & { currentTarget: EventTarget & HTMLDivElement },
   ): void {
-    retireSettleLoop();
+    handleReaderTakeover();
+    retirePendingKeyboardIndex();
     if (typeof onTouchStart === 'function') onTouchStart(event);
   }
 
@@ -1414,7 +1952,7 @@
    * happens.
    */
   function scrollsMainAxis(key: string): boolean {
-    return horizontal ? INLINE_AXIS_SCROLL_KEYS.has(key) : BLOCK_AXIS_SCROLL_KEYS.has(key);
+    return isHorizontal ? INLINE_AXIS_SCROLL_KEYS.has(key) : BLOCK_AXIS_SCROLL_KEYS.has(key);
   }
 
   function handleKeyDown(
@@ -1442,13 +1980,14 @@
     // is not.
     if (event.target !== event.currentTarget) return;
 
-    if (scrollsMainAxis(event.key)) retireSettleLoop();
+    if (scrollsMainAxis(event.key)) handleReaderTakeover();
 
-    // Only take over the keys when there is a sticky row to keep in view or the
-    // list is virtualized past what the browser can reach. Otherwise the native
-    // scroll container already handles every one of these correctly, and
+    // Only take over the keys when there is a sticky row to keep in view, the list
+    // is virtualized past what the browser can reach, or — under `windowScroll` —
+    // there is no native scroll container at all to fall back on. Otherwise the
+    // native scroll container already handles every one of these correctly, and
     // intercepting them would replace smooth native scrolling with a jump.
-    if (!stickyIndexes.length) return;
+    if (!stickyIndexes.length && !windowScroll) return;
 
     // Page keys move by PIXELS, not by a row count, and do not go through
     // `scrollToIndex` at all.
@@ -1474,7 +2013,12 @@
       // inline-axis set because a horizontal container is not what they scroll — but
       // this branch claims them in either orientation, and a settle loop left running
       // can write its own destination back afterwards and undo the page.
-      retireSettleLoop();
+      handleReaderTakeover();
+      // Paging moves by pixels, not by the row arithmetic `pendingKeyboardIndex`
+      // tracks, so it invalidates rather than extends it — a Page key between two
+      // held arrows must not leave the next one resolving from a row the reader
+      // was never actually paged to.
+      retirePendingKeyboardIndex();
 
       const furthest = maxScrollOffset(currentTotalSize(), viewportHeight);
       const clampToScrollRange = (offset: number): number =>
@@ -1516,20 +2060,43 @@
 
     const target = resolveKeyboardTargetIndex({
       key: event.key,
-      // The row the reader can see, not the rendered edge: `virtualWindow.startIndex`
-      // carries overscan, so the first arrow press jumped relative to a row several
-      // above the viewport.
-      // The first row the header is not covering. A sticky header occupies the
-      // viewport's leading edge, so `firstVisibleIndex` IS that header — and
-      // advancing from it moves to the row underneath it rather than past it.
-      currentIndex: firstUncoveredIndex,
+      // COR-374: the row a still-in-flight arrow press is already headed to,
+      // when there is one — not the live position, which lags for as long as
+      // a `smoothScroll` animation toward it is still running. Falling back to
+      // `firstUncoveredIndex` otherwise: nothing pending means the reader is
+      // exactly where the list last reported, and that IS the row to step
+      // from. The first row the header is not covering, specifically — a
+      // sticky header occupies the viewport's leading edge, so
+      // `firstVisibleIndex` IS that header, and advancing from it moves to the
+      // row underneath it rather than past it. `virtualWindow.startIndex`
+      // would be wrong for the same reason one row further out: it carries
+      // overscan, several rows above the viewport.
+      currentIndex: pendingKeyboardIndex ?? firstUncoveredIndex,
       itemCount: items.length,
-      orientation: horizontal ? 'horizontal' : 'vertical',
+      orientation: isHorizontal ? 'horizontal' : 'vertical',
       writingDirection,
       stickyIndexes: stickyIndexSet,
     });
-    if (target === null) return;
+    if (target === null) {
+      // COR-374, case 2: Space and Shift+Space are in `scrollsMainAxis`'s key
+      // sets but resolve to no target here, so the browser scrolls the
+      // container itself — natively, with no `scrollToIndex` call and nothing
+      // for `pendingKeyboardIndex` to track. Left standing, it would steer the
+      // next arrow press back toward a row the reader already scrolled past.
+      // Guarded on `scrollsMainAxis` rather than unconditionally: an off-axis
+      // arrow (case 4) resolves to `null` here too, and must NOT invalidate —
+      // it scrolls nothing, so the destination a DIFFERENT axis's held arrow
+      // is still owed stays exactly as good as it was.
+      if (scrollsMainAxis(event.key)) retirePendingKeyboardIndex();
+      return;
+    }
     event.preventDefault();
+
+    // Tracked BEFORE issuing the scroll, so a second press landing in the same
+    // synchronous turn (impossible from real input, but not from a test or a
+    // scripted key-repeat) already sees the new destination rather than a
+    // one-tick-stale `null`.
+    void watchPendingKeyboardIndex(target);
 
     // Through the normal path, which applies the header inset and keeps the settle
     // loop. An earlier version wrote the offset directly here to apply that inset, and
@@ -1539,14 +2106,14 @@
     scrollToIndex(target, { align: 'start' });
   }
 
-  function maxScrollOffset(totalSize: number, height: number): number {
-    return Math.max(0, totalSize - height);
+  function maxScrollOffset(totalSize: number, axisHeight: number): number {
+    return Math.max(0, totalSize - axisHeight);
   }
 
-  function isAtBottom(element: HTMLElement, totalSize: number, height: number): boolean {
+  function isAtBottom(element: HTMLElement, totalSize: number, axisHeight: number): boolean {
     // Start-edge-relative, so this reads "at the far end of the scroll axis"
     // regardless of orientation or writing direction.
-    return readScrollOffset(element) >= maxScrollOffset(totalSize, height) - 1;
+    return readScrollOffset(element) >= maxScrollOffset(totalSize, axisHeight) - 1;
   }
 
   /**
@@ -1565,7 +2132,7 @@
       const mainAxisSize = resolveObservedMainAxisSize(
         entry.borderBoxSize?.[0],
         entry.contentRect,
-        horizontal ? 'horizontal' : 'vertical',
+        isHorizontal ? 'horizontal' : 'vertical',
       );
       // Zero is a legitimate measurement — a row can collapse to nothing. Discarding
       // it would leave the offsets table reserving space the row no longer occupies,
@@ -1599,6 +2166,67 @@
       rowResizeObserver = new ResizeObserverConstructor(handleRowResize);
     }
     const observer = rowResizeObserver;
+    observer.observe(node, { box: 'border-box' });
+    return () => {
+      observer.unobserve(node);
+    };
+  }
+
+  /**
+   * Reads each observed sticky row's CROSS-axis extent into `stickyCrossAxisSizes`.
+   * Unlike `handleRowResize`, this runs whether or not `dynamicSize` is on — a fixed-
+   * height horizontal list with a taller sticky header needs this exactly as much as
+   * a dynamic one does.
+   */
+  function handleStickyCrossAxisResize(entries: readonly ResizeObserverEntry[]): void {
+    for (const entry of entries) {
+      const element = entry.target as HTMLElement;
+      const rawIndex = element.dataset['cinderVirtualIndex'];
+      if (rawIndex === undefined) continue;
+      const index = Number.parseInt(rawIndex, 10);
+      if (!Number.isInteger(index) || index < 0 || index >= items.length) continue;
+      const crossAxisSize = resolveObservedCrossAxisSize(
+        entry.borderBoxSize?.[0],
+        entry.contentRect,
+        'horizontal',
+      );
+      if (!Number.isFinite(crossAxisSize) || crossAxisSize < 0) continue;
+      const previousSize = stickyCrossAxisSizes.get(index);
+      if (previousSize !== undefined && Math.abs(previousSize - crossAxisSize) < 0.01) continue;
+      stickyCrossAxisSizes.set(index, crossAxisSize);
+      stickyCrossAxisVersion += 1;
+    }
+  }
+
+  /**
+   * Observes one mounted row's cross-axis extent, but only while it is sticky and
+   * the list is `horizontal` — the one combination the window's own in-flow sizing
+   * cannot account for once the row pins and leaves flow. Reading `isHorizontal` and
+   * `stickyIndexSet` here, rather than gating the attachment in the template, is what
+   * lets this re-run and unobserve on its own when either changes, the same way
+   * `observeRow` reacts to `dynamicSize` — see the effect that tears down on
+   * component destroy for why neither observer needs to be disconnected by hand on a
+   * prop change.
+   *
+   * A second, separate `ResizeObserver` rather than reusing `rowResizeObserver`:
+   * that one is created lazily only under `dynamicSize`, and `handleRowResize` reads
+   * only the main axis — folding this in would mean gating its every entry on which
+   * axis the caller wanted, for two callbacks that already do not share a cache.
+   */
+  function observeStickyCrossAxis(node: HTMLElement): (() => void) | undefined {
+    if (!isHorizontal) return undefined;
+    const rawIndex = node.dataset['cinderVirtualIndex'];
+    const index = rawIndex === undefined ? Number.NaN : Number.parseInt(rawIndex, 10);
+    if (!Number.isInteger(index) || !stickyIndexSet.has(index)) return undefined;
+    if (!stickyCrossAxisResizeObserver) {
+      const ResizeObserverConstructor =
+        typeof document !== 'undefined' && node.ownerDocument === document
+          ? globalThis.ResizeObserver
+          : node.ownerDocument.defaultView?.ResizeObserver;
+      if (typeof ResizeObserverConstructor !== 'function') return undefined;
+      stickyCrossAxisResizeObserver = new ResizeObserverConstructor(handleStickyCrossAxisResize);
+    }
+    const observer = stickyCrossAxisResizeObserver;
     observer.observe(node, { box: 'border-box' });
     return () => {
       observer.unobserve(node);
@@ -1648,10 +2276,30 @@
    * Waiting for the position to hold still covers both that and a late
    * measurement, and the frame cap keeps a continuously-scrolling container
    * (a user dragging, an ongoing animation) from holding the loop open.
+   *
+   * `requiredStableIntervals` (default 1, this function's original threshold —
+   * every existing caller keeps its exact behavior) is how many CONSECUTIVE
+   * equal-reading intervals must elapse before the position counts as settled.
+   * COR-374's keyboard-destination watch passes a higher value: measured
+   * against real Chromium, RE-TARGETING an animation already in flight — which
+   * is exactly what a second `scrollTo({ behavior: 'smooth' })` call issues
+   * while the first is still running — can hold the read position still for
+   * one interval before the retargeted animation visibly resumes, the same
+   * "hasn't moved yet" gap this function's own doc warns a single-frame check
+   * would misread as settled. One stable interval is enough signal for the
+   * dynamicSize retry loop, which only ever issues ONE write per pass and
+   * needs to know when it is safe to re-measure; it is NOT enough to tell that
+   * retarget stall apart from a genuinely finished animation, which is what
+   * the keyboard watch needs in order to decide whether to let the
+   * destination expire.
    */
-  async function waitForScrollSettled(element: HTMLElement): Promise<void> {
+  async function waitForScrollSettled(
+    element: HTMLElement,
+    requiredStableIntervals = 1,
+  ): Promise<void> {
     await tick();
     let previousOffset = Number.NaN;
+    let stableIntervals = 0;
     for (let frame = 0; frame < SCROLL_SETTLE_MAX_FRAMES; frame += 1) {
       await nextAnimationFrame();
       if (isDestroyed) return;
@@ -1659,7 +2307,12 @@
       // moves, so the loop would report "settled" after two frames and skip the
       // settle pass entirely.
       const currentOffset = readScrollOffset(element);
-      if (currentOffset === previousOffset) return;
+      if (currentOffset === previousOffset) {
+        stableIntervals += 1;
+        if (stableIntervals >= requiredStableIntervals) return;
+      } else {
+        stableIntervals = 0;
+      }
       previousOffset = currentOffset;
     }
   }
@@ -1804,7 +2457,7 @@
 </script>
 
 <svelte:element
-  this={'div'}
+  this={"div"}
   {...rest}
   bind:this={scrollElement}
   {@attach observeResize}
@@ -1813,8 +2466,9 @@
   {tabindex}
   data-cinder-stick-to-bottom={stickToBottom ? 'true' : undefined}
   data-cinder-dynamic-size={dynamicSize ? 'true' : undefined}
-  data-cinder-orientation={horizontal ? 'horizontal' : undefined}
-  style:--cinder-virtual-list-height={height}
+  data-cinder-orientation={isHorizontal ? 'horizontal' : undefined}
+  data-cinder-window-scroll={windowScroll ? 'true' : undefined}
+  style:--cinder-virtual-list-height={windowScroll ? undefined : height}
   onscroll={handleScroll}
   onwheel={handleWheel}
   onpointerdown={handlePointerDown}
@@ -1826,10 +2480,7 @@
     style={`${rowLayout.sizeProperty}:${virtualWindow.totalSize}px;`}
     aria-hidden={items.length === 0 ? 'true' : undefined}
   >
-    <div
-      class="cinder-virtual-list__window"
-      style={`${rowLayout.offsetProperty}:${virtualWindow.leadingSize}px;`}
-    >
+    <div class="cinder-virtual-list__window" style={resolveWindowStyle()}>
       {#each renderedItems as virtualItem (virtualItem.key)}
         <div
           class="cinder-virtual-list__row"
@@ -1846,6 +2497,7 @@
             : undefined}
           style={resolveRowStyle(virtualItem.index, virtualItem.size)}
           {@attach observeRow}
+          {@attach observeStickyCrossAxis}
         >
           {@render row(virtualItem.item, {
             index: virtualItem.index,

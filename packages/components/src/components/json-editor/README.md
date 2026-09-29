@@ -6,7 +6,7 @@ Controlled free-form JSON text editing with a native textarea, parse feedback, a
 
 ```svelte
 <script lang="ts">
-  import JsonEditor from '@lostgradient/cinder/json-editor';
+  import { JsonEditor } from '@lostgradient/cinder';
 
   let value = $state('{}');
 </script>
@@ -40,7 +40,6 @@ Controlled free-form JSON text editing with a native textarea, parse feedback, a
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

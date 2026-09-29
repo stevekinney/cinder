@@ -6,7 +6,7 @@ Responsive SVG rendering of time-domain audio amplitude data as a waveform path 
 
 ```svelte
 <script lang="ts">
-  import Waveform from '@lostgradient/cinder/waveform';
+  import { Waveform } from '@lostgradient/cinder';
 </script>
 
 <Waveform label="Voice recording waveform" data={[]} height={80}>
@@ -58,7 +58,6 @@ Waveform uses SVG, inherits its foreground from `currentColor`, defaults its bac
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

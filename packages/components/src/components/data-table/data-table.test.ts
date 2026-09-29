@@ -2,8 +2,8 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import type { DataTableSelectionMode as RootDataTableSelectionMode } from '../../index.ts';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { DataTableRow } from './data-table.types.ts';
 import type { DataTableSelectionMode } from './index.ts';
 
@@ -360,7 +360,7 @@ describe('DataTable — column headers', () => {
 
   test('sortable header buttons describe their next sort action', async () => {
     const { container } = render(DataTable, { columns, rows });
-    const button = container.querySelector('thead th button') as HTMLButtonElement;
+    const button = requiredInstance(container.querySelector('thead th button'), HTMLButtonElement);
 
     expect(button.getAttribute('aria-description')).toBe('Activate to sort ascending');
 
@@ -372,7 +372,7 @@ describe('DataTable — column headers', () => {
 describe('DataTable — sort interaction', () => {
   test('clicking a sortable header updates aria-sort to ascending', async () => {
     const { container } = render(DataTable, { columns, rows });
-    const button = container.querySelector('thead th button') as HTMLButtonElement;
+    const button = requiredInstance(container.querySelector('thead th button'), HTMLButtonElement);
     await fireEvent.click(button);
     const headerCells = Array.from(container.querySelectorAll('thead th'));
     expect(headerCells[0]?.getAttribute('aria-sort')).toBe('ascending');
@@ -384,7 +384,7 @@ describe('DataTable — sort interaction', () => {
       rows,
       sort: { column: 'name', direction: 'ascending' },
     });
-    const button = container.querySelector('thead th button') as HTMLButtonElement;
+    const button = requiredInstance(container.querySelector('thead th button'), HTMLButtonElement);
     await fireEvent.click(button);
     const headerCells = Array.from(container.querySelectorAll('thead th'));
     expect(headerCells[0]?.getAttribute('aria-sort')).toBe('descending');
@@ -403,7 +403,10 @@ describe('DataTable — sort interaction', () => {
     expect(before).toEqual(['Ada Lovelace', 'Grace Hopper']);
     // 'commits' is sortable and would, if the component sorted internally,
     // reorder Grace (98) above Ada (142) on ascending.
-    const commitsButton = container.querySelectorAll('thead th button')[1] as HTMLButtonElement;
+    const commitsButton = requiredInstance(
+      container.querySelectorAll('thead th button')[1],
+      HTMLButtonElement,
+    );
     await fireEvent.click(commitsButton);
     expect(rowHeaderText()).toEqual(before);
   });

@@ -1,14 +1,12 @@
 # CodeBlock
 
-Renders preformatted source code with optional client-side syntax highlighting and copy controls.
-The first paint may be the escaped plain-code fallback; when highlighting resolves, the block keeps
-the same layout metrics.
+Renders preformatted source code with optional client-side syntax highlighting and copy controls. The first paint may be the escaped plain-code fallback; when highlighting resolves, the block keeps the same layout metrics.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import CodeBlock from '@lostgradient/cinder/code-block';
+  import { CodeBlock } from '@lostgradient/cinder';
   const code = `function greet(name: string): string {
   return \`Hello, \${name}!\`;
 }
@@ -45,6 +43,7 @@ const message = greet('world');`;
 - `--cinder-code-block-height`
 - `--cinder-code-block-line-height`
 - `--cinder-code-block-padding`
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

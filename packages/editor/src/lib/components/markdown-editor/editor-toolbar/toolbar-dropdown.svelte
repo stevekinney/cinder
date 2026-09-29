@@ -27,12 +27,13 @@
 
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
-  import { Check } from '@lostgradient/cinder/icons';
-
-  import Dropdown from '@lostgradient/cinder/dropdown';
-  import DropdownTrigger from '@lostgradient/cinder/dropdown-trigger';
-  import DropdownMenu from '@lostgradient/cinder/dropdown-menu';
-  import DropdownItem from '@lostgradient/cinder/dropdown-item';
+  import {
+    Check,
+    Dropdown,
+    DropdownTrigger,
+    DropdownMenu,
+    DropdownItem,
+  } from '@lostgradient/cinder';
 
   let {
     id,

@@ -30,7 +30,7 @@
     color: var(--cinder-text-default);
     background: transparent;
     border: 1px solid transparent;
-    border-radius: var(--cinder-radius-md);
+    border-radius: 0;
   }
 
   .cinder-chat-conversation-list__button[data-cinder-conversation-interactive] {
@@ -38,8 +38,8 @@
   }
 
   .cinder-chat-conversation-list__button[data-cinder-conversation-selected] {
-    background: var(--cinder-surface-raised);
-    border-color: var(--cinder-border);
+    background: var(--cinder-surface-hover);
+    border-color: transparent;
   }
 
   @media (hover: hover) {

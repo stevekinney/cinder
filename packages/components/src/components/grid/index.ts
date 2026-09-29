@@ -4,8 +4,8 @@ import GridRoot from './grid.svelte';
 
 /**
  * `Grid` is the parent compound component and a namespace exposing the optional
- * placement leaf as `Grid.Item`. The leaf remains importable individually from
- * `@lostgradient/cinder/grid-item`.
+ * placement leaf as `Grid.Item`.
+ * The leaf is also a named export of `@lostgradient/cinder`.
  */
 const Grid = Object.assign(GridRoot, {
   Item: GridItem,

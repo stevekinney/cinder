@@ -1,14 +1,12 @@
 # SpeedDial
 
-SpeedDial composes a `FloatingAction` trigger with a directional cluster of
-quick actions. Use it when one primary floating action needs a small set of
-related secondary actions.
+SpeedDial composes a `FloatingAction` trigger with a directional cluster of quick actions. Use it when one primary floating action needs a small set of related secondary actions.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import SpeedDial from '@lostgradient/cinder/speed-dial';
+  import { SpeedDial } from '@lostgradient/cinder';
 </script>
 
 <SpeedDial aria-label="Quick actions">
@@ -41,14 +39,12 @@ related secondary actions.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents
 
 <!-- generated:subcomponents:start -->
 
-- `SpeedDial.Action` - a quick-action button with a visible label; see
-  [`speed-dial-action`](../speed-dial-action/README.md).
+- `SpeedDial.Action` - a quick-action button with a visible label; see [`speed-dial-action`](../speed-dial-action/README.md).
 
 <!-- generated:subcomponents:end -->

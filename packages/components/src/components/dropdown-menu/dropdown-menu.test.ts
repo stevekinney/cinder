@@ -1,9 +1,9 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { createRawSnippet, tick } from 'svelte';
+import { createRawSnippet, flushSync, tick } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -14,13 +14,13 @@ const { default: Fixture } = await import('../../test/fixtures/dropdown-compound
 const { default: DropdownDirectionFixture } =
   await import('../../test/fixtures/dropdown-direction-fixture.svelte');
 const { default: DropdownMenu } = await import('./dropdown-menu.svelte');
-const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
+const { pushEscapeHandler, resetEscapeStack } = await import('../../_internal/overlay.ts');
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
 afterEach(() => {
   cleanup();
   document.body.replaceChildren();
-  _resetEscapeStack();
+  resetEscapeStack();
 });
 
 function renderFixture(props?: { menuStyle?: string; triggerStyle?: string }) {
@@ -43,64 +43,69 @@ describe('DropdownMenu', () => {
     const { container } = renderFixture();
     expect(container.querySelector('[role="menu"]')).toBeNull();
 
-    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await fireEvent.click(requiredInstance(container.querySelector('.trigger'), HTMLElement));
     await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
     expect(container.querySelector('[role="menu"]')?.id).toBe('actions-menu-menu');
   });
 
   test('ArrowDown moves focus to the next menu item once open', async () => {
     const { container } = renderFixture();
-    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await fireEvent.click(requiredInstance(container.querySelector('.trigger'), HTMLElement));
     await waitFor(() => expect(document.activeElement?.textContent).toContain('Copy link'));
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'ArrowDown',
+    });
     expect(document.activeElement?.textContent).toContain('Invite people');
   });
 
   test('printable keys move focus to the next matching menu item', async () => {
     const { container } = renderFixture();
-    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await fireEvent.click(requiredInstance(container.querySelector('.trigger'), HTMLElement));
     await waitFor(() => expect(document.activeElement?.textContent).toContain('Copy link'));
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'i' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), { key: 'i' });
     expect(document.activeElement?.textContent).toContain('Invite people');
 
     await Bun.sleep(550);
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'a' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), { key: 'a' });
     expect(document.activeElement?.textContent).toContain('Archive');
   });
 
   test('typeahead includes checkbox menu items', async () => {
     const { container } = renderFixture();
-    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await fireEvent.click(requiredInstance(container.querySelector('.trigger'), HTMLElement));
     await waitFor(() => expect(document.activeElement?.textContent).toContain('Copy link'));
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'k' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), { key: 'k' });
     expect(document.activeElement?.textContent).toContain('Keep offline');
   });
 
   test('typeahead buffer resets when the menu closes', async () => {
     const { container } = renderFixture();
-    const trigger = container.querySelector('.trigger') as HTMLElement;
+    const trigger = requiredInstance(container.querySelector('.trigger'), HTMLElement);
     await fireEvent.click(trigger);
     await waitFor(() => expect(document.activeElement?.textContent).toContain('Copy link'));
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'i' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), { key: 'i' });
     expect(document.activeElement?.textContent).toContain('Invite people');
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
-    await waitFor(() => expect(container.querySelector('[role="menu"]')).toBeNull());
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'Escape',
+    });
+    flushSync();
+    expect(container.querySelector('[role="menu"]')?.outerHTML ?? null).toBeNull();
 
     await fireEvent.click(trigger);
     await waitFor(() => expect(document.activeElement?.textContent).toContain('Copy link'));
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'a' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), { key: 'a' });
     expect(document.activeElement?.textContent).toContain('Archive');
   });
 
   test('Space keeps native menu item activation available', async () => {
     const { container } = renderFixture();
-    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await fireEvent.click(requiredInstance(container.querySelector('.trigger'), HTMLElement));
     await waitFor(() => expect(document.activeElement?.textContent).toContain('Copy link'));
 
     const event = new KeyboardEvent('keydown', {
@@ -119,7 +124,7 @@ describe('DropdownMenu', () => {
     });
     const container = document.body;
 
-    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await fireEvent.click(requiredInstance(container.querySelector('.trigger'), HTMLElement));
     await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
 
     expect(container.querySelector('[role="menu"]')?.getAttribute('dir')).toBe('rtl');
@@ -131,7 +136,7 @@ describe('DropdownMenu', () => {
     });
     const container = document.body;
 
-    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await fireEvent.click(requiredInstance(container.querySelector('.trigger'), HTMLElement));
     await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
 
     expect(container.querySelector('[role="menu"]')?.getAttribute('dir')).toBe('ltr');
@@ -143,7 +148,7 @@ describe('DropdownMenu', () => {
     });
     const container = document.body;
 
-    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await fireEvent.click(requiredInstance(container.querySelector('.trigger'), HTMLElement));
     await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
 
     expect(container.querySelector('[role="menu"]')?.getAttribute('dir')).toBe('rtl');
@@ -152,10 +157,10 @@ describe('DropdownMenu', () => {
   test('renders no style attribute at all on the non-popover fallback path when neither anchor nor consumer style is set', async () => {
     const { container } = renderFixture();
 
-    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await fireEvent.click(requiredInstance(container.querySelector('.trigger'), HTMLElement));
     await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
 
-    const menu = container.querySelector('[role="menu"]') as HTMLElement;
+    const menu = requiredInstance(container.querySelector('[role="menu"]'), HTMLElement);
     expect(menu.hasAttribute('style')).toBe(false);
   });
 
@@ -167,7 +172,7 @@ describe('DropdownMenu', () => {
 
     try {
       const { container } = renderFixture();
-      await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+      await fireEvent.click(requiredInstance(container.querySelector('.trigger'), HTMLElement));
       await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
 
       const escapeEvent = new window.KeyboardEvent('keydown', {
@@ -175,13 +180,14 @@ describe('DropdownMenu', () => {
         bubbles: true,
         cancelable: true,
       });
-      (document.activeElement as HTMLElement).dispatchEvent(escapeEvent);
+      requiredInstance(document.activeElement, HTMLElement).dispatchEvent(escapeEvent);
 
       expect(escapeEvent.defaultPrevented).toBe(true);
       expect(parentEscapeCount).toBe(0);
       // Release timing (CIN-428): released the instant close begins, so the
       // parent handler (now top-most) receives the very next Escape.
-      await waitFor(() => expect(container.querySelector('[role="menu"]')).toBeNull());
+      flushSync();
+      expect(container.querySelector('[role="menu"]')?.outerHTML ?? null).toBeNull();
       window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
       expect(parentEscapeCount).toBe(1);
     } finally {
@@ -197,13 +203,14 @@ describe('DropdownMenu', () => {
 
     try {
       const { container } = renderFixture();
-      await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+      await fireEvent.click(requiredInstance(container.querySelector('.trigger'), HTMLElement));
       await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
 
       window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 
       expect(parentEscapeCount).toBe(0);
-      await waitFor(() => expect(container.querySelector('[role="menu"]')).toBeNull());
+      flushSync();
+      expect(container.querySelector('[role="menu"]')?.outerHTML ?? null).toBeNull();
     } finally {
       releaseParent();
     }
@@ -214,7 +221,7 @@ describe('DropdownMenu', () => {
     // regardless of focus location, unlike the deleted target-scoped
     // `onkeydown` branch that only acted while focus was inside the panel.
     const { container } = renderFixture();
-    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await fireEvent.click(requiredInstance(container.querySelector('.trigger'), HTMLElement));
     await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
 
     const outside = document.createElement('button');
@@ -225,7 +232,8 @@ describe('DropdownMenu', () => {
 
     window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 
-    await waitFor(() => expect(container.querySelector('[role="menu"]')).toBeNull());
+    flushSync();
+    expect(container.querySelector('[role="menu"]')?.outerHTML ?? null).toBeNull();
     outside.remove();
   });
 
@@ -289,10 +297,10 @@ describe('DropdownMenu anchor-positioning style (popover path)', () => {
   test('a consumer style prop merges with the anchor-positioning style instead of clobbering it', async () => {
     const { container } = renderFixture({ menuStyle: 'margin-top: 4px;' });
 
-    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await fireEvent.click(requiredInstance(container.querySelector('.trigger'), HTMLElement));
     await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
 
-    const menu = container.querySelector('[role="menu"]') as HTMLElement;
+    const menu = requiredInstance(container.querySelector('[role="menu"]'), HTMLElement);
     expect(menu.style.getPropertyValue('margin-top')).toBe('4px');
     expect(menu.style.getPropertyValue('position-anchor')).toBe('--actions-menu-menu');
   });
@@ -300,10 +308,10 @@ describe('DropdownMenu anchor-positioning style (popover path)', () => {
   test('the internal position-anchor declaration wins when a consumer style redeclares it', async () => {
     const { container } = renderFixture({ menuStyle: 'position-anchor: --consumer-injected;' });
 
-    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await fireEvent.click(requiredInstance(container.querySelector('.trigger'), HTMLElement));
     await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
 
-    const menu = container.querySelector('[role="menu"]') as HTMLElement;
+    const menu = requiredInstance(container.querySelector('[role="menu"]'), HTMLElement);
     expect(menu.style.getPropertyValue('position-anchor')).toBe('--actions-menu-menu');
   });
 
@@ -318,7 +326,7 @@ describe('DropdownMenu anchor-positioning style (popover path)', () => {
     // left on whatever was outside, breaking dropdown.a11y.md's Escape ->
     // focus-returns-to-trigger contract.
     const { container } = renderFixture();
-    const trigger = container.querySelector('.trigger') as HTMLElement;
+    const trigger = requiredInstance(container.querySelector('.trigger'), HTMLElement);
     await fireEvent.click(trigger);
     await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
 
@@ -327,7 +335,7 @@ describe('DropdownMenu anchor-positioning style (popover path)', () => {
     // opens, which is what `context.isOpen` (and thus this escape-stack
     // registration) is driven by. Simulate that so the popover branch's
     // effect actually engages.
-    const menu = container.querySelector('[role="menu"]') as HTMLElement;
+    const menu = requiredInstance(container.querySelector('[role="menu"]'), HTMLElement);
     const openToggleEvent = new window.Event('toggle');
     Object.defineProperty(openToggleEvent, 'newState', { value: 'open' });
     menu.dispatchEvent(openToggleEvent);
@@ -361,11 +369,11 @@ describe('DropdownMenu anchor-positioning style (popover path)', () => {
     // close-request (that's governed by preventDefault(), which this branch
     // still must not call).
     const { container } = renderFixture();
-    const trigger = container.querySelector('.trigger') as HTMLElement;
+    const trigger = requiredInstance(container.querySelector('.trigger'), HTMLElement);
     await fireEvent.click(trigger);
     await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
 
-    const menu = container.querySelector('[role="menu"]') as HTMLElement;
+    const menu = requiredInstance(container.querySelector('[role="menu"]'), HTMLElement);
     const openToggleEvent = new window.Event('toggle');
     Object.defineProperty(openToggleEvent, 'newState', { value: 'open' });
     menu.dispatchEvent(openToggleEvent);

@@ -18,18 +18,18 @@ import DropdownMenu from '../dropdown-menu/dropdown-menu.svelte';
 import DropdownSeparator from '../dropdown-separator/dropdown-separator.svelte';
 import { ContextMenu } from './index.ts';
 
-const _trigger: typeof ContextMenuTrigger = ContextMenu.Trigger;
-const _menu: typeof DropdownMenu = ContextMenu.Menu;
-const _item: typeof DropdownItem = ContextMenu.Item;
-const _label: typeof DropdownLabel = ContextMenu.Label;
-const _separator: typeof DropdownSeparator = ContextMenu.Separator;
-const _group: typeof DropdownGroup = ContextMenu.Group;
+const trigger: typeof ContextMenuTrigger = ContextMenu.Trigger;
+const menu: typeof DropdownMenu = ContextMenu.Menu;
+const item: typeof DropdownItem = ContextMenu.Item;
+const label: typeof DropdownLabel = ContextMenu.Label;
+const separator: typeof DropdownSeparator = ContextMenu.Separator;
+const group: typeof DropdownGroup = ContextMenu.Group;
 
 ContextMenu satisfies Component<never>;
 
-void _trigger;
-void _menu;
-void _item;
-void _label;
-void _separator;
-void _group;
+void trigger;
+void menu;
+void item;
+void label;
+void separator;
+void group;

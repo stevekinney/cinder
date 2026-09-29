@@ -51,6 +51,8 @@ export interface DiffHunk {
   currentLines: string[];
 }
 
+export { getDiffStats } from './line-diff-stats.js';
+
 const dmp = new DiffMatchPatch();
 
 function getArrayItem<T>(items: readonly T[], index: number): T {
@@ -86,49 +88,45 @@ export function computeLineDiff(original: string, current: string): LineDiff[] {
   }
 
   // Use diff-match-patch's line diff mode
-  const { chars1, chars2, lineArray } = dmp.diff_linesToChars_(original, current);
+  const { chars1, chars2, lineArray } = dmp['diff_linesToChars_'](original, current);
   const lineDiffs = dmp.diff_main(chars1, chars2, false);
   dmp.diff_cleanupSemantic(lineDiffs);
-  dmp.diff_charsToLines_(lineDiffs, lineArray);
+  dmp['diff_charsToLines_'](lineDiffs, lineArray);
 
   const result: LineDiff[] = [];
 
   for (let i = 0; i < lineDiffs.length; i++) {
     const [op, text] = getArrayItem(lineDiffs, i);
-    // Split by newlines, removing trailing empty string from final newline
-    const lines = splitLines(text);
-
-    if (op === 0) {
-      // Equal - these lines are unchanged
-      for (const line of lines) {
-        result.push({ type: 'same', text: line });
-      }
-    } else if (op === -1) {
-      // Deletion - check if followed by insertion (modification)
-      const next = lineDiffs[i + 1];
-      if (next && next[0] === 1) {
-        // This is a modification (delete + insert)
-        const oldLines = lines;
-        const newLines = splitLines(next[1]);
-
-        // Process each line pair
-        processModification(oldLines, newLines, result);
-        i++; // Skip the insertion we just processed
-      } else {
-        // Pure deletion
-        for (const line of lines) {
-          result.push({ type: 'removed', text: line });
-        }
-      }
-    } else if (op === 1) {
-      // Insertion (not preceded by deletion - that case is handled above)
-      for (const line of lines) {
-        result.push({ type: 'added', text: line });
-      }
-    }
+    if (processDiffChunk(op, text, lineDiffs[i + 1], result)) i++;
   }
 
   return result;
+}
+
+function processDiffChunk(
+  op: number,
+  text: string,
+  next: [number, string] | undefined,
+  result: LineDiff[],
+): boolean {
+  const lines = splitLines(text);
+  if (op === 0) appendLines(result, lines, 'same');
+  if (op === 1) appendLines(result, lines, 'added');
+  if (op !== -1) return false;
+  if (next?.[0] === 1) {
+    processModification(lines, splitLines(next[1]), result);
+    return true;
+  }
+  appendLines(result, lines, 'removed');
+  return false;
+}
+
+function appendLines(
+  result: LineDiff[],
+  lines: string[],
+  type: 'same' | 'added' | 'removed',
+): void {
+  for (const text of lines) result.push({ type, text });
 }
 
 /**
@@ -221,26 +219,7 @@ function alignLines(oldLines: string[], newLines: string[]): AlignmentResult[] {
 
   for (let oldIdx = 0; oldIdx < oldLines.length; oldIdx++) {
     const oldLine = getArrayItem(oldLines, oldIdx);
-    let bestMatchIdx = -1;
-    let bestSimilarity = 0.5; // Minimum threshold for a match
-
-    // Only consider new lines at or after the last match
-    for (let newIdx = minNewIdx; newIdx < newLines.length; newIdx++) {
-      if (matchedNew.has(newIdx)) continue;
-
-      const newLine = getArrayItem(newLines, newIdx);
-      const similarity = computeSimilarity(oldLine, newLine);
-
-      if (similarity > bestSimilarity) {
-        bestSimilarity = similarity;
-        bestMatchIdx = newIdx;
-
-        // Exact matches cannot be improved, but near matches can still hide
-        // a better match later in the candidate window.
-        if (similarity === 1) break;
-      }
-    }
-
+    const bestMatchIdx = findBestMatch(oldLine, newLines, minNewIdx, matchedNew);
     if (bestMatchIdx >= 0) {
       oldMatches[oldIdx] = bestMatchIdx;
       matchedNew.add(bestMatchIdx);
@@ -253,45 +232,74 @@ function alignLines(oldLines: string[], newLines: string[]): AlignmentResult[] {
   let newIdx = 0;
 
   while (oldIdx < oldLines.length || newIdx < newLines.length) {
-    if (oldIdx < oldLines.length) {
-      const matchIdx = getArrayItem(oldMatches, oldIdx);
-
-      if (matchIdx !== null) {
-        // Output any unmatched new lines before this match
-        while (newIdx < matchIdx) {
-          if (!matchedNew.has(newIdx)) {
-            result.push({ type: 'added', text: getArrayItem(newLines, newIdx) });
-          }
-          newIdx++;
-        }
-
-        // Output the matched pair
-        const oldLine = getArrayItem(oldLines, oldIdx);
-        const newLine = getArrayItem(newLines, matchIdx);
-
-        if (oldLine === newLine) {
-          result.push({ type: 'same', text: oldLine });
-        } else {
-          result.push({ type: 'modified', oldText: oldLine, newText: newLine });
-        }
-
-        oldIdx++;
-        newIdx = matchIdx + 1;
-      } else {
-        // No match for this old line - it was removed
-        result.push({ type: 'removed', text: getArrayItem(oldLines, oldIdx) });
-        oldIdx++;
-      }
-    } else {
-      // No more old lines - remaining new lines are additions
-      if (!matchedNew.has(newIdx)) {
-        result.push({ type: 'added', text: getArrayItem(newLines, newIdx) });
-      }
-      newIdx++;
-    }
+    const step = appendAlignment(
+      result,
+      oldLines,
+      newLines,
+      oldMatches,
+      matchedNew,
+      oldIdx,
+      newIdx,
+    );
+    oldIdx = step.oldIndex;
+    newIdx = step.newIndex;
   }
 
   return result;
+}
+
+function findBestMatch(
+  oldLine: string,
+  newLines: string[],
+  minNewIdx: number,
+  matchedNew: Set<number>,
+): number {
+  let bestMatchIdx = -1;
+  let bestSimilarity = 0.5;
+  for (let newIdx = minNewIdx; newIdx < newLines.length; newIdx++) {
+    if (matchedNew.has(newIdx)) continue;
+    const similarity = computeSimilarity(oldLine, getArrayItem(newLines, newIdx));
+    if (similarity > bestSimilarity) {
+      bestSimilarity = similarity;
+      bestMatchIdx = newIdx;
+      if (similarity === 1) break;
+    }
+  }
+  return bestMatchIdx;
+}
+
+function appendAlignment(
+  result: AlignmentResult[],
+  oldLines: string[],
+  newLines: string[],
+  oldMatches: (number | null)[],
+  matchedNew: Set<number>,
+  oldIndex: number,
+  newIndex: number,
+): { oldIndex: number; newIndex: number } {
+  if (oldIndex >= oldLines.length) {
+    if (!matchedNew.has(newIndex))
+      result.push({ type: 'added', text: getArrayItem(newLines, newIndex) });
+    return { oldIndex, newIndex: newIndex + 1 };
+  }
+  const matchIndex = getArrayItem(oldMatches, oldIndex);
+  if (matchIndex === null) {
+    result.push({ type: 'removed', text: getArrayItem(oldLines, oldIndex) });
+    return { oldIndex: oldIndex + 1, newIndex };
+  }
+  while (newIndex < matchIndex) {
+    if (!matchedNew.has(newIndex))
+      result.push({ type: 'added', text: getArrayItem(newLines, newIndex) });
+    newIndex++;
+  }
+  const oldLine = getArrayItem(oldLines, oldIndex);
+  const newLine = getArrayItem(newLines, matchIndex);
+  result.push(
+    oldLine === newLine
+      ? { type: 'same', text: oldLine }
+      : { type: 'modified', oldText: oldLine, newText: newLine },
+  );
+  return { oldIndex: oldIndex + 1, newIndex: matchIndex + 1 };
 }
 
 /**
@@ -327,131 +335,74 @@ const CONTEXT_LINES = 3;
  * a single hunk.
  */
 export function groupIntoHunks(lineDiffs: LineDiff[]): DiffHunk[] {
-  const hunks: DiffHunk[] = [];
-
-  // Track line numbers as we iterate
-  let originalLine = 1;
-  let currentLine = 1;
-
-  // Build an array with line number information
-  const linesWithNumbers = lineDiffs.map((diff) => {
-    const result = {
-      diff,
-      originalLineNumber: diff.type !== 'added' ? originalLine : undefined,
-      currentLineNumber: diff.type !== 'removed' ? currentLine : undefined,
-    };
-
-    // Advance line counters based on diff type
-    if (diff.type === 'same') {
-      originalLine++;
-      currentLine++;
-    } else if (diff.type === 'added') {
-      currentLine++;
-    } else if (diff.type === 'removed') {
-      originalLine++;
-    } else if (diff.type === 'modified') {
-      originalLine++;
-      currentLine++;
-    }
-
-    return result;
-  });
-
-  // Find change regions (indices where changes occur)
-  const changeIndices: number[] = [];
-  for (const [index, lineWithNumbers] of linesWithNumbers.entries()) {
-    if (lineWithNumbers.diff.type !== 'same') {
-      changeIndices.push(index);
-    }
-  }
-
-  if (changeIndices.length === 0) {
-    return []; // No changes, no hunks
-  }
-
-  // Group consecutive change indices into ranges
-  const changeRanges: { start: number; end: number }[] = [];
-  let rangeStart = getArrayItem(changeIndices, 0);
-  let rangeEnd = getArrayItem(changeIndices, 0);
-
-  for (let i = 1; i < changeIndices.length; i++) {
-    const idx = getArrayItem(changeIndices, i);
-    // If this change is close enough to the previous, extend the range
-    if (idx - rangeEnd <= 2 * CONTEXT_LINES) {
-      rangeEnd = idx;
-    } else {
-      changeRanges.push({ start: rangeStart, end: rangeEnd });
-      rangeStart = idx;
-      rangeEnd = idx;
-    }
-  }
-  changeRanges.push({ start: rangeStart, end: rangeEnd });
-
-  // Build hunks from change ranges
-  for (const [index, range] of changeRanges.entries()) {
-    // Calculate hunk boundaries with context
-    const hunkStart = Math.max(0, range.start - CONTEXT_LINES);
-    const hunkEnd = Math.min(linesWithNumbers.length - 1, range.end + CONTEXT_LINES);
-
-    // Extract lines for this hunk
-    const hunkLines: LineDiff[] = [];
-    const originalLines: string[] = [];
-    const currentLines: string[] = [];
-
-    let hunkOriginalStart = Number.MAX_SAFE_INTEGER;
-    let hunkCurrentStart = Number.MAX_SAFE_INTEGER;
-    let hunkOriginalCount = 0;
-    let hunkCurrentCount = 0;
-
-    for (let j = hunkStart; j <= hunkEnd; j++) {
-      const { diff, originalLineNumber, currentLineNumber } = getArrayItem(linesWithNumbers, j);
-      hunkLines.push(diff);
-
-      if (originalLineNumber !== undefined) {
-        hunkOriginalStart = Math.min(hunkOriginalStart, originalLineNumber);
-        hunkOriginalCount++;
-        if (diff.type === 'removed' || diff.type === 'modified') {
-          originalLines.push(diff.type === 'modified' ? diff.oldText : diff.text);
-        }
-      }
-
-      if (currentLineNumber !== undefined) {
-        hunkCurrentStart = Math.min(hunkCurrentStart, currentLineNumber);
-        hunkCurrentCount++;
-        if (diff.type === 'added' || diff.type === 'modified') {
-          currentLines.push(diff.type === 'modified' ? diff.newText : diff.text);
-        }
-      }
-    }
-
-    hunks.push({
-      index,
-      originalStart: hunkOriginalStart === Number.MAX_SAFE_INTEGER ? 1 : hunkOriginalStart,
-      originalCount: hunkOriginalCount,
-      currentStart: hunkCurrentStart === Number.MAX_SAFE_INTEGER ? 1 : hunkCurrentStart,
-      currentCount: hunkCurrentCount,
-      lines: hunkLines,
-      originalLines,
-      currentLines,
-    });
-  }
-
-  return hunks;
+  const numberedLines = numberLines(lineDiffs);
+  const ranges = groupChangeRanges(numberedLines);
+  return ranges.map((range, index) => buildHunk(numberedLines, range, index));
 }
 
-/**
- * Get diff statistics from line diff result.
- */
-export function getDiffStats(lineDiffs: LineDiff[]): LineDiffStats {
-  let added = 0;
-  let removed = 0;
-  let modified = 0;
+type NumberedLine = {
+  diff: LineDiff;
+  originalLineNumber?: number | undefined;
+  currentLineNumber?: number | undefined;
+};
 
-  for (const diff of lineDiffs) {
-    if (diff.type === 'added') added++;
-    else if (diff.type === 'removed') removed++;
-    else if (diff.type === 'modified') modified++;
+function numberLines(lineDiffs: LineDiff[]): NumberedLine[] {
+  let originalLine = 1;
+  let currentLine = 1;
+  return lineDiffs.map((diff) => {
+    const numbered = {
+      diff,
+      originalLineNumber: diff.type === 'added' ? undefined : originalLine,
+      currentLineNumber: diff.type === 'removed' ? undefined : currentLine,
+    };
+    if (diff.type !== 'added') originalLine++;
+    if (diff.type !== 'removed') currentLine++;
+    return numbered;
+  });
+}
+
+function groupChangeRanges(lines: NumberedLine[]): { start: number; end: number }[] {
+  const indices = lines.flatMap((line, index) => (line.diff.type === 'same' ? [] : [index]));
+  if (indices.length === 0) return [];
+  const ranges: { start: number; end: number }[] = [];
+  let start = getArrayItem(indices, 0);
+  let end = start;
+  for (const index of indices.slice(1)) {
+    if (index - end <= 2 * CONTEXT_LINES) end = index;
+    else {
+      ranges.push({ start, end });
+      start = index;
+      end = index;
+    }
   }
+  ranges.push({ start, end });
+  return ranges;
+}
 
-  return { added, removed, modified };
+function buildHunk(
+  lines: NumberedLine[],
+  range: { start: number; end: number },
+  index: number,
+): DiffHunk {
+  const start = Math.max(0, range.start - CONTEXT_LINES);
+  const end = Math.min(lines.length - 1, range.end + CONTEXT_LINES);
+  const selected = lines.slice(start, end + 1);
+  const originalLines = selected.flatMap(({ diff }) =>
+    diff.type === 'modified' ? [diff.oldText] : diff.type === 'removed' ? [diff.text] : [],
+  );
+  const currentLines = selected.flatMap(({ diff }) =>
+    diff.type === 'modified' ? [diff.newText] : diff.type === 'added' ? [diff.text] : [],
+  );
+  const originalStart = selected.find((line) => line.originalLineNumber)?.originalLineNumber ?? 1;
+  const currentStart = selected.find((line) => line.currentLineNumber)?.currentLineNumber ?? 1;
+  return {
+    index,
+    originalStart,
+    originalCount: selected.filter((line) => line.originalLineNumber !== undefined).length,
+    currentStart,
+    currentCount: selected.filter((line) => line.currentLineNumber !== undefined).length,
+    lines: selected.map(({ diff }) => diff),
+    originalLines,
+    currentLines,
+  };
 }

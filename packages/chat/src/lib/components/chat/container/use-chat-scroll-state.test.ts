@@ -21,7 +21,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, jest, test } from 'bun:test';
 
-import { setupHappyDom } from '../../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -227,11 +227,11 @@ describe('useChatScrollState — withForcedLayout release ownership (CIN-418, se
       },
     });
     const scrollCalls: number[] = [];
-    viewport.scrollTo = ((options?: ScrollToOptions | number) => {
+    viewport.scrollTo = (options?: ScrollToOptions | number) => {
       const top = typeof options === 'number' ? options : (options?.top ?? 0);
       scrollCalls.push(top);
       (viewport as { scrollTop: number }).scrollTop = top;
-    }) as typeof viewport.scrollTo;
+    };
     document.body.appendChild(viewport);
 
     state.jumpToLatest(viewport);
@@ -295,20 +295,19 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     // happy-dom's real matchMedia always reports `matches: false`, which is
     // why this branch needs an explicit stub rather than relying on the
     // environment default (used by the 500ms test above).
-    window.matchMedia = ((query: string) =>
-      ({
-        matches: query.includes('prefers-reduced-motion'),
-        media: query,
-        onchange: null,
-        addEventListener: () => {},
-        removeEventListener: () => {},
-        // Legacy MediaQueryList API — included alongside the modern
-        // addEventListener/removeEventListener pair in case the Svelte
-        // MediaQuery build in use prefers it.
-        addListener: () => {},
-        removeListener: () => {},
-        dispatchEvent: () => true,
-      }) as unknown as MediaQueryList) as typeof window.matchMedia;
+    window.matchMedia = (query: string) => ({
+      matches: query.includes('prefers-reduced-motion'),
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      // Legacy MediaQueryList API — included alongside the modern
+      // addEventListener/removeEventListener pair in case the Svelte
+      // MediaQuery build in use prefers it.
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => true,
+    });
 
     try {
       const state = useChatScrollState();
@@ -487,31 +486,29 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     const viewport = createViewport();
     const sentinel = document.createElement('div');
     viewport.appendChild(sentinel);
-    viewport.getBoundingClientRect = () =>
-      ({
-        top: 0,
-        right: 400,
-        bottom: 400,
-        left: 0,
-        width: 400,
-        height: 400,
-        x: 0,
-        y: 0,
-        toJSON: () => ({}),
-      }) as DOMRect;
+    viewport.getBoundingClientRect = () => ({
+      top: 0,
+      right: 400,
+      bottom: 400,
+      left: 0,
+      width: 400,
+      height: 400,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
     let sentinelTop = 350;
-    sentinel.getBoundingClientRect = () =>
-      ({
-        top: sentinelTop,
-        right: 400,
-        bottom: sentinelTop + 1,
-        left: 0,
-        width: 400,
-        height: 1,
-        x: 0,
-        y: sentinelTop,
-        toJSON: () => ({}),
-      }) as DOMRect;
+    sentinel.getBoundingClientRect = () => ({
+      top: sentinelTop,
+      right: 400,
+      bottom: sentinelTop + 1,
+      left: 0,
+      width: 400,
+      height: 1,
+      x: 0,
+      y: sentinelTop,
+      toJSON: () => ({}),
+    });
 
     state.setAtBottom(false);
     state.withUserScrollGuard(viewport, () => {});
@@ -587,9 +584,9 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     const state = useChatScrollState();
     const viewport = createViewport();
     const scrollCalls: number[] = [];
-    viewport.scrollTo = ((options?: ScrollToOptions | number) => {
+    viewport.scrollTo = (options?: ScrollToOptions | number) => {
       scrollCalls.push(typeof options === 'number' ? options : (options?.top ?? 0));
-    }) as typeof viewport.scrollTo;
+    };
 
     state.jumpToLatest(viewport);
     expect(scrollCalls).toEqual([2000]);
@@ -615,9 +612,9 @@ describe('useChatScrollState — isUserScrolling guard (regression for #774)', (
     const state = useChatScrollState();
     const viewport = createViewport();
     const scrollCalls: number[] = [];
-    viewport.scrollTo = ((options?: ScrollToOptions | number) => {
+    viewport.scrollTo = (options?: ScrollToOptions | number) => {
       scrollCalls.push(typeof options === 'number' ? options : (options?.top ?? 0));
-    }) as typeof viewport.scrollTo;
+    };
 
     state.jumpToLatest(viewport);
     expect(scrollCalls).toEqual([2000]);
@@ -858,7 +855,7 @@ describe('useChatScrollState — finishUserScrollGuard (regression for #1237)', 
     Object.defineProperty(viewport, 'scrollTop', { value: 0, writable: true, configurable: true });
     Object.defineProperty(viewport, 'clientHeight', { value: 400, configurable: true });
     const scrollCalls: { top: number; behavior: ScrollBehavior | undefined }[] = [];
-    viewport.scrollTo = ((options?: ScrollToOptions | number, y?: number) => {
+    viewport.scrollTo = (options?: ScrollToOptions | number, y?: number) => {
       const top =
         typeof options === 'number' ? (typeof y === 'number' ? y : options) : (options?.top ?? 0);
       scrollCalls.push({
@@ -866,7 +863,7 @@ describe('useChatScrollState — finishUserScrollGuard (regression for #1237)', 
         behavior: typeof options === 'object' ? options?.behavior : undefined,
       });
       (viewport as { scrollTop: number }).scrollTop = top;
-    }) as typeof viewport.scrollTo;
+    };
     document.body.appendChild(viewport);
     return { viewport, scrollCalls };
   }

@@ -9,8 +9,8 @@
  *
  * **All overlay markup must be SSR-empty**: Cinder overlays render an empty
  * placeholder (or nothing at all) during server-side rendering, regardless of
- * their `open` prop. The {@link useHydrated} helper exposes the bit Svelte 5
- * components need to gate their `{#if}` block on. This keeps the hydration
+ * their `open` prop. Each Svelte component gates its `{#if}` block on local
+ * state set by a client-only `$effect`. This keeps the hydration
  * model simple — overlays only ever attach to the DOM after the client takes
  * over — at the cost of a one-frame delay for `open={true}` initial state.
  */
@@ -36,42 +36,6 @@ export const Z_LAYERS = {
 
 export type OverlayLayer = keyof typeof Z_LAYERS;
 
-/**
- * Returns the SSR-friendly "is the client hydrated yet?" bit. The standard
- * idiom in a Svelte 5 component:
- *
- * ```svelte
- * <script>
- *   let hydrated = $state(false);
- *   $effect(() => { hydrated = true; });
- * </script>
- *
- * {#if hydrated && open}
- *   <div class="cinder-popover">...</div>
- * {/if}
- * ```
- *
- * `$effect` only runs on the client, so `hydrated` stays false through SSR.
- * Wrap any DOM-attached overlay element in `{#if hydrated}` so the server
- * sends back an empty markup slot regardless of `open`.
- *
- * This is documented as a snippet rather than provided as a Svelte runes API
- * because runes can only be invoked from inside `.svelte` / `.svelte.ts`
- * files. Inlining the two lines into each overlay component is clearer than
- * a wrapper.
- *
- * The function exists so downstream tests can introspect the contract — i.e.
- * importing `Z_LAYERS` and `useHydrated` from one place is the canonical
- * overlay-policy entry point.
- */
-export function useHydrated(): { value: boolean } {
-  // No-op runtime — the real implementation lives inline in each overlay
-  // component (see Modal, Drawer, etc.). Returning a frozen object keeps the
-  // export shape stable for consumers that import it for type information
-  // alongside the runes pattern in their own component.
-  return Object.freeze({ value: false });
-}
-
 // ---------------------------------------------------------------------------
 // Escape stack
 // ---------------------------------------------------------------------------
@@ -83,7 +47,7 @@ export function useHydrated(): { value: boolean } {
  * The stack lives in module scope so all Cinder overlays share it. It persists
  * for the lifetime of the JS module — under bun:test that means it is shared
  * across every test in a file, so suites that leave handlers registered must
- * call `_resetEscapeStack()` between cases to avoid leaking state. In
+ * call `resetEscapeStack()` between cases to avoid leaking state. In
  * production this is fine (a real app has at most a handful of stacked overlays
  * at once). It is a plain LIFO stack: each `pushEscapeHandler` call appends one
  * entry and returns a one-shot `release` token that removes that entry's most
@@ -152,7 +116,7 @@ function onEscapeKeydown(event: KeyboardEvent): void {
  * Test-only: clear the escape stack. Useful between tests to ensure a fresh
  * starting state. Not part of the public overlay API.
  */
-export function _resetEscapeStack(): void {
+export function resetEscapeStack(): void {
   escapeStack.length = 0;
   if (typeof window !== 'undefined') {
     window.removeEventListener('keydown', onEscapeKeydown, { capture: true });
@@ -199,7 +163,7 @@ export function lockBodyScroll(): () => void {
  * Test-only: forcibly reset the scroll-lock counter. Use between tests that
  * mount overlays with scroll lock to avoid leaking state into other tests.
  */
-export function _resetScrollLock(): void {
+export function resetScrollLock(): void {
   scrollLockCount = 0;
   originalBodyOverflow = null;
   if (typeof document !== 'undefined') {

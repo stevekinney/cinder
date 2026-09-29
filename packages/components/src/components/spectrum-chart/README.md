@@ -6,7 +6,7 @@ Responsive SVG frequency-bin bar chart for visualizing audio spectrum magnitude 
 
 ```svelte
 <script lang="ts">
-  import SpectrumChart from '@lostgradient/cinder/spectrum-chart';
+  import { SpectrumChart } from '@lostgradient/cinder';
 
   // Simulate a spectrum with a peak around 440 Hz (A4 note)
   const bins = [
@@ -76,7 +76,6 @@ SpectrumChart uses SVG and derives guide margins from its formatted frequency an
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

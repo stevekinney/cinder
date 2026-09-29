@@ -26,7 +26,7 @@ const schema = {
     },
     class: {
       type: 'string',
-      description: 'Additional class name merged onto the `.chat-container` root element.',
+      description: 'Additional class name merged onto the outer Chat layout element.',
     },
     surfaceMode: {
       enum: ['default', 'transparent'],
@@ -142,7 +142,7 @@ const schema = {
         name: 'adapter',
         reason: 'unknown-shape',
         description:
-          'Optional command/transport boundary around `conversation`. Its methods take\nprecedence over the matching callback props (e.g. `sendMessage` over\n`onsubmit`); omit it and Chat behaves exactly as with plain callbacks.',
+          'Optional command/transport boundary around `conversation`. Its methods take\nprecedence over the matching callback props (e.g. `sendMessage` over\n`onSubmit`); omit it and Chat behaves exactly as with plain callbacks.',
       },
       {
         name: 'capabilities',
@@ -208,27 +208,33 @@ const schema = {
           "Override or supplement the suggestion list for a message. Called\nper-message; return an array of label strings to show suggestion chips,\n`undefined` to fall back to `message.metadata['cinder:suggestions']`. An\nempty array suppresses suggestions.",
       },
       {
-        name: 'onadaptererror',
+        name: 'onAdapterError',
         reason: 'function-or-snippet',
         description:
           'Called when an adapter command fails — either a rejected promise or a synchronous throw from the method.',
       },
       {
-        name: 'onapprove',
+        name: 'onArtifactOpen',
         reason: 'function-or-snippet',
         description:
-          'Called when the user approves an action-required tool call. The\nconsumer is responsible for updating its transcript (e.g. calling\nconversationalist to unblock the pending tool) and triggering a new\ngeneration. When an adapter is also wired, Chat calls\n`adapter.approveToolCall(toolCallId)` first and then this callback.',
+          "Overrides Chat's built-in artifact panel. When supplied, Chat calls this\nonce with the resolved artifact and does not open its local panel.",
       },
       {
-        name: 'onattachmentadd',
+        name: 'onApprovalResolve',
+        reason: 'function-or-snippet',
+        description:
+          'Called when the user resolves an action-required approval. The complete\nresolution payload is forwarded unchanged. When an adapter is also wired,\nChat calls `adapter.resolveToolApproval(toolCallId, resolution)` first and\nuses this callback only when the adapter does not implement that method.',
+      },
+      {
+        name: 'onAttachmentAdd',
         reason: 'function-or-snippet',
       },
       {
-        name: 'onattachmentfailure',
+        name: 'onAttachmentFailure',
         reason: 'function-or-snippet',
       },
       {
-        name: 'onattachmentremove',
+        name: 'onAttachmentRemove',
         reason: 'function-or-snippet',
       },
       {
@@ -238,7 +244,7 @@ const schema = {
           'Called when focus leaves the composer textarea. Overlay primitives can use\nthis to dismiss without preventing native focus movement.',
       },
       {
-        name: 'oncomposerinput',
+        name: 'onComposerInput',
         reason: 'function-or-snippet',
         description:
           "Called with the composer's current plain-text value after user input or\n`insertAtRange()`. The optional event exposes the textarea for\ncomposer-bound overlays without reaching into `.chat-input-editor` DOM\ndirectly; programmatic range insertion omits the event.",
@@ -255,14 +261,9 @@ const schema = {
         description:
           'Called after pointer or selection activity may have moved the composer\ncaret without changing text. Overlay primitives can resync their active\ntoken from the textarea selection.',
       },
+
       {
-        name: 'ondeny',
-        reason: 'function-or-snippet',
-        description:
-          'Called when the user denies an action-required tool call. When an\nadapter is also wired, Chat calls `adapter.denyToolCall(toolCallId)` first\nand then this callback.',
-      },
-      {
-        name: 'onedit',
+        name: 'onEdit',
         reason: 'function-or-snippet',
       },
       {
@@ -270,7 +271,7 @@ const schema = {
         reason: 'function-or-snippet',
       },
       {
-        name: 'onjumptolatest',
+        name: 'onJumpToLatest',
         reason: 'function-or-snippet',
       },
       {
@@ -280,36 +281,36 @@ const schema = {
           'Called when the explicit history trigger is activated. The consumer prepends compatible messages into `conversation`.',
       },
       {
-        name: 'onpushmessage',
+        name: 'onPushMessage',
         reason: 'function-or-snippet',
         description:
           "Forwarded from the adapter's real-time `onMessage` push (consumer owns the transcript).",
       },
       {
-        name: 'onreadreceipt',
+        name: 'onReadReceipt',
         reason: 'function-or-snippet',
         description: "Forwarded from the adapter's real-time `onReadReceipt` push.",
       },
       {
-        name: 'onretry',
+        name: 'onRetry',
         reason: 'function-or-snippet',
       },
       {
-        name: 'onrollback',
+        name: 'onRollback',
         reason: 'function-or-snippet',
         description:
           'Commits a confirmed transcript rollback to immediately before the selected user message.',
       },
       {
-        name: 'onscrollstatechange',
+        name: 'onScrollStateChange',
         reason: 'function-or-snippet',
       },
       {
-        name: 'onstopgenerating',
+        name: 'onStopGenerating',
         reason: 'function-or-snippet',
       },
       {
-        name: 'onsubmit',
+        name: 'onSubmit',
         reason: 'function-or-snippet',
       },
       {
@@ -319,19 +320,20 @@ const schema = {
           'Called when the user selects a suggestion chip. The label string is\npassed back. The consumer is responsible for submitting it as a new user\nmessage.',
       },
       {
-        name: 'ontypingchange',
+        name: 'onTypingChange',
         reason: 'function-or-snippet',
-        description: "Forwarded from the adapter's real-time `onTypingChange` push.",
+        description:
+          "Forwarded from the adapter's real-time `onTypingChange` participant snapshot push.",
       },
       {
-        name: 'onunreadindicatorchange',
+        name: 'onUnreadIndicatorChange',
         reason: 'function-or-snippet',
       },
       {
         name: 'readReceipts',
         reason: 'unknown-shape',
         description:
-          'Per-message read receipt state. Out-of-band UI state — NOT stored on `Message`.\nPass a `Map` keyed by message id with a {@link ReadReceipt} value; the\ncomponent renders a receipt badge on USER messages only. While defined,\nincluding as an empty `Map`, this prop determines the visible receipts instead\nof adapter-derived state. Adapter events still call `onreadreceipt`, and their\nderived state may continue accumulating and become visible if this prop later\nbecomes `undefined`. Omit the prop or pass `undefined` to show adapter-derived\nstate. Default `undefined` (no receipts shown until adapter state is available).',
+          'Per-message read receipt state. Out-of-band UI state — NOT stored on `Message`.\nPass a `Map` keyed by message id with a {@link ReadReceipt} value; the\ncomponent renders a receipt badge on USER messages only. While defined,\nincluding as an empty `Map`, this prop determines the visible receipts instead\nof adapter-derived state. Adapter events still call `onReadReceipt`, and their\nderived state may continue accumulating and become visible if this prop later\nbecomes `undefined`. Omit the prop or pass `undefined` to show adapter-derived\nstate. Default `undefined` (no receipts shown until adapter state is available).',
       },
       {
         name: 'row',
@@ -343,7 +345,7 @@ const schema = {
         name: 'typingParticipants',
         reason: 'unknown-shape',
         description:
-          'Participants who are currently typing. Out-of-band UI state — NOT stored on\n`Message`. Pass an array of {@link TypingParticipant} objects; the component\nrenders a per-participant typing indicator above the input. While defined,\nincluding as an empty array, this prop determines the visible indicator instead\nof adapter-derived state. Adapter events still call `ontypingchange`, and their\nderived state may continue updating and become visible if this prop later becomes\n`undefined`. Omit the prop or pass `undefined` to show adapter-derived state.\nDefault `undefined` (indicator hidden until adapter state is available).',
+          'Participants who are currently typing. Out-of-band UI state — NOT stored on\n`Message`. Pass an array of {@link TypingParticipant} objects; the component\nrenders a per-participant typing indicator above the input. While defined,\nincluding as an empty array, this prop determines the visible indicator instead\nof adapter-derived state. Adapter events still call `onTypingChange`, and their\nderived state may continue updating and become visible if this prop later becomes\n`undefined`. Omit the prop or pass `undefined` to show adapter-derived state.\nDefault `undefined` (indicator hidden until adapter state is available).',
       },
       {
         name: 'viewportAttachment',

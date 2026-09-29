@@ -6,9 +6,9 @@ Controlled multi-column board for reordering cards within and across workflow co
 
 ```svelte
 <script lang="ts">
-  import Badge from '@lostgradient/cinder/badge';
-  import KanbanBoard from '@lostgradient/cinder/kanban-board';
-  import type { KanbanBoardColumn } from '@lostgradient/cinder/kanban-board';
+  import { Badge } from '@lostgradient/cinder';
+  import { KanbanBoard } from '@lostgradient/cinder';
+  import type { KanbanBoardColumn } from '@lostgradient/cinder';
 
   type WorkItem = {
     id: string;
@@ -116,6 +116,7 @@ Controlled multi-column board for reordering cards within and across workflow co
 - `--cinder-kanban-column-background`
 - `--cinder-kanban-column-gap`
 - `--cinder-kanban-column-width`
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

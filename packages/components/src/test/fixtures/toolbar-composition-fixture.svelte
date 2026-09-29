@@ -1,9 +1,9 @@
 <script lang="ts">
-  import Toolbar from '../../components/toolbar/index.ts';
-  import Button from '../../components/button/index.ts';
-  import NumberInput from '../../components/number-input/index.ts';
-  import Segment from '../../components/segment/index.ts';
-  import SegmentedControl from '../../components/segmented-control/index.ts';
+  import { Toolbar } from '../../components/toolbar/index.ts';
+  import { Button } from '../../components/button/index.ts';
+  import { NumberInput } from '../../components/number-input/index.ts';
+  import { Segment } from '../../components/segment/index.ts';
+  import { SegmentedControl } from '../../components/segmented-control/index.ts';
 
   let width = $state<number | null>(768);
 </script>

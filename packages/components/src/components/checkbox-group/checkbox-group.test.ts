@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -48,7 +48,7 @@ describe('CheckboxGroup', () => {
       description: 'Choose at least one',
       options: [{ id: 'cb-a', name: 'email', label: 'Email' }],
     });
-    const fieldset = container.querySelector('fieldset') as HTMLFieldSetElement;
+    const fieldset = requiredInstance(container.querySelector('fieldset'), HTMLFieldSetElement);
     const describedBy = fieldset.getAttribute('aria-describedby') ?? '';
     // Find the description element
     const descriptionEl = container.querySelector('.cinder-checkbox-group__description');
@@ -65,8 +65,11 @@ describe('CheckboxGroup', () => {
       error: 'Select at least one option',
       options: [{ id: 'cb-a', name: 'email', label: 'Email' }],
     });
-    const fieldset = container.querySelector('fieldset') as HTMLFieldSetElement;
-    const errorEl = container.querySelector('.cinder-checkbox-group__error') as HTMLElement;
+    const fieldset = requiredInstance(container.querySelector('fieldset'), HTMLFieldSetElement);
+    const errorEl = requiredInstance(
+      container.querySelector('.cinder-checkbox-group__error'),
+      HTMLElement,
+    );
     expect(errorEl).not.toBeNull();
     expect(errorEl.getAttribute('aria-live')).toBe('polite');
     expect(errorEl.textContent?.trim()).toBe('Select at least one option');
@@ -84,7 +87,7 @@ describe('CheckboxGroup', () => {
         { id: 'cb-b', name: 'sms', label: 'SMS' },
       ],
     });
-    const fieldset = container.querySelector('fieldset') as HTMLFieldSetElement;
+    const fieldset = requiredInstance(container.querySelector('fieldset'), HTMLFieldSetElement);
     // The fieldset itself must be disabled — this is the platform contract.
     // happy-dom does not reflect inherited disabled state onto descendant inputs
     // (input.disabled and :disabled both return false even when the parent fieldset
@@ -98,19 +101,19 @@ describe('CheckboxGroup', () => {
       required: true,
       options: [{ id: 'cb-a', name: 'email', label: 'Email' }],
     });
-    const fieldsetRequired = c1.querySelector('fieldset') as HTMLFieldSetElement;
+    const fieldsetRequired = requiredInstance(c1.querySelector('fieldset'), HTMLFieldSetElement);
     expect(fieldsetRequired.hasAttribute('data-cinder-required')).toBe(true);
     // No child input should have required set
     const inputs1 = Array.from(c1.querySelectorAll('input[type="checkbox"]'));
     inputs1.forEach((input) => {
-      expect((input as HTMLInputElement).required).toBe(false);
+      expect(requiredInstance(input, HTMLInputElement).required).toBe(false);
     });
 
     const { container: c2 } = render(Wrapper, {
       required: false,
       options: [{ id: 'cb-b', name: 'email', label: 'Email' }],
     });
-    const fieldsetNotRequired = c2.querySelector('fieldset') as HTMLFieldSetElement;
+    const fieldsetNotRequired = requiredInstance(c2.querySelector('fieldset'), HTMLFieldSetElement);
     expect(fieldsetNotRequired.hasAttribute('data-cinder-required')).toBe(false);
   });
 
@@ -119,7 +122,7 @@ describe('CheckboxGroup', () => {
     const { container } = render(Wrapper, {
       options: [{ id: 'cb-a', name: 'email', label: 'Email' }],
     });
-    const fieldset = container.querySelector('fieldset') as HTMLFieldSetElement;
+    const fieldset = requiredInstance(container.querySelector('fieldset'), HTMLFieldSetElement);
     expect(fieldset.getAttribute('data-variant')).toBe('default');
   });
 
@@ -128,7 +131,7 @@ describe('CheckboxGroup', () => {
       variant: 'card',
       options: [{ id: 'cb-a', name: 'email', label: 'Email' }],
     });
-    const fieldset = container.querySelector('fieldset') as HTMLFieldSetElement;
+    const fieldset = requiredInstance(container.querySelector('fieldset'), HTMLFieldSetElement);
     expect(fieldset.getAttribute('data-variant')).toBe('card');
   });
 
@@ -143,7 +146,7 @@ describe('CheckboxGroup', () => {
     const { container } = render(Wrapper, {
       options: [{ id: 'cb-a', name: 'email', label: 'Email' }],
     });
-    const fieldset = container.querySelector('fieldset') as HTMLFieldSetElement;
+    const fieldset = requiredInstance(container.querySelector('fieldset'), HTMLFieldSetElement);
     expect(fieldset.hasAttribute('aria-describedby')).toBe(false);
   });
 
@@ -154,7 +157,7 @@ describe('CheckboxGroup', () => {
       error: 'Selection required',
       options: [{ id: 'cb-a', name: 'email', label: 'Email' }],
     });
-    const fieldset = container.querySelector('fieldset') as HTMLFieldSetElement;
+    const fieldset = requiredInstance(container.querySelector('fieldset'), HTMLFieldSetElement);
     const descriptionEl = container.querySelector('.cinder-checkbox-group__description');
     const errorEl = container.querySelector('.cinder-checkbox-group__error');
     expect(descriptionEl).not.toBeNull();
@@ -196,7 +199,7 @@ describe('CheckboxGroup', () => {
         { id: 'cb-b', name: 'sms', label: 'SMS' },
       ],
     });
-    const fieldset = container.querySelector('fieldset') as HTMLFieldSetElement;
+    const fieldset = requiredInstance(container.querySelector('fieldset'), HTMLFieldSetElement);
     // Fieldset is [disabled]
     expect(fieldset.matches('[disabled]')).toBe(true);
     // Every label element is a descendant of the disabled fieldset

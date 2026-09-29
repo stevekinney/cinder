@@ -6,7 +6,7 @@ Visual indicator of task completion as a filled bar or percentage readout. Use `
 
 ```svelte
 <script lang="ts">
-  import Progress from '@lostgradient/cinder/progress';
+  import { Progress } from '@lostgradient/cinder';
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 0.75rem;">
@@ -37,7 +37,6 @@ Visual indicator of task completion as a filled bar or percentage readout. Use `
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

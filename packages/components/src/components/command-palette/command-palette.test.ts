@@ -1,9 +1,9 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { createRawSnippet, tick } from 'svelte';
+import { createRawSnippet, flushSync, tick } from 'svelte';
 
-import { _resetEscapeStack, _resetScrollLock } from '../../_internal/overlay.ts';
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
+import { resetEscapeStack, resetScrollLock } from '../../_internal/overlay.ts';
 
 setupHappyDom();
 
@@ -50,7 +50,7 @@ if (typeof HTMLDialogElement !== 'undefined') {
   });
 }
 
-const { render, fireEvent, cleanup, waitFor } = await import('@testing-library/svelte');
+const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
 afterEach(() => {
@@ -87,7 +87,7 @@ async function settleCommandPalette() {
 }
 
 function getInput(container: HTMLElement) {
-  return container.querySelector('input[role="combobox"]') as HTMLInputElement;
+  return requiredInstance(container.querySelector('input[role="combobox"]'), HTMLInputElement);
 }
 
 function expectActiveOption(container: HTMLElement, label: string) {
@@ -96,7 +96,7 @@ function expectActiveOption(container: HTMLElement, label: string) {
     container.querySelectorAll('[role="option"][aria-selected="true"]'),
   );
   expect(selectedOptions).toHaveLength(1);
-  const selectedOption = selectedOptions[0] as HTMLElement;
+  const selectedOption = requiredInstance(selectedOptions[0], HTMLElement);
   expect(selectedOption.textContent).toContain(label);
   expect(input.getAttribute('aria-activedescendant')).toBe(selectedOption.id);
   return selectedOption;
@@ -105,8 +105,8 @@ function expectActiveOption(container: HTMLElement, label: string) {
 // ── Shared setup ───────────────────────────────────────────────────────────
 
 beforeEach(() => {
-  _resetEscapeStack();
-  _resetScrollLock();
+  resetEscapeStack();
+  resetScrollLock();
 });
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -144,7 +144,7 @@ describe('CommandPalette — lifecycle', () => {
         closeCount += 1;
       },
     });
-    const trigger = getByTestId('command-palette-trigger') as HTMLButtonElement;
+    const trigger = requiredInstance(getByTestId('command-palette-trigger'), HTMLButtonElement);
     trigger.focus();
 
     await fireEvent.click(trigger);
@@ -156,7 +156,7 @@ describe('CommandPalette — lifecycle', () => {
     await fireEvent.click(getByTestId('command-palette-external-close'));
     await settleCommandPalette();
 
-    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const dialog = requiredInstance(container.querySelector('dialog'), HTMLDialogElement);
     expect(dialog.hasAttribute('open')).toBe(false);
     expect(document.activeElement).toBe(trigger);
     expect(closeCount).toBe(1);
@@ -226,7 +226,7 @@ describe('CommandPalette — combobox ARIA', () => {
     const { container } = render(CommandPalette, {
       props: { open: true, items: emptySnippet },
     });
-    const input = container.querySelector('input') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
     const inputId = input?.getAttribute('id');
     expect(inputId).not.toBeNull();
     const label = container.querySelector(`label[for="${inputId}"]`);
@@ -258,7 +258,7 @@ describe('CommandPalette — backdrop click', () => {
         items: emptySnippet,
       },
     });
-    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const dialog = requiredInstance(container.querySelector('dialog'), HTMLDialogElement);
     // Simulate a click where target === dialog (backdrop area).
     const event = new MouseEvent('click', { bubbles: true });
     Object.defineProperty(event, 'target', { value: dialog });
@@ -280,7 +280,7 @@ describe('CommandPalette — backdrop click', () => {
         items: emptySnippet,
       },
     });
-    const input = container.querySelector('input') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
     await fireEvent.click(input);
     expect(openValue).toBe(true);
   });
@@ -303,7 +303,7 @@ describe('CommandPalette — query', () => {
         items: emptySnippet,
       },
     });
-    const input = container.querySelector('input') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
     await fireEvent.input(input, { target: { value: 'hello' } });
     expect(queryValue).toBe('hello');
   });
@@ -359,7 +359,7 @@ describe('CommandPalette — keyboard routing (no registered items)', () => {
     const { container } = render(CommandPalette, {
       props: { open: true, items: emptySnippet },
     });
-    const input = container.querySelector('input') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
     await fireEvent.keyDown(input, { key: 'ArrowDown' });
     expect(input.getAttribute('aria-activedescendant')).toBeNull();
   });
@@ -368,7 +368,7 @@ describe('CommandPalette — keyboard routing (no registered items)', () => {
     const { container } = render(CommandPalette, {
       props: { open: true, items: emptySnippet },
     });
-    const input = container.querySelector('input') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
     await fireEvent.keyDown(input, { key: 'ArrowUp' });
     expect(input.getAttribute('aria-activedescendant')).toBeNull();
   });
@@ -384,7 +384,7 @@ describe('CommandPalette — keyboard routing (no registered items)', () => {
         items: emptySnippet,
       },
     });
-    const input = container.querySelector('input') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
     const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
     input.dispatchEvent(event);
     expect(closed).toBe(false);
@@ -395,7 +395,7 @@ describe('CommandPalette — keyboard routing (no registered items)', () => {
     const { container } = render(CommandPalette, {
       props: { open: true, items: emptySnippet },
     });
-    const input = container.querySelector('input') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
     await fireEvent.keyDown(input, { key: 'Home' });
     expect(input.getAttribute('aria-activedescendant')).toBeNull();
   });
@@ -404,7 +404,7 @@ describe('CommandPalette — keyboard routing (no registered items)', () => {
     const { container } = render(CommandPalette, {
       props: { open: true, items: emptySnippet },
     });
-    const input = container.querySelector('input') as HTMLInputElement;
+    const input = requiredInstance(container.querySelector('input'), HTMLInputElement);
     await fireEvent.keyDown(input, { key: 'End' });
     expect(input.getAttribute('aria-activedescendant')).toBeNull();
   });
@@ -413,7 +413,7 @@ describe('CommandPalette — keyboard routing (no registered items)', () => {
     const { container } = render(CommandPalette, {
       props: { open: true, items: emptySnippet },
     });
-    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const dialog = requiredInstance(container.querySelector('dialog'), HTMLDialogElement);
     let cancelPrevented = false;
     const cancelEvent = new Event('cancel', { cancelable: true });
     cancelEvent.preventDefault = () => {
@@ -446,7 +446,7 @@ describe('CommandPalette — keyboard routing (no registered items)', () => {
         items: emptySnippet,
       },
     });
-    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const dialog = requiredInstance(container.querySelector('dialog'), HTMLDialogElement);
     await fireEvent(dialog, new Event('cancel', { cancelable: true }));
     await settleCommandPalette();
     expect(openValue).toBe(false);
@@ -529,7 +529,9 @@ describe('CommandPalette — keyboard routing with registered items', () => {
       expect(calls.length).toBeGreaterThan(0);
       const lastCall = calls.at(-1) as { element: Element; options: ScrollIntoViewOptions };
       expect(lastCall.options).toEqual({ block: 'nearest' });
-      expect((lastCall.element as HTMLElement).getAttribute('aria-selected')).toBe('true');
+      expect(requiredInstance(lastCall.element, HTMLElement).getAttribute('aria-selected')).toBe(
+        'true',
+      );
     } finally {
       Element.prototype.scrollIntoView = originalScrollIntoView;
     }
@@ -637,7 +639,7 @@ describe('CommandPalette — close idempotency', () => {
         items: emptySnippet,
       },
     });
-    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const dialog = requiredInstance(container.querySelector('dialog'), HTMLDialogElement);
     // Simulate a genuine external/native close: `dialog.close()` (the fixed
     // happy-dom stub) both flips the `open` IDL property and dispatches the
     // real `close` event itself — SlidingDialogState.handleClose() validates
@@ -668,7 +670,7 @@ describe('CommandPalette — exit transition lifecycle', () => {
     // only way to observe the intermediate "closing but still mounted"
     // state.
     const originalGetComputedStyle = window.getComputedStyle.bind(window);
-    window.getComputedStyle = ((target: Element) => {
+    window.getComputedStyle = (target: Element) => {
       if (
         target instanceof HTMLElement &&
         target.classList.contains('cinder-command-palette__panel')
@@ -680,14 +682,14 @@ describe('CommandPalette — exit transition lifecycle', () => {
         } as CSSStyleDeclaration;
       }
       return originalGetComputedStyle(target);
-    }) as typeof window.getComputedStyle;
+    };
 
     try {
       const { container, rerender } = render(CommandPalette, {
         props: { open: true, items: emptySnippet },
       });
 
-      const dialog = container.querySelector('dialog') as HTMLDialogElement;
+      const dialog = requiredInstance(container.querySelector('dialog'), HTMLDialogElement);
       await rerender({ open: false, items: emptySnippet });
 
       // `open` flips synchronously, but the native <dialog> and the panel's
@@ -704,10 +706,11 @@ describe('CommandPalette — exit transition lifecycle', () => {
         panel?.dispatchEvent(event);
       }
 
-      await waitFor(() => {
-        expect(dialog.hasAttribute('open')).toBe(false);
-        expect(container.querySelector('.cinder-command-palette__panel')).toBeNull();
-      });
+      flushSync();
+      expect(dialog.hasAttribute('open')).toBe(false);
+      expect(
+        container.querySelector('.cinder-command-palette__panel')?.outerHTML ?? null,
+      ).toBeNull();
     } finally {
       window.getComputedStyle = originalGetComputedStyle;
     }
@@ -715,7 +718,7 @@ describe('CommandPalette — exit transition lifecycle', () => {
 
   test('closes immediately under prefers-reduced-motion: reduce', async () => {
     const originalMatchMedia = window.matchMedia;
-    window.matchMedia = ((media: string): MediaQueryList =>
+    window.matchMedia = (media: string): MediaQueryList =>
       ({
         matches: media === '(prefers-reduced-motion: reduce)',
         media,
@@ -725,7 +728,7 @@ describe('CommandPalette — exit transition lifecycle', () => {
         addListener: () => {},
         removeListener: () => {},
         dispatchEvent: () => true,
-      }) as MediaQueryList) as typeof window.matchMedia;
+      }) as MediaQueryList;
 
     // Stub a real transition duration too — if this test passed only because
     // happy-dom's DEFAULT computed style is a zero duration, it would not
@@ -733,7 +736,7 @@ describe('CommandPalette — exit transition lifecycle', () => {
     // close (see the "attribute override" test below for the companion
     // case: zero duration WITHOUT the reduced-motion hook returning true).
     const originalGetComputedStyle = window.getComputedStyle.bind(window);
-    window.getComputedStyle = ((target: Element) => {
+    window.getComputedStyle = (target: Element) => {
       if (
         target instanceof HTMLElement &&
         target.classList.contains('cinder-command-palette__panel')
@@ -745,7 +748,7 @@ describe('CommandPalette — exit transition lifecycle', () => {
         } as CSSStyleDeclaration;
       }
       return originalGetComputedStyle(target);
-    }) as typeof window.getComputedStyle;
+    };
 
     try {
       const { container, rerender } = render(CommandPalette, {
@@ -758,9 +761,10 @@ describe('CommandPalette — exit transition lifecycle', () => {
       // reducedMotion: true to waitForTransitionCompletion, which ignores
       // the (non-zero) computed duration entirely and resolves via
       // queueMicrotask regardless.
-      await waitFor(() => {
-        expect(container.querySelector('.cinder-command-palette__panel')).toBeNull();
-      });
+      flushSync();
+      expect(
+        container.querySelector('.cinder-command-palette__panel')?.outerHTML ?? null,
+      ).toBeNull();
     } finally {
       window.matchMedia = originalMatchMedia;
       window.getComputedStyle = originalGetComputedStyle;
@@ -776,7 +780,7 @@ describe('CommandPalette — exit transition lifecycle', () => {
     // just the JS reducedMotion flag, per OVERLAY-POLICY.md's ruling that
     // "CSS-side overrides cannot disagree with the JS wait."
     const originalGetComputedStyle = window.getComputedStyle.bind(window);
-    window.getComputedStyle = ((target: Element) => {
+    window.getComputedStyle = (target: Element) => {
       if (
         target instanceof HTMLElement &&
         target.classList.contains('cinder-command-palette__panel')
@@ -788,7 +792,7 @@ describe('CommandPalette — exit transition lifecycle', () => {
         } as CSSStyleDeclaration;
       }
       return originalGetComputedStyle(target);
-    }) as typeof window.getComputedStyle;
+    };
 
     try {
       const { container, rerender } = render(CommandPalette, {
@@ -797,9 +801,10 @@ describe('CommandPalette — exit transition lifecycle', () => {
 
       await rerender({ open: false, items: emptySnippet });
 
-      await waitFor(() => {
-        expect(container.querySelector('.cinder-command-palette__panel')).toBeNull();
-      });
+      flushSync();
+      expect(
+        container.querySelector('.cinder-command-palette__panel')?.outerHTML ?? null,
+      ).toBeNull();
     } finally {
       window.getComputedStyle = originalGetComputedStyle;
     }
@@ -807,7 +812,7 @@ describe('CommandPalette — exit transition lifecycle', () => {
 
   test('reopening mid-close does not unmount the freshly reopened palette', async () => {
     const originalGetComputedStyle = window.getComputedStyle.bind(window);
-    window.getComputedStyle = ((target: Element) => {
+    window.getComputedStyle = (target: Element) => {
       if (
         target instanceof HTMLElement &&
         target.classList.contains('cinder-command-palette__panel')
@@ -819,7 +824,7 @@ describe('CommandPalette — exit transition lifecycle', () => {
         } as CSSStyleDeclaration;
       }
       return originalGetComputedStyle(target);
-    }) as typeof window.getComputedStyle;
+    };
 
     try {
       const { container, rerender } = render(CommandPalette, {
@@ -863,7 +868,7 @@ describe('CommandPalette — scroll lock', () => {
 
     expect(document.body.style.overflow).toBe('hidden');
 
-    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const dialog = requiredInstance(container.querySelector('dialog'), HTMLDialogElement);
     dialog.close();
     await settleCommandPalette();
     expect(document.body.style.overflow).toBe('');

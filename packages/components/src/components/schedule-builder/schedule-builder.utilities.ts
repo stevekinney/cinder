@@ -1,5 +1,9 @@
 import type { ScheduleIntervalUnit, ScheduleValue } from './schedule-builder.types.ts';
 
+function assertNever(value: never): never {
+  throw new Error(`Unexpected exhaustive value: ${String(value)}`);
+}
+
 /** The interval units offered in the interval mode selector, in order. */
 export const INTERVAL_UNITS: readonly ScheduleIntervalUnit[] = [
   'minutes',
@@ -222,6 +226,8 @@ export function valueToCronFields(value: ScheduleValue): string[] {
     case 'days':
     case 'weeks':
       return ['0', '0', '*', '*', '*'];
+    default:
+      return assertNever(value.unit);
   }
 }
 

@@ -108,7 +108,7 @@ export const COMPONENT_AUTHORING_CHECKLIST = [
   },
   {
     id: 'guard-pipeline-registration',
-    text: 'Register every new guard script in check-pipeline-coverage.ts in the same change.',
+    text: 'Keep the structural mirror pipeline guard and its regression tests in sync when changing the public workflow contract.',
     references: ['#310'],
   },
   {

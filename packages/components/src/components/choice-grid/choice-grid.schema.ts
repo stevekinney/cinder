@@ -37,7 +37,12 @@ const schema = {
     minColumnWidth: {
       type: 'string',
       description:
-        'Minimum cell width for `columns="responsive"`. Accepts any CSS\n`<length>` (e.g. `"12rem"`, `"200px"`). Default: `"10rem"`.',
+        'Minimum cell width for `columns="responsive"`. Accepts any CSS\n`<length>` (e.g. `"12rem"`, `"200px"`). Default: `"10rem"`, or `"6rem"`\nwhen `size="sm"` — passing `minColumnWidth` explicitly always wins over\neither default.',
+    },
+    size: {
+      const: 'sm',
+      description:
+        'Compact-only size variant. Omitting it (the default) keeps the current\nappearance. `"sm"` shrinks each item\'s block-size to Cinder\'s `button`\n`sm` height under a fine pointer, and to a 44×44 CSS pixel minimum touch\ntarget under a coarse pointer; it does not change selection, hover,\nfocus, or feedback-state styling. See the ChoiceGrid README\'s "Compact\nsize" section for the full sizing contract.',
     },
     ariaLabel: {
       type: 'string',

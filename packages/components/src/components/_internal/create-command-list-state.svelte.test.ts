@@ -1,9 +1,9 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
-import { _resetEscapeStack, pushEscapeHandler } from '../../_internal/overlay.ts';
+import { pushEscapeHandler, resetEscapeStack } from '../../_internal/overlay.ts';
 import { createCommandListState } from './create-command-list-state.svelte.ts';
 
 setupHappyDom();
@@ -22,7 +22,7 @@ function keydown(key: string): KeyboardEvent {
 describe('CommandListState', () => {
   afterEach(() => {
     document.body.replaceChildren();
-    _resetEscapeStack();
+    resetEscapeStack();
   });
 
   test('registers enabled items, navigates them, and activates the selected item', () => {

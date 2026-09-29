@@ -126,7 +126,7 @@
 :focus-visible {
   /* Strategy A is sanctioned ONLY here — the bare global default that paints a
      baseline ring for any element a component CSS file does not own. See
-     docs/focus-ring-policy.md § Strategy A. */
+     documentation/focus-ring-policy.md § Strategy A. */
   /* stylelint-disable-next-line cinder/no-focus-visible-colored-outline -- foundation-only Strategy A global default, see policy */
   outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
   outline-offset: var(--cinder-ring-offset);

@@ -64,25 +64,24 @@
     return result;
   });
 
-  // Track focus index driven by user interaction. null = derive from selection.
-  let userFocusIndex = $state<number | null>(null);
-
-  // Reset stale focus index when palette identity changes.
-  $effect(() => {
-    void colors;
-    userFocusIndex = null;
-  });
+  // Track focus by color identity rather than array index, so a palette refresh
+  // (equivalent fresh array, reorder, insertion, or removal elsewhere in the list)
+  // never strands focus on the wrong swatch. null = derive from selection.
+  //
+  // Swatches are already deduplicated by color (see `renderableColors` above), so
+  // the color value itself is a stable, sufficient identity — no new public prop
+  // is needed to key focus.
+  let userFocusColor = $state<string | null>(null);
 
   const effectiveFocusIndex = $derived.by(() => {
     if (renderableColors.length === 0) return -1;
 
-    // 1. User-driven focus if it points to a valid, non-item-disabled option.
-    if (
-      userFocusIndex !== null &&
-      userFocusIndex < renderableColors.length &&
-      !renderableColors[userFocusIndex]?.disabled
-    ) {
-      return userFocusIndex;
+    // 1. User-driven focus if its color still exists and is not item-disabled.
+    if (userFocusColor !== null) {
+      const focusedIndex = renderableColors.findIndex((s) => s.color === userFocusColor);
+      if (focusedIndex !== -1 && !renderableColors[focusedIndex]?.disabled) {
+        return focusedIndex;
+      }
     }
 
     // 2. Currently selected swatch if it exists and is not item-disabled.
@@ -142,7 +141,7 @@
     if (newIndex !== null) {
       event.preventDefault();
       if (newIndex !== effectiveFocusIndex) {
-        userFocusIndex = newIndex;
+        userFocusColor = renderableColors[newIndex]?.color ?? null;
         await tick();
         liRefs[newIndex]?.focus();
       }
@@ -151,7 +150,7 @@
 
   function handleClick(index: number): void {
     if (!isInteractive(index)) return;
-    userFocusIndex = index;
+    userFocusColor = renderableColors[index]?.color ?? null;
     selectSwatch(index);
   }
 </script>

@@ -73,4 +73,72 @@
     border: none !important;
     margin: 0 !important;
   }
+
+  /* Template placeholder invalid token decoration (DEP-583). The wavy line is
+     the non-color cue; the diagnostics summary carries the text. */
+  .markdown-editor .template-placeholder-invalid {
+    text-decoration: wavy underline var(--cinder-status-warning-solid, #e5a200);
+    text-decoration-skip-ink: none;
+    text-underline-offset: 2px;
+  }
+
+  /* Template completion popup (DEP-583, COR-526). The editor sets an exact
+     eight-row max-height at runtime; this is the fallback. */
+  .markdown-editor .template-completion-popup {
+    background: var(--cinder-surface-raised, #fff);
+    border: 1px solid var(--cinder-border, #d0d5dd);
+    border-radius: var(--cinder-radius-md, 6px);
+    box-shadow: var(--cinder-shadow-md, 0 4px 6px -1px rgb(0 0 0 / 0.1));
+    max-height: 20rem;
+    overflow-y: auto;
+    min-width: 200px;
+    max-width: 360px;
+    padding: var(--cinder-space-1, 4px);
+  }
+
+  /* Source mode's listbox (COR-521) renders in the top layer with Cinder's
+     floating surface; it shares the rich listbox's width and row styles. */
+  .markdown-editor-source-completion {
+    min-width: 200px;
+    max-width: 360px;
+  }
+
+  :is(.markdown-editor, .markdown-editor-source-completion) .template-completion-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: var(--cinder-space-1, 4px) var(--cinder-space-2, 8px);
+    border-radius: var(--cinder-radius-sm, 4px);
+    cursor: pointer;
+    font-size: var(--cinder-text-sm, 0.875rem);
+    line-height: 1.4;
+  }
+
+  :is(.markdown-editor, .markdown-editor-source-completion) .template-completion-item--active {
+    background: var(--cinder-surface-hover);
+  }
+
+  @media (hover: hover) {
+    :is(.markdown-editor, .markdown-editor-source-completion) .template-completion-item:hover {
+      background: var(--cinder-surface-hover);
+    }
+  }
+
+  @media (forced-colors: active) {
+    :is(.markdown-editor, .markdown-editor-source-completion) .template-completion-item--active {
+      outline: 2px solid Highlight;
+    }
+  }
+
+  :is(.markdown-editor, .markdown-editor-source-completion) .template-completion-item-path {
+    font-family: var(--cinder-font-mono);
+    font-weight: var(--cinder-font-medium);
+    color: var(--cinder-text-default, #1a1a1a);
+  }
+
+  :is(.markdown-editor, .markdown-editor-source-completion) .template-completion-item-types,
+  :is(.markdown-editor, .markdown-editor-source-completion) .template-completion-item-description {
+    font-size: var(--cinder-text-xs, 0.75rem);
+    color: var(--cinder-text-muted, #6b7280);
+  }
 }

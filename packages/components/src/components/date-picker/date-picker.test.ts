@@ -1,8 +1,8 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import { injectStrippedStyles } from '../../test/css.ts';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
@@ -233,7 +233,7 @@ describe('DatePicker', () => {
     expect(input?.disabled).toBe(true);
     expect(trigger?.disabled).toBe(true);
 
-    await fireEvent.click(trigger as HTMLButtonElement);
+    await fireEvent.click(requiredInstance(trigger, HTMLButtonElement));
 
     expect(document.body.querySelector('[role="dialog"]')).toBeNull();
   });
@@ -275,7 +275,7 @@ describe('DatePicker', () => {
     const { container } = rendered;
 
     await fireEvent.click(container.querySelector('.cinder-date-picker__trigger')!);
-    const timeInput = rendered.getByLabelText('Time') as HTMLInputElement;
+    const timeInput = requiredInstance(rendered.getByLabelText('Time'), HTMLInputElement);
     expect(timeInput.classList.contains('cinder-date-picker__time-input')).toBe(true);
     await fireEvent.change(timeInput, { target: { value: '10:15' } });
 

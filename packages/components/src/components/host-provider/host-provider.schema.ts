@@ -7,14 +7,17 @@ const schema = {
     platform: {
       enum: ['web', 'macos', 'windows', 'linux'],
       description: 'Host platform. Defaults to `web`, where desktop chrome behavior is inert.',
+      default: 'web',
     },
     safeHeaderLeft: {
       type: 'string',
       description: 'Inline-start titlebar inset supplied by the desktop host. Defaults to `0px`.',
+      default: '0px',
     },
     safeHeaderRight: {
       type: 'string',
       description: 'Inline-end titlebar inset supplied by the desktop host. Defaults to `0px`.',
+      default: '0px',
     },
   },
   additionalProperties: false,

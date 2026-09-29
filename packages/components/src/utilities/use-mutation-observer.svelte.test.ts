@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -10,19 +10,21 @@ const { default: UseMutationObserverAttachFixture } =
   await import('../test/fixtures/use-mutation-observer-attach-fixture.svelte');
 
 type ObserverRecord = {
+  observer: MutationObserver;
   callback: MutationCallback;
   init: MutationObserverInit | undefined;
   observeCalls: { target: Element; init: MutationObserverInit | undefined }[];
   disconnectCalls: number;
 };
 
-class FakeMutationObserver {
+class FakeMutationObserver implements MutationObserver {
   static records: ObserverRecord[] = [];
 
   private readonly record: ObserverRecord;
 
   constructor(callback: MutationCallback) {
     this.record = {
+      observer: this,
       callback,
       init: undefined,
       observeCalls: [],
@@ -51,8 +53,8 @@ function createMutationRecord(target: Element): MutationRecord {
   return {
     type: 'childList',
     target,
-    addedNodes: [] as unknown as NodeList,
-    removedNodes: [] as unknown as NodeList,
+    addedNodes: document.createDocumentFragment().childNodes,
+    removedNodes: document.createDocumentFragment().childNodes,
     previousSibling: null,
     nextSibling: null,
     attributeName: null,
@@ -63,7 +65,7 @@ function createMutationRecord(target: Element): MutationRecord {
 
 beforeEach(() => {
   FakeMutationObserver.records = [];
-  globalThis.MutationObserver = FakeMutationObserver as unknown as typeof MutationObserver;
+  globalThis.MutationObserver = FakeMutationObserver;
 });
 
 afterEach(() => {
@@ -99,12 +101,12 @@ describe('useMutationObserver', () => {
   });
 
   test('invokes the callback with the mutations array', () => {
-    const seen: Element[] = [];
+    const seen: Node[] = [];
     const { getByTestId } = render(UseMutationObserverAttachFixture, {
       props: {
         onMutate: (mutations: MutationRecord[]) => {
           for (const mutation of mutations) {
-            seen.push(mutation.target as Element);
+            seen.push(mutation.target);
           }
         },
         options: { childList: true },
@@ -114,20 +116,20 @@ describe('useMutationObserver', () => {
     const sentinel = getByTestId('sentinel');
     const [record] = FakeMutationObserver.records;
 
-    record?.callback([createMutationRecord(sentinel)], {} as MutationObserver);
+    record?.callback([createMutationRecord(sentinel)], record.observer);
 
     expect(seen).toEqual([sentinel]);
   });
 
   test('ignores queued observer entries after enabled flips false', async () => {
     let enabled = true;
-    const seen: Element[] = [];
+    const seen: Node[] = [];
 
     const rendered = render(UseMutationObserverAttachFixture, {
       props: {
         onMutate: (mutations: MutationRecord[]) => {
           for (const mutation of mutations) {
-            seen.push(mutation.target as Element);
+            seen.push(mutation.target);
           }
         },
         options: {
@@ -144,7 +146,7 @@ describe('useMutationObserver', () => {
     await rendered.rerender({
       onMutate: (mutations: MutationRecord[]) => {
         for (const mutation of mutations) {
-          seen.push(mutation.target as Element);
+          seen.push(mutation.target);
         }
       },
       options: {
@@ -153,7 +155,7 @@ describe('useMutationObserver', () => {
       },
     });
 
-    record?.callback([createMutationRecord(sentinel)], {} as MutationObserver);
+    record?.callback([createMutationRecord(sentinel)], record.observer);
 
     expect(seen).toEqual([]);
   });
@@ -235,7 +237,7 @@ describe('useMutationObserver', () => {
   });
 
   test('is a safe no-op when MutationObserver is unavailable', () => {
-    globalThis.MutationObserver = undefined as unknown as typeof MutationObserver;
+    Object.defineProperty(globalThis, 'MutationObserver', { value: undefined });
 
     const rendered = render(UseMutationObserverAttachFixture, {
       props: {

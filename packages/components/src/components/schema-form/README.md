@@ -6,7 +6,7 @@ Render an accessible form from a JSON Schema object and submit one validated val
 
 ```svelte
 <script lang="ts">
-  import SchemaForm, { readSchemaFormData } from '@lostgradient/cinder/schema-form';
+  import SchemaForm, { readSchemaFormData } from '@lostgradient/cinder';
 
   const schema = {
     type: 'object',
@@ -54,7 +54,6 @@ The three value channels have distinct ownership. `value` seeds internal state o
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

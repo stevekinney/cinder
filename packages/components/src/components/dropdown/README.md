@@ -4,13 +4,11 @@ Composite dropdown root that coordinates the trigger, menu, and item subcomponen
 
 ## Usage
 
-`Dropdown` is a compound component. Import the parent and compose its leaves
-via the namespace API: `Dropdown.Trigger`, `Dropdown.Menu`, `Dropdown.Item`,
-`Dropdown.Label`, `Dropdown.Separator`, and `Dropdown.Group`.
+`Dropdown` is a compound component. Import the parent and compose its leaves via the namespace API: `Dropdown.Trigger`, `Dropdown.Menu`, `Dropdown.Item`, `Dropdown.Label`, `Dropdown.Separator`, and `Dropdown.Group`.
 
 ```svelte
 <script lang="ts">
-  import { Dropdown } from '@lostgradient/cinder/dropdown';
+  import { Dropdown } from '@lostgradient/cinder';
 </script>
 
 <Dropdown id="dropdown-actions">
@@ -25,9 +23,7 @@ via the namespace API: `Dropdown.Trigger`, `Dropdown.Menu`, `Dropdown.Item`,
 </Dropdown>
 ```
 
-The leaves remain importable individually for à-la-carte builds — see
-`@lostgradient/cinder/dropdown-trigger`, `@lostgradient/cinder/dropdown-menu`, `@lostgradient/cinder/dropdown-item`,
-`@lostgradient/cinder/dropdown-label`, `@lostgradient/cinder/dropdown-separator`, and `@lostgradient/cinder/dropdown-group`.
+The leaves are also named exports of `@lostgradient/cinder`.
 
 `Dropdown` supports two mutually exclusive APIs: the compound `Dropdown.Trigger`/`Dropdown.Menu` composition shown above, and a legacy `trigger`/`open` snippet-prop API. Do not mix the two on the same instance.
 
@@ -53,23 +49,17 @@ The leaves remain importable individually for à-la-carte builds — see
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents
 
 <!-- generated:subcomponents:start -->
 
-- `Dropdown.Trigger` — the button that toggles the menu; see
-  [`dropdown-trigger`](../dropdown-trigger/README.md).
+- `Dropdown.Trigger` — the button that toggles the menu; see [`dropdown-trigger`](../dropdown-trigger/README.md).
 - `Dropdown.Menu` — the menu surface; see [`dropdown-menu`](../dropdown-menu/README.md).
-- `Dropdown.Item` — a menu item with optional `variant="danger"`; see
-  [`dropdown-item`](../dropdown-item/README.md).
-- `Dropdown.Label` — accessible section label inside the menu; see
-  [`dropdown-label`](../dropdown-label/README.md).
-- `Dropdown.Separator` — a visual divider; see
-  [`dropdown-separator`](../dropdown-separator/README.md).
-- `Dropdown.Group` — accessible grouping for related items inside the menu; see
-  [`dropdown-group`](../dropdown-group/README.md).
+- `Dropdown.Item` — a menu item with optional `variant="danger"`; see [`dropdown-item`](../dropdown-item/README.md).
+- `Dropdown.Label` — accessible section label inside the menu; see [`dropdown-label`](../dropdown-label/README.md).
+- `Dropdown.Separator` — a visual divider; see [`dropdown-separator`](../dropdown-separator/README.md).
+- `Dropdown.Group` — accessible grouping for related items inside the menu; see [`dropdown-group`](../dropdown-group/README.md).
 
 <!-- generated:subcomponents:end -->

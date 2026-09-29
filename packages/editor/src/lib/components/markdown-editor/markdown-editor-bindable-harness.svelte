@@ -36,5 +36,5 @@
   bind:value
   id="bindable-harness"
   label="Bindable harness"
-  showToolbar={false}
+  toolbarEnabled={false}
 />

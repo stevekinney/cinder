@@ -6,7 +6,7 @@ Animated placeholder shape that fills content areas while data is loading.
 
 ```svelte
 <script lang="ts">
-  import Skeleton from '@lostgradient/cinder/skeleton';
+  import { Skeleton } from '@lostgradient/cinder';
 </script>
 
 <Skeleton />
@@ -30,7 +30,6 @@ Animated placeholder shape that fills content areas while data is loading.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

@@ -22,17 +22,15 @@
  * disagree about which base tokens exist.
  */
 
+import { collectEntries, type CorpusEntry } from './corpus.ts';
 import {
   assertUniqueCssProperties,
-  collectEntries,
-  documentsForResolutionOrder,
-  loadCorpus,
-  modifierValuesForContext,
   requireDocument,
   withDependentBaseAliases,
-  type CorpusEntry,
-} from './generate.ts';
+} from './css-support.ts';
+import { loadCorpus } from './generate.ts';
 import { createValueResolver, mergeAndExpandExtends } from './resolve.ts';
+import { documentsForResolutionOrder, modifierValuesForContext } from './resolved-contexts.ts';
 import type { ResolverDocument, TokenDocument } from './types.ts';
 import { expandContextSources, parseResolutionOrder, sourcesForEntry } from './validate-corpus.ts';
 

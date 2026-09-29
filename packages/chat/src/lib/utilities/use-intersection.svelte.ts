@@ -26,7 +26,7 @@ export function useIntersection(
     $effect(() => {
       if (!enabled()) {
         disconnectObserver();
-        return;
+        return undefined;
       }
 
       observer = new IntersectionObserver(

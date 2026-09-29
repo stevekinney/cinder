@@ -15,7 +15,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet, flushSync, mount, unmount } from 'svelte';
 
-import { setupHappyDom } from '../../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import type { ChatMessagePart, ImageMessagePart } from '../utilities/types.ts';
 import { toRenderUnits } from './chat-message-parts.ts';
 
@@ -158,7 +158,7 @@ describe('renderer — per-part rendering', () => {
     expect(container.querySelector('[data-cinder-unhandled-part]')).not.toBeNull();
   });
 
-  test('renders a tool-call part through the tool-call group', () => {
+  test('renders a tool-call part through the tool-call timeline', () => {
     const { container } = render(ChatMessagePartsRenderer, {
       props: {
         parts: [
@@ -170,7 +170,7 @@ describe('renderer — per-part rendering', () => {
         ],
       },
     });
-    expect(container.querySelector('.tool-call-group')).not.toBeNull();
+    expect(container.querySelector('.chat-tool-call-timeline')).not.toBeNull();
     expect(container.textContent).toContain('lookup');
   });
 
@@ -196,7 +196,75 @@ describe('renderer — per-part rendering', () => {
     expect(alert?.textContent).toContain('it failed');
   });
 
-  test('renders a tool-approval part with group role (not alertdialog) and action buttons', () => {
+  test('renders standalone input action prompt and schema on the neutral tool-result view', () => {
+    const { container } = render(ChatMessagePartsRenderer, {
+      props: {
+        parts: [
+          {
+            type: 'tool-result',
+            key: 'm:tool-result:input',
+            result: {
+              callId: 'input',
+              outcome: 'action_required',
+              content: null,
+              action: {
+                type: 'input',
+                message: 'Provide a deployment reason',
+                schema: {
+                  type: 'object',
+                  properties: { reason: { type: 'string' } },
+                  required: ['reason'],
+                },
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    expect(container.querySelector('[data-cinder-tool-approval]')).toBeNull();
+    expect(container.textContent).toContain('Provide a deployment reason');
+    expect(container.querySelector('[aria-label="Requested input schema"]')).not.toBeNull();
+    expect(container.textContent).toContain('reason');
+  });
+
+  test('renders paired input action prompt and schema inside the neutral tool-call details', () => {
+    const { container } = render(ChatMessagePartsRenderer, {
+      props: {
+        expanded: true,
+        parts: [
+          {
+            type: 'tool-call',
+            key: 'm:tool-call:input',
+            pair: {
+              call: { id: 'input', name: 'collect_input', arguments: {} },
+              result: {
+                callId: 'input',
+                outcome: 'action_required',
+                content: null,
+                action: {
+                  type: 'input',
+                  message: 'Provide a deployment reason',
+                  schema: {
+                    type: 'object',
+                    properties: { reason: { type: 'string' } },
+                    required: ['reason'],
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    expect(container.querySelector('[data-cinder-tool-approval]')).toBeNull();
+    expect(container.textContent).toContain('Provide a deployment reason');
+    expect(container.textContent).toContain('Input schema');
+    expect(container.textContent).toContain('reason');
+  });
+
+  test('renders a tool-approval part through the shared Cinder card', () => {
     const { container } = render(ChatMessagePartsRenderer, {
       props: {
         parts: [
@@ -208,28 +276,28 @@ describe('renderer — per-part rendering', () => {
             action: {
               type: 'approval',
               message: 'Deploy to production?',
-              risk: 'low',
-              operation: { kind: 'command', command: 'test-command', argsPreview: {} },
+              risk: 'high',
+              operation: { kind: 'command', command: 'echo approval', argsPreview: { ok: true } },
               policyVersion: 'test-policy',
-              idempotencyKey: 'renderer-approval-1',
+              idempotencyKey: 'test-approval',
             },
-            approved: undefined,
+            state: 'pending',
+            resolutionInFlight: false,
           },
         ],
-        onapprove: () => {},
-        ondeny: () => {},
+        onApprovalResolve: () => {},
       },
     });
     const dialog = container.querySelector('[data-cinder-tool-approval]');
     expect(dialog).not.toBeNull();
-    expect(dialog?.getAttribute('role')).toBe('group');
+    expect(dialog?.classList.contains('cinder-approval-card')).toBe(true);
     expect(container.textContent).toContain('deploy_to_production');
-    expect(container.textContent).toContain('Deploy to production?');
-    // Approve and Reject buttons appear for pending state
+    expect(container.textContent).toContain('echo approval');
+    // Approve and Deny buttons appear for pending state
     const buttons = container.querySelectorAll('button');
     const labels = Array.from(buttons).map((button) => button.textContent?.trim());
     expect(labels).toContain('Approve');
-    expect(labels).toContain('Reject');
+    expect(labels).toContain('Deny');
   });
 
   test('renders an image group through the attachments grid with the right count', () => {
@@ -449,12 +517,19 @@ describe('renderer — stable DOM identity', () => {
 
     const before = target.querySelector('.message-content')!;
     expect(before).not.toBeNull();
+    expect(target.querySelector('.chat-message-streaming-progress')).toBeNull();
     before.setAttribute('data-identity-probe', 'kept');
+
+    instance.setParts([
+      { type: 'markdown', key: 'm:body', content: 'He', streaming: true, expanded: true },
+    ]);
+    flushSync();
+    expect(target.querySelector('.chat-message-streaming-progress')).not.toBeNull();
 
     // Simulate token-by-token streaming: the body key is constant, only the
     // content grows. The markdown node must persist across every update (so a
     // mid-render rAF / focus / selection is never torn down).
-    for (const content of ['He', 'Hello', 'Hello wor', 'Hello world']) {
+    for (const content of ['Hello', 'Hello wor', 'Hello world']) {
       instance.setParts([
         { type: 'markdown', key: 'm:body', content, streaming: true, expanded: true },
       ]);
@@ -479,7 +554,7 @@ describe('renderer — stable DOM identity', () => {
       props: { initialParts: [{ type: 'tool-call', key: 'm:tool-call:c1', pair }] },
     }) as FixtureInstance;
 
-    const before = target.querySelector('.tool-call-group')!;
+    const before = target.querySelector('.chat-tool-call-timeline')!;
     expect(before).not.toBeNull();
     before.setAttribute('data-identity-probe', 'kept');
 
@@ -493,7 +568,7 @@ describe('renderer — stable DOM identity', () => {
     ]);
     flushSync();
 
-    const after = target.querySelector('.tool-call-group');
+    const after = target.querySelector('.chat-tool-call-timeline');
     expect(after?.getAttribute('data-identity-probe')).toBe('kept');
     expect(after).toBe(before);
 

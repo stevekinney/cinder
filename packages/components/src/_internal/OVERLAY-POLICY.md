@@ -2,8 +2,7 @@
 
 This document defines the cross-cutting behavior every Cinder overlay component (Modal, Drawer, Alert Dialog, Confirm Dialog, Command Palette, Popover, Selection Popover, Tooltip, HoverCard, the Combobox and Autocomplete listboxes, MultiSelect, Dropdown, Dropdown Menu, Context Menu, Command Menu, Speed Dial, the NavigationBar mobile panel, Toast) must follow. It exists so each component's own `.a11y.md` doesn't have to re-derive these answers, and so the policy stays consistent as new overlay components are added in later phases.
 
-The runtime helpers backing this policy live in `src/_internal/overlay.ts` and
-`src/_internal/anchored-overlay.svelte.ts`.
+The runtime helpers backing this policy live in `src/_internal/overlay.ts` and `src/_internal/anchored-overlay.svelte.ts`.
 
 ## Native-first positioning matrix
 
@@ -14,8 +13,7 @@ The runtime helpers backing this policy live in `src/_internal/overlay.ts` and
 | Rich anchored panels, listboxes, and hover/focus previews | Shared anchored overlay helper                                    | Same helper                                                         | Popover, Combobox, Autocomplete, HoverCard, Tooltip, CommandMenu, MenuBar, and non-native Dropdown paths use one fixed-position lifecycle.        |
 | Pointer, caret, and text-selection anchors                | Shared anchored overlay helper with a Floating UI virtual element | Same helper                                                         | CSS Anchor Positioning is intentionally not used for virtual anchors yet. ContextMenu and CommandMenu use virtual anchors.                        |
 
-CSS Anchor Positioning remains a progressive enhancement. Do not require it for
-correctness until the support policy changes.
+CSS Anchor Positioning remains a progressive enhancement. Do not require it for correctness until the support policy changes.
 
 ### Select positioning is trigger-aligned
 
@@ -27,11 +25,7 @@ Cinder deliberately declines Radix-style item-aligned Select positioning. Aligni
 - Components may accept a `portalTarget` prop to override (deferred until a real consumer needs it).
 - All overlays render into the portal **after hydration**. SSR markup is empty.
 
-Dialog-owned anchored surfaces use the open native `<dialog>` as their portal
-boundary. The dialog must keep those surfaces paintable in the top layer; its
-content panel remains the clipping boundary for ordinary modal content. This
-preserves modal scrolling and rounded content clipping without allowing a
-nested Popover, SpeedDial, or NavigationBar surface to be truncated.
+Dialog-owned anchored surfaces use the open native `<dialog>` as their portal boundary. The dialog must keep those surfaces paintable in the top layer; its content panel remains the clipping boundary for ordinary modal content. This preserves modal scrolling and rounded content clipping without allowing a nested Popover, SpeedDial, or NavigationBar surface to be truncated.
 
 ## SSR rule (hard constraint)
 
@@ -126,7 +120,7 @@ Toast sits **above** Modal so confirmation and error toasts reach users even whe
 - Token-driven durations help: `--cinder-duration-*` tokens collapse to 0ms under reduced motion (see `tokens-base.css`).
 - For client-side JS decisions (e.g. choosing `scrollTo` behavior, gating an animation `setTimeout`), use the `useReducedMotion()` hook. It exposes a reactive `.current` boolean; on the server it returns `false` because the user's preference is unavailable. Keep SSR-visible presentation in CSS media queries and duration tokens. New JS code must use this hook rather than reading `window.matchMedia` directly; existing inline checks should migrate opportunistically.
   - **External consumers**: `import { useReducedMotion } from '@lostgradient/cinder';`
-  - **Inside `packages/components/src/...`**: import using the appropriate local relative path to `src/utilities/use-reduced-motion.svelte.ts` (the depth depends on the consuming file's location). This matches the package's existing internal-import convention — for example, components reference `./_internal/overlay.ts` or `../_internal/overlay.ts` rather than the package root — and avoids a barrel cycle through `src/index.ts`.
+  - **Inside `components/cinder/src/...`**: import using the appropriate local relative path to `src/utilities/use-reduced-motion.svelte.ts` (the depth depends on the consuming file's location). This matches the package's existing internal-import convention — for example, components reference `./_internal/overlay.ts` or `../_internal/overlay.ts` rather than the package root — and avoids a barrel cycle through `src/index.ts`.
 
 ## Transition lifecycle
 

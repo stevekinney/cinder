@@ -1,9 +1,7 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "@lostgradient/typescript/browser.json",
   "compilerOptions": {
-    "customConditions": ["svelte"],
-    "rootDir": "../..",
-    "tsBuildInfoFile": "node_modules/.cache/tsconfig.tsbuildinfo"
+    "types": ["bun"]
   },
   "include": ["src", "scripts"],
   "exclude": ["node_modules", "coverage", "dist", "**/.cinder-ssr-*", "**/.chat-ssr-*"]

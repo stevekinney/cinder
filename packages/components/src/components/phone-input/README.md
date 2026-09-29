@@ -6,7 +6,7 @@ International phone-number input pairing a country-code dropdown with an as-you-
 
 ```svelte
 <script lang="ts">
-  import PhoneInput from '@lostgradient/cinder/phone-input';
+  import { PhoneInput } from '@lostgradient/cinder';
   let phone = $state('');
 </script>
 
@@ -43,7 +43,6 @@ International phone-number input pairing a country-code dropdown with an as-you-
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

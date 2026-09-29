@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import type { TerminalFrameDimensions } from './terminal-frame.types.ts';
 
 setupHappyDom();
@@ -51,7 +51,7 @@ describe('TerminalFrame', () => {
       observe() {}
       disconnect() {}
       unobserve() {}
-    } as unknown as typeof ResizeObserver;
+    };
 
     try {
       const dimensions: Array<{ cols: number; rows: number }> = [];
@@ -85,7 +85,7 @@ describe('TerminalFrame', () => {
       }
       disconnect() {}
       unobserve() {}
-    } as unknown as typeof ResizeObserver;
+    };
 
     try {
       render(TerminalFrame, {
@@ -107,7 +107,7 @@ describe('TerminalFrame', () => {
       observe() {}
       disconnect() {}
       unobserve() {}
-    } as unknown as typeof ResizeObserver;
+    };
     try {
       const dimensions: TerminalFrameDimensions[] = [];
       render(TerminalFrame, {

@@ -81,5 +81,7 @@ export function createParsedGitFile(rawLine: string): SourceDiffFile {
     ...parseDiffGitHeader(rawLine),
     metadata: [],
     hunks: [],
+    // Overwritten by the caller with the shared parse-order counter.
+    fileOccurrence: 0,
   };
 }

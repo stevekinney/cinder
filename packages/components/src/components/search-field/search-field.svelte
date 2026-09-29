@@ -23,7 +23,7 @@
   import type { SearchFieldProps } from './search-field.types.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import Input from '@lostgradient/cinder/input';
+  import { default as Input } from '../input/index.ts';
 
   let {
     id,

@@ -6,7 +6,7 @@ Compact labeled meter with a thin horizontal fill bar for inline cost, token, bu
 
 ```svelte
 <script lang="ts">
-  import { Sparkbar } from '@lostgradient/cinder/sparkbar';
+  import { Sparkbar } from '@lostgradient/cinder';
 </script>
 
 <Sparkbar value={0.31} label="Draft weekly changelog" trailing="$0.31" />
@@ -40,7 +40,6 @@ Sparkbar inherits its foreground from `currentColor` and keeps its background tr
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

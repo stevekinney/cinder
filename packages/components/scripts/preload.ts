@@ -1,8 +1,21 @@
 import { plugin } from 'bun';
+import { afterEach } from 'bun:test';
+import { resolve } from 'node:path';
 
-import { setupHappyDom } from '../src/test/happy-dom.ts';
-import { registerGlobalCleanup } from '../src/test/register-global-cleanup.ts';
-import { sveltePlugin } from './svelte-plugin.ts';
+import { registerGlobalCleanup, setupHappyDom, sveltePlugin } from '@lostgradient/testing';
+
+const sourceDirectory = resolve(import.meta.dir, '../src').replaceAll('\\', '/');
+
+export function allowCinderTestStyleBlock(path: string): boolean {
+  const normalizedPath = path.replaceAll('\\', '/');
+  if (!normalizedPath.startsWith(`${sourceDirectory}/`)) return false;
+
+  const relativePath = normalizedPath.slice(sourceDirectory.length + 1);
+  return (
+    relativePath.startsWith('test/fixtures/') ||
+    /^components\/[^/]+\/[^/]+\.fixture\.svelte$/.test(relativePath)
+  );
+}
 
 // Install happy-dom DOM globals BEFORE any test file's static imports resolve.
 // Two reasons:
@@ -21,9 +34,9 @@ import { sveltePlugin } from './svelte-plugin.ts';
 //      the race.
 setupHappyDom();
 
-await plugin(sveltePlugin({ generate: 'client' }));
+await plugin(sveltePlugin({ generate: 'client', allowStyleBlock: allowCinderTestStyleBlock }));
 
 // Register ONE global afterEach(cleanup) here, before any test file loads, so
 // every component test's render() is unmounted without each file needing its
 // own cleanup boilerplate. See register-global-cleanup.ts for the full why.
-await registerGlobalCleanup();
+await registerGlobalCleanup(afterEach);

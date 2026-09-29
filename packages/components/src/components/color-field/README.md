@@ -6,8 +6,8 @@ A text input that validates and normalizes hex, `rgb()`, `hsl()`, `hwb()`, and `
 
 ```svelte
 <script lang="ts">
-  import ColorField from '@lostgradient/cinder/color-field';
-  import FormField from '@lostgradient/cinder/form-field';
+  import { ColorField } from '@lostgradient/cinder';
+  import { FormField } from '@lostgradient/cinder';
 
   let color = $state('#3366ff');
 </script>
@@ -86,7 +86,6 @@ Moving the component across forms at runtime is not supported in v1.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

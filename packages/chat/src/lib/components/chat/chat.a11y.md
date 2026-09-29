@@ -37,40 +37,17 @@ When Chat accepts snippets or arbitrary children, the caller owns the semantics 
 
 ## scrollFadeVisible (Tier 3 polish)
 
-`scrollFadeVisible` paints an opaque, scroll-driven fade (never a `mask-`)
-on the top and bottom edges of the message timeline as it overflows, using
-`@lostgradient/cinder`'s shared `_scroll-fade.css` recipe. It is
-presentation-only and never the sole signal that more messages exist — the
-jump-to-latest button and unread-count indicator (`atBottom`, `unreadCount`,
-`newMessageIndicatorVisible`) remain the authoritative affordances,
-unaffected by this prop. The timeline's own `role="log"`/`aria-live` and
-`:focus-visible` ring (documented above) are unchanged. Only visible when
-`surfaceMode` is `'default'`: with `surfaceMode="transparent"` the timeline
-paints no background of its own, so the JS driver is gated off entirely
-rather than fading toward an incorrect color (see `chat.types.ts`).
-`@media (forced-colors: active)` disables the fade outright.
+`scrollFadeVisible` paints an opaque, scroll-driven fade (never a `mask-`) on the top and bottom edges of the message timeline as it overflows, using `@lostgradient/cinder`'s shared `_scroll-fade.css` recipe. It is presentation-only and never the sole signal that more messages exist — the jump-to-latest button and unread-count indicator (`atBottom`, `unreadCount`, `newMessageIndicatorVisible`) remain the authoritative affordances, unaffected by this prop. The timeline's own `role="log"`/`aria-live` and `:focus-visible` ring (documented above) are unchanged. Only visible when `surfaceMode` is `'default'`: with `surfaceMode="transparent"` the timeline paints no background of its own, so the JS driver is gated off entirely rather than fading toward an incorrect color (see `chat.types.ts`). `@media (forced-colors: active)` disables the fade outright.
 
 Related components: `markdown-editor`.
 
 ## Nested transcript and navigation rail
 
-`ChatSubSession` is a bounded, nested `role="log"` that reuses Chat's existing
-message and typography contracts. Its reduced type ramp, 7.75rem clamp, and
-edge fade preserve hierarchy without adding a second conversation model. Live
-motion is limited to the child while `live` is true and is disabled under
-`prefers-reduced-motion`.
+`ChatSubSession` is a bounded, nested `role="log"` that reuses Chat's existing message and typography contracts. Its reduced type ramp, 7.75rem clamp, and edge fade preserve hierarchy without adding a second conversation model. Live motion is limited to the child while `live` is true and is disabled under `prefers-reduced-motion`.
 
-`ChatNavigationRail` uses real buttons, `aria-current` from a Set of
-IntersectionObserver hits, and `aria-describedby` preview text. Pointer capture
-scrubbing maps to message rows and clamps beyond either end. The rail is a
-navigation aid, never the only way to reach a message; the transcript remains
-keyboard navigable. CSS sibling selectors provide proximity falloff without
-per-row JavaScript. Reduced motion removes every rail transition.
+`ChatNavigationRail` uses real buttons, `aria-current` from a Set of IntersectionObserver hits, and `aria-describedby` preview text. Pointer capture scrubbing maps to message rows and clamps beyond either end. The rail is a navigation aid, never the only way to reach a message; the transcript remains keyboard navigable. CSS sibling selectors provide proximity falloff without per-row JavaScript. Reduced motion removes every rail transition.
 
-Design review outcome: approved. The two surfaces are Chat-owned because they
-need transcript identity and virtualization-aware navigation, while remaining
-small enough to compose beside a Chat instance. No general table-of-contents
-abstraction is introduced.
+Design review outcome: approved. The two surfaces are Chat-owned because they need transcript identity and virtualization-aware navigation, while remaining small enough to compose beside a Chat instance. No general table-of-contents abstraction is introduced.
 
 ## Shared transcript entry frame
 

@@ -13,8 +13,8 @@ import type { Component } from 'svelte';
 import Radio from '../_radio/radio.svelte';
 import { RadioGroup } from './index.ts';
 
-const _option: typeof Radio = RadioGroup.Option;
+const option: typeof Radio = RadioGroup.Option;
 
 RadioGroup satisfies Component<never>;
 
-void _option;
+void option;

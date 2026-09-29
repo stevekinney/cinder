@@ -70,7 +70,8 @@
       items.add(index);
     }
 
-    const sorted = Array.from(items).sort((left, right) => left - right);
+    const sorted = Array.from(items);
+    sorted.sort((left, right) => left - right);
 
     const result: PageItem[] = [];
     for (let index = 0; index < sorted.length; index++) {

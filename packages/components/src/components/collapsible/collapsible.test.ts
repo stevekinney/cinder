@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import type { CollapsibleTriggerState } from './collapsible.types.ts';
 
 setupHappyDom();
@@ -37,7 +37,11 @@ function iconSnippet(label = 'Brand mark') {
 }
 
 function trigger(container: HTMLElement): HTMLButtonElement {
-  return container.querySelector('.cinder-collapsible__trigger') as HTMLButtonElement;
+  const button = container.querySelector('.cinder-collapsible__trigger');
+  if (!(button instanceof HTMLButtonElement)) {
+    throw new Error('Expected Collapsible trigger button to render.');
+  }
+  return button;
 }
 
 test('expanded trigger clears its bottom radii at the panel seam', async () => {
@@ -184,6 +188,18 @@ describe('Collapsible (uncontrolled)', () => {
 
     expect(panel(container)).not.toBeNull();
     expect(trigger(container).getAttribute('aria-expanded')).toBe('true');
+  });
+
+  test('unmounting an open animated panel owns transition cancellation cleanly', async () => {
+    const { container, unmount } = render(Collapsible, {
+      trigger: 'Toggle',
+      children: bodySnippet(),
+    });
+
+    await fireEvent.click(trigger(container));
+    expect(panel(container)).not.toBeNull();
+
+    unmount();
   });
 });
 

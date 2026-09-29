@@ -17,13 +17,13 @@ function createRect(x: number, y: number, width: number, height: number): DOMRec
     right: x + width,
     bottom: y + height,
     toJSON: () => ({ x, y, width, height }),
-  } as DOMRect;
+  };
 }
 
 function createRectList(rects: DOMRect[]): DOMRectList {
   return Object.assign(rects, {
     item: (index: number) => rects[index] ?? null,
-  }) as unknown as DOMRectList;
+  });
 }
 
 function createRangeGeometry(clientRects: DOMRect[], boundingRect: DOMRect) {

@@ -531,8 +531,8 @@
       ? `rgb(${channels})`
       : `rgba(${channels}, ${canonicalAlpha(alphaValue)})`;
   });
-  function roundFormatChannel(value: number): number {
-    return Math.round(value * 100) / 100;
+  function roundFormatChannel(channelValue: number): number {
+    return Math.round(channelValue * 100) / 100;
   }
   const formatHsl = $derived(
     isOpaqueForFormat(alphaValue, format)

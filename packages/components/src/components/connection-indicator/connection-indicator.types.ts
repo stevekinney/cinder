@@ -17,12 +17,7 @@ import type { HTMLAttributes } from 'svelte/elements';
  * - `closed` — the connection is intentionally or terminally closed.
  */
 export type ConnectionIndicatorStatus =
-  | 'connecting'
-  | 'live'
-  | 'reconnecting'
-  | 'polling'
-  | 'stale'
-  | 'closed';
+  'connecting' | 'live' | 'reconnecting' | 'polling' | 'stale' | 'closed';
 
 /**
  * Props for ConnectionIndicator.

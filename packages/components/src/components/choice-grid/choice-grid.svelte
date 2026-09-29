@@ -19,6 +19,7 @@
     ChoiceGridContext,
     ChoiceGridItemState,
     ChoiceGridProps,
+    ChoiceGridSize,
   } from './choice-grid.types.ts';
 </script>
 
@@ -29,14 +30,18 @@
   import { createSingleSelection, createMultiSelection } from '../../_internal/collection.ts';
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
-  import Grid from '@lostgradient/cinder/grid';
+  import { default as Grid } from '../grid/index.ts';
 
   let {
     value = $bindable(null),
     values = $bindable([]),
     multiple = false,
     columns = 'responsive',
-    minColumnWidth = '10rem',
+    size,
+    // The responsive default depends on `size`: a compact grid needs a
+    // smaller minimum column before consumers have a reason to override it
+    // (COR-330). An explicit `minColumnWidth` always wins over either default.
+    minColumnWidth = size === 'sm' ? '6rem' : '10rem',
     ariaLabel,
     ariaLabelledby,
     disabled = false,
@@ -99,14 +104,14 @@
   // so roving navigation and the default tabindex target must follow the visual
   // order — otherwise focus moves along the wrong sequence.
   function orderedKeys(): string[] {
-    return [...items.entries()]
-      .sort(([, a], [, b]) => {
-        const position = a.element.compareDocumentPosition(b.element);
-        if (position & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
-        if (position & Node.DOCUMENT_POSITION_PRECEDING) return 1;
-        return 0;
-      })
-      .map(([key]) => key);
+    const entries = [...items.entries()];
+    entries.sort(([, a], [, b]) => {
+      const position = a.element.compareDocumentPosition(b.element);
+      if (position & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+      if (position & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+      return 0;
+    });
+    return entries.map(([key]) => key);
   }
 
   // The single ENABLED value that should hold `tabindex="0"`. Disabled items are
@@ -217,6 +222,9 @@
     get disabled() {
       return disabled;
     },
+    get size() {
+      return size;
+    },
     isSelected,
     select,
     register,
@@ -270,6 +278,7 @@
   aria-disabled={disabled || undefined}
   data-cinder-multiple={multiple || undefined}
   data-cinder-disabled={disabled || undefined}
+  data-cinder-size={size}
 >
   {@render children()}
 </Grid>

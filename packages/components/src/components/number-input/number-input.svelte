@@ -16,7 +16,7 @@
 </script>
 
 <script lang="ts">
-  import Input from '@lostgradient/cinder/input';
+  import { default as Input } from '../input/index.ts';
   import Minus from 'lucide-svelte/icons/minus';
   import Plus from 'lucide-svelte/icons/plus';
   import type { NumberInputProps } from './number-input.types.ts';
@@ -27,6 +27,20 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { formatNumber } from '../../utilities/format-number.ts';
   import { parseLocaleNumber } from '../../utilities/parse-locale-number.ts';
+  import {
+    createStepController,
+    attachInputNode,
+    applyCommit,
+    fractionalDigits,
+    isValidStep,
+    normalizeCommitValue,
+    roundToPrecision,
+    synchronizeValidity,
+    toAriaInvalidValue,
+    installFormListeners,
+    type CommitSource,
+    type ParseStatus,
+  } from './number-input-logic.svelte.ts';
 
   let {
     id,
@@ -77,32 +91,11 @@
   const resolvedMin = $derived(typeof min === 'number' && Number.isFinite(min) ? min : -Infinity);
   const resolvedMax = $derived(typeof max === 'number' && Number.isFinite(max) ? max : Infinity);
 
-  const isValidStep = (s: unknown): s is number =>
-    typeof s === 'number' && Number.isFinite(s) && s > 0;
-
   const incrementStep = $derived(isValidStep(step) ? step : 1);
   const snapStep = $derived(isValidStep(step) ? step : null);
 
   const resolvedRequired = $derived(required ?? context?.required ?? false);
   const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);
-
-  function roundToPrecision(n: number, digits: number): number {
-    return Number(n.toFixed(Math.min(digits, 12)));
-  }
-
-  function fractionalDigits(n: number): number {
-    if (!Number.isFinite(n)) return 0;
-    const s = String(n);
-    if (s.includes('e') || s.includes('E')) {
-      const parts = s.toLowerCase().split('e');
-      const mantissa = parts[0] ?? '';
-      const expStr = parts[1] ?? '0';
-      const exp = Number(expStr);
-      const fracOfMantissa = mantissa.split('.')[1]?.length ?? 0;
-      return Math.max(0, fracOfMantissa - exp);
-    }
-    return s.split('.')[1]?.length ?? 0;
-  }
 
   // Three commit sources — that's the smallest set that captures the actually-
   // distinct behaviors:
@@ -112,46 +105,35 @@
   //   onValueChange fires unless the source is a serialization-only event.
   // - 'reset': form reset — like typed in that snap doesn't apply (we're
   //   restoring value verbatim), but always fires onValueChange.
-  type CommitSource = 'typed' | 'delta' | 'reset';
-
   /**
    * Apply the value to component state and side-effects: native validity,
    * onValueChange callback, and the bindable `value` write. Returns the value that
    * was actually applied so callers can chain.
    */
-  function commit(
+  const commit = (
     next: number | null,
-    parseStatus: 'valid' | 'empty' | 'malformed',
+    parseStatus: ParseStatus,
     emitChange: boolean,
-  ): number | null {
-    const nextMalformed = !resolvedDisabled && parseStatus === 'malformed';
-    const nextRequiredEmpty =
-      !resolvedDisabled && !nextMalformed && resolvedRequired && next === null;
-
-    if (inputElement) {
-      if (nextMalformed) {
-        inputElement.setCustomValidity('Please enter a valid number.');
-      } else if (nextRequiredEmpty) {
-        inputElement.setCustomValidity('Please enter a number.');
-      } else {
-        inputElement.setCustomValidity('');
-      }
-    }
-
-    malformedError = nextMalformed;
-    requiredEmptyError = nextRequiredEmpty;
-
-    if (!Object.is(next, value)) {
-      isInternalValueChange = true;
-      value = next;
-    }
-
-    if (emitChange) {
-      onValueChange?.(next);
-    }
-
-    return next;
-  }
+  ): number | null =>
+    applyCommit(next, parseStatus, emitChange, {
+      disabled: resolvedDisabled,
+      required: resolvedRequired,
+      current: value,
+      input: inputElement,
+      setMalformed: (nextValue) => {
+        malformedError = nextValue;
+      },
+      setRequiredEmpty: (nextValue) => {
+        requiredEmptyError = nextValue;
+      },
+      markInternal: () => {
+        isInternalValueChange = true;
+      },
+      setValue: (nextValue) => {
+        value = nextValue;
+      },
+      emit: (nextValue) => onValueChange?.(nextValue),
+    });
 
   /**
    * Commit a numeric value. For `'typed'` sources the value is snapped to the
@@ -161,29 +143,17 @@
   function commitFromNumber(
     source: CommitSource,
     raw: number | null,
-    parseStatus: 'valid' | 'empty' | 'malformed' = 'valid',
+    parseStatus: ParseStatus = 'valid',
   ): number | null {
-    if (raw === null) return commit(null, parseStatus, true);
-    if (!Number.isFinite(raw)) return commit(null, 'malformed', true);
-    let result = raw;
-    if (source === 'typed' && snapStep !== null) {
-      const origin = Number.isFinite(resolvedMin) ? resolvedMin : 0;
-      result = origin + Math.round((raw - origin) / snapStep) * snapStep;
-      result = roundToPrecision(result, fractionalDigits(snapStep));
-    } else if (source === 'delta' && snapStep !== null) {
-      // Eliminate float accumulation noise (0.1 + 0.2 → 0.30000…) while
-      // preserving base-value precision that exceeds the step's precision
-      // (value=0.5 + step=1 → 1.5, not 2). First clamp at 12 digits to get a
-      // clean representation, then take the max of step digits and the clean
-      // result's digits as the final rounding target.
-      const cleanRaw = roundToPrecision(raw, 12);
-      result = roundToPrecision(
-        raw,
-        Math.max(fractionalDigits(snapStep), fractionalDigits(cleanRaw)),
-      );
-    }
-    const clamped = Math.min(resolvedMax, Math.max(resolvedMin, result));
-    return commit(clamped, parseStatus, true);
+    const result = normalizeCommitValue({
+      source,
+      raw,
+      parseStatus,
+      min: resolvedMin,
+      max: resolvedMax,
+      snapStep,
+    });
+    return commit(result.value, result.parseStatus, true);
   }
 
   /**
@@ -255,29 +225,22 @@
   // validity never diverge.
   $effect(() => {
     if (!inputElement) return;
-    if (resolvedDisabled) {
-      inputElement.setCustomValidity('');
-      malformedError = false;
-      requiredEmptyError = false;
-    } else if (value !== null && value !== undefined && !isInternalValueChange) {
-      // External value write — clear all prior validity state.
-      malformedError = false;
-      requiredEmptyError = false;
-      inputElement.setCustomValidity('');
-    } else if (malformedError) {
-      // commit() owns the malformed message; leave it in place.
-    } else if (!isFocused && resolvedRequired && (value === null || value === undefined)) {
-      inputElement.setCustomValidity('Please enter a number.');
-      requiredEmptyError = true;
-    } else if (isFocused && requiredEmptyError) {
-      // User is actively typing — suppress the required-empty error so we don't
-      // flash "Please enter a number." in the aria-live region mid-keystroke.
-      inputElement.setCustomValidity('');
-      requiredEmptyError = false;
-    } else if (value !== null && value !== undefined) {
-      inputElement.setCustomValidity('');
-      requiredEmptyError = false;
-    }
+    synchronizeValidity(inputElement, {
+      disabled: resolvedDisabled,
+      value,
+      internalChange: isInternalValueChange,
+      focused: isFocused,
+      required: resolvedRequired,
+      malformed: malformedError,
+      requiredEmpty: requiredEmptyError,
+      clearErrors: () => {
+        malformedError = false;
+        requiredEmptyError = false;
+      },
+      setRequiredEmpty: (nextValue) => {
+        requiredEmptyError = nextValue;
+      },
+    });
   });
 
   function buildEditDisplay(v: number): string {
@@ -354,126 +317,53 @@
     }
   }
 
-  function getBaseForStep(direction: 'increment' | 'decrement'): number {
-    const parsed = isFocused ? parseLocaleNumber(editorBuffer, resolvedLocale, format) : null;
-    let baseFromDisplay: number | null = null;
-    if (parsed && parsed.status === 'valid') {
-      baseFromDisplay =
-        format?.style === 'percent'
-          ? roundToPrecision(parsed.value / 100, Math.max(2, fractionalDigits(parsed.value) + 2))
-          : parsed.value;
-    }
-    const defaultStart =
-      direction === 'increment'
-        ? Number.isFinite(resolvedMin)
-          ? resolvedMin
-          : 0
-        : Number.isFinite(resolvedMax)
-          ? resolvedMax
-          : 0;
-    return baseFromDisplay ?? value ?? defaultStart;
-  }
-
-  function stepBy(direction: 'increment' | 'decrement', multiplier = 1) {
-    const base = getBaseForStep(direction);
-    const delta = incrementStep * multiplier * (direction === 'increment' ? 1 : -1);
-    const next = commitFromNumber('delta', base + delta);
-    // Keep the in-progress editor buffer in sync with the committed value
-    // when focused. Without this, repeated ArrowUp / ArrowDown steps would
-    // step off the stale buffer instead of the canonical value.
-    if (isFocused) {
-      editorBuffer = next === null ? '' : buildEditDisplay(next);
-    }
-    inputElement?.focus();
-  }
+  const stepController = createStepController({
+    getValue: () => value,
+    getEditorBuffer: () => editorBuffer,
+    setEditorBuffer: (next) => {
+      editorBuffer = next;
+    },
+    getFocused: () => isFocused,
+    getLocale: () => resolvedLocale,
+    getFormat: () => format,
+    getMin: () => resolvedMin,
+    getMax: () => resolvedMax,
+    getStep: () => incrementStep,
+    commitNumber: (source, raw) => commitFromNumber(source, raw),
+    buildEditDisplay,
+    focus: () => inputElement?.focus(),
+  });
 
   function onKeyDown(event: KeyboardEvent) {
     if (resolvedDisabled) return;
-    switch (event.key) {
-      case 'ArrowUp':
-        event.preventDefault();
-        stepBy('increment');
-        break;
-      case 'ArrowDown':
-        event.preventDefault();
-        stepBy('decrement');
-        break;
-      case 'PageUp':
-        event.preventDefault();
-        stepBy('increment', 10);
-        break;
-      case 'PageDown':
-        event.preventDefault();
-        stepBy('decrement', 10);
-        break;
-      case 'Home':
-        if (Number.isFinite(resolvedMin)) {
-          event.preventDefault();
-          const homeNext = commitFromNumber('delta', resolvedMin);
-          if (isFocused) editorBuffer = homeNext === null ? '' : buildEditDisplay(homeNext);
-        }
-        break;
-      case 'End':
-        if (Number.isFinite(resolvedMax)) {
-          event.preventDefault();
-          const endNext = commitFromNumber('delta', resolvedMax);
-          if (isFocused) editorBuffer = endNext === null ? '' : buildEditDisplay(endNext);
-        }
-        break;
-      case 'Enter': {
-        event.preventDefault();
-        commitFromText('typed', isFocused ? editorBuffer : '');
-        const form = inputElement?.closest('form');
-        if (form) {
-          if (form.checkValidity()) {
-            enterKeyFlushed = true;
-            form.requestSubmit();
-          } else {
-            form.reportValidity();
-          }
-        }
-        break;
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      commitFromText('typed', isFocused ? editorBuffer : '');
+      const form = inputElement?.closest('form');
+      if (!form) return;
+      if (form.checkValidity()) {
+        enterKeyFlushed = true;
+        form.requestSubmit();
+      } else {
+        form.reportValidity();
       }
+      return;
     }
+    stepController.onKeyDown(event);
   }
 
-  // Form integration: submit-capture to flush any in-flight edit so the hidden
-  // input carries the user's just-typed value at serialization time. The hidden
-  // input is the sole form-data path — there is no `formdata` listener that
-  // duplicates the serialization (avoiding double-write surprises when the
-  // hidden input and a listener disagree).
   $effect(() => {
     if (!inputElement) return;
-    const form = inputElement.closest('form');
-    if (!form) return;
-
-    const onSubmit = () => {
-      // Capture-phase listener: runs before any consumer-registered submit
-      // handler, so by the time `new FormData(form)` is collected (whether
-      // by the platform's submission machinery or by app code in a later
-      // listener) the hidden input already reflects the canonical value.
-      // Validity reporting lives in onKeyDown / native form submission —
-      // not here — so the listener has exactly one job: flush.
-      if (resolvedDisabled) return;
-      // Skip flush when Enter already committed — avoids double onValueChange.
-      if (enterKeyFlushed) {
+    return installFormListeners(inputElement, {
+      isDisabled: () => resolvedDisabled,
+      isFocused: () => isFocused,
+      hasEnterKeyFlush: () => enterKeyFlushed,
+      clearEnterKeyFlush: () => {
         enterKeyFlushed = false;
-        return;
-      }
-      if (isFocused) commitFromText('typed', editorBuffer);
-    };
-    const onReset = () => {
-      if (resolvedDisabled) return;
-      commitFromNumber('reset', resetTarget, resetTarget === null ? 'empty' : 'valid');
-    };
-
-    form.addEventListener('submit', onSubmit, true);
-    form.addEventListener('reset', onReset);
-
-    return () => {
-      form.removeEventListener('submit', onSubmit, true);
-      form.removeEventListener('reset', onReset);
-    };
+      },
+      flushSubmit: () => commitFromText('typed', editorBuffer),
+      reset: () => commitFromNumber('reset', resetTarget, resetTarget === null ? 'empty' : 'valid'),
+    });
   });
 
   // Internal error region — rendered when the parse failed and the consumer
@@ -495,10 +385,6 @@
   // nothing. The internal message is wired into describedBy via its own id.
   const internalInvalid = $derived(malformedError || requiredEmptyError ? 'true' : undefined);
 
-  function toAriaInvalidValue(value: unknown): 'true' | 'false' | undefined {
-    return value === 'true' || value === 'false' ? value : undefined;
-  }
-
   const resolvedAriaInvalid = $derived(internalInvalid ?? toAriaInvalidValue(rest['aria-invalid']));
 
   const incrementDisabled = $derived(
@@ -519,14 +405,12 @@
     label ? ` ${label} by ${incrementStep}` : ` by ${incrementStep}`,
   );
 
-  function attachInput(node: HTMLInputElement): void | (() => void) {
-    inputElement = node;
-    const cleanup = inputAttachment?.(node);
-    return () => {
-      cleanup?.();
-      if (inputElement === node) inputElement = undefined;
-    };
-  }
+  const attachInput = attachInputNode(
+    () => inputAttachment,
+    (node) => {
+      inputElement = node;
+    },
+  );
 </script>
 
 {#snippet steppers()}
@@ -536,7 +420,7 @@
     aria-label={`Increment${stepperLabelSuffix}`}
     disabled={incrementDisabled}
     tabindex="-1"
-    onclick={() => stepBy('increment')}
+    onclick={() => stepController.stepBy('increment')}
   >
     <Plus class="cinder-icon-sm" aria-hidden="true" />
   </button>
@@ -546,7 +430,7 @@
     aria-label={`Decrement${stepperLabelSuffix}`}
     disabled={decrementDisabled}
     tabindex="-1"
-    onclick={() => stepBy('decrement')}
+    onclick={() => stepController.stepBy('decrement')}
   >
     <Minus class="cinder-icon-sm" aria-hidden="true" />
   </button>

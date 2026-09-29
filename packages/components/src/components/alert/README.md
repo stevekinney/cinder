@@ -6,7 +6,7 @@ A status message that communicates contextual feedback and can optionally be dis
 
 ```svelte
 <script lang="ts">
-  import Alert from '@lostgradient/cinder/alert';
+  import { Alert } from '@lostgradient/cinder';
 </script>
 
 <Alert variant="success">Saved successfully.</Alert>
@@ -32,6 +32,7 @@ A status message that communicates contextual feedback and can optionally be dis
 <!-- generated:variables:start -->
 
 - `--cinder-alert-info`
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

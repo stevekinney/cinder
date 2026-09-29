@@ -13,7 +13,7 @@
 
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import type { JsonSchemaEditorChangeEvent, JsonSchemaValue } from './json-schema-editor-types.ts';
 
 setupHappyDom();
@@ -77,12 +77,12 @@ describe('JsonSchemaEditor — Diff tab source contract', () => {
     const disclosureSource = `${source}\n${constraintsSource}`;
 
     expect(constraintsSource).toContain(
-      "import Collapsible from '@lostgradient/cinder/collapsible'",
+      "import { default as Collapsible } from '../collapsible/index.ts'",
     );
-    expect(constraintsSource).toContain("import Input from '@lostgradient/cinder/input'");
+    expect(constraintsSource).toContain("import { default as Input } from '../input/index.ts'");
     expect(constraintsSource).not.toContain("from '../collapsible/collapsible.svelte'");
     expect(constraintsSource).not.toContain("from '../input/input.svelte'");
-    expect(source).toContain("import Collapsible from '@lostgradient/cinder/collapsible'");
+    expect(source).toContain("import { default as Collapsible } from '../collapsible/index.ts'");
     expect(source).not.toContain("from '../collapsible/collapsible.svelte'");
     expect(disclosureSource).not.toContain('<details');
     expect(disclosureSource).not.toContain('<summary');
@@ -178,7 +178,7 @@ describe('JsonSchemaEditor — Diff tab Badge indicator', () => {
       .getAllByRole('button')
       .find((button) => button.textContent?.trim() === 'Apply');
     expect(applyButton).toBeDefined();
-    await fireEvent.click(applyButton as HTMLElement);
+    await fireEvent.click(requiredInstance(applyButton, HTMLElement));
     await flushEffects();
 
     await fireEvent.click(diffTab);
@@ -217,7 +217,7 @@ describe('JsonSchemaEditor — Diff tab Badge indicator', () => {
     const applyButton = screen
       .getAllByRole('button')
       .find((button) => button.textContent?.trim() === 'Apply');
-    await fireEvent.click(applyButton as HTMLElement);
+    await fireEvent.click(requiredInstance(applyButton, HTMLElement));
     await flushEffects();
 
     const diffTab = screen.getByRole('tab', { name: /Diff/ });
@@ -289,7 +289,7 @@ describe('JsonSchemaEditor — keyboard shortcuts and landmarks', () => {
       .getAllByRole('button')
       .find((button) => button.textContent?.trim() === 'Apply');
     expect(applyButton).toBeDefined();
-    await fireEvent.click(applyButton as HTMLElement);
+    await fireEvent.click(requiredInstance(applyButton, HTMLElement));
     await flushEffects();
 
     // The committed edit makes undo available.
@@ -319,7 +319,7 @@ describe('JsonSchemaEditor — keyboard shortcuts and landmarks', () => {
     // deliberately ignores shortcuts whose target is a text field (isEditableTarget
     // — so native undo wins while typing), so we focus the Undo toolbar button, a
     // focusable non-editable surface the shortcut is meant to act from.
-    const focusTarget = undoButton as HTMLElement;
+    const focusTarget = requiredInstance(undoButton, HTMLElement);
     focusTarget.focus();
     expect(region.contains(document.activeElement)).toBe(true);
     expect(document.activeElement).toBe(focusTarget);
@@ -327,7 +327,7 @@ describe('JsonSchemaEditor — keyboard shortcuts and landmarks', () => {
     // Keyboard call: undo shortcut bubbles to the editor undo handler.
     // The dual assertion (undo disabled AND redo enabled) cannot be satisfied by a
     // no-op keydown, which would leave redo disabled.
-    await fireEvent.keyDown(document.activeElement as HTMLElement, {
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
       key: 'z',
       ...primaryModifier,
     });
@@ -338,13 +338,13 @@ describe('JsonSchemaEditor — keyboard shortcuts and landmarks', () => {
     // The undo disabled the button we were focused on, which can blur it. Re-focus
     // a STABLE enabled non-editable control (the now-enabled Redo button) so the redo
     // shortcut fires from a genuine in-region focus, not an ambiguous focus state.
-    const redoFocusTarget = redoButton as HTMLElement;
+    const redoFocusTarget = requiredInstance(redoButton, HTMLElement);
     redoFocusTarget.focus();
     expect(region.contains(document.activeElement)).toBe(true);
     expect(document.activeElement).toBe(redoFocusTarget);
 
     // Redo shortcut (Shift + primary modifier + z) redoes the same edit.
-    await fireEvent.keyDown(document.activeElement as HTMLElement, {
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
       key: 'z',
       ...primaryModifier,
       shiftKey: true,
@@ -388,9 +388,10 @@ describe('JsonSchemaEditor — JSON view draft validity', () => {
 
     await fireEvent.input(textarea, { target: { value: '{"type":"number"}' } });
     await flushEffects();
-    const applyButton = screen
-      .getAllByRole('button')
-      .find((button) => button.textContent?.trim() === 'Apply') as HTMLElement;
+    const applyButton = requiredInstance(
+      screen.getAllByRole('button').find((button) => button.textContent?.trim() === 'Apply'),
+      HTMLElement,
+    );
     expect(applyButton.hasAttribute('disabled')).toBe(false);
 
     await fireEvent.input(textarea, { target: { value: '{"type":"not-a-real-type"}' } });
@@ -442,7 +443,7 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
 
     await fireEvent.click(screen.getByRole('button', { name: 'Edit JSON' }));
     const textarea = screen.getByRole('textbox', { name: 'JSON' });
-    expect((textarea as HTMLTextAreaElement).value).toBe('{\n  "type": "string"\n}');
+    expect(requiredInstance(textarea, HTMLTextAreaElement).value).toBe('{\n  "type": "string"\n}');
     expect(document.activeElement).toBe(textarea);
   });
 
@@ -520,12 +521,14 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     const editor = within(container);
 
     await fireEvent.click(
-      editor.getAllByRole('button', { name: 'Edit JSON' }).at(-1) as HTMLElement,
+      requiredInstance(editor.getAllByRole('button', { name: 'Edit JSON' }).at(-1), HTMLElement),
     );
     const textarea = editor.getByRole('textbox', { name: 'JSON' });
     await fireEvent.input(textarea, { target: { value: '{"type":"number"}' } });
     await flushEffects();
-    await fireEvent.click(editor.getAllByRole('button', { name: 'Apply' }).at(-1) as HTMLElement);
+    await fireEvent.click(
+      requiredInstance(editor.getAllByRole('button', { name: 'Apply' }).at(-1), HTMLElement),
+    );
     await flushEffects();
 
     expect(changes).toEqual(['{\n  "type": "number"\n}']);
@@ -983,9 +986,48 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     await flushEffects();
     await flushEffects();
 
-    expect(document.activeElement).toBe(
-      container.querySelector<HTMLButtonElement>('#jse-controlled-sync-focus-json-edit-json'),
+    const editButton = container.querySelector<HTMLButtonElement>(
+      '#jse-controlled-sync-focus-json-edit-json',
     );
+    expect(editButton).not.toBeNull();
+    expect(document.activeElement === editButton).toBe(true);
+  });
+
+  test('controlled synchronization preserves focus outside a remounted dirty draft', async () => {
+    const onValueChangeRequest = () => undefined;
+    const { container, rerender } = render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-controlled-external-focus',
+        schema: { type: 'string' },
+        view: 'json' as const,
+        onValueChangeRequest,
+      },
+    });
+    await flushEffects();
+    await fireEvent.click(latestJsonButton(container, 'Edit JSON'));
+    await fireEvent.input(latestJsonTextarea(container), {
+      target: { value: '{"type":"number"}' },
+    });
+    await fireEvent.click(within(container).getByRole('tab', { name: /Diff/ }));
+    await fireEvent.click(within(container).getByRole('tab', { name: /JSON/ }));
+    await flushEffects();
+    latestJsonTextarea(container).focus();
+    const outside = document.createElement('button');
+    document.body.append(outside);
+    try {
+      outside.focus();
+      await rerender({
+        id: 'jse-controlled-external-focus',
+        schema: { type: 'boolean' },
+        view: 'json' as const,
+        onValueChangeRequest,
+      });
+      await flushEffects();
+      expect(latestJsonButton(container, 'Edit JSON')).toBeDefined();
+      expect(document.activeElement === outside).toBe(true);
+    } finally {
+      outside.remove();
+    }
   });
 
   test('moves focus to Done when synchronization replaces a focused Discard action', async () => {

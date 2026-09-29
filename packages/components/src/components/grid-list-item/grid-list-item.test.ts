@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -38,7 +38,7 @@ describe('GridListItem', () => {
         actions: textSnippet('ACTIONS'),
       },
     });
-    const li = container.querySelector('li.cinder-grid-list__item') as HTMLElement;
+    const li = requiredInstance(container.querySelector('li.cinder-grid-list__item'), HTMLElement);
     const text = li.textContent ?? '';
     expect(text.indexOf('IMG')).toBeLessThan(text.indexOf('TITLE'));
     expect(text.indexOf('TITLE')).toBeLessThan(text.indexOf('SUBTITLE'));
@@ -182,7 +182,7 @@ describe('GridListItem', () => {
 
   test('optional snippet wrappers are absent when snippets not provided', () => {
     const { container } = render(GridListItem, { props: {} });
-    const li = container.querySelector('li.cinder-grid-list__item') as HTMLElement;
+    const li = requiredInstance(container.querySelector('li.cinder-grid-list__item'), HTMLElement);
     expect(li.querySelector('.cinder-grid-list__image')).toBeNull();
     expect(li.querySelector('.cinder-grid-list__title')).toBeNull();
     expect(li.querySelector('.cinder-grid-list__subtitle')).toBeNull();
@@ -214,37 +214,37 @@ describe('GridListItem', () => {
     // href without title must not satisfy GridListItemProps.
     // GridListItemLinked requires title: Snippet; GridListItemStatic forbids href.
     // @ts-expect-error href without title must be a type error — GridListItemLinked requires title: Snippet
-    const _missingTitle: import('./grid-list-item.types.ts').GridListItemProps = {
+    const missingTitle: import('./grid-list-item.types.ts').GridListItemProps = {
       href: '/people/jane',
     };
-    void _missingTitle;
+    void missingTitle;
     expect(true).toBe(true);
   });
 
   test('type: onclick is not accepted on GridListItemProps', () => {
-    const _withOnClick: import('./grid-list-item.types.ts').GridListItemProps = {
+    const withOnClick: import('./grid-list-item.types.ts').GridListItemProps = {
       // @ts-expect-error onclick is stripped from GridListItemBase — must be a type error
       onclick: () => {},
     };
-    void _withOnClick;
+    void withOnClick;
     expect(true).toBe(true);
   });
 
   test('type: role is not accepted on GridListItemProps', () => {
-    const _withRole: import('./grid-list-item.types.ts').GridListItemProps = {
+    const withRole: import('./grid-list-item.types.ts').GridListItemProps = {
       // @ts-expect-error role is stripped from GridListItemBase — must be a type error
       role: 'button',
     };
-    void _withRole;
+    void withRole;
     expect(true).toBe(true);
   });
 
   test('type: tabindex is not accepted on GridListItemProps', () => {
-    const _withTabIndex: import('./grid-list-item.types.ts').GridListItemProps = {
+    const withTabIndex: import('./grid-list-item.types.ts').GridListItemProps = {
       // @ts-expect-error tabindex is stripped from GridListItemBase — must be a type error
       tabindex: 0,
     };
-    void _withTabIndex;
+    void withTabIndex;
     expect(true).toBe(true);
   });
 });

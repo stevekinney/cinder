@@ -18,14 +18,14 @@ export type ArtifactKey = {
   fixture: string;
 };
 
-/** Resolves to the root of the `@cinder/testing` package (the directory containing `src/`). */
+/** Resolves to the root of the `@lostgradient/testing` package (the directory containing `src/`). */
 function packageRoot(): string {
   // src/helpers/artifact-path.ts → ../..
   return resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 }
 
 /**
- * Returns the absolute path for the legacy review screenshot of a given artifact key.
+ * Returns the absolute path for the review screenshot of a given artifact key.
  * Files are written to `packages/testing/screenshots/<slug>/<theme>-<viewport>-<fixture>.png`.
  * This path is used in `'off'` mode (no diffing) and remains stable for human review.
  */
@@ -50,20 +50,6 @@ export function screenshotMetadataPath(key: ArtifactKey): string {
     'visual-metadata',
     key.slug,
     `${key.theme}-${key.viewport}-${key.fixture}.json`,
-  );
-}
-
-/**
- * Returns the absolute path for the committed baseline snapshot used by
- * `toHaveScreenshot` comparisons in `'block'` and `'report'` modes.
- * Files live at `packages/testing/snapshots/<slug>/<theme>-<viewport>-<fixture>.png`.
- */
-export function snapshotPath(key: ArtifactKey): string {
-  return resolve(
-    packageRoot(),
-    'snapshots',
-    key.slug,
-    `${key.theme}-${key.viewport}-${key.fixture}.png`,
   );
 }
 

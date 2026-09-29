@@ -164,11 +164,11 @@ export function parseE164Value(value: string): {
  * (and reports a warning recommendation via the returned `usedFallback` flag)
  * when filtering yields an empty list.
  */
-export function resolveCountryList(allowed: readonly CountryCode[] | undefined): {
+export function resolveCountryList(allowed: readonly string[] | undefined): {
   countries: CountryCode[];
   usedFallback: boolean;
 } {
-  const supported = new Set<CountryCode>(getCountries());
+  const supported = getCountries();
   if (!allowed) {
     // Don't use `Array.prototype.toSorted()` — it is ES2023 and the package
     // targets ES2022, so it crashes runtimes that follow the target. Sort the
@@ -180,9 +180,10 @@ export function resolveCountryList(allowed: readonly CountryCode[] | undefined):
   const out: CountryCode[] = [];
   const seen = new Set<CountryCode>();
   for (const candidate of allowed) {
-    if (supported.has(candidate) && !seen.has(candidate)) {
-      seen.add(candidate);
-      out.push(candidate);
+    const matched = supported.find((country) => country === candidate);
+    if (matched && !seen.has(matched)) {
+      seen.add(matched);
+      out.push(matched);
     }
   }
   if (out.length === 0) {
@@ -207,7 +208,7 @@ const displayNamesCache = new Map<string, Intl.DisplayNames | null>();
  * fallback to the bare country code when `Intl.DisplayNames` is not
  * available (older runtimes or SSR-frozen contexts).
  */
-export function displayNameForCountry(country: CountryCode, locale: string): string {
+export function displayNameForCountry(country: string, locale: string): string {
   let display = displayNamesCache.get(locale);
   if (display === undefined) {
     try {

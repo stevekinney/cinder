@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
 // reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
@@ -15,7 +15,7 @@ const { default: Citation } = await import('./citation.svelte');
 // the svelte package to resolve to the client build) applies before this import resolves.
 // A top-level static import of 'svelte' resolves to svelte/index-server.js in Bun's
 // non-browser environment, making `mount()` throw "not available on the server".
-const { createRawSnippet } = await import('svelte');
+const { createRawSnippet, flushSync } = await import('svelte');
 
 afterEach(cleanup);
 
@@ -62,7 +62,10 @@ describe('Citation', () => {
 
   test('disables the marker when there are no sources', async () => {
     const { container } = render(Citation, { sources: [] });
-    const marker = container.querySelector('.cinder-citation__marker') as HTMLButtonElement;
+    const marker = requiredInstance(
+      container.querySelector('.cinder-citation__marker'),
+      HTMLButtonElement,
+    );
     expect(marker.disabled).toBe(true);
     expect(marker.getAttribute('aria-label')).toBe('Sources (no sources)');
     await fireEvent.click(marker);
@@ -104,7 +107,8 @@ describe('Citation', () => {
     await waitFor(() => expect(document.querySelector('section strong')).not.toBeNull());
 
     await rerender({ sources: [] });
-    await waitFor(() => expect(document.querySelector('section')).toBeNull());
+    flushSync();
+    expect(document.querySelector('section')?.outerHTML ?? null).toBeNull();
     await rerender({ sources: [{ label: 'Replenished' }] });
     expect(document.querySelector('section')).toBeNull();
   });
@@ -118,7 +122,8 @@ describe('Citation', () => {
     await fireEvent.click(marker);
     await waitFor(() => expect(document.querySelector('section strong')).not.toBeNull());
     await rerender({ sources: [] });
-    await waitFor(() => expect(document.querySelector('section')).toBeNull());
+    flushSync();
+    expect(document.querySelector('section')?.outerHTML ?? null).toBeNull();
 
     expect(document.activeElement).toBe(marker);
   });

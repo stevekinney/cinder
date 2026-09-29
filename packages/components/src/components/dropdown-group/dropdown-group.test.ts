@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -17,7 +17,7 @@ afterEach(() => {
 
 async function openMenu() {
   const result = render(Fixture);
-  await fireEvent.click(result.container.querySelector('.trigger') as HTMLElement);
+  await fireEvent.click(requiredInstance(result.container.querySelector('.trigger'), HTMLElement));
   await waitFor(() => expect(document.body.querySelector('[role="menu"]')).not.toBeNull());
   return { ...result, container: document.body };
 }

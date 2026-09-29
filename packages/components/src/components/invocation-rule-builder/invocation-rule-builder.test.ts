@@ -1,8 +1,8 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import Ajv2020 from 'ajv/dist/2020';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 import type {
   InvocationRule,
   InvocationRuleAction,
@@ -321,13 +321,13 @@ describe('InvocationRuleBuilder', () => {
     });
 
     test('allows consumer aria-label when label prop is omitted', () => {
-      const { container } = renderBuilder([], { 'aria-label': 'External rules' } as never);
+      const { container } = renderBuilder([], { 'aria-label': 'External rules' });
       const section = container.querySelector('.cinder-invocation-rule-builder');
       expect(section?.getAttribute('aria-label')).toBe('External rules');
     });
 
     test('allows consumer aria-labelledby to name the region', () => {
-      const { container } = renderBuilder([], { 'aria-labelledby': 'rules-heading' } as never);
+      const { container } = renderBuilder([], { 'aria-labelledby': 'rules-heading' });
       const section = container.querySelector('.cinder-invocation-rule-builder');
       expect(section?.getAttribute('aria-labelledby')).toBe('rules-heading');
       expect(section?.getAttribute('aria-label')).toBeNull();
@@ -863,35 +863,35 @@ describe('InvocationRuleBuilder', () => {
       const { container } = renderBuilder([makeRule()]);
       const addCondBtn = container.querySelector<HTMLElement>('[data-irb-add-condition]')!;
       expect(addCondBtn.tagName).toBe('BUTTON');
-      expect((addCondBtn as HTMLButtonElement).type).toBe('button');
+      expect(requiredInstance(addCondBtn, HTMLButtonElement).type).toBe('button');
     });
 
     test('keyboard: add-action control is a native button (guarantees Enter/Space activation)', () => {
       const { container } = renderBuilder([makeRule()]);
       const addActionBtn = container.querySelector<HTMLElement>('[data-irb-add-action]')!;
       expect(addActionBtn.tagName).toBe('BUTTON');
-      expect((addActionBtn as HTMLButtonElement).type).toBe('button');
+      expect(requiredInstance(addActionBtn, HTMLButtonElement).type).toBe('button');
     });
 
     test('keyboard: remove-condition control is a native button (guarantees Enter/Space activation)', () => {
       const { container } = renderBuilder([makeRule()]);
       const removeBtn = container.querySelector<HTMLElement>('[data-irb-condition-remove]')!;
       expect(removeBtn.tagName).toBe('BUTTON');
-      expect((removeBtn as HTMLButtonElement).type).toBe('button');
+      expect(requiredInstance(removeBtn, HTMLButtonElement).type).toBe('button');
     });
 
     test('keyboard: remove-action control is a native button (guarantees Enter/Space activation)', () => {
       const { container } = renderBuilder([makeRule()]);
       const removeBtn = container.querySelector<HTMLElement>('[data-irb-action-remove]')!;
       expect(removeBtn.tagName).toBe('BUTTON');
-      expect((removeBtn as HTMLButtonElement).type).toBe('button');
+      expect(requiredInstance(removeBtn, HTMLButtonElement).type).toBe('button');
     });
 
     test('keyboard: add-rule control is a native button (guarantees Enter/Space activation)', () => {
       const { container } = renderBuilder();
       const addBtn = container.querySelector<HTMLElement>('[data-irb-add-rule]')!;
       expect(addBtn.tagName).toBe('BUTTON');
-      expect((addBtn as HTMLButtonElement).type).toBe('button');
+      expect(requiredInstance(addBtn, HTMLButtonElement).type).toBe('button');
     });
   });
 
@@ -1604,7 +1604,7 @@ describe('InvocationRuleBuilder', () => {
         onValueChange: () => {},
       } as const;
       // @ts-expect-error flat-conditions mode cannot accept rule groups
-      const _invalidContract: InvocationRuleBuilderProps = invalidProps;
+      const invalidContract: InvocationRuleBuilderProps = invalidProps;
       expect(invalidProps.rules).toHaveLength(1);
     });
 

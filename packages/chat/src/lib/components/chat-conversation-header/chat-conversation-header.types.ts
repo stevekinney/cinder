@@ -12,7 +12,7 @@ export type ChatConversationHeaderProps = Omit<HTMLAttributes<HTMLElement>, 'cla
   /** Heading level for the conversation title. Default `2`. */
   headingLevel?: ChatConversationHeaderHeadingLevel;
   /** Whether to render the built-in conversation export actions. Default `true`. */
-  showExportActions?: boolean;
+  exportActionsVisible?: boolean;
   /** Additional class name merged with `.cinder-chat-conversation-header`. */
   class?: string;
   /** Additional action controls rendered after the built-in export actions. */

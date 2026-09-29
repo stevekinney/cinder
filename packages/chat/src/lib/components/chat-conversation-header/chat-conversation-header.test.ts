@@ -2,7 +2,7 @@
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import type { ConversationSummary } from '../chat-conversation-list/conversation-summary.ts';
 import type { ConversationHistory, Message } from '../chat/conversation-model.ts';
 
@@ -14,7 +14,7 @@ class TestResizeObserver {
   disconnect(): void {}
 }
 const originalResizeObserver = globalThis.ResizeObserver;
-globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
+globalThis.ResizeObserver = TestResizeObserver;
 
 afterAll(() => {
   globalThis.ResizeObserver = originalResizeObserver;
@@ -69,7 +69,7 @@ describe('ChatConversationHeader', () => {
       props: {
         conversation: conversation(),
         headingLevel: 3,
-        showExportActions: false,
+        exportActionsVisible: false,
       },
     });
 
@@ -109,7 +109,7 @@ describe('ChatConversationHeader', () => {
           },
         }),
         headingLevel: 4,
-        showExportActions: false,
+        exportActionsVisible: false,
         class: 'custom-header',
       },
     });
@@ -127,7 +127,7 @@ describe('ChatConversationHeader', () => {
         conversation: conversation({
           metadata: {},
         }),
-        showExportActions: false,
+        exportActionsVisible: false,
       },
     });
 
@@ -141,7 +141,7 @@ describe('ChatConversationHeader', () => {
     const { container } = render(ChatConversationHeader, {
       props: {
         conversation: conversation(),
-        showExportActions: false,
+        exportActionsVisible: false,
         actions: actionSnippet(),
       },
     });

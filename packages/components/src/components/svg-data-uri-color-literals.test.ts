@@ -1,11 +1,11 @@
 /**
  * Regression test that scans component source for SVG data URIs containing
  * hardcoded `fill` or `stroke` color literals. Defaults to scanning
- * `packages/components/src` only — set `CINDER_SVG_DATA_URI_ROOTS` to a
+ * `components/cinder/src` only — set `CINDER_SVG_DATA_URI_ROOTS` to a
  * comma-separated list of paths to override the default roots (the build
  * verification step in the task plan passes
- * `packages/components/src,packages/components/dist` to also catch hardcoded
- * literals leaking through generated artifacts).
+ * `components/cinder/src,components/cinder/dist` to also catch hardcoded literals
+ * leaking through generated artifacts).
  *
  * Hardcoded SVG colors don't respond to theme tokens — a light-mode `#9ca3af`
  * chevron disappears in dark mode. SVG data URIs must encode shapes only;
@@ -15,7 +15,8 @@
 import { Glob } from 'bun';
 import { describe, expect, test } from 'bun:test';
 import { readFileSync, statSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
+import { environmentConfiguration } from '../../scripts/environment-configuration.ts';
 
 const ALLOWED_COLOR_VALUES = new Set(['none', 'currentcolor', 'inherit']);
 const SCANNED_EXTENSIONS = new Set([
@@ -38,15 +39,15 @@ type SvgDataUri = {
 
 function resolveScanRoots(): string[] {
   const repoRoot = resolve(import.meta.dir, '..', '..', '..', '..');
-  const fromEnv = process.env['CINDER_SVG_DATA_URI_ROOTS'];
+  const fromEnv = environmentConfiguration().cinderSvgDataUriRoots;
   const roots = fromEnv
     ? fromEnv
         .split(',')
         .map((entry) => entry.trim())
         .filter((entry) => entry.length > 0)
-    : ['packages/components/src'];
-  return roots.map((root) => {
-    const absolute = resolve(repoRoot, root);
+    : undefined;
+  return (roots ?? [join(resolve(import.meta.dir, '..', '..'), 'src')]).map((root) => {
+    const absolute = roots ? resolve(repoRoot, root) : root;
     let exists = false;
     try {
       exists = statSync(absolute).isDirectory();
@@ -75,6 +76,64 @@ function readTextOrThrow(filePath: string): string {
   return buffer.toString('utf8');
 }
 
+function findUriLeadingCharacter(source: string, start: number): string {
+  for (let index = start - 1; index >= 0; index -= 1) {
+    const character = source[index]!;
+    if (character === '"' || character === "'" || character === '(') return character;
+    if (character === '\n') break;
+  }
+  return '';
+}
+
+function findUriEnd(file: string, source: string, start: number, markerLength: number): number {
+  const leading = findUriLeadingCharacter(source, start);
+  if (leading === '(') {
+    const closeParen = source.indexOf(')', start);
+    if (closeParen !== -1) return closeParen;
+    throw new Error(
+      `Unterminated url() SVG data URI in ${file}: ${source.slice(start, start + 60)}`,
+    );
+  }
+  if (leading !== '"' && leading !== "'") {
+    throw new Error(
+      `SVG data URI not inside a quoted string or url(...) in ${file}: ${source.slice(
+        start,
+        start + 60,
+      )}`,
+    );
+  }
+  for (let scan = start + markerLength; scan < source.length; scan += 1) {
+    const character = source[scan];
+    if (character === '\\') {
+      scan += 1;
+      continue;
+    }
+    if (character === leading) return scan;
+  }
+  throw new Error(
+    `Unterminated quoted SVG data URI in ${file}: ${source.slice(start, start + 60)}`,
+  );
+}
+
+function decodeSvgPayload(file: string, raw: string, markerLength: number): string {
+  const commaIndex = raw.indexOf(',');
+  if (commaIndex === -1)
+    throw new Error(`Malformed SVG data URI (missing comma) in ${file}: ${raw}`);
+  const metadata = raw.slice(markerLength, commaIndex);
+  if (metadata.includes(';base64')) {
+    throw new Error(`Base64 SVG data URI is not supported by the scanner; in ${file}: ${raw}`);
+  }
+  if (!new Set(['', ';charset=utf-8', ';utf8']).has(metadata)) {
+    throw new Error(`Unsupported SVG data URI metadata "${metadata}" in ${file}: ${raw}`);
+  }
+  const encodedPayload = raw.slice(commaIndex + 1);
+  try {
+    return decodeURIComponent(encodedPayload);
+  } catch {
+    throw new Error(`Malformed percent-encoding in SVG data URI in ${file}: ${encodedPayload}`);
+  }
+}
+
 function extractSvgDataUris(file: string, source: string): SvgDataUri[] {
   const results: SvgDataUri[] = [];
   const marker = 'data:image/svg+xml';
@@ -82,84 +141,14 @@ function extractSvgDataUris(file: string, source: string): SvgDataUri[] {
   while (cursor < source.length) {
     const start = source.indexOf(marker, cursor);
     if (start === -1) break;
-    const trailingCharacter = source[start + marker.length];
-    if (trailingCharacter !== ',' && trailingCharacter !== ';') {
+    if (source[start + marker.length] !== ',' && source[start + marker.length] !== ';') {
       cursor = start + marker.length;
       continue;
     }
-
-    let leading = '';
-    for (let index = start - 1; index >= 0; index -= 1) {
-      const character = source[index]!;
-      if (character === '"' || character === "'" || character === '(') {
-        leading = character;
-        break;
-      }
-      if (character === '\n') break;
-    }
-
-    let endIndex = -1;
-    if (leading === '"' || leading === "'") {
-      let scan = start + marker.length;
-      while (scan < source.length) {
-        const character = source[scan];
-        if (character === '\\') {
-          scan += 2;
-          continue;
-        }
-        if (character === leading) {
-          endIndex = scan;
-          break;
-        }
-        scan += 1;
-      }
-      if (endIndex === -1) {
-        throw new Error(
-          `Unterminated quoted SVG data URI in ${file}: ${source.slice(start, start + 60)}`,
-        );
-      }
-    } else if (leading === '(') {
-      const closeParen = source.indexOf(')', start);
-      if (closeParen === -1) {
-        throw new Error(
-          `Unterminated url() SVG data URI in ${file}: ${source.slice(start, start + 60)}`,
-        );
-      }
-      endIndex = closeParen;
-    } else {
-      throw new Error(
-        `SVG data URI not inside a quoted string or url(...) in ${file}: ${source.slice(
-          start,
-          start + 60,
-        )}`,
-      );
-    }
-
+    const endIndex = findUriEnd(file, source, start, marker.length);
     const raw = source.slice(start, endIndex);
     cursor = endIndex + 1;
-
-    const commaIndex = raw.indexOf(',');
-    if (commaIndex === -1) {
-      throw new Error(`Malformed SVG data URI (missing comma) in ${file}: ${raw}`);
-    }
-    const metadata = raw.slice(marker.length, commaIndex);
-    if (metadata.includes(';base64')) {
-      throw new Error(`Base64 SVG data URI is not supported by the scanner; in ${file}: ${raw}`);
-    }
-    const allowedMetadata = new Set(['', ';charset=utf-8', ';utf8']);
-    if (!allowedMetadata.has(metadata)) {
-      throw new Error(`Unsupported SVG data URI metadata "${metadata}" in ${file}: ${raw}`);
-    }
-
-    const encodedPayload = raw.slice(commaIndex + 1);
-    let payload: string;
-    try {
-      payload = decodeURIComponent(encodedPayload);
-    } catch {
-      throw new Error(`Malformed percent-encoding in SVG data URI in ${file}: ${encodedPayload}`);
-    }
-
-    results.push({ file, raw, payload });
+    results.push({ file, raw, payload: decodeSvgPayload(file, raw, marker.length) });
   }
   return results;
 }

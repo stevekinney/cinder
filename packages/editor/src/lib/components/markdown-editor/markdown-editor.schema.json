@@ -4,7 +4,7 @@
   "properties": {
     "placeholder": {
       "type": "string",
-      "description": "Placeholder text when empty"
+      "description": "Hint text shown while the editor is empty. Unrelated to `{{path}}` template placeholders, which `placeholderDefinitions` configures."
     },
     "id": {
       "type": "string",
@@ -19,12 +19,12 @@
       "description": "Current markdown content (two-way bindable)"
     },
     "mode": {
-      "enum": ["wysiwyg", "source"],
-      "description": "Editor display mode (two-way bindable)"
+      "enum": ["wysiwyg", "source", "preview"],
+      "description": "Editor display mode (two-way bindable). An invalid value keeps the last\nvalid mode (`'wysiwyg'` on mount) and reports `invalid_option` at `mode`."
     },
-    "showModeToggle": {
+    "modeToggleVisible": {
       "type": "boolean",
-      "description": "Show an inline toggle for switching between WYSIWYG and raw Markdown"
+      "description": "Show the built-in mode control for switching between the rich editor, raw\nMarkdown and preview. It renders whenever this is true, including with a\ncustom `toolbar`, `toolbarEnabled={false}` or `readonly`."
     },
     "modeLabel": {
       "type": "string",
@@ -34,9 +34,13 @@
       "type": "boolean",
       "description": "Read-only mode"
     },
-    "showToolbar": {
+    "toolbarEnabled": {
       "type": "boolean",
       "description": "Show formatting toolbar (DEP-37)"
+    },
+    "placeholderValueMode": {
+      "enum": ["text", "markdown"],
+      "description": "How preview inserts string placeholder values: `'text'` (the default)\nrenders them as literal text, `'markdown'` lets them contribute Markdown\nformatting. Other values render as literal JSON either way. An invalid\nstring reports `invalid_option` at `placeholderValueMode` and disables fill."
     },
     "class": {
       "type": "string",
@@ -52,34 +56,39 @@
   "metadata": {
     "unsupportedProps": [
       {
-        "name": "onchange",
+        "name": "onValueChange",
         "reason": "function-or-snippet",
         "description": "Called when content changes"
       },
       {
-        "name": "oncommentshortcut",
+        "name": "onCommentShortcut",
         "reason": "function-or-snippet",
         "description": "Called when comment shortcut (Ctrl-Alt-c) is pressed (DEP-47)"
       },
       {
-        "name": "onmodechange",
+        "name": "onModeChange",
         "reason": "function-or-snippet",
         "description": "Called when editor mode changes"
       },
       {
-        "name": "onready",
+        "name": "onPlaceholderDiagnosticsChange",
+        "reason": "function-or-snippet",
+        "description": "Called with the ordered placeholder diagnostics whenever that list changes.\nToken ranges index the Markdown `value`. Called with `[]` only to clear\nearlier diagnostics."
+      },
+      {
+        "name": "onReady",
         "reason": "function-or-snippet",
         "description": "Called when the editor is ready (Milkdown initialized)"
       },
       {
-        "name": "onselectionchange",
+        "name": "onSelectionChange",
         "reason": "function-or-snippet",
         "description": "Called when selection changes (stub for DEP-39)"
       },
       {
-        "name": "ontoolbarcontextchange",
+        "name": "onToolbarContextChange",
         "reason": "function-or-snippet",
-        "description": "Notified whenever the toolbar context changes.\n\nUse this to host the formatting controls somewhere this component does not\nrender — for example folding them into a surrounding application toolbar so\nthe editor does not stack a second bar of its own. Pair it with\n`showToolbar={false}`."
+        "description": "Notified whenever the toolbar context changes.\n\nUse this to host the formatting controls somewhere this component does not\nrender — for example folding them into a surrounding application toolbar so\nthe editor does not stack a second bar of its own. Pair it with\n`toolbarEnabled={false}`."
       },
       {
         "name": "placeholderCompletion",
@@ -90,6 +99,16 @@
         "name": "placeholderDecoration",
         "reason": "unknown-shape",
         "description": "Placeholder decoration configuration (DEP-583).\nWhen provided, decorates invalid {{…}} tokens with CSS class and data attributes."
+      },
+      {
+        "name": "placeholderDefinitions",
+        "reason": "unknown-shape",
+        "description": "Allowed placeholders, as a JSON Schema or explicit candidates. Drives\ncompletion, invalid-token decoration and diagnostics from one catalog.\nReplacing the object updates the live editor without recreating it."
+      },
+      {
+        "name": "placeholderValues",
+        "reason": "unknown-shape",
+        "description": "Placeholder values for filled preview. Never used for completion, and never\nincluded in a diagnostic. Supplying values without `placeholderDefinitions`,\nor values that are not a plain JSON object, reports a configuration diagnostic."
       },
       {
         "name": "plugins",

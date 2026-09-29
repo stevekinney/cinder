@@ -97,8 +97,8 @@ export function createReviewEditorState(options: ReviewEditorStateOptions): Revi
   // same computeReviewEditorDiffStats the ReviewEditor toolbar uses, not a
   // bare normalize() call, or this exported state manager silently disagrees
   // with the component's own diffStats about the same content.
-  const diffStats = $derived.by(
-    (): DiffStats => computeReviewEditorDiffStats(getOriginal(), getValue()),
+  const diffStats = $derived.by((): DiffStats =>
+    computeReviewEditorDiffStats(getOriginal(), getValue()),
   );
 
   // Whether there are any content changes

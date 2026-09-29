@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 import type { ComponentProps } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
 // reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
@@ -142,7 +142,7 @@ describe('Toggle — disabled state', () => {
     const { container } = render(Toggle, {
       props: { id: 't11', checked: false, label: 'Toggle', disabled: true },
     });
-    const button = container.querySelector('button') as HTMLButtonElement;
+    const button = requiredInstance(container.querySelector('button'), HTMLButtonElement);
     // Disabled buttons do not fire click events in browsers; verify aria-checked unchanged.
     fireEvent.click(button);
     expect(button.getAttribute('aria-checked')).toBe('false');
@@ -171,7 +171,7 @@ describe('Toggle — value interception', () => {
     const { container } = render(Toggle, {
       props: { id: 'onvaluechange-toggle', checked: false, label: 'Notify', onValueChange },
     });
-    const button = container.querySelector('button') as HTMLButtonElement;
+    const button = requiredInstance(container.querySelector('button'), HTMLButtonElement);
 
     await fireEvent.click(button);
 
@@ -183,14 +183,14 @@ describe('Toggle — value interception', () => {
 describe('Toggle — interactive behaviour', () => {
   test('click toggles aria-checked from false to true', async () => {
     const { container } = render(Toggle, { props: { id: 't12', checked: false, label: 'Toggle' } });
-    const button = container.querySelector('button') as HTMLButtonElement;
+    const button = requiredInstance(container.querySelector('button'), HTMLButtonElement);
     await fireEvent.click(button);
     expect(button.getAttribute('aria-checked')).toBe('true');
   });
 
   test('second click toggles aria-checked back to false', async () => {
     const { container } = render(Toggle, { props: { id: 't13', checked: false, label: 'Toggle' } });
-    const button = container.querySelector('button') as HTMLButtonElement;
+    const button = requiredInstance(container.querySelector('button'), HTMLButtonElement);
     await fireEvent.click(button);
     await fireEvent.click(button);
     expect(button.getAttribute('aria-checked')).toBe('false');
@@ -198,7 +198,7 @@ describe('Toggle — interactive behaviour', () => {
 
   test('data-cinder-checked attribute reflects checked state', async () => {
     const { container } = render(Toggle, { props: { id: 't14', checked: false, label: 'Toggle' } });
-    const button = container.querySelector('button') as HTMLButtonElement;
+    const button = requiredInstance(container.querySelector('button'), HTMLButtonElement);
     expect(button.hasAttribute('data-cinder-checked')).toBe(false);
     await fireEvent.click(button);
     expect(button.getAttribute('data-cinder-checked')).toBe('');
@@ -210,7 +210,7 @@ describe('Toggle — interactive behaviour', () => {
   // and that the button carries the correct ARIA semantics for real browsers to act on.
   test('Enter key fires without error; button has correct aria-checked and type', async () => {
     const { container } = render(Toggle, { props: { id: 't15', checked: false, label: 'Toggle' } });
-    const button = container.querySelector('button') as HTMLButtonElement;
+    const button = requiredInstance(container.querySelector('button'), HTMLButtonElement);
     expect(button.getAttribute('type')).toBe('button');
     expect(button.getAttribute('aria-checked')).toBe('false');
 
@@ -220,7 +220,7 @@ describe('Toggle — interactive behaviour', () => {
 
   test('Space key fires without error; button has correct aria-checked and type', async () => {
     const { container } = render(Toggle, { props: { id: 't16', checked: false, label: 'Toggle' } });
-    const button = container.querySelector('button') as HTMLButtonElement;
+    const button = requiredInstance(container.querySelector('button'), HTMLButtonElement);
     expect(button.getAttribute('type')).toBe('button');
     expect(button.getAttribute('aria-checked')).toBe('false');
 
@@ -234,8 +234,11 @@ describe('Toggle — rendered label', () => {
     const { container } = render(Toggle, {
       props: { id: 't17', checked: false, label: 'Dark mode' },
     });
-    const button = container.querySelector('button') as HTMLButtonElement;
-    const label = container.querySelector('.cinder-toggle-field__label') as HTMLElement;
+    const button = requiredInstance(container.querySelector('button'), HTMLButtonElement);
+    const label = requiredInstance(
+      container.querySelector('.cinder-toggle-field__label'),
+      HTMLElement,
+    );
     await fireEvent.click(label);
     expect(button.getAttribute('aria-checked')).toBe('true');
   });
@@ -244,8 +247,11 @@ describe('Toggle — rendered label', () => {
     const { container } = render(Toggle, {
       props: { id: 't18', checked: false, label: 'Dark mode', disabled: true },
     });
-    const button = container.querySelector('button') as HTMLButtonElement;
-    const label = container.querySelector('.cinder-toggle-field__label') as HTMLElement;
+    const button = requiredInstance(container.querySelector('button'), HTMLButtonElement);
+    const label = requiredInstance(
+      container.querySelector('.cinder-toggle-field__label'),
+      HTMLElement,
+    );
     await fireEvent.click(label);
     expect(button.getAttribute('aria-checked')).toBe('false');
   });
@@ -291,7 +297,10 @@ describe('Toggle — form participation', () => {
     const { container } = render(Toggle, {
       props: { id: 'tf3', checked: false, label: 'Notifications', name: 'notifications' },
     });
-    const input = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const input = requiredInstance(
+      container.querySelector('input[type="checkbox"]'),
+      HTMLInputElement,
+    );
     expect(input.value).toBe('on');
   });
 
@@ -305,7 +314,10 @@ describe('Toggle — form participation', () => {
         value: 'enabled',
       },
     });
-    const input = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const input = requiredInstance(
+      container.querySelector('input[type="checkbox"]'),
+      HTMLInputElement,
+    );
     expect(input.value).toBe('enabled');
   });
 
@@ -313,7 +325,10 @@ describe('Toggle — form participation', () => {
     const { container } = render(Toggle, {
       props: { id: 'tf5', checked: true, label: 'Notifications', name: 'notifications' },
     });
-    const input = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const input = requiredInstance(
+      container.querySelector('input[type="checkbox"]'),
+      HTMLInputElement,
+    );
     expect(input.checked).toBe(true);
   });
 
@@ -321,7 +336,10 @@ describe('Toggle — form participation', () => {
     const { container } = render(Toggle, {
       props: { id: 'tf6', checked: false, label: 'Notifications', name: 'notifications' },
     });
-    const input = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const input = requiredInstance(
+      container.querySelector('input[type="checkbox"]'),
+      HTMLInputElement,
+    );
     expect(input.checked).toBe(false);
   });
 
@@ -329,8 +347,11 @@ describe('Toggle — form participation', () => {
     const { container } = render(Toggle, {
       props: { id: 'tf7', checked: false, label: 'Notifications', name: 'notifications' },
     });
-    const button = container.querySelector('button') as HTMLButtonElement;
-    const input = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const button = requiredInstance(container.querySelector('button'), HTMLButtonElement);
+    const input = requiredInstance(
+      container.querySelector('input[type="checkbox"]'),
+      HTMLInputElement,
+    );
     expect(input.checked).toBe(false);
     await fireEvent.click(button);
     expect(input.checked).toBe(true);
@@ -340,7 +361,10 @@ describe('Toggle — form participation', () => {
     const { container } = render(Toggle, {
       props: { id: 'tf8', checked: false, label: 'Notifications', name: 'notifications' },
     });
-    const input = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const input = requiredInstance(
+      container.querySelector('input[type="checkbox"]'),
+      HTMLInputElement,
+    );
     // `hidden` (display:none) makes the control genuinely non-focusable and absent
     // from the accessibility tree — no aria-hidden-focus violation. It must NOT
     // carry aria-hidden/tabindex (those would imply a focusable-but-hidden element).
@@ -379,7 +403,10 @@ describe('Toggle — form participation', () => {
           form: 'external-settings-form',
         },
       });
-      const input = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+      const input = requiredInstance(
+        container.querySelector('input[type="checkbox"]'),
+        HTMLInputElement,
+      );
       expect(input.form).toBe(externalForm);
     } finally {
       externalForm.remove();
@@ -399,7 +426,7 @@ describe('Toggle — form participation', () => {
     const form = document.createElement('form');
     document.body.appendChild(form);
     const result = render(Toggle, { target: form, props });
-    const input = form.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const input = requiredInstance(form.querySelector('input[type="checkbox"]'), HTMLInputElement);
     return { form, input, ...result, teardown: () => form.remove() };
   }
 
@@ -508,7 +535,10 @@ describe('Toggle — FormField context', () => {
     const { container } = render(FormFieldToggleFixture, {
       props: { fieldId: 'ctx-toggle', fieldLabel: 'Notifications', disabled: true },
     });
-    const button = container.querySelector('button[role="switch"]') as HTMLButtonElement;
+    const button = requiredInstance(
+      container.querySelector('button[role="switch"]'),
+      HTMLButtonElement,
+    );
     expect(button.disabled).toBe(true);
   });
 
@@ -516,7 +546,10 @@ describe('Toggle — FormField context', () => {
     const { container } = render(Toggle, {
       props: { id: 't-ctx-default', checked: false, label: 'Standalone' },
     });
-    const button = container.querySelector('button[role="switch"]') as HTMLButtonElement;
+    const button = requiredInstance(
+      container.querySelector('button[role="switch"]'),
+      HTMLButtonElement,
+    );
     expect(button.disabled).toBe(false);
   });
 
@@ -526,7 +559,10 @@ describe('Toggle — FormField context', () => {
     const { container } = render(FormFieldToggleFixture, {
       props: { fieldId: 'ctx-toggle-label', toggleLabel: 'Notifications' },
     });
-    const button = container.querySelector('button[role="switch"]') as HTMLButtonElement;
+    const button = requiredInstance(
+      container.querySelector('button[role="switch"]'),
+      HTMLButtonElement,
+    );
     const label = container.querySelector('.cinder-toggle-field__label');
     expect(label?.textContent).toContain('Notifications');
     expect(button.getAttribute('aria-labelledby')).toBe(label?.id ?? null);

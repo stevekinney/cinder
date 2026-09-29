@@ -1,7 +1,8 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -58,14 +59,14 @@ describe('ChoiceGridItem', () => {
 
   test('clicking an item selects it', async () => {
     const { container } = render(Wrapper, { ariaLabel: 'Pick one', items });
-    const second = container.querySelectorAll('[role="radio"]')[0] as HTMLElement;
+    const second = requiredInstance(container.querySelectorAll('[role="radio"]')[0], HTMLElement);
     await fireEvent.click(second);
     expect(second.getAttribute('aria-checked')).toBe('true');
   });
 
   test('clicking a disabled item does not select it', async () => {
     const { container } = render(Wrapper, { ariaLabel: 'Pick one', items });
-    const disabled = container.querySelectorAll('[role="radio"]')[1] as HTMLElement;
+    const disabled = requiredInstance(container.querySelectorAll('[role="radio"]')[1], HTMLElement);
     await fireEvent.click(disabled);
     expect(disabled.getAttribute('aria-checked')).toBe('false');
   });
@@ -75,5 +76,62 @@ describe('ChoiceGridItem', () => {
     expect(container.querySelector('.cinder-choice-grid-item__content')?.textContent).toContain(
       'A',
     );
+  });
+
+  test('size="sm" is stamped as data-cinder-size, and states keep the same attribute', () => {
+    const { container } = render(Wrapper, { ariaLabel: 'Pick one', items, size: 'sm' });
+    const correct = container.querySelectorAll('[role="radio"]')[2];
+    expect(correct?.getAttribute('data-cinder-size')).toBe('sm');
+    expect(correct?.getAttribute('data-cinder-state')).toBe('correct');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Compact size CSS contract (COR-330)
+//
+// happy-dom performs no real layout, so the sizing contract itself — fine
+// vs. coarse pointer block-size, and that no state rule changes cell
+// dimensions — is asserted against the authored CSS text, the same pattern
+// slider.test.ts uses for its disabled-state contrast contract.
+// ---------------------------------------------------------------------------
+
+describe('ChoiceGridItem size CSS contract', () => {
+  const styles = readFileSync(new URL('./choice-grid-item.css', import.meta.url), 'utf8');
+
+  test('fine pointer: size="sm" matches the button sm block-size, padding, and font-size tokens', () => {
+    expect(styles).toMatch(
+      /\.cinder-choice-grid-item\[data-cinder-size='sm'\]\s*\{[^}]*block-size:\s*var\(--cinder-button-height-sm\);/,
+    );
+    expect(styles).toMatch(
+      /\.cinder-choice-grid-item\[data-cinder-size='sm'\]\s*\{[^}]*padding:\s*var\(--cinder-button-padding-y-sm\)\s*var\(--cinder-button-padding-x-sm\);/,
+    );
+    expect(styles).toMatch(
+      /\.cinder-choice-grid-item\[data-cinder-size='sm'\] \.cinder-choice-grid-item__content\s*\{[^}]*font-size:\s*var\(--cinder-button-font-size-sm\);/,
+    );
+  });
+
+  test('coarse pointer: size="sm" floors at a 44px touch target instead of the fine-pointer height', () => {
+    const coarseBlock = styles.match(/@media \(pointer: coarse\)\s*\{([\s\S]*?)\n {2}\}/)?.[1];
+    expect(coarseBlock, 'expected an @media (pointer: coarse) block').toBeDefined();
+    expect(coarseBlock).toMatch(/min-block-size:\s*44px;/);
+    expect(coarseBlock).toMatch(/min-inline-size:\s*44px;/);
+  });
+
+  test('no selection/hover/focus/disabled/feedback rule sets block-size, padding, or font-size', () => {
+    // Every state selector in this stylesheet: selected, disabled, and the
+    // three feedback states. `size="sm"`'s own rules are excluded by name.
+    const stateSelectors = [
+      /\.cinder-choice-grid-item:focus-visible\s*\{[^}]*\}/,
+      /\.cinder-choice-grid-item\[data-cinder-selected\]\s*\{[^}]*\}/,
+      /\.cinder-choice-grid-item\[data-cinder-disabled\]\s*\{[^}]*\}/,
+      /\.cinder-choice-grid-item\[data-cinder-state='correct'\]\s*\{[^}]*\}/,
+      /\.cinder-choice-grid-item\[data-cinder-state='incorrect'\]\s*\{[^}]*\}/,
+      /\.cinder-choice-grid-item\[data-cinder-state='pending'\]\s*\{[^}]*\}/,
+    ];
+    for (const selector of stateSelectors) {
+      const rule = styles.match(selector)?.[0];
+      expect(rule, `expected to find rule for ${selector}`).toBeDefined();
+      expect(rule).not.toMatch(/block-size:|padding:|font-size:/);
+    }
   });
 });

@@ -86,7 +86,7 @@
   }
 
   $effect(() => {
-    normalizedValue;
+    void normalizedValue;
     if (!inputElement) return;
     updateInputValidity(inputElement);
   });

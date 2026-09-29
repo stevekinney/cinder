@@ -1,5 +1,14 @@
 <script lang="ts" module>
   import type { Thread } from '../../comments/index.ts';
+  import type {
+    DiffReviewAction,
+    DiffReviewComment,
+    DiffReviewState,
+  } from '../../diff-review-state/index.ts';
+
+  type ThreadSelectionOptions = {
+    openPopover?: boolean;
+  };
 
   export type CommentSidebarProps = {
     /** Unique ID for accessibility */
@@ -11,11 +20,30 @@
     /** Whether the sidebar is read-only */
     readonly?: boolean;
     /** Callback when a thread is selected */
-    onthreadselect?: (threadId: string) => void;
+    onthreadselect?: (threadId: string, options?: ThreadSelectionOptions) => void;
     /** Callback when all threads should be cleared */
     onclearall?: () => void;
+    /** Callback when one thread should be removed */
+    onThreadDelete?: (threadId: string) => void;
     /** Callback when user submits a document-level comment */
     onadddocumentcomment?: (body: string) => void;
+    /**
+     * ReviewEditor's opt-in diff-review session (COR-512 / DR-7). Absent by default -- when
+     * undefined, this renders exactly as before: no diff rows, same DOM. When supplied, every
+     * saved diff comment renders as one more row in this SAME list, alongside the document
+     * threads above, each carrying `data-anchor-kind="diff"` and its own side/file badge so the
+     * two anchor domains stay visually and structurally distinguished within the one list.
+     */
+    diffReviewState?: DiffReviewState | undefined;
+    /** Activated by a CURRENT diff comment's "Go to diff" action; never for outdated/removed
+     * (see `diff-review-comment-item.svelte`'s identical rule) -- those focus their own captured
+     * detail in place instead. */
+    onDiffCommentNavigate?: (comment: DiffReviewComment) => void;
+    /** Dispatches a diff-review mutation (delete/resolve/reopen) from this list. Delete is only
+     * ever called after this component's own explicit inline confirmation -- never on the bare
+     * click of the row's Delete button (contract, Experience: "Deleting a new diff comment
+     * removes it from state and subsequent exports after an explicit confirmation"). */
+    onDiffCommentAction?: (action: DiffReviewAction) => void;
     /** Additional CSS class */
     class?: string;
   };
@@ -32,15 +60,17 @@
     Plus,
     Trash2,
     X,
-  } from '@lostgradient/cinder/icons';
+    Button,
+    InlineConfirm,
+    Dropdown,
+    DropdownTrigger,
+    DropdownMenu,
+    DropdownItem,
+  } from '@lostgradient/cinder';
 
   import { getVisibleComments, isDocumentAnchor } from '../../comments/index.ts';
-  import Button from '@lostgradient/cinder/button';
-  import InlineConfirm from '@lostgradient/cinder/inline-confirm';
-  import Dropdown from '@lostgradient/cinder/dropdown';
-  import DropdownTrigger from '@lostgradient/cinder/dropdown-trigger';
-  import DropdownMenu from '@lostgradient/cinder/dropdown-menu';
-  import DropdownItem from '@lostgradient/cinder/dropdown-item';
+  import { classifyDiffReviewAnchorStatus } from '../diff-review/diff-review-anchor-status.ts';
+  import { formatDiffReviewCommentLocation } from '../diff-review-comments/diff-review-comment-location.ts';
   import CommentComposer from './comment-composer.svelte';
 
   let {
@@ -50,7 +80,11 @@
     readonly = false,
     onthreadselect,
     onclearall,
+    onThreadDelete,
     onadddocumentcomment,
+    diffReviewState,
+    onDiffCommentNavigate,
+    onDiffCommentAction,
     class: className,
   }: CommentSidebarProps = $props();
 
@@ -84,6 +118,7 @@
     const docThreads = visible.filter((thread) => isDocumentAnchor(thread.anchor));
     const txtThreads = visible
       .filter((thread) => !isDocumentAnchor(thread.anchor))
+      .slice()
       .sort((a, b) => {
         const posA = a.anchor.from ?? a.anchor.originalPosition?.offset ?? 0;
         const posB = b.anchor.from ?? b.anchor.originalPosition?.offset ?? 0;
@@ -96,6 +131,51 @@
   /** All visible threads (for count and clear all) */
   const visibleThreads = $derived([...documentThreads, ...textThreads]);
 
+  /** Every saved diff comment (COR-512 / DR-7), rendered as a third group in this same list.
+   * `undefined` when the host has not enabled diff review -- see the prop doc. */
+  const diffComments = $derived(diffReviewState?.comments ?? []);
+  const totalCommentCount = $derived(visibleThreads.length + diffComments.length);
+
+  function diffCommentKindLabel(comment: DiffReviewComment): string {
+    return comment.anchor.kind === 'file' ? 'Diff · file' : `Diff · ${comment.anchor.side}`;
+  }
+
+  /** Mirrors `DiffReviewCommentItem`'s own `goTo` rule: only a CURRENT comment navigates the
+   * diff viewer. An outdated/removed comment instead moves DOM focus to its own captured-detail
+   * text, rendered in place below -- never suggesting a current anchor for a stale one. */
+  function handleDiffCommentGoTo(comment: DiffReviewComment, capturedDetailId: string): void {
+    if (!diffReviewState) return;
+    const status = classifyDiffReviewAnchorStatus(diffReviewState, comment);
+    if (status === 'current') {
+      onDiffCommentNavigate?.(comment);
+      return;
+    }
+    document.getElementById(capturedDetailId)?.focus();
+  }
+
+  /**
+   * Explicit confirmation before deleting a diff comment (contract, Experience: "Deleting a new
+   * diff comment removes it from state and subsequent exports after an explicit confirmation").
+   * This merged list is a separate implementation from `diff-review-comment-item.svelte` (which
+   * already gates its own delete behind a `ConfirmDialog`), so it independently needs this same
+   * guard rather than dispatching on a bare click. Tracks at most one row at a time, mirroring
+   * this file's own single-flight `showConfirmClear` pattern for "Clear all".
+   */
+  let confirmingDeleteDiffCommentId = $state<string | null>(null);
+
+  function requestDiffCommentDelete(commentId: string): void {
+    confirmingDeleteDiffCommentId = commentId;
+  }
+
+  function confirmDiffCommentDelete(commentId: string): void {
+    confirmingDeleteDiffCommentId = null;
+    onDiffCommentAction?.({ type: 'delete-comment', id: commentId });
+  }
+
+  function cancelDiffCommentDelete(): void {
+    confirmingDeleteDiffCommentId = null;
+  }
+
   /** Get the first visible comment's body for preview */
   function getPreview(thread: Thread): string {
     const comments = getVisibleComments(thread);
@@ -106,6 +186,36 @@
 
   function handleThreadClick(threadId: string) {
     onthreadselect?.(threadId);
+  }
+
+  function getThreadLabel(thread: Thread): string {
+    return isDocumentAnchor(thread.anchor) ? 'Document comment' : thread.anchor.quote;
+  }
+
+  async function handleThreadDelete(threadId: string): Promise<void> {
+    const displayedIndex = visibleThreads.findIndex((thread) => thread.id === threadId);
+    const selectedThreadId = activeThreadId;
+    onThreadDelete?.(threadId);
+    await tick();
+
+    if (visibleThreads.some((thread) => thread.id === threadId)) {
+      if (selectedThreadId && visibleThreads.some((thread) => thread.id === selectedThreadId)) {
+        onthreadselect?.(selectedThreadId, { openPopover: false });
+        await tick();
+      }
+      document.getElementById(`${id}-thread-remove-${threadId}`)?.focus();
+      return;
+    }
+
+    const nextThread = visibleThreads[displayedIndex] ?? visibleThreads[displayedIndex - 1];
+    if (nextThread) {
+      onthreadselect?.(nextThread.id, { openPopover: false });
+      await tick();
+      document.getElementById(`${id}-thread-open-${nextThread.id}`)?.focus();
+      return;
+    }
+
+    document.getElementById(documentCommentTriggerId)?.focus();
   }
 
   function handleClearAllClick() {
@@ -136,55 +246,57 @@
 
 <aside {id} class={classNames('comment-sidebar', className)} aria-label="Comment threads">
   <div class="sidebar-header">
-    <MessageSquare class="cinder-icon-sm" />
-    <h2 class="sidebar-title">Comments</h2>
-    <span class="thread-count">{visibleThreads.length}</span>
+    <div class="sidebar-label-group">
+      <MessageSquare class="cinder-icon-sm" />
+      <h2 class="sidebar-title">Comments</h2>
+      <span class="thread-count">{totalCommentCount}</span>
+    </div>
 
     {#if !readonly}
-      <Button
-        id={documentCommentTriggerId}
-        variant="ghost"
-        size="xs"
-        aria-label={composingDocumentComment ? 'Cancel document comment' : 'Add document comment'}
-        title={composingDocumentComment
-          ? 'Cancel adding document comment'
-          : 'Add comment about the entire document'}
-        onclick={composingDocumentComment
-          ? handleCancelDocumentComment
-          : handleStartDocumentComment}
-      >
-        {#if composingDocumentComment}
-          <X class="cinder-icon-sm" />
-        {:else}
-          <Plus class="cinder-icon-sm" />
-        {/if}
-      </Button>
-    {/if}
+      <div class="sidebar-action-group">
+        <Button
+          id={documentCommentTriggerId}
+          variant="ghost"
+          size="xs"
+          aria-label={composingDocumentComment ? 'Cancel document comment' : 'Add document comment'}
+          title={composingDocumentComment
+            ? 'Cancel adding document comment'
+            : 'Add comment about the entire document'}
+          onclick={composingDocumentComment
+            ? handleCancelDocumentComment
+            : handleStartDocumentComment}
+        >
+          {#if composingDocumentComment}
+            <X class="cinder-icon-sm" />
+          {:else}
+            <Plus class="cinder-icon-sm" />
+          {/if}
+        </Button>
 
-    {#if !readonly}
-      {#key visibleThreads.length > 0}
-        <Dropdown id="{id}-actions">
-          <DropdownTrigger
-            id={actionsTriggerId}
-            class="actions-trigger"
-            aria-label="Comment actions"
-            caretVisible={false}
-            disabled={visibleThreads.length === 0}
-          >
-            <MoreHorizontal class="cinder-icon-sm" />
-          </DropdownTrigger>
-          <DropdownMenu>
-            <DropdownItem
-              variant="danger"
-              onclick={handleClearAllClick}
+        {#key visibleThreads.length > 0}
+          <Dropdown id="{id}-actions">
+            <DropdownTrigger
+              id={actionsTriggerId}
+              class="actions-trigger"
+              aria-label="Comment actions"
+              caretVisible={false}
               disabled={visibleThreads.length === 0}
             >
-              <Trash2 class="cinder-icon-sm" />
-              Clear all comments
-            </DropdownItem>
-          </DropdownMenu>
-        </Dropdown>
-      {/key}
+              <MoreHorizontal class="cinder-icon-sm" />
+            </DropdownTrigger>
+            <DropdownMenu>
+              <DropdownItem
+                variant="danger"
+                onclick={handleClearAllClick}
+                disabled={visibleThreads.length === 0}
+              >
+                <Trash2 class="cinder-icon-sm" />
+                Clear all comments
+              </DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        {/key}
+      </div>
     {/if}
   </div>
 
@@ -214,8 +326,8 @@
     </div>
   {/if}
 
-  <div class="thread-list">
-    {#if visibleThreads.length === 0}
+  <div class="thread-list" role="list" aria-label="Comment threads">
+    {#if totalCommentCount === 0}
       <div class="empty-state">
         <p class="empty-message">No comments yet</p>
         <p class="empty-hint">Select text or click + to add a comment</p>
@@ -223,47 +335,155 @@
     {:else}
       <!-- Document-level comments first -->
       {#each documentThreads as thread (thread.id)}
-        <button
-          type="button"
-          class="thread-item"
-          data-document="true"
-          data-active={activeThreadId === thread.id || undefined}
-          onclick={() => handleThreadClick(thread.id)}
-          aria-current={activeThreadId === thread.id ? 'true' : undefined}
-        >
-          <div class="thread-document-label">
-            <FileText class="cinder-icon-xs" />
-            <span>Document comment</span>
-          </div>
-          <p class="thread-preview">{getPreview(thread)}</p>
-        </button>
+        <div class="thread-row" role="listitem">
+          <button
+            id="{id}-thread-open-{thread.id}"
+            type="button"
+            class="thread-item"
+            data-document="true"
+            data-active={activeThreadId === thread.id || undefined}
+            onclick={() => handleThreadClick(thread.id)}
+            aria-current={activeThreadId === thread.id ? 'true' : undefined}
+            aria-label="Open comment thread: {getThreadLabel(thread)}"
+          >
+            <div class="thread-document-label">
+              <FileText class="cinder-icon-xs" />
+              <span>Document comment</span>
+            </div>
+            <p class="thread-preview">{getPreview(thread)}</p>
+          </button>
+          {#if !readonly}
+            <Button
+              id="{id}-thread-remove-{thread.id}"
+              class="thread-remove"
+              variant="ghost"
+              size="xs"
+              aria-label="Remove comment thread: {getThreadLabel(thread)}"
+              onclick={() => void handleThreadDelete(thread.id)}
+            >
+              <Trash2 class="cinder-icon-sm" />
+            </Button>
+          {/if}
+        </div>
       {/each}
 
       <!-- Text-anchored comments -->
       {#each textThreads as thread (thread.id)}
-        <button
-          type="button"
-          class="thread-item"
-          data-active={activeThreadId === thread.id || undefined}
-          data-orphaned={thread.anchor.status === 'orphaned' || undefined}
-          onclick={() => handleThreadClick(thread.id)}
-          aria-current={activeThreadId === thread.id ? 'true' : undefined}
-        >
-          <blockquote class="thread-quote">
-            {truncate(thread.anchor.quote, 60)}
-          </blockquote>
-          <!--
-            An orphaned thread's quote is not in the document, so it has no
-            highlight to jump to. Saying so is the difference between a comment
-            that looks broken and one the reader knows is waiting for its text
-            to come back — the text often does, since a cut-and-paste orphans an
-            anchor until the paste lands (cinder#1284).
-          -->
-          {#if thread.anchor.status === 'orphaned'}
-            <p class="thread-orphaned">Quoted text is not in the document</p>
+        <div class="thread-row" role="listitem">
+          <button
+            id="{id}-thread-open-{thread.id}"
+            type="button"
+            class="thread-item"
+            data-active={activeThreadId === thread.id || undefined}
+            data-orphaned={thread.anchor.status === 'orphaned' || undefined}
+            onclick={() => handleThreadClick(thread.id)}
+            aria-current={activeThreadId === thread.id ? 'true' : undefined}
+            aria-label="Open comment thread: {getThreadLabel(thread)}"
+          >
+            <blockquote class="thread-quote">
+              {truncate(thread.anchor.quote, 60)}
+            </blockquote>
+            <!--
+              An orphaned thread's quote is not in the document, so it has no
+              highlight to jump to. Saying so is the difference between a comment
+              that looks broken and one the reader knows is waiting for its text
+              to come back — the text often does, since a cut-and-paste orphans an
+              anchor until the paste lands (cinder#1284).
+            -->
+            {#if thread.anchor.status === 'orphaned'}
+              <p class="thread-orphaned">Quoted text is not in the document</p>
+            {/if}
+            <p class="thread-preview">{getPreview(thread)}</p>
+          </button>
+          {#if !readonly}
+            <Button
+              id="{id}-thread-remove-{thread.id}"
+              class="thread-remove"
+              variant="ghost"
+              size="xs"
+              aria-label="Remove comment thread: {getThreadLabel(thread)}"
+              onclick={() => void handleThreadDelete(thread.id)}
+            >
+              <Trash2 class="cinder-icon-sm" />
+            </Button>
           {/if}
-          <p class="thread-preview">{getPreview(thread)}</p>
-        </button>
+        </div>
+      {/each}
+
+      <!-- Diff comments (COR-512 / DR-7): a third group in this same list, distinguished from
+           the document threads above by `data-anchor-kind="diff"` and their own side/file badge. -->
+      {#each diffComments as comment (comment.id)}
+        {@const status = diffReviewState
+          ? classifyDiffReviewAnchorStatus(diffReviewState, comment)
+          : 'removed'}
+        {@const capturedDetailId = `${id}-diff-comment-detail-${comment.id}`}
+        <div class="thread-row" role="listitem" data-anchor-kind="diff" data-diff-status={status}>
+          <button
+            type="button"
+            class="thread-item"
+            data-diff-comment="true"
+            onclick={() => handleDiffCommentGoTo(comment, capturedDetailId)}
+            aria-label="Go to diff comment: {formatDiffReviewCommentLocation(comment)}"
+          >
+            <div class="thread-document-label">
+              <span class="diff-comment-kind-badge">{diffCommentKindLabel(comment)}</span>
+              {#if comment.resolved}
+                <span class="diff-comment-status-badge diff-comment-status-resolved">Resolved</span>
+              {/if}
+              {#if status === 'removed'}
+                <span class="diff-comment-status-badge diff-comment-status-outdated">Removed</span>
+              {:else if status === 'outdated'}
+                <span class="diff-comment-status-badge diff-comment-status-outdated">Outdated</span>
+              {/if}
+            </div>
+            <p class="thread-preview">{formatDiffReviewCommentLocation(comment)}</p>
+            <p class="thread-preview">{truncate(comment.body, 80)}</p>
+          </button>
+          {#if status !== 'current'}
+            <p id={capturedDetailId} class="diff-comment-captured-detail" tabindex="-1">
+              {status === 'removed' ? 'Originally at' : 'Captured at'}:
+              {formatDiffReviewCommentLocation(comment)}
+            </p>
+          {/if}
+          {#if !readonly}
+            <div class="diff-comment-row-actions">
+              {#if comment.resolved}
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onclick={() => onDiffCommentAction?.({ type: 'reopen-comment', id: comment.id })}
+                >
+                  Reopen
+                </Button>
+              {:else}
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  onclick={() => onDiffCommentAction?.({ type: 'resolve-comment', id: comment.id })}
+                >
+                  Resolve
+                </Button>
+              {/if}
+              <Button
+                class="thread-remove"
+                variant="ghost"
+                size="xs"
+                aria-label="Delete diff comment: {formatDiffReviewCommentLocation(comment)}"
+                onclick={() => requestDiffCommentDelete(comment.id)}
+              >
+                <Trash2 class="cinder-icon-sm" />
+              </Button>
+            </div>
+            <InlineConfirm
+              prompt="Delete this comment?"
+              confirmLabel="Delete"
+              destructive
+              open={confirmingDeleteDiffCommentId === comment.id}
+              onConfirm={() => confirmDiffCommentDelete(comment.id)}
+              onCancel={cancelDiffCommentDelete}
+            />
+          {/if}
+        </div>
       {/each}
     {/if}
   </div>
@@ -286,18 +506,31 @@
   .sidebar-header {
     display: flex;
     align-items: center;
-    gap: var(--cinder-space-2);
+    gap: var(--cinder-space-3);
     padding: var(--cinder-space-3);
     border-bottom: 1px solid var(--cinder-border-muted);
     color: var(--cinder-text-muted);
   }
 
+  .sidebar-label-group {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
+    min-width: 0;
+  }
+
   .sidebar-title {
-    flex: 1;
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-text-default);
     margin: 0;
+  }
+
+  .sidebar-action-group {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
+    margin-inline-start: auto;
   }
 
   .thread-count {
@@ -366,9 +599,19 @@
   }
 
   .thread-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
     flex: 1;
     overflow-y: auto;
     padding: var(--cinder-space-2);
+  }
+
+  .thread-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
+    gap: var(--cinder-space-1);
   }
 
   .thread-item {
@@ -377,7 +620,6 @@
     gap: var(--cinder-space-1);
     width: 100%;
     padding: var(--cinder-space-3);
-    margin-bottom: var(--cinder-space-2);
     background: var(--cinder-surface);
     border: 1px solid var(--cinder-border-muted);
     border-radius: var(--cinder-radius-md);
@@ -450,6 +692,40 @@
     overflow: hidden;
   }
 
+  .diff-comment-kind-badge {
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+    color: var(--cinder-text-muted, #666);
+  }
+
+  .diff-comment-status-badge {
+    border-radius: var(--cinder-radius-sm, 4px);
+    padding: 0 0.375rem;
+    font-size: var(--cinder-text-xs);
+  }
+
+  .diff-comment-status-resolved {
+    background: var(--cinder-status-success-subtle, #e6f4ea);
+    color: var(--cinder-status-success-solid, #1a7f37);
+  }
+
+  .diff-comment-status-outdated {
+    background: var(--cinder-status-warning-subtle, #fff4e5);
+    color: var(--cinder-status-warning-solid, #9a6700);
+  }
+
+  .diff-comment-captured-detail {
+    margin: 0 var(--cinder-space-3, 0.75rem) var(--cinder-space-2, 0.5rem);
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-muted, #666);
+  }
+
+  .diff-comment-row-actions {
+    display: flex;
+    gap: var(--cinder-space-1);
+    padding-inline-end: var(--cinder-space-2, 0.5rem);
+  }
+
   .thread-document-label {
     display: inline-flex;
     align-items: center;
@@ -465,6 +741,10 @@
 
   .thread-item[data-document='true'] {
     border-inline-start: 2px solid var(--cinder-accent-solid);
+  }
+
+  .thread-row :global(.thread-remove) {
+    align-self: start;
   }
 
   .empty-state {

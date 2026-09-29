@@ -15,114 +15,49 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
-  import Kbd from '../kbd/kbd.svelte';
+  import FormFieldFrame from '../../_internal/form-field-frame.svelte';
+  import ShortcutFieldControl from './shortcut-field-control.svelte';
   import type { ShortcutFieldProps } from './shortcut-field.types.ts';
+
   let {
+    id: idProp,
     value = $bindable<string[]>([]),
     onValueChange,
     validate,
     label = 'Keyboard shortcut',
+    labelVisible = true,
     disabled = false,
     class: className,
     ...rest
   }: ShortcutFieldProps = $props();
-  let armed = $state(false);
-  let message = $state('');
-  let validationError = $state('');
-  const fallbackId = $props.id();
-  const errorId = $derived(`${rest.id ?? fallbackId}-error`);
-  const modifierNames = new Set(['Meta', 'Control', 'Alt', 'Shift']);
-  function normalize(event: KeyboardEvent): string[] {
-    const modifiers = [
-      event.metaKey ? 'Meta' : '',
-      event.ctrlKey ? 'Control' : '',
-      event.altKey ? 'Alt' : '',
-      event.shiftKey ? 'Shift' : '',
-    ].filter(Boolean);
-    const rawKey = event.key === ' ' ? 'Space' : event.key;
-    const key = modifierNames.has(rawKey)
-      ? ''
-      : rawKey.length === 1 && /[a-z]/i.test(rawKey)
-        ? rawKey.toUpperCase()
-        : rawKey;
-    return [...modifiers, ...(key ? [key] : [])];
-  }
-  function handleKeydown(event: KeyboardEvent): void {
-    if (disabled || !armed) return;
-    if (event.key === 'Tab') return;
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      armed = false;
-      message = 'Shortcut capture cancelled';
-      validationError = '';
-      return;
-    }
-    if (modifierNames.has(event.key)) return;
-    const next = normalize(event);
-    if (next.length === 0) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const error = validate?.(next);
-    if (error) {
-      message = error;
-      validationError = error;
-      return;
-    }
-    validationError = '';
-    value = next;
-    onValueChange?.(next);
-    message = `Captured ${next.join(' plus ')}`;
-    armed = false;
-  }
-  function clear(): void {
-    if (disabled) return;
-    value = [];
-    onValueChange?.([]);
-    message = 'Shortcut cleared';
-    validationError = '';
-  }
 
-  function arm(): void {
-    if (!disabled) armed = true;
-  }
+  const fallbackId = $props.id();
+  const id = $derived(idProp ?? fallbackId);
+
+  // Lifted out of the control so it can also drive FormFieldFrame's shared
+  // `error` prop/live region — the control writes to it on a rejected chord
+  // or an Escape cancellation; ShortcutField only reads it.
+  let validationError = $state('');
 </script>
 
-<div
-  {...rest}
+{#snippet control()}
+  <ShortcutFieldControl bind:value {onValueChange} {validate} bind:validationError />
+{/snippet}
+
+<FormFieldFrame
+  {id}
+  {label}
+  {labelVisible}
+  {disabled}
+  error={validationError}
+  errorMountedOnDemand
   class={classNames(
     'cinder-shortcut-field',
     disabled && 'cinder-shortcut-field--disabled',
     className,
   )}
->
-  <div
-    role="textbox"
-    tabindex={disabled ? -1 : 0}
-    aria-readonly="true"
-    aria-label={label}
-    aria-disabled={disabled ? 'true' : undefined}
-    aria-invalid={validationError ? 'true' : undefined}
-    aria-describedby={validationError ? errorId : undefined}
-    class="cinder-shortcut-field__control"
-    onfocus={arm}
-    onclick={arm}
-    onkeydown={handleKeydown}
-    onblur={() => (armed = false)}
-  >
-    {#if value.length}{#each value as key (key)}<Kbd label={key} size="sm" />{/each}{:else}<span
-        class="cinder-shortcut-field__placeholder"
-        >{armed ? 'Press a key combination' : 'Click to record shortcut'}</span
-      >{/if}
-  </div>
-  {#if value.length && !disabled}<button
-      type="button"
-      class="cinder-shortcut-field__clear"
-      aria-label="Clear shortcut"
-      onclick={clear}>Clear</button
-    >{/if}
-  {#if validationError}<div id={errorId} class="cinder-shortcut-field__error">
-      {validationError}
-    </div>{/if}
-  <div class="cinder-sr-only" aria-live="polite">{message}</div>
-</div>
+  controlClass="cinder-shortcut-field__row"
+  errorClass="cinder-shortcut-field__error"
+  {control}
+  {...rest}
+/>

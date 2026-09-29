@@ -8,34 +8,21 @@
  * the Phase 1 form controls too.
  */
 
-import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from './happy-dom.ts';
+import { prepareSvelteServerSource, renderThenHydrate, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
-const {
-  renderThenHydrate,
-  prepareHydrationSource,
-  __serverBuildCacheForTests,
-  __tempFileRegistryForTests,
-  resolveCinderSourceSubpath,
-} = await import('./hydrate.ts');
 const { default: Input } = await import('../components/input/input.svelte');
 
 const INPUT_SOURCE = join(import.meta.dir, '..', 'components', 'input', 'input.svelte');
 
-describe('renderThenHydrate', () => {
-  test('aliases only exported public Cinder component subpaths', () => {
-    expect(resolveCinderSourceSubpath('@lostgradient/cinder/form-field')).toContain(
-      '/src/components/form-field/index.ts',
-    );
-    expect(resolveCinderSourceSubpath('@lostgradient/cinder/_radio')).toBeUndefined();
-  });
+await prepareSvelteServerSource(INPUT_SOURCE);
 
+describe('renderThenHydrate', () => {
   test('renders Input on the server and hydrates without warnings', async () => {
     const result = await renderThenHydrate(Input, INPUT_SOURCE, {
       id: 'hydrate-input',
@@ -54,7 +41,7 @@ describe('renderThenHydrate', () => {
       const mismatchWarnings = result.warnings.filter((w) => w.toLowerCase().includes('hydration'));
       expect(mismatchWarnings).toEqual([]);
     } finally {
-      result.cleanup();
+      await result.cleanup();
     }
   });
 
@@ -75,60 +62,7 @@ describe('renderThenHydrate', () => {
       expect(result.container.querySelector('#hydrate-aria-description')).not.toBeNull();
       expect(result.container.querySelector('#hydrate-aria-error')).not.toBeNull();
     } finally {
-      result.cleanup();
+      await result.cleanup();
     }
-  });
-
-  test('exit-handler safety net unlinks temp files when cleanup() is skipped', async () => {
-    // Deliberately do NOT call result.cleanup() — simulate a test that throws
-    // or a process interruption before per-test cleanup runs.
-    const result = await renderThenHydrate(Input, INPUT_SOURCE, {
-      id: 'hydrate-orphan',
-      value: '',
-      label: 'Orphan',
-    });
-
-    // The temp SSR module is on disk and registered for exit cleanup.
-    const registered = [...__tempFileRegistryForTests.paths];
-    expect(registered.length).toBeGreaterThan(0);
-    expect(registered.every((path) => existsSync(path))).toBe(true);
-
-    // Run exactly what the process-exit handler runs.
-    __tempFileRegistryForTests.runExitCleanup();
-
-    // Every registered temp file is gone and the registry is drained.
-    expect(registered.every((path) => existsSync(path))).toBe(false);
-    expect(__tempFileRegistryForTests.paths.size).toBe(0);
-
-    // The safety net is proven. Now run the real cleanup() to unmount the
-    // component instance (not just remove the container) so its effects and
-    // listeners don't leak into later tests. The temp file is already gone, so
-    // cleanup()'s own unlink is a harmless no-op.
-    result.cleanup();
-  });
-
-  test('keeps temp files registered when synchronous removal fails', () => {
-    const path = join(import.meta.dir, '.cinder-ssr-removal-failure.mjs');
-    __tempFileRegistryForTests.registerPath(path);
-
-    __tempFileRegistryForTests.removePath(path, () => {
-      throw Object.assign(new Error('permission denied'), { code: 'EACCES' });
-    });
-
-    expect(__tempFileRegistryForTests.paths.has(path)).toBe(true);
-
-    __tempFileRegistryForTests.removePath(path, () => {
-      throw Object.assign(new Error('already removed'), { code: 'ENOENT' });
-    });
-    expect(__tempFileRegistryForTests.paths.has(path)).toBe(false);
-  });
-
-  test('prepares one cached server build for concurrent hydration fixtures', async () => {
-    __serverBuildCacheForTests.evict(INPUT_SOURCE);
-    const buildsBefore = __serverBuildCacheForTests.buildCount(INPUT_SOURCE);
-
-    await Promise.all([prepareHydrationSource(INPUT_SOURCE), prepareHydrationSource(INPUT_SOURCE)]);
-
-    expect(__serverBuildCacheForTests.buildCount(INPUT_SOURCE) - buildsBefore).toBe(1);
   });
 });

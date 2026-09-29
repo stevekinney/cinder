@@ -13,8 +13,8 @@ import type { Component } from 'svelte';
 import FeedEvent from '../feed-event/feed-event.svelte';
 import { Feed } from './index.ts';
 
-const _event: typeof FeedEvent = Feed.Event;
+const event: typeof FeedEvent = Feed.Event;
 
 Feed satisfies Component<never>;
 
-void _event;
+void event;

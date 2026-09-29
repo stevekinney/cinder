@@ -6,18 +6,18 @@ const fruitItems = [
   { id: 'cherry', label: 'Cherry' },
 ] satisfies MultiSelectItem<'apple' | 'banana' | 'cherry'>[];
 
-const _valid: MultiSelectProps<'apple' | 'banana' | 'cherry'> = {
+const valid: MultiSelectProps<'apple' | 'banana' | 'cherry'> = {
   id: 'fruit',
   items: fruitItems,
   selectedIds: ['apple'],
 };
 
-const _empty: MultiSelectProps<'apple' | 'banana' | 'cherry'> = {
+const empty: MultiSelectProps<'apple' | 'banana' | 'cherry'> = {
   id: 'fruit',
   items: fruitItems,
 };
 
-const _invalid: MultiSelectProps<'apple' | 'banana' | 'cherry'> = {
+const invalid: MultiSelectProps<'apple' | 'banana' | 'cherry'> = {
   id: 'fruit',
   items: fruitItems,
   // @ts-expect-error - invalid item id
@@ -47,6 +47,6 @@ mountMultiSelect({
   selectedIds: ['durian'],
 });
 
-void _valid;
-void _empty;
-void _invalid;
+void valid;
+void empty;
+void invalid;

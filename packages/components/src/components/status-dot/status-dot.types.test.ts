@@ -21,14 +21,7 @@ import type { StatusDotProps } from './status-dot.types.ts';
 // refactors must explicitly update both the migrated type AND this snapshot.
 
 type SnapshotStatusDotStatus =
-  | 'online'
-  | 'offline'
-  | 'warning'
-  | 'danger'
-  | 'pending'
-  | 'neutral'
-  | 'success'
-  | 'accent';
+  'online' | 'offline' | 'warning' | 'danger' | 'pending' | 'neutral' | 'success' | 'accent';
 
 type SnapshotStatusDotSize = 'sm' | 'md';
 

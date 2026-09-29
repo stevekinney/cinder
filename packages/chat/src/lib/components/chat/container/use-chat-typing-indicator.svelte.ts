@@ -7,10 +7,10 @@
  *   2. The adapter's `onTypingChange` push handler, forwarded by the container
  *      via the `onAdapterTypingChange` callback below.
  *
- * The adapter path produces only a boolean (isTyping). When an adapter delivers
- * a typing-start event without participant metadata, a synthetic participant is
- * inserted with id `'__adapter__'` and a fallback name so the indicator can still
- * render. This keeps the render path uniform (always off a participant list).
+ * The adapter path accepts complete snapshots. An empty snapshot clears the
+ * adapter-derived indicator immediately; removed ids disappear on the next
+ * snapshot; duplicate ids are last-write-wins in input order. The adapter never
+ * synthesizes a fallback participant.
  *
  * Accessibility contract (enforced in the component, not here):
  *   - A single always-in-DOM `<div aria-live="polite" aria-atomic="true">` outside
@@ -32,8 +32,6 @@ import type { TypingParticipant } from '../chat.types.ts';
  * NVDA/JAWS users. The previous 2000ms value caused announcements to arrive
  * stale or be permanently suppressed in fast-update scenarios. */
 const DEBOUNCE_MS = 400;
-const ADAPTER_PARTICIPANT_ID = '__adapter__';
-const ADAPTER_PARTICIPANT_NAME = 'Someone';
 
 export type UseChatTypingIndicatorOptions = {
   /**
@@ -58,11 +56,8 @@ export type UseChatTypingIndicatorResult = {
   readonly announcedLabel: string;
   /** Total number of currently-typing participants. */
   readonly participantCount: number;
-  /**
-   * Receive a boolean typing flag from the adapter's `onTypingChange` push.
-   * Internally maps it to/from the synthetic `__adapter__` participant.
-   */
-  handleAdapterTypingChange: (isTyping: boolean) => void;
+  /** Receive a complete participant snapshot from the adapter's push handler. */
+  handleAdapterTypingChange: (participants: TypingParticipant[]) => void;
   /**
    * Clear all adapter-derived typing state and any pending debounce. Called by
    * the container on conversation change / subscription teardown so a typing
@@ -70,6 +65,23 @@ export type UseChatTypingIndicatorResult = {
    */
   reset: () => void;
 };
+
+/**
+ * Normalize adapter snapshots so duplicate participant ids are last-write-wins
+ * and the output order follows the final write order from the input snapshot.
+ */
+export function normalizeTypingParticipants(
+  participants: readonly TypingParticipant[],
+): TypingParticipant[] {
+  const participantsById = new Map<string, TypingParticipant>();
+
+  for (const participant of participants) {
+    participantsById.delete(participant.id);
+    participantsById.set(participant.id, participant);
+  }
+
+  return Array.from(participantsById.values());
+}
 
 /**
  * Derive the visible typing label from a participant list.
@@ -106,8 +118,7 @@ export function deriveAnnouncedLabel(participants: TypingParticipant[]): string 
 export function useChatTypingIndicator(
   options: UseChatTypingIndicatorOptions,
 ): UseChatTypingIndicatorResult {
-  // Adapter typing state: true = adapter says someone is typing
-  let adapterIsTyping = $state(false);
+  let adapterParticipants = $state<TypingParticipant[]>([]);
 
   // Debounced announced label (for aria-live). Starts empty and updates after a
   // 400 ms delay when participants appear, or immediately when they all clear.
@@ -115,15 +126,14 @@ export function useChatTypingIndicator(
   let debounceHandle: ReturnType<typeof setTimeout> | undefined;
 
   // Merged participant list. When the consumer passes a DEFINED `typingParticipants`
-  // prop (even an empty array), it is AUTHORITATIVE — the adapter's synthetic
-  // participant is ignored so a controlled consumer can clear stale typing state
-  // with `typingParticipants={[]}`. The adapter path only contributes when the
-  // prop is omitted (undefined).
+  // prop (even an empty array), it is AUTHORITATIVE — adapter snapshots are
+  // ignored so a controlled consumer can clear stale typing state with
+  // `typingParticipants={[]}`. The adapter path only contributes when the prop is
+  // omitted (undefined).
   const mergedParticipants = $derived.by(() => {
     const propParticipants = options.getTypingParticipants();
     if (propParticipants !== undefined) return propParticipants;
-    if (!adapterIsTyping) return [];
-    return [{ id: ADAPTER_PARTICIPANT_ID, name: ADAPTER_PARTICIPANT_NAME }];
+    return adapterParticipants;
   });
 
   const typingLabel = $derived(deriveTypingLabel(mergedParticipants));
@@ -145,7 +155,7 @@ export function useChatTypingIndicator(
       clearTimeout(debounceHandle);
       debounceHandle = undefined;
       announcedLabel = '';
-      return;
+      return undefined;
     }
 
     // Non-empty: debounce the announcement so very brief typing bursts are not
@@ -169,19 +179,19 @@ export function useChatTypingIndicator(
     };
   });
 
-  function handleAdapterTypingChange(isTyping: boolean): void {
-    adapterIsTyping = isTyping;
+  function handleAdapterTypingChange(participants: TypingParticipant[]): void {
+    adapterParticipants = normalizeTypingParticipants(participants);
   }
 
   function reset(): void {
-    // Clear ONLY the adapter-derived flag. The announced label and its debounce
-    // are owned by the $effect, which is keyed on `typingLabel`: clearing
-    // `adapterIsTyping` recomputes `mergedParticipants` → `typingLabel`, and the
-    // effect then clears or preserves the announcement as appropriate. Forcibly
-    // clearing `announcedLabel`/the timer here would wipe a still-active
+    // Clear ONLY the adapter-derived participants. The announced label and its
+    // debounce are owned by the $effect, which is keyed on `typingLabel`: clearing
+    // adapterParticipants recomputes `mergedParticipants` → `typingLabel`, and
+    // the effect then clears or preserves the announcement as appropriate.
+    // Forcibly clearing `announcedLabel`/the timer here would wipe a still-active
     // PROP-driven announcement (the effect would not re-run because `typingLabel`
     // is unchanged) — violating the prop-remains-authoritative invariant.
-    adapterIsTyping = false;
+    adapterParticipants = [];
   }
 
   return {

@@ -31,11 +31,20 @@ describe('component artifact import boundaries', () => {
     );
   });
 
-  it('keeps read-only checks outside the validation lock while locking generation', async () => {
+  it('keeps read-only checks separate from artifact generation', async () => {
     const source = await readScript('generate-component-artifacts.ts');
-
-    expect(source).toMatch(
-      /if \(process\.argv\.includes\('--check'\)\)\s*\{\s*await main\(\);\s*\} else \{[\s\S]*?withLocalValidationGateLock\(main\);/,
+    const checkStart = source.indexOf('async function runCheckMode()');
+    const generateStart = source.indexOf('async function runGenerateMode(');
+    const mainStart = source.indexOf('async function main()');
+    expect(checkStart).toBeGreaterThan(-1);
+    expect(generateStart).toBeGreaterThan(checkStart);
+    expect(mainStart).toBeGreaterThan(generateStart);
+    const checkMode = source.slice(checkStart, generateStart);
+    const generateMode = source.slice(generateStart, mainStart);
+    expect(checkMode).not.toContain('writeArtifacts(');
+    expect(generateMode).toContain('writeArtifacts(');
+    expect(source.slice(mainStart)).toContain(
+      "if (args.includes('--check')) return runCheckMode();",
     );
   });
 });

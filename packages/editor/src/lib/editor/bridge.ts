@@ -36,6 +36,47 @@ interface PositionOffsetMap {
  */
 const offsetMapCache = new WeakMap<ProseMirrorNode, PositionOffsetMap>();
 
+type WalkContext = PositionOffsetMap & { textOffset: number; hasEmittedContent: boolean };
+
+function addBlockSeparator(pos: number, context: WalkContext): void {
+  if (!context.hasEmittedContent || pos <= 0) return;
+  context.textToPm.set(context.textOffset, pos);
+  context.pmToText.set(pos, context.textOffset);
+  context.textOffset += 1;
+}
+
+function recordTextNode(node: ProseMirrorNode, pos: number, context: WalkContext): void {
+  if (!node.text) return;
+  for (let index = 0; index < node.text.length; index++) {
+    context.textToPm.set(context.textOffset + index, pos + index);
+    context.pmToText.set(pos + index, context.textOffset + index);
+  }
+  context.textOffset += node.text.length;
+  context.textToPm.set(context.textOffset, pos + node.text.length);
+  context.pmToText.set(pos + node.text.length, context.textOffset);
+  context.hasEmittedContent = true;
+}
+
+function recordLeafNode(node: ProseMirrorNode, pos: number, context: WalkContext): void {
+  const leafText = node.type.spec.leafText?.(node) ?? '';
+  for (let index = 0; index < leafText.length; index++) {
+    context.textToPm.set(context.textOffset + index, pos);
+    context.pmToText.set(pos, context.textOffset + index);
+  }
+  if (!leafText) return;
+  context.textOffset += leafText.length;
+  context.textToPm.set(context.textOffset, pos + 1);
+  context.pmToText.set(pos + 1, context.textOffset);
+  context.hasEmittedContent = true;
+}
+
+function walkNode(node: ProseMirrorNode, pos: number, context: WalkContext): void {
+  if (node.isTextblock) addBlockSeparator(pos, context);
+  if (node.isText) recordTextNode(node, pos, context);
+  else if (node.isLeaf) recordLeafNode(node, pos, context);
+  if (!node.isLeaf) node.forEach((child, offset) => walkNode(child, pos + 1 + offset, context));
+}
+
 /**
  * Build bidirectional offset map matching doc.textBetween() semantics.
  *
@@ -56,81 +97,13 @@ export function buildTextToProseMirrorPositionMap(doc: ProseMirrorNode): Positio
 
   const textToPm = new Map<number, number>();
   const pmToText = new Map<number, number>();
-  let textOffset = 0;
-  let hasEmittedContent = false;
-
-  /**
-   * Walk document in order, tracking block boundaries.
-   *
-   * Key insight: doc.textBetween() adds separators between TEXT BLOCKS
-   * (paragraph, heading, code_block), not wrapper blocks (list, blockquote,
-   * list_item). Using isTextblock instead of isBlock ensures we only add
-   * separators where textBetween would.
-   */
-  function walk(node: ProseMirrorNode, pos: number) {
-    // For text blocks (not wrapper blocks), add separator
-    // before their content if we've already emitted content
-    // isTextblock = true for paragraph, heading, code_block
-    // isTextblock = false for bullet_list, list_item, blockquote
-    if (node.isTextblock && hasEmittedContent && pos > 0) {
-      // This is where textBetween would insert '\n'
-      textToPm.set(textOffset, pos);
-      pmToText.set(pos, textOffset);
-      textOffset += 1;
-    }
-
-    if (node.isText && node.text) {
-      for (let i = 0; i < node.text.length; i++) {
-        textToPm.set(textOffset + i, pos + i);
-        pmToText.set(pos + i, textOffset + i);
-      }
-      textOffset += node.text.length;
-      // Map the exclusive end position (for slice semantics)
-      // This ensures textOffsetToProseMirrorPosition works for end-of-quote offsets
-      textToPm.set(textOffset, pos + node.text.length);
-      pmToText.set(pos + node.text.length, textOffset);
-      hasEmittedContent = true;
-    } else if (node.isLeaf && !node.isText) {
-      // Atom nodes (images, hard breaks, etc.)
-      // textBetween uses leafText spec or empty string
-      const leafText =
-        (node.type.spec.leafText as ((node: ProseMirrorNode) => string) | undefined)?.(node) ?? '';
-      if (leafText.length > 0) {
-        for (let i = 0; i < leafText.length; i++) {
-          textToPm.set(textOffset + i, pos);
-          pmToText.set(pos, textOffset + i);
-        }
-        textOffset += leafText.length;
-        // Map the exclusive end position for leaf nodes too
-        textToPm.set(textOffset, pos + 1);
-        pmToText.set(pos + 1, textOffset);
-        hasEmittedContent = true;
-      }
-    }
-
-    // Recurse into children
-    // Each node's content starts 1 position after the node's start
-    // But for inline content within textblocks, children don't add extra positions
-    if (node.isTextblock) {
-      // For textblocks (paragraph, heading, code_block), content starts at pos + 1
-      const childPos = pos + 1;
-      node.forEach((child, offset) => {
-        walk(child, childPos + offset);
-      });
-    } else if (!node.isLeaf) {
-      // For container blocks (doc, list, blockquote, list_item), content starts at pos + 1
-      const childPos = pos + 1;
-      node.forEach((child, offset) => {
-        walk(child, childPos + offset);
-      });
-    }
-  }
+  const context: WalkContext = { textToPm, pmToText, textOffset: 0, hasEmittedContent: false };
 
   // Start walking from doc's children
   // Doc's content starts at position 0 (doc has no opening token in positions)
   const docChildPos = 0;
   doc.forEach((child, offset) => {
-    walk(child, docChildPos + offset);
+    walkNode(child, docChildPos + offset, context);
   });
 
   const map = { textToPm, pmToText };

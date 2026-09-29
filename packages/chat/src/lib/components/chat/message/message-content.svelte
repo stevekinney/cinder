@@ -95,6 +95,7 @@
 
   // The raw tail text during streaming (displayed with pre-wrap + cursor)
   const streamingTail = $derived(streaming ? (streamingSplit?.tail ?? '') : '');
+  const hasStreamingProgress = $derived(streaming && effectiveContent.trim().length > 0);
 
   // Whether truncation is active (used by parent to show ellipsis indicator)
   const isTruncated = $derived(!streaming && !expanded && effectiveContent.length > threshold);
@@ -110,8 +111,12 @@
   {#if streaming && streamingTail}
     <span class="message-content-tail">{streamingTail}</span>
   {/if}
-  {#if streaming}
-    <span class="message-content-cursor" aria-hidden="true"></span>
+  {#if hasStreamingProgress}
+    <span class="chat-message-streaming-progress" aria-hidden="true">
+      <span class="chat-message-streaming-dot"></span>
+      <span class="chat-message-streaming-dot"></span>
+      <span class="chat-message-streaming-dot"></span>
+    </span>
   {/if}
   {#if isTruncated}
     <span class="message-content-ellipsis" aria-hidden="true">...</span>
@@ -168,24 +173,41 @@
     }
   }
 
-  /* Blinking cursor during streaming */
-  .message-content-cursor {
-    display: inline-block;
-    width: 2px;
-    height: 1.1em;
-    background: var(--cinder-text-default);
-    vertical-align: text-bottom;
-    margin-inline-start: 1px;
-    animation: cursor-blink 1s step-end infinite;
+  .chat-message-streaming-progress {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.1875rem;
+    margin-inline-start: var(--cinder-space-1);
+    vertical-align: middle;
   }
 
-  @keyframes cursor-blink {
+  .chat-message-streaming-dot {
+    inline-size: 0.3125rem;
+    block-size: 0.3125rem;
+    border-radius: var(--cinder-radius-full);
+    background: currentColor;
+    opacity: 0.55;
+    animation: cinder-chat-streaming-dot 1.2s ease-in-out infinite;
+  }
+
+  .chat-message-streaming-dot:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+
+  .chat-message-streaming-dot:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+
+  @keyframes cinder-chat-streaming-dot {
     0%,
+    80%,
     100% {
-      opacity: 1;
+      transform: translateY(0);
+      opacity: 0.45;
     }
-    50% {
-      opacity: 0;
+    40% {
+      transform: translateY(-0.125rem);
+      opacity: 1;
     }
   }
 
@@ -197,9 +219,9 @@
       animation: none;
     }
 
-    .message-content-cursor {
+    .chat-message-streaming-dot {
       animation: none;
-      opacity: 1;
+      opacity: 0.75;
     }
   }
 

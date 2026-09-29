@@ -6,8 +6,8 @@ A named grouping of related controls that implements the WAI-ARIA toolbar patter
 
 ```svelte
 <script lang="ts">
-  import Toolbar from '@lostgradient/cinder/toolbar';
-  import { Button } from '@lostgradient/cinder/button';
+  import { Toolbar } from '@lostgradient/cinder';
+  import { Button } from '@lostgradient/cinder';
 </script>
 
 <Toolbar aria-label="Document actions">
@@ -22,11 +22,7 @@ A named grouping of related controls that implements the WAI-ARIA toolbar patter
 </Toolbar>
 ```
 
-Horizontal toolbars wrap groups by default so constrained containers do not
-overlap controls. Each `Toolbar.Group` keeps its controls together until the
-toolbar's narrow container query wraps controls inside the group. A named
-`Toolbar.Group` gets `role="group"` by default; pass an explicit `role` when a
-different semantic grouping is required.
+Horizontal toolbars wrap groups by default so constrained containers do not overlap controls. Each `Toolbar.Group` keeps its controls together until the toolbar's narrow container query wraps controls inside the group. A named `Toolbar.Group` gets `role="group"` by default; pass an explicit `role` when a different semantic grouping is required.
 
 ## Props
 
@@ -45,7 +41,6 @@ different semantic grouping is required.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

@@ -1,16 +1,47 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, spyOn, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { tick } from 'svelte';
 
-import Ajv2020 from 'ajv/dist/2020.js';
-
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
+// The real interpreter module: captured before `mock.module` replaces it,
+// so the mock factory below can delegate to genuine compilation/validation
+// and only add an artificial delay — the same "spy on the thing that does
+// the actual compiling" approach the Ajv-backed version of this test used
+// (there, spying on `Ajv2020.prototype.compile`). SchemaForm compiles a
+// schema lazily on first validation (see schema-form-validation.ts's
+// `validatorForSchema` cache), so delaying `compileInterpreted`'s
+// resolution delays the *first* submit's validation — exactly the moment
+// this test needs to observe "Validating..." before it resolves.
+const realInterpreter = await import('../../utilities/json-schema-interpreter.ts');
+// `mock.module` rebinds the module's live exports, including on this
+// already-imported namespace object — calling `realInterpreter.
+// compileInterpreted` from inside the mock factory below would recurse
+// into the mock itself. Capturing the function reference in a plain local
+// first sidesteps that: this variable, unlike the namespace property,
+// isn't rebound.
+const originalCompileInterpreted = realInterpreter.compileInterpreted;
+
+const pendingValidation = Promise.withResolvers<void>();
+const validationStarted = Promise.withResolvers<void>();
+let compileCallCount = 0;
+
+mock.module('../../utilities/json-schema-interpreter.ts', () => ({
+  ...realInterpreter,
+  compileInterpreted: async (
+    ...args: Parameters<typeof realInterpreter.compileInterpreted>
+  ): ReturnType<typeof realInterpreter.compileInterpreted> => {
+    compileCallCount += 1;
+    validationStarted.resolve();
+    await pendingValidation.promise;
+    return originalCompileInterpreted(...args);
+  },
+}));
+
 const { cleanup, fireEvent, render, screen } = await import('@testing-library/svelte');
 const { default: SchemaForm } = await import('./schema-form.svelte');
-const { validateSchemaValue } = await import('./schema-form-validation.ts');
 
 async function flush(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
@@ -26,30 +57,13 @@ function formFrom(container: HTMLElement): HTMLFormElement {
 describe('SchemaForm async JSON Schema validation', () => {
   afterEach(() => cleanup());
 
-  test('awaits async submit validation and freezes edits until it resolves', async () => {
-    const pendingValidation = Promise.withResolvers<unknown>();
-    const validationStarted = Promise.withResolvers<void>();
+  test('awaits submit validation and freezes edits until it resolves', async () => {
     const schema = {
       $id: 'schema-form-async-submit-validation',
-      $async: true,
       type: 'object',
       properties: { name: { type: 'string', title: 'Name' } },
       required: ['name'],
     };
-    const validator = new Ajv2020({
-      strict: false,
-      allErrors: true,
-      addUsedSchema: false,
-    }).compile(schema);
-    const delayedValidator = new Proxy(validator, {
-      apply(target, thisArgument, argumentsList) {
-        validationStarted.resolve();
-        return pendingValidation.promise.then(() =>
-          Reflect.apply(target, thisArgument, argumentsList),
-        );
-      },
-    });
-    const compileSpy = spyOn(Ajv2020.prototype, 'compile').mockReturnValue(delayedValidator);
     const submitted: unknown[] = [];
 
     try {
@@ -86,25 +100,11 @@ describe('SchemaForm async JSON Schema validation', () => {
       await fireEvent.input(input, { target: { value: 'Grace' } });
       expect(submitted).toEqual([]);
     } finally {
-      pendingValidation.resolve({});
-      const compileCallCount = compileSpy.mock.calls.length;
-      compileSpy.mockRestore();
+      pendingValidation.resolve();
       expect(compileCallCount).toBe(1);
       await flush();
       await flush();
     }
-
-    await expect(
-      validateSchemaValue(
-        {
-          $id: 'schema-form-async-real-validation',
-          type: 'object',
-          properties: { name: { type: 'string' } },
-          required: ['name'],
-        },
-        { name: 123 },
-      ),
-    ).resolves.toMatchObject({ valid: false });
 
     expect(submitted).toEqual([{ name: 'Ada' }]);
     const readyButton = screen.getByRole('button', { name: 'Submit' });

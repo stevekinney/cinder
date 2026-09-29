@@ -1,5 +1,6 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @import '../badge/badge.css';
+@import '../code-block/code-block.css';
 @import '../collapsible/collapsible.css';
 @import '../link/link.css';
 @import '../progress/progress.css';
@@ -131,15 +132,53 @@
   .cinder-run-step-timeline__header {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: var(--cinder-space-2);
+    min-inline-size: 0;
+  }
+
+  .cinder-run-step-timeline__icon {
+    display: inline-flex;
+    align-items: center;
+    color: var(--cinder-text-muted);
+    line-height: 1;
+  }
+
+  .cinder-run-step-timeline__icon svg {
+    inline-size: 1rem;
+    block-size: 1rem;
+  }
+
+  .cinder-run-step-timeline__icon [data-cinder-tool-activity-active] {
+    animation: cinder-run-step-timeline-tool-pulse 1.4s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cinder-run-step-timeline__icon [data-cinder-tool-activity-active] {
+      animation: none;
+    }
+  }
+
+  @keyframes cinder-run-step-timeline-tool-pulse {
+    0%,
+    100% {
+      opacity: 0.6;
+      transform: scale(0.96);
+    }
+
+    50% {
+      opacity: 1;
+      transform: scale(1);
+    }
   }
 
   .cinder-run-step-timeline__label {
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-text-default);
-    flex-shrink: 0;
+    flex: 1 1 auto;
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
   }
 
   /* Running step: label highlighted */

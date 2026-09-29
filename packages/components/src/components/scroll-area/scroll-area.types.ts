@@ -4,16 +4,7 @@ import type { HTMLAttributes } from 'svelte/elements';
 export type ScrollAreaDirection = 'vertical' | 'horizontal' | 'both';
 /** Element tags intentionally supported by the `as` prop. */
 export type ScrollAreaElement =
-  | 'article'
-  | 'aside'
-  | 'div'
-  | 'li'
-  | 'main'
-  | 'nav'
-  | 'ol'
-  | 'pre'
-  | 'section'
-  | 'ul';
+  'article' | 'aside' | 'div' | 'li' | 'main' | 'nav' | 'ol' | 'pre' | 'section' | 'ul';
 /**
  * Props for ScrollArea. A styled scrollable container with cross-browser
  * scrollbar theming via design tokens. This is chrome only — virtualization

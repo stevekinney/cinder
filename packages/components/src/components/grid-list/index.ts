@@ -4,8 +4,8 @@ import GridListRoot from './grid-list.svelte';
 
 /**
  * `GridList` is the parent compound component and a namespace exposing the
- * compose-only `GridList.Item` leaf. The leaf remains importable individually
- * via `@lostgradient/cinder/grid-list-item`.
+ * compose-only `GridList.Item` leaf.
+ * The leaf is also a named export of `@lostgradient/cinder`.
  */
 const GridList = Object.assign(GridListRoot, {
   Item: GridListItem,

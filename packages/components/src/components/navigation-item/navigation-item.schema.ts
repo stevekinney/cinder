@@ -4,6 +4,11 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    href: {
+      type: 'string',
+      description:
+        'Destination URL. Providing this prop renders the item as an `<a>` element instead of a `<button>`.',
+    },
     active: {
       type: 'boolean',
       description:
@@ -15,7 +20,7 @@ const schema = {
         'Prevents interaction: removes the item from the tab order, blocks clicks, and applies disabled visual styling.',
     },
     current: {
-      enum: ['true', 'page', 'step', 'location', 'date', 'time'],
+      enum: ['page', 'step', 'location', 'date', 'time', 'true'],
       description:
         "The `aria-current` token emitted while `active` is true. Defaults to `'page'`,\nwhich is correct for navigation bars and breadcrumb-adjacent links. Use\n`'true'` (or another standard token such as `'step'` / `'location'`) for\nsection/view switchers, where `'page'` would mislabel the current section as\nthe current page in the browsing context.",
     },
@@ -24,14 +29,9 @@ const schema = {
       description: 'Additional class merged onto the `.cinder-navigation-item` root element.',
     },
     variant: {
-      enum: ['horizontal', 'vertical', 'mobile'],
+      enum: ['horizontal', 'mobile', 'vertical'],
       description:
         "Controls item geometry. Emitted as `data-variant`. Default `'horizontal'`.\n\n- `'horizontal'`: top-rounded radius, accent bottom-border active indicator.\n  Used inside `NavigationBar` and similar horizontal tab-bar contexts.\n- `'mobile'`: stacked full-width layout when an owning navigation surface\n  enters its narrow container mode.\n- `'vertical'`: square row geometry, neutral selected surface, and accent inline-start border active indicator.\n  Used inside `SideNavigation` (set automatically by `SideNavigationItem`) or\n  standalone sidebar footers where flush sidebar edges are required.",
-    },
-    href: {
-      type: 'string',
-      description:
-        'Destination URL. Providing this prop renders the item as an `<a>` element instead of a `<button>`.',
     },
   },
   additionalProperties: false,

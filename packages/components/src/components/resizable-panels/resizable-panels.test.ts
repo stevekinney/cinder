@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterAll, afterEach, describe, expect, mock, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -33,7 +33,7 @@ class ResizeObserverStub {
             contentRect: instance.target.getBoundingClientRect(),
           } as ResizeObserverEntry,
         ],
-        instance as unknown as ResizeObserver,
+        instance,
       );
     }
   }
@@ -105,34 +105,32 @@ function mockMeasurements(
 ): void {
   const root = container.querySelector<HTMLElement>('.cinder-resizable-panels');
   const handle = container.querySelector<HTMLElement>('.cinder-resizable-panels__handle');
-  root!.getBoundingClientRect = () =>
-    ({
-      width: rootWidth,
-      height: rootHeight,
-      left: 0,
-      top: 0,
-      right: rootWidth,
-      bottom: rootHeight,
-      x: 0,
-      y: 0,
-      toJSON() {
-        return {};
-      },
-    }) as DOMRect;
-  handle!.getBoundingClientRect = () =>
-    ({
-      width: handleThickness,
-      height: handleThickness,
-      left: handleOffset,
-      top: 0,
-      right: handleOffset + handleThickness,
-      bottom: handleThickness,
-      x: handleOffset,
-      y: 0,
-      toJSON() {
-        return {};
-      },
-    }) as DOMRect;
+  root!.getBoundingClientRect = () => ({
+    width: rootWidth,
+    height: rootHeight,
+    left: 0,
+    top: 0,
+    right: rootWidth,
+    bottom: rootHeight,
+    x: 0,
+    y: 0,
+    toJSON() {
+      return {};
+    },
+  });
+  handle!.getBoundingClientRect = () => ({
+    width: handleThickness,
+    height: handleThickness,
+    left: handleOffset,
+    top: 0,
+    right: handleOffset + handleThickness,
+    bottom: handleThickness,
+    x: handleOffset,
+    y: 0,
+    toJSON() {
+      return {};
+    },
+  });
   ResizeObserverStub.flush();
 }
 

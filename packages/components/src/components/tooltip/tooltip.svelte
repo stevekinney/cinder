@@ -63,7 +63,17 @@
       lastIsDetached = false;
     }
   });
-  const isDetached = $derived(triggerRef != null || lastIsDetached);
+  // `children === undefined` (COR-1219): a pure triggerRef consumer never
+  // passes `children` — there is nothing for the wrapping branch to wrap. Once
+  // `triggerRef` is cleared for good (not swapped, and the closing session
+  // above has finished retaining it), `lastIsDetached` resets to `false` and
+  // this would otherwise fall through to the wrapping branch anyway, which
+  // renders an EMPTY `.cinder-tooltip-wrapper` and — because
+  // `resolveAnchorElement` falls back to the wrapper itself when it finds no
+  // focusable child — `attachWrapper` wires that empty wrapper's own
+  // `aria-describedby` to the (now hidden, anchor-less) panel: a stale
+  // association nothing ever tears down, since the wrapper never unmounts.
+  const isDetached = $derived(triggerRef != null || lastIsDetached || children === undefined);
 
   /*
    * OVERLAY-POLICY.md's SSR rule is a HARD CONSTRAINT: overlays render nothing
@@ -160,7 +170,17 @@
   }
 
   function handleFocusOut() {
-    hide();
+    // Native `focusout` can fire SYNCHRONOUSLY as a side effect of Svelte
+    // removing the still-focused trigger from the DOM — a consumer clearing
+    // or swapping `triggerRef` via their own reactive state (COR-1219) is the
+    // detached-mode case; a wrapped child's own `{#if}` closing is the other.
+    // That lands this handler inside Svelte's own effect-teardown call stack,
+    // where writing `$state` throws `state_unsafe_mutation`. Deferring to a
+    // microtask lets that teardown finish first — by the time this runs,
+    // Svelte's reactive graph is back in a stable state. An ordinary blur
+    // (nothing being torn down) is unaffected: the deferral is imperceptible,
+    // and every existing focusout assertion already awaits/`waitFor`s it.
+    queueMicrotask(hide);
   }
 
   // WAI-ARIA APG: tooltips must be dismissible via Escape without losing
@@ -226,6 +246,13 @@
       trigger.removeEventListener('mouseleave', handleMouseLeave);
       trigger.removeEventListener('focusin', handleFocusIn);
       trigger.removeEventListener('focusout', handleFocusOut);
+      // A hover/focus that started the pending (not-yet-visible) show timer,
+      // immediately followed by the trigger itself being removed or swapped,
+      // otherwise leaves that timer running with nothing left to cancel it —
+      // `hide()` below only runs when `visible` is already true, which a
+      // still-pending show never is. Left alone, it fires later and shows a
+      // tooltip anchored to nothing (COR-1219).
+      clearPendingShow();
       // If the trigger ref was CLEARED (not merely swapped to a different
       // element — checked against the live `triggerRef`, not the captured
       // `trigger`) while the tooltip is genuinely visible, force it to
@@ -257,6 +284,11 @@
 
     return () => {
       teardownAriaDescribedBy?.();
+      // Same reasoning as the triggerRef effect's cleanup above: a wrapped
+      // child removed while its hover/focus show is still pending (not yet
+      // visible) otherwise leaves that timer to fire later against a wrapper
+      // that no longer has the trigger that started it (COR-1219).
+      clearPendingShow();
       if (wrapperElement === element) wrapperElement = undefined;
       if (anchorElement === focusable) anchorElement = null;
     };

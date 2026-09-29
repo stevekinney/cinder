@@ -35,7 +35,9 @@ export function stableSerialise(value: unknown): string {
   return JSON.stringify(value, (_key, val) => {
     if (!isPlainObjectRecord(val)) return val;
     const sorted: Record<string, unknown> = {};
-    for (const k of Object.keys(val).toSorted()) {
+    const keys = Object.keys(val);
+    keys.sort();
+    for (const k of keys) {
       sorted[k] = val[k];
     }
     return sorted;

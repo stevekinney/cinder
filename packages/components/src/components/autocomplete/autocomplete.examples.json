@@ -1,20 +1,20 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "autocomplete",
-  "import": "@lostgradient/cinder/autocomplete",
+  "import": "@lostgradient/cinder",
   "examples": [
     {
       "id": "async",
       "title": "Async source",
       "description": "Remote-style source with a loading row and stale-request cancellation.",
-      "code": "<script lang=\"ts\">\n  import Autocomplete from '@lostgradient/cinder/autocomplete';\n\n  const cities = [\n    { value: 'Austin, Texas', description: 'United States' },\n    { value: 'Auckland, New Zealand', description: 'New Zealand' },\n    { value: 'Aurora, Colorado', description: 'United States' },\n    { value: 'Berlin, Germany', description: 'Germany' },\n    { value: 'Bristol, England', description: 'United Kingdom' },\n  ];\n\n  let value = $state('');\n\n  async function suggestionSource(query: string, context: { signal: AbortSignal }) {\n    await new Promise<void>((resolve, reject) => {\n      const timeout = setTimeout(resolve, 350);\n      context.signal.addEventListener(\n        'abort',\n        () => {\n          clearTimeout(timeout);\n          reject(new DOMException('Aborted', 'AbortError'));\n        },\n        { once: true },\n      );\n    });\n\n    return cities.filter((city) => city.value.toLowerCase().includes(query.toLowerCase()));\n  }\n</script>\n\n<Autocomplete\n  id=\"field\"\n  label=\"Destination city\"\n  placeholder=\"Type a city\"\n  {suggestionSource}\n  bind:value\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { Autocomplete } from '@lostgradient/cinder';\n\n  const cities = [\n    { value: 'Austin, Texas', description: 'United States' },\n    { value: 'Auckland, New Zealand', description: 'New Zealand' },\n    { value: 'Aurora, Colorado', description: 'United States' },\n    { value: 'Berlin, Germany', description: 'Germany' },\n    { value: 'Bristol, England', description: 'United Kingdom' },\n  ];\n\n  let value = $state('');\n\n  async function suggestionSource(query: string, context: { signal: AbortSignal }) {\n    await new Promise<void>((resolve, reject) => {\n      const timeout = setTimeout(resolve, 350);\n      context.signal.addEventListener(\n        'abort',\n        () => {\n          clearTimeout(timeout);\n          reject(new DOMException('Aborted', 'AbortError'));\n        },\n        { once: true },\n      );\n    });\n\n    return cities.filter((city) => city.value.toLowerCase().includes(query.toLowerCase()));\n  }\n</script>\n\n<Autocomplete\n  id=\"field\"\n  label=\"Destination city\"\n  placeholder=\"Type a city\"\n  {suggestionSource}\n  bind:value\n/>\n"
     },
     {
       "id": "basic",
       "title": "Basic autocomplete",
       "description": "Free-form text stays editable while the suggestion list offers completions.",
       "featured": true,
-      "code": "<script lang=\"ts\">\n  import Autocomplete from '@lostgradient/cinder/autocomplete';\n\n  const fruits = [\n    { value: 'apple', label: 'Apple', description: 'Classic pie filling' },\n    { value: 'apricot', label: 'Apricot', description: 'Stone fruit' },\n    { value: 'banana', label: 'Banana', description: 'Tropical staple' },\n    { value: 'blackberry', label: 'Blackberry', description: 'Late-summer berry' },\n    { value: 'blueberry', label: 'Blueberry', description: 'Breakfast favorite' },\n    { value: 'grapefruit', label: 'Grapefruit', description: 'Tart citrus' },\n  ];\n\n  let value = $state('');\n</script>\n\n<Autocomplete\n  id=\"field\"\n  label=\"Favorite fruit\"\n  placeholder=\"Type a fruit\"\n  suggestionSource={(query: string) =>\n    fruits.filter((fruit) => fruit.label?.toLowerCase().includes(query.toLowerCase()))}\n  bind:value\n/>\n"
+      "code": "<script lang=\"ts\">\n  import { Autocomplete } from '@lostgradient/cinder';\n\n  const fruits = [\n    { value: 'apple', label: 'Apple', description: 'Classic pie filling' },\n    { value: 'apricot', label: 'Apricot', description: 'Stone fruit' },\n    { value: 'banana', label: 'Banana', description: 'Tropical staple' },\n    { value: 'blackberry', label: 'Blackberry', description: 'Late-summer berry' },\n    { value: 'blueberry', label: 'Blueberry', description: 'Breakfast favorite' },\n    { value: 'grapefruit', label: 'Grapefruit', description: 'Tart citrus' },\n  ];\n\n  let value = $state('');\n</script>\n\n<Autocomplete\n  id=\"field\"\n  label=\"Favorite fruit\"\n  placeholder=\"Type a fruit\"\n  suggestionSource={(query: string) =>\n    fruits.filter((fruit) => fruit.label?.toLowerCase().includes(query.toLowerCase()))}\n  bind:value\n/>\n"
     },
     {
       "id": "inside-form-field",

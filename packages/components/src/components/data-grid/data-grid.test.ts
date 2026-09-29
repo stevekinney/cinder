@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 import type { Component } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import { getDataGridColumnValue } from './_internal/column-model.svelte.ts';
 import type { DataGridColumnDef, DataGridProps } from './data-grid.types.ts';
 
@@ -417,17 +417,21 @@ describe('DataGrid', () => {
       'Total',
     ]);
     expect(headers[2]?.getAttribute('data-cinder-pin')).toBe('right');
+    // `aria-colindex` tracks rendered left-to-right position (Customer,
+    // Status, right-pinned Total), not `columnOrder`'s ['total', 'customer',
+    // 'status'] declaration order — a screen reader's column announcement
+    // must match what's actually on screen (COR-1145).
     expect(firstDataCells.map((cell) => cell.getAttribute('aria-colindex'))).toEqual([
+      '1',
       '2',
       '3',
-      '1',
     ]);
     expect(firstDataCells[2]?.getAttribute('style')).toContain(
       '--_cinder-data-grid-column-width: 96px',
     );
   });
 
-  test('groups non-contiguous pinned columns at scroll edges with true ARIA indexes', () => {
+  test('groups non-contiguous pinned columns at scroll edges with rendered-order ARIA indexes', () => {
     const { container } = render(OrderDataGrid, {
       rows,
       columns,
@@ -445,10 +449,14 @@ describe('DataGrid', () => {
       'Total',
       'Status',
     ]);
+    // `aria-colindex` must match this same rendered left-to-right order
+    // (Customer, Total, right-pinned Status) — not `columns`' original
+    // declaration order, which pins Total (declared 3rd) next to Customer
+    // (declared 1st) here (COR-1145).
     expect(firstDataCells.map((cell) => cell.getAttribute('aria-colindex'))).toEqual([
       '1',
-      '3',
       '2',
+      '3',
     ]);
     expect(firstDataCells[0]?.getAttribute('style')).toContain(
       '--_cinder-data-grid-pin-left-offset: 0px',

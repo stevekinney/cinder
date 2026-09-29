@@ -1,0 +1,132 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  /**
+   * DiffReview global styles (COR-509 / DR-6).
+   *
+   * Global (not Svelte-scoped) so `@lostgradient/editor/diff-review/styles`
+   * has a real stylesheet to publish, matching ReviewEditor's own
+   * `/review-editor/styles` precedent.
+   */
+
+  .diff-review {
+    container-type: inline-size;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
+  }
+
+  .diff-review-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+
+  .diff-review-toolbar-error {
+    color: var(--cinder-status-danger-solid, #b42318);
+  }
+
+  /* Narrow default: everything stacked in document order (files, diff, review). */
+  .diff-review-layout {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-3);
+  }
+
+  /* Wide container: three columns side by side. */
+  @container (min-width: 60rem) {
+    .diff-review-layout {
+      display: grid;
+      grid-template-columns: 16rem 1fr 20rem;
+      align-items: start;
+    }
+  }
+
+  .diff-review-composer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-2);
+    margin-top: var(--cinder-space-2);
+  }
+
+  .diff-review-composer-location {
+    margin: 0;
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-muted);
+  }
+
+  .diff-review-composer-actions {
+    display: flex;
+    gap: var(--cinder-space-2);
+  }
+
+  /* Mirrors `.review-editor-diff-composer-readonly-note` in review-editor-impl.svelte. */
+  .diff-review-composer-readonly-note {
+    margin: 0;
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-muted);
+  }
+
+  .diff-review-file-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-1);
+  }
+
+  .diff-review-file-list-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cinder-space-2);
+  }
+
+  .diff-review-file-list-item[data-selected='true'] {
+    background: var(--cinder-surface-hover);
+  }
+
+  .diff-review-file-list-button {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.125rem;
+    flex: 1;
+    text-align: left;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: var(--cinder-space-1) var(--cinder-space-2);
+  }
+
+  .diff-review-file-list-path {
+    font-family: var(--cinder-font-mono);
+    font-size: var(--cinder-text-sm);
+  }
+
+  .diff-review-file-list-counts {
+    font-size: var(--cinder-text-xs);
+    color: var(--cinder-text-muted);
+  }
+
+  .diff-review-drafts-inventory-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .diff-review-drafts-inventory-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cinder-space-1);
+    padding: var(--cinder-space-2) 0;
+    border-block-end: 1px solid var(--cinder-border-faint);
+  }
+
+  .diff-review-drafts-inventory-actions {
+    display: flex;
+    gap: var(--cinder-space-2);
+  }
+}

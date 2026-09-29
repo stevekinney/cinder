@@ -1,7 +1,7 @@
 <script lang="ts" module>
   import type { HTMLAttributes } from 'svelte/elements';
   import type { Snippet } from 'svelte';
-  import type { LineDiffStats } from '@lostgradient/markdown/diff/line-diff';
+  import type { LineDiffStats } from '@lostgradient/markdown';
   import type { DiffState, DiffTier } from './diff-controller.svelte';
 
   import type { DiffViewerMode } from './diff-viewer.types.ts';
@@ -35,7 +35,7 @@
     /** Called when user clicks previous change */
     onjumpprevious?: (() => void) | undefined;
     /** Called when user wants to revert all changes */
-    onrevertall?: (() => void) | undefined;
+    onRevertAll?: (() => void) | undefined;
     /** Called when user triggers manual diff compute (for large docs) */
     ontriggercompute?: (() => void) | undefined;
     /** Copy the current comparison as a complete unified diff. */
@@ -49,19 +49,19 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
-  import Badge from '@lostgradient/cinder/badge';
-  import Button from '@lostgradient/cinder/button';
-  import Kbd from '@lostgradient/cinder/kbd';
-  import Segment from '@lostgradient/cinder/segment';
-  import SegmentedControl from '@lostgradient/cinder/segmented-control';
-  import Spinner from '@lostgradient/cinder/spinner';
   import {
+    Badge,
+    Button,
+    Segment,
+    SegmentedControl,
+    Spinner,
     ChevronLeft,
     ChevronRight,
     Copy,
     RefreshCw,
     RotateCcw,
-  } from '@lostgradient/cinder/icons';
+    Tooltip,
+  } from '@lostgradient/cinder';
 
   let {
     id,
@@ -74,7 +74,7 @@
     diffState,
     onjumpnext,
     onjumpprevious,
-    onrevertall,
+    onRevertAll,
     ontriggercompute,
     oncopydiff,
     actions,
@@ -136,53 +136,76 @@
   </div>
 
   <div class="toolbar-right">
-    <!-- Custom toolbar actions (injected by parent) -->
-    {#if actions}
-      {@render actions()}
-    {/if}
+    <div class="mutation-actions">
+      <!-- Custom toolbar actions (injected by parent) -->
+      {#if actions}
+        {@render actions()}
+      {/if}
 
-    {#if oncopydiff && hasChanges}
-      <Button variant="ghost" size="xs" onclick={oncopydiff} aria-label="Copy unified diff">
-        <Copy class="cinder-icon-sm" />
-        Copy diff
-      </Button>
-    {/if}
+      <!-- Revert All button -->
+      {#if hasChanges && !readonly && onRevertAll}
+        <Button variant="secondary" size="xs" onclick={onRevertAll}>
+          <RotateCcw class="cinder-icon-sm" />
+          Revert All
+        </Button>
+      {/if}
 
-    <!-- Revert All button -->
-    {#if hasChanges && !readonly && onrevertall}
-      <Button variant="secondary" size="xs" onclick={onrevertall}>
-        <RotateCcw class="cinder-icon-sm" />
-        Revert All
-      </Button>
-    {/if}
+      <!-- Size-based gating controls (DEP-47) -->
+      {#if tier === 'manual' && ontriggercompute}
+        <Button variant="secondary" size="xs" onclick={ontriggercompute} disabled={isComputing}>
+          <RefreshCw class="cinder-icon-sm" />
+          Compute Diff
+        </Button>
+      {/if}
+    </div>
 
-    <!-- Size-based gating controls (DEP-47) -->
-    {#if tier === 'manual' && ontriggercompute}
-      <Button variant="secondary" size="xs" onclick={ontriggercompute} disabled={isComputing}>
-        <RefreshCw class="cinder-icon-sm" />
-        Compute Diff
-      </Button>
-    {/if}
+    <div class="utility-actions">
+      {#if oncopydiff && hasChanges}
+        <Tooltip text="Copy unified diff" placement="bottom">
+          <Button
+            variant="ghost"
+            size="xs"
+            iconOnly
+            label="Copy unified diff"
+            onclick={oncopydiff}
+            aria-label="Copy unified diff"
+          >
+            <Copy class="cinder-icon-sm" />
+          </Button>
+        </Tooltip>
+      {/if}
+    </div>
 
     {#if hasChanges}
       {#if changeCount > 0}
         <div class="navigation">
-          <Button
-            variant="ghost"
-            size="xs"
-            onclick={onjumpprevious}
-            aria-label="Previous change ([)"
-          >
-            <ChevronLeft class="cinder-icon-sm" />
-          </Button>
-          <Kbd label="[" size="sm" aria-hidden="true" class="nav-kbd" />
+          <Tooltip text="Previous change ([)" placement="bottom">
+            <Button
+              variant="ghost"
+              size="xs"
+              iconOnly
+              label="Previous change ([)"
+              onclick={onjumpprevious}
+              aria-label="Previous change ([)"
+            >
+              <ChevronLeft class="cinder-icon-sm" />
+            </Button>
+          </Tooltip>
           <span class="change-counter">
             {currentChangeIndex >= 0 ? currentChangeIndex + 1 : '-'} / {changeCount}
           </span>
-          <Kbd label="]" size="sm" aria-hidden="true" class="nav-kbd" />
-          <Button variant="ghost" size="xs" onclick={onjumpnext} aria-label="Next change (])">
-            <ChevronRight class="cinder-icon-sm" />
-          </Button>
+          <Tooltip text="Next change (])" placement="bottom">
+            <Button
+              variant="ghost"
+              size="xs"
+              iconOnly
+              label="Next change (])"
+              onclick={onjumpnext}
+              aria-label="Next change (])"
+            >
+              <ChevronRight class="cinder-icon-sm" />
+            </Button>
+          </Tooltip>
         </div>
       {:else}
         <!-- Only front matter changes, no body navigation available -->
@@ -197,10 +220,10 @@
 <style>
   .diff-toolbar {
     /*
-     * The keycap visibility rule below reacts to how much room THIS toolbar
-     * has, not to how wide the viewport is — a narrow DiffViewer in a wide
-     * window needs the same treatment as a narrow window. RESPONSIVE-POLICY.md
-     * requires @container for that, and platform:audit enforces it.
+     * The toolbar layout reacts to how much room THIS toolbar has, not to how
+     * wide the viewport is — a narrow DiffViewer in a wide window needs the
+     * same compact grouping as a narrow window. RESPONSIVE-POLICY.md requires
+     * @container for that, and platform:audit enforces it.
      */
     container-type: inline-size;
     container-name: cinder-diff-toolbar;
@@ -218,6 +241,7 @@
     display: flex;
     align-items: center;
     gap: var(--cinder-space-3);
+    min-width: 0;
   }
 
   .stats {
@@ -240,8 +264,22 @@
 
   .toolbar-right {
     display: flex;
+    flex: 1 1 auto;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: flex-end;
     gap: var(--cinder-space-3);
+    min-width: 0;
+  }
+
+  .mutation-actions,
+  .utility-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--cinder-space-2);
+    min-width: 0;
   }
 
   .navigation {
@@ -263,32 +301,9 @@
     color: var(--cinder-text-muted);
   }
 
-  /*
-   * The "[" / "]" keycaps annotate the Previous/Next buttons (each button's
-   * own aria-label already carries the accessible description, e.g.
-   * "Previous change ([)"), so the keycaps themselves are aria-hidden and
-   * purely visual. They drop out when the toolbar itself is cramped, without
-   * touching the buttons, which stay visible at every width. `:global()` is
-   * required because `Kbd`'s `class` prop lands on cinder's own scoped
-   * `<kbd>` element, not this file's style scope (same pattern as
-   * `.stat-badge` above).
-   */
-  /* Scoped through `.diff-toolbar` rather than left as a bare `:global(.nav-kbd)`.
-     Svelte scopes the `.diff-toolbar` half to this component and leaves the inner
-     selector global, so the rule reaches Kbd's own scoped element without also
-     claiming every `.nav-kbd` that happens to exist elsewhere on the page. */
-  .diff-toolbar :global(.nav-kbd) {
-    display: inline-flex;
-  }
-
-  /* Visible is the BASELINE; the query only simplifies a cramped toolbar. Written this
-     way round deliberately: hiding by default and revealing inside a `min-width` query
-     leaves the keycaps permanently hidden anywhere container queries do not resolve,
-     turning a progressive enhancement into a silent loss. This matches the direction
-     `markdown-editor.svelte`'s separator rule already uses. */
   @container cinder-diff-toolbar (width < 30rem) {
-    .diff-toolbar :global(.nav-kbd) {
-      display: none;
+    .toolbar-right {
+      gap: var(--cinder-space-2);
     }
   }
 </style>

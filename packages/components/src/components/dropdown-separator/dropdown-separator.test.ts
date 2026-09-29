@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -25,7 +25,7 @@ describe('DropdownSeparator', () => {
 
   test('appears between groups inside an open menu', async () => {
     const { container } = render(Fixture);
-    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await fireEvent.click(requiredInstance(container.querySelector('.trigger'), HTMLElement));
     await waitFor(() => expect(document.body.querySelector('[role="menu"]')).not.toBeNull());
     expect(document.body.querySelector('[role="menu"] [role="separator"]')).not.toBeNull();
   });

@@ -6,7 +6,7 @@ Generic wrapper that preserves a fixed aspect ratio for arbitrary embedded conte
 
 ```svelte
 <script lang="ts">
-  import AspectRatio from '@lostgradient/cinder/aspect-ratio';
+  import { AspectRatio } from '@lostgradient/cinder';
 </script>
 
 <AspectRatio>
@@ -45,7 +45,6 @@ For iframe and video embeds, make the child fill the positioned wrapper:
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

@@ -4,12 +4,11 @@ Composite tabs root that coordinates tab list, tab triggers, and their content p
 
 ## Usage
 
-`Tabs` is a compound component. Import the parent once and compose its
-leaves via the namespace API: `Tabs.List`, `Tabs.Trigger`, and `Tabs.Panel`.
+`Tabs` is a compound component. Import the parent once and compose its leaves via the namespace API: `Tabs.List`, `Tabs.Trigger`, and `Tabs.Panel`.
 
 ```svelte
 <script lang="ts">
-  import { Tabs } from '@lostgradient/cinder/tabs';
+  import { Tabs } from '@lostgradient/cinder';
 
   let active = $state('overview');
 </script>
@@ -27,18 +26,15 @@ leaves via the namespace API: `Tabs.List`, `Tabs.Trigger`, and `Tabs.Panel`.
 </Tabs>
 ```
 
-The leaves remain importable individually for à-la-carte builds — see
-`@lostgradient/cinder/tab`, `@lostgradient/cinder/tab-list`, and `@lostgradient/cinder/tab-panel`.
+The leaves are also named exports of `@lostgradient/cinder`.
 
 ## Caller-owned panels
 
-Use `Tabs.Panel` for ordinary tabs where each trigger owns one rendered panel.
-When the selected value controls one stable external surface, pass that panel
-id through `Tabs.Trigger`'s `controls` prop and render the panel yourself:
+Use `Tabs.Panel` for ordinary tabs where each trigger owns one rendered panel. When the selected value controls one stable external surface, pass that panel id through `Tabs.Trigger`'s `controls` prop and render the panel yourself:
 
 ```svelte
 <script lang="ts">
-  import { Tabs } from '@lostgradient/cinder/tabs';
+  import { Tabs } from '@lostgradient/cinder';
 
   let active = $state('index.ts');
   const tabIds: Record<string, string> = {
@@ -63,19 +59,15 @@ id through `Tabs.Trigger`'s `controls` prop and render the panel yourself:
 </div>
 ```
 
-This keeps Cinder in charge of roving tabindex, activation, disabled state, and
-tab styling while the caller owns an imperative or stateful panel element. Give
-the tabs explicit ids so the external panel can label itself with the active tab.
+This keeps Cinder in charge of roving tabindex, activation, disabled state, and tab styling while the caller owns an imperative or stateful panel element. Give the tabs explicit ids so the external panel can label itself with the active tab.
 
 ## Trailing badges and counts
 
-Each `Tabs.Trigger` accepts a `trailing` snippet for badges, counts, or status
-dots. Render the library `Badge` inside it for idiomatic styling — there is no
-separate badge class to learn:
+Each `Tabs.Trigger` accepts a `trailing` snippet for badges, counts, or status dots. Render the library `Badge` inside it for idiomatic styling — there is no separate badge class to learn:
 
 ```svelte
 <script lang="ts">
-  import { Badge } from '@lostgradient/cinder/badge';
+  import { Badge } from '@lostgradient/cinder';
 </script>
 
 <Tabs.Trigger value="inbox">
@@ -86,10 +78,7 @@ separate badge class to learn:
 </Tabs.Trigger>
 ```
 
-The `trailing` wrapper is `aria-hidden`, so its content is omitted from the
-tab's accessible name. Any count that carries meaning must therefore also live
-in the tab's visible `children` (the accessible name) — never rely on the
-trailing badge alone to convey it.
+The `trailing` wrapper is `aria-hidden`, so its content is omitted from the tab's accessible name. Any count that carries meaning must therefore also live in the tab's visible `children` (the accessible name) — never rely on the trailing badge alone to convey it.
 
 ## Props
 
@@ -113,7 +102,6 @@ trailing badge alone to convey it.
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents
@@ -122,7 +110,6 @@ This component does not declare any local CSS variables.
 
 - `Tabs.List` — the tablist container; see [`tab-list`](../tab-list/README.md).
 - `Tabs.Trigger` — an individual tab; see [`tab`](../tab/README.md).
-- `Tabs.Panel` — a panel rendered when the matching trigger is active; see
-  [`tab-panel`](../tab-panel/README.md).
+- `Tabs.Panel` — a panel rendered when the matching trigger is active; see [`tab-panel`](../tab-panel/README.md).
 
 <!-- generated:subcomponents:end -->

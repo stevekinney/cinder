@@ -45,12 +45,7 @@ export type MenuBarMenu = {
 };
 
 type OwnedMenuBarRootAttributes =
-  | 'class'
-  | 'id'
-  | 'role'
-  | 'aria-label'
-  | 'aria-labelledby'
-  | 'aria-orientation';
+  'class' | 'id' | 'role' | 'aria-label' | 'aria-labelledby' | 'aria-orientation';
 
 export type MenuBarProps = Omit<HTMLAttributes<HTMLDivElement>, OwnedMenuBarRootAttributes> & {
   id?: string;

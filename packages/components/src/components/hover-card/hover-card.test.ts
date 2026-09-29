@@ -4,10 +4,14 @@ import { fileURLToPath } from 'node:url';
 
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import { parse, type Declaration } from 'postcss';
-import { createRawSnippet } from 'svelte';
+import { createRawSnippet, flushSync } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
-import { expectNoLeakedTimers, trackTimers } from '../../test/lifecycle.ts';
+import {
+  expectNoLeakedTimers,
+  requiredInstance,
+  setupHappyDom,
+  trackTimers,
+} from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -40,7 +44,7 @@ mock.module('@floating-ui/dom', () => ({
 
 const { cleanup, fireEvent, render, screen, waitFor } = await import('@testing-library/svelte');
 const { default: HoverCard } = await import('./hover-card.svelte');
-const { _resetEscapeStack, pushEscapeHandler } = await import('../../_internal/overlay.ts');
+const { resetEscapeStack, pushEscapeHandler } = await import('../../_internal/overlay.ts');
 
 const triggerSnippet = createRawSnippet(() => ({
   render: () => `<button type="button">Inspect</button>`,
@@ -76,7 +80,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
-  _resetEscapeStack();
+  resetEscapeStack();
 });
 
 describe('HoverCard', () => {
@@ -91,10 +95,15 @@ describe('HoverCard', () => {
           children: textSnippet('Preview'),
         },
       });
-      const wrapper = container.querySelector('.cinder-hover-card__trigger') as HTMLElement;
+      const wrapper = requiredInstance(
+        container.querySelector('.cinder-hover-card__trigger'),
+        HTMLElement,
+      );
       await fireEvent.mouseEnter(wrapper); // schedules openTimer via scheduleOpen
 
       unmount(); // onDestroy(clearTimers) must clear it
+      // Svelte releases its delegated event reference on the next task.
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
       expectNoLeakedTimers(timers.active());
     } finally {
       timers.release();
@@ -107,17 +116,20 @@ describe('HoverCard', () => {
         description: 'Shows repository metadata',
         openDelay: 0,
         trigger: triggerSnippet,
-        children: textSnippet('@lostgradient/cinder/cinder'),
+        children: textSnippet('@lostgradient/cinder'),
       },
     });
-    const wrapper = container.querySelector('.cinder-hover-card__trigger') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-hover-card__trigger'),
+      HTMLElement,
+    );
 
     await fireEvent.focusIn(wrapper);
 
     await waitFor(() => {
       const card = queryHoverCard();
       expect(card).not.toBeNull();
-      expect(card?.parentElement).toBe(document.body);
+      expect(card?.parentElement === document.body).toBe(true);
       expect(card?.getAttribute('role')).toBe('tooltip');
       expect(card?.hasAttribute('aria-label')).toBe(false);
       expect(card?.getAttribute('data-cinder-position-ready')).toBe('true');
@@ -214,7 +226,10 @@ describe('HoverCard', () => {
         children: textSnippet('Preview'),
       },
     });
-    const wrapper = container.querySelector('.cinder-hover-card__trigger') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-hover-card__trigger'),
+      HTMLElement,
+    );
 
     // The portaled card carries the read-only tooltip role and is referenced by the
     // trigger via aria-describedby — never aria-label or aria-expanded (no focusable content).
@@ -229,7 +244,8 @@ describe('HoverCard', () => {
     // A document-level Escape keydown dismisses the card while it is open.
     await fireEvent.keyDown(document, { key: 'Escape' });
 
-    await waitFor(() => expect(queryHoverCard()).toBeNull());
+    flushSync();
+    expect(queryHoverCard()?.outerHTML ?? null).toBeNull();
   });
 
   test('Escape uses the shared LIFO stack before an enclosing overlay handler', async () => {
@@ -251,7 +267,7 @@ describe('HoverCard', () => {
         cancelable: true,
       });
       window.dispatchEvent(firstEscape);
-      await waitFor(() => expect(queryHoverCard()).toBeNull());
+      await waitFor(() => expect(queryHoverCard()?.outerHTML ?? null).toBeNull());
 
       expect(firstEscape.defaultPrevented).toBe(true);
       expect(parentEscape).not.toHaveBeenCalled();
@@ -276,7 +292,10 @@ describe('HoverCard', () => {
         children: textSnippet('Preview'),
       },
     });
-    const wrapper = container.querySelector('.cinder-hover-card__trigger') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-hover-card__trigger'),
+      HTMLElement,
+    );
 
     await fireEvent.mouseEnter(wrapper);
     expect(queryHoverCard()).toBeNull();
@@ -294,7 +313,10 @@ describe('HoverCard', () => {
         children: textSnippet('Preview'),
       },
     });
-    const wrapper = container.querySelector('.cinder-hover-card__trigger') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-hover-card__trigger'),
+      HTMLElement,
+    );
 
     await fireEvent.mouseEnter(wrapper);
     await waitFor(() => expect(queryHoverCard()).not.toBeNull());
@@ -302,7 +324,7 @@ describe('HoverCard', () => {
     expect(queryHoverCard()).not.toBeNull();
 
     await Bun.sleep(25);
-    await waitFor(() => expect(queryHoverCard()).toBeNull());
+    await waitFor(() => expect(queryHoverCard()?.outerHTML ?? null).toBeNull());
   });
 
   test('controlled external close clears hover interest before another trigger enter', async () => {
@@ -316,7 +338,10 @@ describe('HoverCard', () => {
         children: textSnippet('Preview'),
       },
     });
-    const wrapper = container.querySelector('.cinder-hover-card__trigger') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-hover-card__trigger'),
+      HTMLElement,
+    );
 
     await waitFor(() => expect(queryHoverCard()).not.toBeNull());
     await fireEvent.mouseEnter(wrapper);
@@ -327,7 +352,8 @@ describe('HoverCard', () => {
       trigger: triggerSnippet,
       children: textSnippet('Preview'),
     });
-    await waitFor(() => expect(queryHoverCard()).toBeNull());
+    flushSync();
+    expect(queryHoverCard()?.outerHTML ?? null).toBeNull();
 
     onOpenChange.mockClear();
     await fireEvent.mouseEnter(wrapper);
@@ -348,7 +374,10 @@ describe('HoverCard', () => {
         children: textSnippet('Preview'),
       },
     });
-    const wrapper = container.querySelector('.cinder-hover-card__trigger') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-hover-card__trigger'),
+      HTMLElement,
+    );
 
     await waitFor(() => expect(queryHoverCard()).not.toBeNull());
     await fireEvent.mouseEnter(wrapper);
@@ -359,7 +388,8 @@ describe('HoverCard', () => {
       trigger: triggerSnippet,
       children: textSnippet('Preview'),
     });
-    await waitFor(() => expect(queryHoverCard()).toBeNull());
+    flushSync();
+    expect(queryHoverCard()?.outerHTML ?? null).toBeNull();
 
     onOpenChange.mockClear();
     await fireEvent.focusIn(wrapper);
@@ -380,7 +410,10 @@ describe('HoverCard', () => {
         children: textSnippet('Preview'),
       },
     });
-    const wrapper = container.querySelector('.cinder-hover-card__trigger') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-hover-card__trigger'),
+      HTMLElement,
+    );
 
     await waitFor(() => expect(queryHoverCard()).not.toBeNull());
     await fireEvent.mouseEnter(wrapper);
@@ -391,7 +424,8 @@ describe('HoverCard', () => {
       trigger: triggerSnippet,
       children: textSnippet('Preview'),
     });
-    await waitFor(() => expect(queryHoverCard()).toBeNull());
+    flushSync();
+    expect(queryHoverCard()?.outerHTML ?? null).toBeNull();
 
     // Tabbing away clears the suppress flag so keyboard users are never trapped.
     await fireEvent.focusOut(wrapper, { relatedTarget: document.body });
@@ -411,12 +445,15 @@ describe('HoverCard', () => {
         children: textSnippet('Preview'),
       },
     });
-    const wrapper = container.querySelector('.cinder-hover-card__trigger') as HTMLElement;
+    const wrapper = requiredInstance(
+      container.querySelector('.cinder-hover-card__trigger'),
+      HTMLElement,
+    );
 
     await fireEvent.mouseEnter(wrapper);
     await waitFor(() => expect(queryHoverCard()).not.toBeNull());
     await fireEvent.mouseLeave(wrapper);
-    await fireEvent.mouseEnter(queryHoverCard() as HTMLElement);
+    await fireEvent.mouseEnter(requiredInstance(queryHoverCard(), HTMLElement));
     await Bun.sleep(35);
 
     expect(queryHoverCard()).not.toBeNull();
@@ -428,7 +465,7 @@ describe('HoverCard', () => {
     // instead of resolving on the next microtask — this is the only way to
     // observe the intermediate "closing but still mounted" DOM state.
     const originalGetComputedStyle = window.getComputedStyle.bind(window);
-    window.getComputedStyle = ((target: Element) => {
+    window.getComputedStyle = (target: Element) => {
       if (target instanceof HTMLElement && target.classList.contains('cinder-hover-card')) {
         return {
           transitionProperty: 'opacity, transform',
@@ -437,7 +474,7 @@ describe('HoverCard', () => {
         } as CSSStyleDeclaration;
       }
       return originalGetComputedStyle(target);
-    }) as typeof window.getComputedStyle;
+    };
 
     try {
       const { rerender } = render(HoverCard, {
@@ -472,7 +509,8 @@ describe('HoverCard', () => {
         closingCard?.dispatchEvent(event);
       }
 
-      await waitFor(() => expect(queryHoverCard()).toBeNull());
+      flushSync();
+      expect(queryHoverCard()?.outerHTML ?? null).toBeNull();
     } finally {
       window.getComputedStyle = originalGetComputedStyle;
     }

@@ -6,7 +6,7 @@ A themed container that publishes its tone to descendant components through Svel
 
 ```svelte
 <script lang="ts">
-  import Surface from '@lostgradient/cinder/surface';
+  import { Surface } from '@lostgradient/cinder';
 </script>
 
 <Surface>Content</Surface>
@@ -29,7 +29,6 @@ A themed container that publishes its tone to descendant components through Svel
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

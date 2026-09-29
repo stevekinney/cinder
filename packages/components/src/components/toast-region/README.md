@@ -6,8 +6,8 @@ ToastRegion provides live toast notifications and a `useToast()` controller for 
 
 ```svelte
 <script lang="ts">
-  import Button from '@lostgradient/cinder/button';
-  import ToastRegion, { useToast } from '@lostgradient/cinder/toast-region';
+  import { Button } from '@lostgradient/cinder';
+  import ToastRegion, { useToast } from '@lostgradient/cinder';
 </script>
 
 <ToastRegion>
@@ -43,7 +43,6 @@ ToastRegion provides live toast notifications and a `useToast()` controller for 
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

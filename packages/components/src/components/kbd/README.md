@@ -6,7 +6,7 @@ A styled keyboard key element for displaying keyboard shortcuts in help text and
 
 ```svelte
 <script lang="ts">
-  import Kbd from '@lostgradient/cinder/kbd';
+  import { Kbd } from '@lostgradient/cinder';
 </script>
 
 <Kbd label="⌘K" />
@@ -30,7 +30,6 @@ A styled keyboard key element for displaying keyboard shortcuts in help text and
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

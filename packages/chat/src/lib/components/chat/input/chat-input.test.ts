@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { mount, tick, unmount } from 'svelte';
 import { compile } from 'svelte/compiler';
 
-import { setupHappyDom } from '../../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import type { MessageInput } from '../conversation-model.ts';
 
 setupHappyDom();
@@ -70,6 +70,44 @@ describe('ChatInput', () => {
     expect(composer?.readOnly).toBe(false);
   });
 
+  test('keeps the send trigger stable when it becomes Stop and routes one click only to onstop', async () => {
+    let submitCount = 0;
+    let stopCount = 0;
+    const props = {
+      id: 'stable-stop-trigger',
+      value: 'ready to send',
+      onsubmit: () => {
+        submitCount += 1;
+      },
+      onstop: () => {
+        stopCount += 1;
+      },
+    };
+    const rendered = render(ChatInput, props);
+    const sendTrigger = rendered.container.querySelector<HTMLButtonElement>('.chat-input-send')!;
+    expect(sendTrigger.type).toBe('submit');
+    expect(sendTrigger.hasAttribute('data-stop')).toBe(false);
+
+    await rendered.rerender({ ...props, sending: true });
+    await tick();
+    const stopTrigger = rendered.container.querySelector<HTMLButtonElement>('.chat-input-send')!;
+    expect(stopTrigger).toBe(sendTrigger);
+    expect(stopTrigger.type).toBe('button');
+    expect(stopTrigger.hasAttribute('data-stop')).toBe(true);
+
+    await fireEvent.click(stopTrigger);
+    expect(stopCount).toBe(1);
+    expect(submitCount).toBe(0);
+
+    await rendered.rerender({ ...props, sending: false });
+    await tick();
+    const restoredSendTrigger =
+      rendered.container.querySelector<HTMLButtonElement>('.chat-input-send')!;
+    expect(restoredSendTrigger).toBe(sendTrigger);
+    expect(restoredSendTrigger.type).toBe('submit');
+    expect(restoredSendTrigger.hasAttribute('data-stop')).toBe(false);
+  });
+
   test('hides the programmatic file picker from the accessibility tree', () => {
     const { container } = render(ChatInput, { id: 'attachment-a11y' });
     const picker = container.querySelector<HTMLInputElement>('input[type="file"]');
@@ -105,7 +143,7 @@ describe('ChatInput', () => {
       id: 'large-paste-callback-composer',
       value: 'keep SELECT',
       largePasteThreshold: 5,
-      oncomposerinput: (nextValue: string) => values.push(nextValue),
+      onComposerInput: (nextValue: string) => values.push(nextValue),
     });
     const form = container.querySelector('form')!;
     const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
@@ -613,7 +651,7 @@ describe('ChatInput', () => {
         target,
         props: {
           id: 'insert-range-observer',
-          oncomposerinput: (value: string, event?: Event) => changes.push({ value, event }),
+          onComposerInput: (value: string, event?: Event) => changes.push({ value, event }),
         },
       });
       const api = instance as unknown as {
@@ -632,7 +670,7 @@ describe('ChatInput', () => {
     });
   });
 
-  describe('oncomposerinput', () => {
+  describe('onComposerInput', () => {
     test('fires with the current composer value on every input event', async () => {
       const values: string[] = [];
       const target = document.createElement('div');
@@ -640,8 +678,8 @@ describe('ChatInput', () => {
       const instance = mount(ChatInput, {
         target,
         props: {
-          id: 'oncomposerinput-composer',
-          oncomposerinput: (value: string) => values.push(value),
+          id: 'onComposerInput-composer',
+          onComposerInput: (value: string) => values.push(value),
         },
       });
 
@@ -660,7 +698,7 @@ describe('ChatInput', () => {
       document.body.append(target);
       const instance = mount(ChatInput, {
         target,
-        props: { id: 'oncomposerinput-omitted-composer' },
+        props: { id: 'onComposerInput-omitted-composer' },
       });
 
       const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
@@ -689,7 +727,7 @@ describe('ChatInput', () => {
         `#${composer.getAttribute('aria-describedby')}`,
       );
       expect(shortcutDescription?.textContent).toContain('Command+Enter or Control+Enter to send');
-      expect(target.querySelector('.chat-input-hint')?.textContent).toContain('Ctrl');
+      expect(target.querySelector('.chat-input-hint')).toBeNull();
       await fireEvent.input(composer, { target: { value: 'send this' } });
 
       await fireEvent.keyDown(composer, { key: 'Enter' });
@@ -716,9 +754,7 @@ describe('ChatInput', () => {
       });
       const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
       await fireEvent.input(composer, { target: { value: 'first\nsecond' } });
-      expect(target.querySelector('.chat-input-hint')?.textContent).toContain(
-        'Use the send button to send this multiline message',
-      );
+      expect(target.querySelector('.chat-input-hint')).toBeNull();
       await fireEvent.keyDown(composer, { key: 'Enter' });
       expect(submitCount).toBe(0);
       await fireEvent.input(composer, { target: { value: 'single line' } });
@@ -950,4 +986,50 @@ describe('ChatInput', () => {
       expect(composer?.getAttribute('aria-autocomplete')).toBe('both');
     });
   });
+});
+
+test('submits a ready ordinary attachment with an empty message', async () => {
+  const submissions: Array<{ message: MessageInput; attachments: unknown[] }> = [];
+  const target = document.createElement('div');
+  document.body.append(target);
+  const instance = mount(ChatInput, {
+    target,
+    props: {
+      id: 'ordinary-attachment-only-composer',
+      onsubmit: (message: MessageInput, attachments: unknown[]) =>
+        submissions.push({ message, attachments }),
+    },
+  });
+
+  instance.addFiles([new File(['image'], 'image.png', { type: 'image/png' })]);
+  await tick();
+  await fireEvent.submit(target.querySelector('form')!);
+
+  expect(submissions).toHaveLength(1);
+  expect(submissions[0]?.message).toEqual({ role: 'user', content: '' });
+  expect(submissions[0]?.attachments).toHaveLength(1);
+  unmount(instance);
+  target.remove();
+});
+
+test('keeps an uploading code attachment from submitting', async () => {
+  let submitCount = 0;
+  const target = document.createElement('div');
+  document.body.append(target);
+  const instance = mount(ChatInput, {
+    target,
+    props: { id: 'pending-attachment-composer', onsubmit: () => (submitCount += 1) },
+  });
+
+  const file = new File(['const value = 1;'], 'pending.ts', { type: 'text/typescript' });
+  Object.defineProperty(file, 'text', { value: () => new Promise<string>(() => {}) });
+  instance.addFiles([file]);
+  await tick();
+
+  const send = target.querySelector<HTMLButtonElement>('.chat-input-send');
+  expect(send?.disabled).toBe(true);
+  await fireEvent.submit(target.querySelector('form')!);
+  expect(submitCount).toBe(0);
+  unmount(instance);
+  target.remove();
 });

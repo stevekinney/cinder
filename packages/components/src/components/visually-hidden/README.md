@@ -6,7 +6,7 @@ Hides content visually while keeping it accessible to screen readers; supports s
 
 ```svelte
 <script lang="ts">
-  import VisuallyHidden from '@lostgradient/cinder/visually-hidden';
+  import { VisuallyHidden } from '@lostgradient/cinder';
 </script>
 
 <VisuallyHidden>Screen reader only text</VisuallyHidden>
@@ -30,7 +30,6 @@ Hides content visually while keeping it accessible to screen readers; supports s
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

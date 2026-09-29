@@ -17,25 +17,6 @@ import type { MarkdownWorkerApi } from './render-worker.js';
 import { renderMarkdownWithMath } from './render.js';
 import type { RenderOptions, RenderResult } from './types.js';
 
-// Minimal Worker declarations for this module. The package tsconfig uses
-// Node types only (no DOM lib), but this code runs in the browser where
-// Worker is available. The `typeof` runtime guard prevents SSR usage.
-// The event listener methods are required for Comlink.Endpoint compatibility.
-declare class Worker {
-  constructor(url: URL | string, options?: { type?: string });
-  terminate(): void;
-  postMessage(message: unknown): void;
-  addEventListener(type: string, listener: EventListenerOrEventListenerObject): void;
-  removeEventListener(type: string, listener: EventListenerOrEventListenerObject): void;
-}
-
-// Minimal EventListener types to satisfy the Worker declaration above.
-// These are structural — Comlink only needs the shape, not DOM lib globals.
-declare interface EventListenerOrEventListenerObject {
-  handleEvent?: (event: object) => void;
-  (event: object): void;
-}
-
 let worker: Worker | null = null;
 let proxy: Remote<MarkdownWorkerApi> | null = null;
 let workerFailed = false;
@@ -51,10 +32,8 @@ function getProxy(): Remote<MarkdownWorkerApi> | null {
   }
 
   try {
-    worker = new Worker(new URL('./render-worker.js', import.meta.url), { type: 'module' });
-    // The Worker declaration above satisfies Comlink.Endpoint structurally
-    // (postMessage + addEventListener/removeEventListener), so the cast is safe.
-    proxy = Comlink.wrap<MarkdownWorkerApi>(worker as Comlink.Endpoint);
+    worker = new Worker(new URL('./render-worker.ts', import.meta.url), { type: 'module' });
+    proxy = Comlink.wrap<MarkdownWorkerApi>(worker);
     return proxy;
   } catch {
     workerFailed = true;

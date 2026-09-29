@@ -1,0 +1,51 @@
+{
+  "name": "@lostgradient/weft-ui",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "dev:browser": "bun --watch scripts/browser/server.ts",
+    "dev:server": "bun --watch scripts/browser/dev-server.ts",
+    "lint": "oxlint --deny-warnings --type-aware --tsconfig ./tsconfig.json",
+    "lint:fix": "oxlint --deny-warnings --fix --type-aware --tsconfig ./tsconfig.json",
+    "test": "bun test --conditions browser --conditions svelte",
+    "test:browser": "bun --bun playwright test --config scripts/browser/playwright.config.ts",
+    "test:deployment": "bun test scripts/browser/tests/deployment",
+    "typecheck": "svelte-check --workspace . --tsconfig ./tsconfig.browser.json --fail-on-warnings && svelte-check --workspace . --tsconfig ./tsconfig.json --fail-on-warnings",
+    "test:coverage": "bun scripts/run-coverage.ts",
+    "check:coverage": "bun scripts/check-coverage-cli.ts"
+  },
+  "dependencies": {
+    "@lostgradient/cinder": "workspace:*",
+    "@lostgradient/markdown": "workspace:*",
+    "@lostgradient/weft": "catalog:",
+    "@shikijs/langs": "catalog:",
+    "@shikijs/themes": "catalog:",
+    "@tanstack/svelte-query": "catalog:",
+    "cron-parser": "catalog:",
+    "lucide-svelte": "catalog:",
+    "svelte": "catalog:"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "catalog:",
+    "@lostgradient/environmentalist": "catalog:",
+    "@lostgradient/testing": "workspace:*",
+    "@lostgradient/typescript": "workspace:*",
+    "@playwright/test": "catalog:",
+    "@testing-library/dom": "catalog:",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/svelte": "catalog:",
+    "@types/bun": "catalog:",
+    "fake-indexeddb": "catalog:",
+    "happy-dom": "catalog:",
+    "oxlint": "catalog:",
+    "prettier": "catalog:",
+    "prettier-plugin-svelte": "catalog:",
+    "svelte-check": "catalog:",
+    "typescript": "catalog:",
+    "zod": "catalog:"
+  },
+  "version": "0.0.0"
+}

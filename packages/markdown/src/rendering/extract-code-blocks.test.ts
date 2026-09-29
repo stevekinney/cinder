@@ -41,7 +41,7 @@ describe('extractCodeBlocks', () => {
     const root = createRoot(createCodeNode('const x = 1;'));
     const result = extractCodeBlocks(root);
     expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({
+    expect(result[0]!).toEqual({
       language: null,
       meta: null,
       value: 'const x = 1;',
@@ -53,8 +53,8 @@ describe('extractCodeBlocks', () => {
     const root = createRoot(createCodeNode('x = 1', { lang: 'python' }));
     const result = extractCodeBlocks(root);
     expect(result).toHaveLength(1);
-    expect(result[0].language).toBe('python');
-    expect(result[0].meta).toBeNull();
+    expect(result[0]!.language).toBe('python');
+    expect(result[0]!.meta).toBeNull();
   });
 
   it('extracts a code block with both lang and meta', () => {
@@ -63,10 +63,10 @@ describe('extractCodeBlocks', () => {
     );
     const result = extractCodeBlocks(root);
     expect(result).toHaveLength(1);
-    expect(result[0].language).toBe('typescript');
-    expect(result[0].meta).toBe('title=example.ts');
-    expect(result[0].value).toBe('const x = 1;');
-    expect(result[0].index).toBe(0);
+    expect(result[0]!.language).toBe('typescript');
+    expect(result[0]!.meta).toBe('title=example.ts');
+    expect(result[0]!.value).toBe('const x = 1;');
+    expect(result[0]!.index).toBe(0);
   });
 
   it('extracts multiple code blocks in document order', () => {
@@ -77,15 +77,15 @@ describe('extractCodeBlocks', () => {
     );
     const result = extractCodeBlocks(root);
     expect(result).toHaveLength(3);
-    expect(result[0]).toEqual({ language: 'js', meta: null, value: 'first', index: 0 });
-    expect(result[1]).toEqual({ language: 'python', meta: null, value: 'second', index: 1 });
-    expect(result[2]).toEqual({ language: 'rust', meta: null, value: 'third', index: 2 });
+    expect(result[0]!).toEqual({ language: 'js', meta: null, value: 'first', index: 0 });
+    expect(result[1]!).toEqual({ language: 'python', meta: null, value: 'second', index: 1 });
+    expect(result[2]!).toEqual({ language: 'rust', meta: null, value: 'third', index: 2 });
   });
 
   it('handles a code block with empty value', () => {
     const root = createRoot(createCodeNode('', { lang: 'js' }));
     const result = extractCodeBlocks(root);
     expect(result).toHaveLength(1);
-    expect(result[0].value).toBe('');
+    expect(result[0]!.value).toBe('');
   });
 });

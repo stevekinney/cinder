@@ -1,7 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import Button from '../button/button.svelte';
-  import JsonEditor from '@lostgradient/cinder/json-editor';
+  import { default as JsonEditor } from '../json-editor/index.ts';
   import { formatEditableArguments, parseJsonText } from './approval-card-state.ts';
   import type { ApprovalResolution, ApprovalResolutionDecision } from './approval-card.types.ts';
 
@@ -108,8 +108,7 @@
       id={reasonId}
       class="cinder-approval-card__textarea cinder-approval-card__textarea--reason"
       bind:value={resolutionReason}
-      rows="2"
-    ></textarea>
+      rows="2"></textarea>
   </div>
 
   <div class="cinder-approval-card__action-row" role="group" aria-label="Approval actions">

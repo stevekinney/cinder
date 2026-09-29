@@ -60,14 +60,14 @@ async function scanGlob(pattern: string): Promise<string[]> {
 
 /**
  * CSS files imported DIRECTLY by component source (`import './foo.css'` in a
- * `.svelte` or `.ts`) rather than through the `@lostgradient/cinder/styles` aggregator. These
+ * `.svelte` or `.ts`) rather than through the `@lostgradient/cinder` aggregator. These
  * still reach a consumer's cascade, so they are subject to the same invariant.
  *
  * `markdown-editor.svelte` used to import `prosemirror.css` this way — a
  * non-sidecar CSS file living under a component's own directory rather than
  * matching the `<name>/<name>.css` convention. That component (and
  * `prosemirror.css` with it) moved to `@lostgradient/editor` — see
- * `docs/decisions/package-boundaries.md` — so cinder currently has no
+ * `documentation/decisions/package-boundaries.md` — so cinder currently has no
  * component with a non-sidecar direct CSS import. The scan still runs (and
  * still feeds `wrappedCssFiles()` below) so it keeps catching the pattern the
  * moment a future component reintroduces one.
@@ -174,8 +174,8 @@ describe('component CSS @layer invariant', () => {
  * Layer-membership regression for direct subpath imports.
  *
  * This is the structural precondition for the documented override behavior: a
- * consumer that imports a component's CSS file DIRECTLY (e.g. `@lostgradient/cinder/badge/styles`,
- * NOT `@lostgradient/cinder/styles`) and declares its own `@layer app` override after
+ * consumer that imports a component's CSS file DIRECTLY (e.g. `@lostgradient/cinder`,
+ * NOT `@lostgradient/cinder`) and declares its own `@layer app` override after
  * `@layer cinder.components, app;` expects `@layer app` to win. That only holds
  * if the directly-imported file's rules are INSIDE `@layer cinder.components`.
  * Before this fix, `badge.css` held bare rules: a direct import dropped them

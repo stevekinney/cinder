@@ -57,11 +57,11 @@ export interface ThreadManagerOptions {
   announce: (message: string, priority?: 'polite' | 'assertive') => void;
 
   // Event callbacks
-  onthreadcreate?: (event: ThreadCreateEvent) => void;
-  onthreaddelete?: (event: ThreadDeleteEvent) => void;
-  oncommentcreate?: (event: CommentCreateEvent) => void;
-  oncommentupdate?: (event: CommentUpdateEvent) => void;
-  oncommentdelete?: (event: CommentDeleteEvent) => void;
+  onThreadCreate?: (event: ThreadCreateEvent) => void;
+  onThreadDelete?: (event: ThreadDeleteEvent) => void;
+  onCommentCreate?: (event: CommentCreateEvent) => void;
+  onCommentUpdate?: (event: CommentUpdateEvent) => void;
+  onCommentDelete?: (event: CommentDeleteEvent) => void;
 
   /**
    * Callback to clear conflicting popovers before opening thread popover.
@@ -162,11 +162,11 @@ const POSITION_DELAY_MS = 350;
  *     getCurrentUserId: () => currentUserId,
  *     getScrollBehavior,
  *     announce,
- *     onthreadcreate,
- *     onthreaddelete,
- *     oncommentcreate,
- *     oncommentupdate,
- *     oncommentdelete,
+ *     onThreadCreate,
+ *     onThreadDelete,
+ *     onCommentCreate,
+ *     onCommentUpdate,
+ *     onCommentDelete,
  *   });
  * </script>
  * ```
@@ -179,11 +179,11 @@ export function createThreadManager(options: ThreadManagerOptions): ThreadManage
     getCurrentUserId,
     getScrollBehavior,
     announce,
-    onthreadcreate,
-    onthreaddelete,
-    oncommentcreate,
-    oncommentupdate,
-    oncommentdelete,
+    onThreadCreate,
+    onThreadDelete,
+    onCommentCreate,
+    onCommentUpdate,
+    onCommentDelete,
     onBeforePopoverOpen,
   } = options;
 
@@ -428,7 +428,7 @@ export function createThreadManager(options: ThreadManagerOptions): ThreadManage
       authorId,
       mentions: mentions.length > 0 ? mentions : undefined,
     };
-    onthreadcreate?.(event);
+    onThreadCreate?.(event);
 
     announce('Comment added');
     return requestId;
@@ -451,7 +451,7 @@ export function createThreadManager(options: ThreadManagerOptions): ThreadManage
       authorId,
       mentions: mentions.length > 0 ? mentions : undefined,
     };
-    onthreadcreate?.(event);
+    onThreadCreate?.(event);
 
     announce('Document comment added');
     return requestId;
@@ -482,7 +482,7 @@ export function createThreadManager(options: ThreadManagerOptions): ThreadManage
       const mentions = extractMentions(body);
       const requestId = generateId();
 
-      onthreadcreate?.({
+      onThreadCreate?.({
         requestId,
         anchor,
         body,
@@ -503,7 +503,7 @@ export function createThreadManager(options: ThreadManagerOptions): ThreadManage
     const thread = getThreads().find((t) => t.id === threadId);
     if (!thread) return;
 
-    onthreaddelete?.({ threadId });
+    onThreadDelete?.({ threadId });
   }
 
   function clearAllThreads(): void {
@@ -513,7 +513,7 @@ export function createThreadManager(options: ThreadManagerOptions): ThreadManage
     if (threads.length === 0) return;
 
     for (const thread of threads) {
-      onthreaddelete?.({ threadId: thread.id });
+      onThreadDelete?.({ threadId: thread.id });
     }
 
     popoverThreadId = null;
@@ -534,7 +534,7 @@ export function createThreadManager(options: ThreadManagerOptions): ThreadManage
     const mentions = extractMentions(body);
     const requestId = generateId();
 
-    oncommentcreate?.({
+    onCommentCreate?.({
       requestId,
       threadId,
       body,
@@ -555,7 +555,7 @@ export function createThreadManager(options: ThreadManagerOptions): ThreadManage
 
     const mentions = extractMentions(body);
 
-    oncommentupdate?.({
+    onCommentUpdate?.({
       threadId,
       commentId,
       body,
@@ -570,7 +570,7 @@ export function createThreadManager(options: ThreadManagerOptions): ThreadManage
     const comment = thread?.comments.find((c) => c.id === commentId);
     if (!comment || (soft && comment.deletedAt)) return;
 
-    oncommentdelete?.({ threadId, commentId, soft });
+    onCommentDelete?.({ threadId, commentId, soft });
     announce('Comment deleted');
   }
 

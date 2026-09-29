@@ -1,11 +1,8 @@
+import { setupHappyDom, sveltePlugin } from '@lostgradient/testing';
 import { plugin } from 'bun';
 
-import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
-import { setupHappyDom } from '../../components/src/test/happy-dom.ts';
-
-// Mirrors the components-package preload so playground tests that render
-// `.svelte` files (e.g., the EventSource attachment test) can resolve and
-// compile components.
+// Playground tests that render `.svelte` files need the shared DOM setup and
+// compiler plugin. The mirror sync moves these helpers into @lostgradient/testing.
 setupHappyDom();
 
 await plugin(sveltePlugin({ generate: 'client' }));

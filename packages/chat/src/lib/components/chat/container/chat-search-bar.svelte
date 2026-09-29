@@ -36,7 +36,7 @@
 
 <script lang="ts">
   import type { Attachment } from 'svelte/attachments';
-  import { ChevronDown, ChevronUp, Search, X } from '@lostgradient/cinder/icons';
+  import { ChevronDown, ChevronUp, Search, X } from '@lostgradient/cinder';
 
   let {
     instanceId,

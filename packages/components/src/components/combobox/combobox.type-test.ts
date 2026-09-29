@@ -20,27 +20,27 @@ const fruitOptions = [
 ] satisfies ComboboxOption<'apple' | 'banana' | 'cherry'>[];
 
 // Valid: value is a member of the typed union.
-const _validValue: ComboboxProps<'apple' | 'banana' | 'cherry'> = {
+const validValue: ComboboxProps<'apple' | 'banana' | 'cherry'> = {
   id: 'fruit',
   options: fruitOptions,
   value: 'apple',
 };
 
 // Valid: empty string is always allowed — the unselected sentinel.
-const _emptyStringValue: ComboboxProps<'apple' | 'banana' | 'cherry'> = {
+const emptyStringValue: ComboboxProps<'apple' | 'banana' | 'cherry'> = {
   id: 'fruit',
   options: fruitOptions,
   value: '',
 };
 
 // Valid: value omitted.
-const _undefinedValue: ComboboxProps<'apple' | 'banana' | 'cherry'> = {
+const undefinedValue: ComboboxProps<'apple' | 'banana' | 'cherry'> = {
   id: 'fruit',
   options: fruitOptions,
 };
 
 // Invalid value: must fire a type error on the `value` property.
-const _invalidValue: ComboboxProps<'apple' | 'banana' | 'cherry'> = {
+const invalidValue: ComboboxProps<'apple' | 'banana' | 'cherry'> = {
   id: 'fruit',
   options: fruitOptions,
   // @ts-expect-error — 'invalid' is not assignable to NoInfer<'apple' | 'banana' | 'cherry'> | ''
@@ -48,7 +48,7 @@ const _invalidValue: ComboboxProps<'apple' | 'banana' | 'cherry'> = {
 };
 
 // Valid: filter callback accepts ComboboxOption<T>.
-const _validFilter: ComboboxProps<'apple' | 'banana' | 'cherry'> = {
+const validFilter: ComboboxProps<'apple' | 'banana' | 'cherry'> = {
   id: 'fruit',
   options: fruitOptions,
   filter: (option, query) => option.label.toLowerCase().includes(query),
@@ -61,7 +61,7 @@ const plainOptions: ComboboxOption[] = [
   { value: 'y', label: 'Y' },
 ];
 
-const _plainUsage: ComboboxProps = {
+const plainUsage: ComboboxProps = {
   id: 'plain',
   options: plainOptions,
   value: 'x',
@@ -69,10 +69,10 @@ const _plainUsage: ComboboxProps = {
 
 // --- ComboboxOption is also generic ---
 
-const _typedOption: ComboboxOption<'p' | 'q'> = { value: 'p', label: 'P' };
+const typedOption: ComboboxOption<'p' | 'q'> = { value: 'p', label: 'P' };
 
 // @ts-expect-error — 'r' is not assignable to 'p' | 'q'
-const _invalidOption: ComboboxOption<'p' | 'q'> = { value: 'r', label: 'R' };
+const invalidOption: ComboboxOption<'p' | 'q'> = { value: 'r', label: 'R' };
 
 // --- INFERENCE-WIDENING GUARD (the case NoInfer<T> actually protects) ---
 //
@@ -121,11 +121,11 @@ mountCombobox({
   value: 'invalid',
 });
 
-void _validValue;
-void _emptyStringValue;
-void _undefinedValue;
-void _invalidValue;
-void _validFilter;
-void _plainUsage;
-void _typedOption;
-void _invalidOption;
+void validValue;
+void emptyStringValue;
+void undefinedValue;
+void invalidValue;
+void validFilter;
+void plainUsage;
+void typedOption;
+void invalidOption;

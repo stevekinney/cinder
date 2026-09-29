@@ -1,6 +1,6 @@
 <script lang="ts">
   import Copy from 'lucide-svelte/icons/copy';
-  import CopyButton from '@lostgradient/cinder/copy-button';
+  import { default as CopyButton } from '../copy-button/index.ts';
 
   import { isOpaqueForFormat, type ColorOutputFormat } from '../../utilities/color-format.ts';
 

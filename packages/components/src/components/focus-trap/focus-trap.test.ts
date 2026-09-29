@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet, tick } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -70,8 +70,8 @@ describe('FocusTrap', () => {
       props: { children: focusTrapChildren },
     });
 
-    const first = getByTestId('first-button') as HTMLButtonElement;
-    const last = getByTestId('last-button') as HTMLButtonElement;
+    const first = requiredInstance(getByTestId('first-button'), HTMLButtonElement);
+    const last = requiredInstance(getByTestId('last-button'), HTMLButtonElement);
     await tick();
     last.focus();
 
@@ -85,8 +85,8 @@ describe('FocusTrap', () => {
       props: { children: focusTrapChildren },
     });
 
-    const first = getByTestId('first-button') as HTMLButtonElement;
-    const last = getByTestId('last-button') as HTMLButtonElement;
+    const first = requiredInstance(getByTestId('first-button'), HTMLButtonElement);
+    const last = requiredInstance(getByTestId('last-button'), HTMLButtonElement);
     await tick();
     first.focus();
 
@@ -104,8 +104,8 @@ describe('FocusTrap', () => {
       props: { children: negativeTabindexChildren },
     });
 
-    const first = getByTestId('first-button') as HTMLButtonElement;
-    const last = getByTestId('last-button') as HTMLButtonElement;
+    const first = requiredInstance(getByTestId('first-button'), HTMLButtonElement);
+    const last = requiredInstance(getByTestId('last-button'), HTMLButtonElement);
     await tick();
     last.focus();
 
@@ -201,7 +201,7 @@ describe('FocusTrap', () => {
   // `tabindex` was removed — all five report `document.activeElement === el`,
   // where a real browser refuses all five. A test written against any of them
   // would be measuring happy-dom, not this code. See
-  // `packages/components/src/test/happy-dom.ts` for the recorded limitation.
+  // `components/cinder/src/test/happy-dom.ts` for the recorded limitation.
   //
   // The reachable half — a DISCONNECTED captured element — is pinned above, and
   // is the case the bug was filed for.
@@ -424,10 +424,10 @@ describe('FocusTrap', () => {
     const { getByTestId } = render(NestedFixture);
     await tick();
 
-    const outerFirst = getByTestId('outer-first') as HTMLButtonElement;
-    const innerFirst = getByTestId('inner-first') as HTMLButtonElement;
-    const innerLast = getByTestId('inner-last') as HTMLButtonElement;
-    const toggle = getByTestId('toggle-inner') as HTMLButtonElement;
+    const outerFirst = requiredInstance(getByTestId('outer-first'), HTMLButtonElement);
+    const innerFirst = requiredInstance(getByTestId('inner-first'), HTMLButtonElement);
+    const innerLast = requiredInstance(getByTestId('inner-last'), HTMLButtonElement);
+    const toggle = requiredInstance(getByTestId('toggle-inner'), HTMLButtonElement);
 
     // Before the inner trap ever activates, the outer trap is the only entry on the trap stack: it
     // owns Tab-wrapping across its entire flattened tabbable set, including the still-mounted (but

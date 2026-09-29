@@ -30,9 +30,7 @@ export type KanbanBoardCollapseChange = {
 };
 
 export type KanbanBoardChange =
-  | KanbanBoardCardMoveChange
-  | KanbanBoardColumnMoveChange
-  | KanbanBoardCollapseChange;
+  KanbanBoardCardMoveChange | KanbanBoardColumnMoveChange | KanbanBoardCollapseChange;
 
 export type KanbanBoardCardContext<Card> = {
   column: KanbanBoardColumn<Card>;

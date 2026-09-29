@@ -8,16 +8,7 @@ import type { HTMLAttributes } from 'svelte/elements';
  * excluded.
  */
 export type MasonryElement =
-  | 'article'
-  | 'aside'
-  | 'div'
-  | 'footer'
-  | 'header'
-  | 'main'
-  | 'nav'
-  | 'section'
-  | 'ul'
-  | 'ol';
+  'article' | 'aside' | 'div' | 'footer' | 'header' | 'main' | 'nav' | 'section' | 'ul' | 'ol';
 
 /** Props for the Masonry component. */
 export type MasonryProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {

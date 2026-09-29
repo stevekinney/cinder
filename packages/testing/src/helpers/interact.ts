@@ -1,8 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 
-// The canonical `InteractionStep` lives in the neutral visual-fixture schema.
-// The runner consumes the single source of truth rather than duplicating it.
-import type { InteractionStep } from '../../../components/scripts/lib/visual-fixtures/schema.ts';
+import type { InteractionStep } from '../visual-fixtures.ts';
 
 export type InteractionContext = {
   component?: string;
@@ -19,6 +17,25 @@ function contextPrefix(context: InteractionContext | undefined): string {
 }
 
 type TargetKind = 'testId' | 'label' | 'role';
+type Role = Parameters<Page['getByRole']>[0];
+export type InteractionLocator = Pick<
+  Locator,
+  'click' | 'count' | 'focus' | 'hover' | 'isEnabled' | 'isVisible' | 'press'
+>;
+export type InteractionPage = {
+  getByLabel(label: string, options?: Parameters<Page['getByLabel']>[1]): InteractionLocator;
+  getByRole(role: Role, options?: Parameters<Page['getByRole']>[1]): InteractionLocator;
+  getByTestId(testId: string): InteractionLocator;
+};
+const roles = new Set<string>(
+  `alert alertdialog application article banner blockquote button caption cell checkbox code columnheader combobox complementary contentinfo definition deletion dialog directory document emphasis feed figure form generic grid gridcell group heading img insertion link list listbox listitem log main marquee math menu menubar menuitem menuitemcheckbox menuitemradio meter navigation none note option paragraph presentation progressbar radio radiogroup region row rowgroup rowheader scrollbar search searchbox separator slider spinbutton status strong subscript superscript switch tab table tablist tabpanel term textbox time timer toolbar tooltip tree treegrid treeitem`.split(
+    ' ',
+  ),
+);
+
+function isRole(value: string): value is Role {
+  return roles.has(value);
+}
 
 function hasOwnStringValue(target: Record<string, unknown>, key: TargetKind): boolean {
   return Object.hasOwn(target, key) && typeof target[key] === 'string';
@@ -152,11 +169,11 @@ export class DisabledInteractionTargetError extends Error {
 }
 
 function locatorForStep(
-  page: Page,
+  page: InteractionPage,
   step: InteractionStep,
   index: number,
   context: InteractionContext | undefined,
-): Locator {
+): InteractionLocator {
   const { target } = step;
   const kind = targetKind(step, index, context);
   if (kind === 'testId' && 'testId' in target) return page.getByTestId(target.testId);
@@ -168,18 +185,29 @@ function locatorForStep(
     throw new InvalidInteractionTargetError(index, context);
   }
 
-  const options =
-    target.name !== undefined || target.exact !== undefined
-      ? {
-          ...(target.name !== undefined ? { name: target.name } : {}),
-          ...(target.exact !== undefined ? { exact: target.exact } : {}),
-        }
-      : {};
-  return page.getByRole(target.role as Parameters<Page['getByRole']>[0], options);
+  return roleLocator(page, target, index, context);
+}
+
+function roleLocator(
+  page: InteractionPage,
+  target: Extract<InteractionStep['target'], { role: string }>,
+  index: number,
+  context: InteractionContext | undefined,
+): InteractionLocator {
+  if (!isRole(target.role)) {
+    throw new InvalidInteractionTargetError(index, context);
+  }
+
+  if (target.name !== undefined && target.exact !== undefined) {
+    return page.getByRole(target.role, { name: target.name, exact: target.exact });
+  }
+  if (target.name !== undefined) return page.getByRole(target.role, { name: target.name });
+  if (target.exact !== undefined) return page.getByRole(target.role, { exact: target.exact });
+  return page.getByRole(target.role);
 }
 
 async function assertResolvable(
-  locator: Locator,
+  locator: InteractionLocator,
   step: InteractionStep,
   index: number,
   context: InteractionContext | undefined,
@@ -223,7 +251,7 @@ async function assertResolvable(
  * @throws {Error} when a `press` step is missing the required `key` field.
  */
 export async function applyInteractions(
-  page: Page,
+  page: InteractionPage,
   steps: readonly InteractionStep[],
   context?: InteractionContext,
 ): Promise<void> {

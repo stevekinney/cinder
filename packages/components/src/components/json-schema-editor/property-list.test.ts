@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import type { JsonSchemaValue } from './json-schema-editor-types.ts';
 
 setupHappyDom();
@@ -86,7 +86,7 @@ describe('PropertyList', () => {
   test('composes Collapsible for required names and avoids schema jargon', async () => {
     const source = await Bun.file(new URL('./property-list.svelte', import.meta.url)).text();
 
-    expect(source).toContain("import Collapsible from '@lostgradient/cinder/collapsible'");
+    expect(source).toContain("import { default as Collapsible } from '../collapsible/index.ts'");
     expect(source).not.toContain("from '../collapsible/collapsible.svelte'");
     expect(source).toContain('Required fields not yet defined');
     expect(source).not.toContain('<details class="cinder-jse-required-only"');
@@ -165,7 +165,10 @@ describe('PropertyList', () => {
       },
     });
 
-    const input = container.querySelector('#properties-required-only-add') as HTMLInputElement;
+    const input = requiredInstance(
+      container.querySelector('#properties-required-only-add'),
+      HTMLInputElement,
+    );
     const addButton = Array.from(container.querySelectorAll('button')).find(
       (button) => button.textContent?.trim() === 'Add required name',
     );
@@ -421,7 +424,7 @@ describe('PropertyList', () => {
   test('renders a danger indicator on the row with nested validation errors', async () => {
     const source = await Bun.file(new URL('./property-list.svelte', import.meta.url)).text();
 
-    expect(source).toContain("import Badge from '@lostgradient/cinder/badge'");
+    expect(source).toContain("import { default as Badge } from '../badge/index.ts'");
     expect(source).toContain('data-cinder-invalid={childValidationErrorCount > 0');
     expect(source).toMatch(/<Badge\s+variant="danger"/);
     expect(source).toContain('validation ${childValidationErrorCount');

@@ -136,7 +136,7 @@ describe('cinder-mcp server', () => {
       const missingArtifactData = errorData(missingArtifact);
       expect(missingArtifactData['code']).toBe('ARTIFACT_NOT_FOUND');
       expect(missingArtifactData['message']).toBe(
-        'access-gate does not ship a constraints artifact.',
+        'access-gate does not have a local constraints artifact.',
       );
       expect(missingArtifactData['suggestions']).toContain('access-gate');
     } finally {

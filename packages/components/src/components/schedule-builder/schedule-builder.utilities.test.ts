@@ -478,6 +478,17 @@ describe('schedule-builder utilities', () => {
         '*',
       ]);
     });
+
+    test('throws for an interval unit outside the known union', () => {
+      // `unit` is exhaustively typed (minutes/hours/days/weeks, all tested
+      // above), so the `default: return assertNever(value.unit)` arm is only
+      // reachable by a caller that bypasses the type system (e.g. untyped JS
+      // interop) — matching the convention in
+      // src/_internal/collection.test.ts's `navigationIntent` exhaustiveness test.
+      expect(() =>
+        valueToCronFields({ mode: 'interval', every: 1, unit: 'sideways' as never }),
+      ).toThrow('Unexpected exhaustive value: sideways');
+    });
   });
 
   describe('valueToInterval', () => {

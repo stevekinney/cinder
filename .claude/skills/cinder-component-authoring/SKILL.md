@@ -21,9 +21,10 @@ links generated READMEs back to the live package guidance.
 - [ ] Add tests for resulting state and resting appearance, not only transitions. (#931)
 - [ ] For every leaf, add a substantive test, README skeleton, stylesheet registration in src/styles/components.css, generated exports, and the sidebar count-gate update. (#310)
 - [ ] For every new token, add check-token-contrast.test.ts coverage and its docs/tokens.md entry; tokens-doc-drift.test.ts must stay green. (#310)
-- [ ] Register every new guard script in check-pipeline-coverage.ts in the same change. (#310)
+- [ ] Keep the structural mirror pipeline guard and its regression tests in sync when changing the public workflow contract. (#310)
 - [ ] Get a design review for every new component; record its nearest neighbours, why it exists, and the review outcome in `*.a11y.md`. (#968)
 - [ ] For a novel interaction model, get an accessibility review covering focus management, the keyboard matrix, and assistive-technology announcements; record the outcome in `*.a11y.md`. (#968)
+
 <!-- component-authoring-checklist:end -->
 
 These human reviews are required because tooling cannot decide whether a

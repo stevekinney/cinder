@@ -35,11 +35,10 @@
     ...rest
   }: ImageProps = $props();
 
-  // Track which src has loaded or errored so derived booleans reset
-  // synchronously when src changes — no $effect required.
+  // Track which src has loaded or errored so derived flags reset
+  // synchronously when src changes without scheduling a reset effect.
   let loadedSource = $state<string | null>(null);
   let erroredSource = $state<string | null>(null);
-
   const loaded = $derived(loadedSource === src);
   const errored = $derived(erroredSource === src);
   const showFallback = $derived(errored && fallback !== undefined);

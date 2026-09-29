@@ -1,7 +1,7 @@
 /**
  * Tests for `createReviewEditorState`'s diffStats (cinder#1307).
  *
- * `createReviewEditorState` (exported publicly from `@lostgradient/editor/review-editor`)
+ * `createReviewEditorState` (exported publicly from `@lostgradient/editor`)
  * is a second, independent public API path to the same "how many lines
  * changed" question the ReviewEditor toolbar answers. It had its own copy of
  * the same bare-`normalize()` bug #1307 fixed in the toolbar's `diffStats`:

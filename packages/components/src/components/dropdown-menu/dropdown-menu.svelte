@@ -55,7 +55,7 @@
   const localeContext = getLocaleContext();
   let directionRevision = $state(0);
   const resolvedDirection = $derived.by(() => {
-    directionRevision;
+    void directionRevision;
     if (direction === 'auto') {
       return resolveTextDirection(context.anchorElement, localeContext?.direction) ?? direction;
     }

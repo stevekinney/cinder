@@ -14,6 +14,8 @@
  */
 
 import { expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { ComponentProps } from 'svelte';
 
 import Chat from './chat.svelte';
@@ -25,6 +27,7 @@ import type {
   ChatToolApprovalResolution,
   ChatToolResult,
   ConversationHistory,
+  ResolvedChatArtifact,
 } from './index.ts';
 
 type Assignable<A, B> = A extends B ? true : false;
@@ -144,4 +147,49 @@ test('Chat approval types are directly importable from the public chat barrel', 
 
   expect(resolution).toBe('pending');
   expect(result.pendingApproval).toEqual({ approvalToken: 'token' });
+});
+
+test('Chat artifact override uses the resolved public artifact type', () => {
+  const artifact: ResolvedChatArtifact = {
+    id: 'artifact-source-message',
+    type: 'code',
+    content: 'const value = 1;',
+    language: 'typescript',
+    title: 'Source artifact',
+  };
+  const artifactOverride = {
+    id: 'consumer-chat',
+    conversation,
+    onArtifactOpen: (resolvedArtifact: ResolvedChatArtifact) => resolvedArtifact.id,
+  } satisfies ChatComponentProps;
+
+  expect(artifactOverride.onArtifactOpen(artifact)).toBe('artifact-source-message');
+});
+
+test('published tool-call artifact example uses a single artifact panel owner', () => {
+  const examples = JSON.parse(
+    readFileSync(join(import.meta.dir, 'chat.examples.json'), 'utf8'),
+  ) as {
+    examples: Array<{ id: string; code: string }>;
+  };
+  const toolCallExample = examples.examples.find((example) => example.id === 'with-tool-calls');
+
+  expect(toolCallExample).toBeDefined();
+  expect(toolCallExample?.code).toContain('<Chat');
+  expect(toolCallExample?.code).not.toContain('ChatArtifactLayout');
+  expect(toolCallExample?.code).not.toContain('ArtifactViewer');
+  expect(toolCallExample?.code).not.toContain('messageActions');
+  expect(toolCallExample?.code).not.toContain('selectedArtifact');
+});
+
+test('composer popover example imports the named public component export', () => {
+  const examples = JSON.parse(
+    readFileSync(
+      join(import.meta.dir, '..', 'chat-composer-popover', 'chat-composer-popover.examples.json'),
+      'utf8',
+    ),
+  ) as { examples: Array<{ code: string }> };
+
+  expect(examples.examples[0]?.code).toContain('import { ChatComposerPopover,');
+  expect(examples.examples[0]?.code).not.toMatch(/import ChatComposerPopover\s*,/);
 });

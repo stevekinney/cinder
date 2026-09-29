@@ -4,7 +4,10 @@
  * SLIDER
  * Single-thumb and dual-thumb (range) slider following the WAI-ARIA
  * `role="slider"` pattern. Thumbs are absolutely positioned along the
- * track via the `--_cinder-slider-pos` custom property (a percentage).
+ * track via the `--_cinder-slider-pos` custom property — a fraction in
+ * [0, 1], not a percentage — mapped onto `--_cinder-slider-travel`, an
+ * interval inset by half the thumb size on each side so thumb centers
+ * never place a border box outside the root's layout bounds (COR-291).
  * Reduced-motion: thumb position transitions are suppressed.
  * ======================================== */
 
@@ -39,6 +42,17 @@
   }
 
   .cinder-slider__track {
+    /*
+     * COR-291: the fill, ticks, and thumbs all position themselves along
+     * this travel interval instead of the track's raw 100% width, so a
+     * fraction of 0 or 1 lands a thumb's *center* half a thumb-width in
+     * from the track edge. That keeps the thumb's border box inside the
+     * root's layout bounds at min/max rather than overhanging by half its
+     * diameter. It's rem-based (it reads --_cinder-slider-thumb-size), so
+     * it follows font-size scaling rather than a hardcoded inset.
+     */
+    --_cinder-slider-travel: calc(100% - var(--_cinder-slider-thumb-size));
+
     position: relative;
     width: 100%;
     height: var(--_cinder-slider-track-thickness);
@@ -56,8 +70,17 @@
   .cinder-slider__range {
     position: absolute;
     inset-block: 0;
-    inset-inline-start: var(--_cinder-slider-low);
-    inset-inline-end: calc(100% - var(--_cinder-slider-high));
+    inset-inline-start: calc(
+      var(--_cinder-slider-thumb-size) / 2 + var(--_cinder-slider-low) *
+        var(--_cinder-slider-travel)
+    );
+    inset-inline-end: calc(
+      100% -
+        (
+          var(--_cinder-slider-thumb-size) / 2 + var(--_cinder-slider-high) *
+            var(--_cinder-slider-travel)
+        )
+    );
     background: var(--cinder-accent-solid);
     border-radius: var(--cinder-radius-full);
     transition:
@@ -66,8 +89,14 @@
   }
 
   .cinder-slider:not(.cinder-slider--range) .cinder-slider__range {
-    inset-inline-start: 0;
-    inset-inline-end: calc(100% - var(--_cinder-slider-low));
+    inset-inline-start: calc(var(--_cinder-slider-thumb-size) / 2);
+    inset-inline-end: calc(
+      100% -
+        (
+          var(--_cinder-slider-thumb-size) / 2 + var(--_cinder-slider-low) *
+            var(--_cinder-slider-travel)
+        )
+    );
   }
 
   .cinder-slider__ticks {
@@ -86,7 +115,10 @@
   .cinder-slider__tick {
     position: absolute;
     top: 50%;
-    inset-inline-start: var(--_cinder-slider-tick);
+    inset-inline-start: calc(
+      var(--_cinder-slider-thumb-size) / 2 + var(--_cinder-slider-tick) *
+        var(--_cinder-slider-travel)
+    );
     width: 2px;
     height: 0.5rem;
     background: var(--cinder-border, currentColor);
@@ -97,7 +129,10 @@
   .cinder-slider__thumb {
     position: absolute;
     top: 50%;
-    inset-inline-start: var(--_cinder-slider-pos);
+    inset-inline-start: calc(
+      var(--_cinder-slider-thumb-size) / 2 + var(--_cinder-slider-pos) *
+        var(--_cinder-slider-travel)
+    );
     width: var(--_cinder-slider-thumb-size);
     height: var(--_cinder-slider-thumb-size);
     background: var(--cinder-surface-raised, white);

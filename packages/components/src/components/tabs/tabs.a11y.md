@@ -11,15 +11,7 @@
 - Each `TabPanel` carries `role="tabpanel"`, `aria-labelledby` pointing at the corresponding tab id, and `tabindex="0"` so keyboard users can move focus into the panel.
 - Inactive panels are not rendered (Cinder uses `{#if isActive}`), so no `hidden` attribute is required. Consumers who want to preserve panel state across switches should manage state externally.
 
-Use ordinary `TabPanel` children for the default one-tab-to-one-panel pattern.
-When the selected tab controls one stable caller-owned panel, such as a Monaco
-editor host whose contents change without replacing the panel element, pass the
-panel element's id to each `Tab` via `controls`. In that external-panel pattern,
-the consumer owns the panel element, `role="tabpanel"`, and labelling from the
-active tab. Provide explicit tab ids and set the caller-owned panel's
-`aria-labelledby` to the active tab id so its accessible name changes with the
-selected tab. Cinder still owns tab registration, disabled state, roving
-tabindex, activation, and visual tab styling.
+Use ordinary `TabPanel` children for the default one-tab-to-one-panel pattern. When the selected tab controls one stable caller-owned panel, such as a Monaco editor host whose contents change without replacing the panel element, pass the panel element's id to each `Tab` via `controls`. In that external-panel pattern, the consumer owns the panel element, `role="tabpanel"`, and labelling from the active tab. Provide explicit tab ids and set the caller-owned panel's `aria-labelledby` to the active tab id so its accessible name changes with the selected tab. Cinder still owns tab registration, disabled state, roving tabindex, activation, and visual tab styling.
 
 ## Roving tabindex
 

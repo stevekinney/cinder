@@ -210,7 +210,7 @@
  * Like every shared partial here (_dismiss-button, _input-frame, …), this is part
  * of `cinder/styles` only — a per-component sidecar (`cinder/alert/styles`) does
  * NOT include it; the documented contract requires importing `cinder/styles`
- * first (enforced by `cinder/styles/guard`). */
+ * first through the package root entry. */
 @import './components/_status-surface.css';
 
 /* Shared internal partial — scroll-driven edge-fade recipe (see the file's

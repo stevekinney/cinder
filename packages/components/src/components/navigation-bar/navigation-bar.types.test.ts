@@ -18,19 +18,19 @@ import type {
 
 // Verify all exported types are importable — compile-time smoke test.
 // The _Variables prefix signals intentional use-for-type-check-only.
-const _navigationBarItemsContext: NavigationBarItemsContext = {
+const navigationBarItemsContext: NavigationBarItemsContext = {
   variant: 'horizontal',
   placement: 'top',
   labelsVisible: 'always',
 };
-const _navigationBarToggleAttributes: NavigationBarToggleAttributes = {
+const navigationBarToggleAttributes: NavigationBarToggleAttributes = {
   'aria-expanded': 'false',
   'aria-controls': 'menu-id',
 };
-const _navigationVariant: NavigationVariant = 'horizontal';
-const _navigationPlacement: NavigationBarPlacement = 'bottom';
-const _navigationLabelVisibility: NavigationBarLabelVisibility = 'active';
-const _navigationMenuTogglePlacement: NavigationBarMenuTogglePlacement = 'before-brand';
+const navigationVariant: NavigationVariant = 'horizontal';
+const navigationPlacement: NavigationBarPlacement = 'bottom';
+const navigationLabelVisibility: NavigationBarLabelVisibility = 'active';
+const navigationMenuTogglePlacement: NavigationBarMenuTogglePlacement = 'before-brand';
 
 // Verify the resolved class type is string (not ClassValue / any).
 type NavigationBarClass = NavigationBarProps['class'];
@@ -50,10 +50,10 @@ test('NavigationBarProps["class"] resolves to string | undefined, not ClassValue
   expect(classIsString).toBe(true);
   expect(extendedClassIsString).toBe(true);
   // Smoke-test the other types compile (their values are assigned above).
-  expect(_navigationBarItemsContext.variant).toBe('horizontal');
-  expect(_navigationBarToggleAttributes['aria-expanded']).toBe('false');
-  expect(_navigationVariant).toBe('horizontal');
-  expect(_navigationPlacement).toBe('bottom');
-  expect(_navigationLabelVisibility).toBe('active');
-  expect(_navigationMenuTogglePlacement).toBe('before-brand');
+  expect(navigationBarItemsContext.variant).toBe('horizontal');
+  expect(navigationBarToggleAttributes['aria-expanded']).toBe('false');
+  expect(navigationVariant).toBe('horizontal');
+  expect(navigationPlacement).toBe('bottom');
+  expect(navigationLabelVisibility).toBe('active');
+  expect(navigationMenuTogglePlacement).toBe('before-brand');
 });

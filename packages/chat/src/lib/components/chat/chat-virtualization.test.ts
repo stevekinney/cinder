@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import type { ChatAdapterErrorEvent } from './adapter/chat-adapter.ts';
 import type { ConversationHistory, Message, MessageRole } from './conversation-model.ts';
 
@@ -13,7 +13,7 @@ class TestResizeObserver {
   disconnect(): void {}
 }
 const originalResizeObserver = globalThis.ResizeObserver;
-globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
+globalThis.ResizeObserver = TestResizeObserver;
 
 class TestIntersectionObserver {
   observe(): void {}
@@ -752,7 +752,7 @@ describe('Chat history pagination', () => {
       await tick();
       flushSync();
     }
-    expect(container.querySelector('[data-cinder-history-trigger]')).toBeNull();
+    expect(container.querySelector('[data-cinder-history-trigger]') === null).toBe(true);
   }, 180_000);
 
   test('adapter history loading preserves non-virtualized scroll position after prepend', async () => {
@@ -807,7 +807,7 @@ describe('Chat history pagination', () => {
     expect(loadCalls).toEqual(['virtual-conversation']);
     await waitFor(() => expect(scrollTops).toContain(360));
     await waitFor(() =>
-      expect(container.querySelector('[data-cinder-history-trigger]')).toBeNull(),
+      expect(container.querySelector('[data-cinder-history-trigger]') === null).toBe(true),
     );
   });
 
@@ -874,7 +874,7 @@ describe('Chat history pagination', () => {
     await waitFor(() => expect(adapterResolved).toBe(true));
     await waitFor(() => expect(timeline.scrollTop).toBeGreaterThan(120));
     await waitFor(() =>
-      expect(container.querySelector('[data-cinder-history-trigger]')).toBeNull(),
+      expect(container.querySelector('[data-cinder-history-trigger]') === null).toBe(true),
     );
   });
 
@@ -915,7 +915,7 @@ describe('Chat history pagination', () => {
 
     await waitFor(() => expect(adapterResolved).toBe(true));
     await waitFor(() =>
-      expect(container.querySelector('[data-cinder-history-trigger]')).toBeNull(),
+      expect(container.querySelector('[data-cinder-history-trigger]') === null).toBe(true),
     );
   });
 
@@ -943,7 +943,7 @@ describe('Chat history pagination', () => {
       container.querySelector<HTMLButtonElement>('[data-cinder-history-trigger] button')!,
     );
     await waitFor(() =>
-      expect(container.querySelector('[data-cinder-history-trigger]')).toBeNull(),
+      expect(container.querySelector('[data-cinder-history-trigger]') === null).toBe(true),
     );
 
     await rerender({
@@ -976,7 +976,7 @@ describe('Chat history pagination', () => {
         id: 'adapter-history-error-chat',
         conversation,
         adapter,
-        onadaptererror: (event: ChatAdapterErrorEvent) => errors.push(event),
+        onAdapterError: (event: ChatAdapterErrorEvent) => errors.push(event),
       },
     });
 

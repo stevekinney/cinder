@@ -1,6 +1,6 @@
+import { setupHappyDom } from '@lostgradient/testing';
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { Message } from '../chat/conversation-model.ts';
 import {
   clampNavigationIndex,
@@ -122,15 +122,6 @@ describe('chat navigation rail mechanics', () => {
       new URL('./chat-navigation-rail.css', import.meta.url),
       'utf8',
     );
-    const example = await readFile(
-      new URL(
-        import.meta.dir.includes('/dist/')
-          ? '../../../playground/src/examples/chat-navigation-rail/basic.example.svelte'
-          : '../../../../../playground/src/examples/chat-navigation-rail/basic.example.svelte',
-        import.meta.url,
-      ),
-      'utf8',
-    );
     expect(source).toContain('data-scrub-target');
     expect(source).toContain('aria-describedby');
     expect(source).toContain('aria-describedby={`${instanceId}-${message.id}-navigation-preview`}');
@@ -204,9 +195,5 @@ describe('chat navigation rail mechanics', () => {
     expect(source).toContain('if (!pointerMoved)');
     expect(source).toContain('suppressNextClick = false;');
     expect(source.indexOf('</nav>')).toBeLessThan(source.indexOf('chat-navigation-rail-preview'));
-    expect(example).toContain('<ChatNavigationRail {messages} {scrollToMessage} {viewport} />');
-    expect(example).toContain('scrollIntoView');
-    expect(example).toContain('aria-label="Conversation transcript"');
-    expect(example).toContain('tabindex="0"');
   });
 });

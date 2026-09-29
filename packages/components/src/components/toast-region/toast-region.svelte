@@ -431,7 +431,7 @@
   ): string {
     const id = getNextToastId(options);
     if (!canMutateToasts()) {
-      promiseToTrack.then(undefined, () => {});
+      void promiseToTrack.then(undefined, () => {});
       return id;
     }
     const loadingOptions: InternalShowOptions = {
@@ -446,7 +446,7 @@
     const isCurrentPromiseToast = () =>
       !destroyed && generations.get(id) === generation && findToast(id);
 
-    promiseToTrack.then(
+    void promiseToTrack.then(
       (value) => {
         if (!isCurrentPromiseToast()) return;
         const message =
@@ -456,6 +456,7 @@
         if (options.dismissible !== undefined) successOptions.dismissible = options.dismissible;
         if (options.action !== undefined) successOptions.action = options.action;
         upsertToast(message, successOptions);
+        return undefined;
       },
       (error) => {
         if (!isCurrentPromiseToast()) return;

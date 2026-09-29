@@ -21,6 +21,7 @@
   import type { Attachment } from 'svelte/attachments';
 
   import { classNames } from '../../utilities/class-names.ts';
+  import { rowDividerAttachment } from '../../utilities/row-divider.ts';
   import {
     getCommandListContext,
     hasCommandListContext,
@@ -83,8 +84,8 @@
   const normalizedAccessibleLabel = $derived(normalizeOptionalAttribute(accessibleLabel));
   const normalizedKeyboardShortcut = $derived(normalizeOptionalAttribute(keyboardShortcut));
 
-  function normalizeOptionalAttribute(value: string | undefined): string | undefined {
-    const trimmed = value?.trim();
+  function normalizeOptionalAttribute(attributeValue: string | undefined): string | undefined {
+    const trimmed = attributeValue?.trim();
     return trimmed ? trimmed : undefined;
   }
 
@@ -109,6 +110,7 @@
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <li
   {@attach registerWithPalette}
+  {@attach rowDividerAttachment}
   id={itemId ?? undefined}
   role="option"
   class={classNames('cinder-_row-item', 'cinder-command-item', className)}

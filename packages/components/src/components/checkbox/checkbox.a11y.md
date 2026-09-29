@@ -11,6 +11,7 @@ Native `<input type="checkbox">` per [WAI-ARIA Authoring Practices: Checkbox](ht
 - `aria-invalid="true"` is set when an `error` prop is supplied; cleared otherwise.
 - `aria-describedby` references the description element and the error element when either is present, so screen readers announce both alongside the label.
 - The `<label for={id}>` rendered by the `label` prop is the canonical accessible name. Consumers who supply their own labelling outside the component should pass `aria-labelledby` via rest props.
+- The `error` message renders in a `<p aria-live="polite">`, matching Input's error live region: it mounts by default even before any error exists, rather than being created only once `error` is first set, since a freshly-mounted live region is not reliably announced by NVDA or JAWS. See `checkbox/README.md`'s "Callback order" for the related `onchange`/`onValueChangeRequest`/`onValueChange` firing order and value semantics.
 
 ## Indeterminate
 

@@ -6,7 +6,7 @@ A clickable button or anchor with built-in loading state, icon slots, and a disc
 
 ```svelte
 <script lang="ts">
-  import Button from '@lostgradient/cinder/button';
+  import { Button } from '@lostgradient/cinder';
 </script>
 
 <Button variant="primary" size="md" label="Save" />
@@ -67,6 +67,7 @@ When `href` is set, the component renders as `<a>`; otherwise it renders as `<bu
 - `--cinder-button-radius-sm`
 - `--cinder-button-radius-xl`
 - `--cinder-button-radius-xs`
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

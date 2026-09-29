@@ -6,8 +6,8 @@ Headless utility that calls a function when the user clicks or taps outside a su
 
 ```svelte
 <script lang="ts">
-  import Button from '@lostgradient/cinder/button';
-  import ClickAwayListener from '@lostgradient/cinder/click-away-listener';
+  import { Button } from '@lostgradient/cinder';
+  import { ClickAwayListener } from '@lostgradient/cinder';
 
   let open = $state(false);
 </script>
@@ -62,7 +62,6 @@ Headless utility that calls a function when the user clicks or taps outside a su
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

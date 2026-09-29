@@ -94,12 +94,7 @@ export type ApprovalOperation =
 export type ApprovalOperationSchema = ApprovalOperation;
 
 export type ApprovalState =
-  | 'pending'
-  | 'approved'
-  | 'approved_with_edits'
-  | 'denied'
-  | 'expired'
-  | 'cancelled';
+  'pending' | 'approved' | 'approved_with_edits' | 'denied' | 'expired' | 'cancelled';
 
 export type ApprovalResolutionDecision = 'approve' | 'approve_with_edits' | 'deny' | 'cancel';
 

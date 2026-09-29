@@ -18,7 +18,7 @@
 
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
-  import { Maximize2 } from '@lostgradient/cinder/icons';
+  import { Maximize2 } from '@lostgradient/cinder';
   import ImageLightbox from './image-lightbox.svelte';
 
   let {
@@ -155,9 +155,11 @@
     margin-top: var(--cinder-space-2);
   }
 
-  /* Single image: larger, centered */
+  /* Single images use their intrinsic ratio and stay within the message width. */
   .message-attachments[data-count='1'] {
-    grid-template-columns: minmax(200px, 60%);
+    display: block;
+    inline-size: fit-content;
+    max-inline-size: min(32rem, 100%);
   }
 
   /* Two images: side by side */
@@ -181,6 +183,10 @@
     border-radius: var(--cinder-radius-md);
     overflow: hidden;
     background: var(--cinder-surface-inset);
+  }
+
+  .message-attachments[data-count='1'] .message-attachment[data-cinder-image-placeholder] {
+    inline-size: min(20rem, 100%);
   }
 
   /* Button wrapper: removes chrome but keeps keyboard-operable behavior */
@@ -216,11 +222,20 @@
     display: block;
     width: 100%;
     height: 100%;
-    max-height: 400px;
+    max-block-size: 400px;
     border-radius: var(--cinder-radius-md);
     /* Use contain to preserve full image content and avoid cropping */
     object-fit: contain;
     transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  .message-attachments[data-count='1'] .message-attachment,
+  .message-attachments[data-count='1'] .message-attachment-image {
+    max-block-size: 24rem;
+  }
+
+  .message-attachments[data-count='1'] .message-attachment {
+    min-block-size: 0;
   }
 
   .message-attachment-maximize {
@@ -235,7 +250,7 @@
     color: var(--cinder-text-default);
     background: color-mix(in oklch, var(--cinder-surface), transparent 12%);
     border-radius: var(--cinder-radius-full);
-    opacity: 0;
+    opacity: 1;
     pointer-events: none;
     transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
   }

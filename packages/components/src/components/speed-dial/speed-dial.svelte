@@ -104,7 +104,7 @@
     panel: () => actionsElement,
     placement: () => placement,
     offset: () => {
-      spacingVersion;
+      void spacingVersion;
       return getSpacingOffset();
     },
     widthMode: () => 'none',
@@ -162,9 +162,9 @@
   }
 
   function getPortalTarget(): HTMLElement | null {
-    const trigger = getTriggerElement();
-    if (!trigger) return null;
-    return findNearestOpenTopLayer(trigger);
+    const triggerElement = getTriggerElement();
+    if (!triggerElement) return null;
+    return findNearestOpenTopLayer(triggerElement);
   }
 
   function normalizePlacementDirection(value: string): SpeedDialDirection {

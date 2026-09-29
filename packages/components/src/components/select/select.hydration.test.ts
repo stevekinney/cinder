@@ -8,13 +8,13 @@
  */
 import { describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
-import { renderThenHydrate } from '../../test/hydrate.ts';
+import { prepareSvelteServerSource, renderThenHydrate, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
 const { default: Select } = await import('./select.svelte');
 const sourcePath = new URL('./select.svelte', import.meta.url).pathname;
+await prepareSvelteServerSource(sourcePath);
 
 const options = [
   { value: 'a', label: 'Option A' },
@@ -41,7 +41,7 @@ describe('Select hydration', () => {
       );
       expect(hydrationWarnings).toEqual([]);
     } finally {
-      result.cleanup();
+      await result.cleanup();
     }
   });
 
@@ -64,7 +64,7 @@ describe('Select hydration', () => {
         expect(result.container.querySelector(`#${referencedId}`)).not.toBeNull();
       }
     } finally {
-      result.cleanup();
+      await result.cleanup();
     }
   });
 });

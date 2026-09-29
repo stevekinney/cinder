@@ -8,7 +8,7 @@ Use `Chip mode="display"` for issue labels and tags; use Badge for attached coun
 
 ```svelte
 <script lang="ts">
-  import Chip from '@lostgradient/cinder/chip';
+  import { Chip } from '@lostgradient/cinder';
 </script>
 
 <Chip label="frontend" mode="display" variant="info" />
@@ -42,7 +42,6 @@ Use `Chip mode="display"` for issue labels and tags; use Badge for attached coun
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

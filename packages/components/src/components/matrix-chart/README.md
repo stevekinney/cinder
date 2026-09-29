@@ -6,7 +6,7 @@ Categorical × categorical heatmap for dense analytics, confusion matrices, and 
 
 ```svelte
 <script lang="ts">
-  import MatrixChart from '@lostgradient/cinder/matrix-chart';
+  import { MatrixChart } from '@lostgradient/cinder';
 
   const data = [
     { actual: 'Cat', predicted: 'Cat', count: 50 },
@@ -79,7 +79,6 @@ MatrixChart uses SVG and derives its plot margins from the category labels inste
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents

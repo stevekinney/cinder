@@ -197,7 +197,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
       // Release the lock on CLOSE, which is the real session boundary. See the
       // declaration above for why this cannot live inside the effect.
       lockedPlacement = undefined;
-      return;
+      return undefined;
     }
 
     const anchor = options.anchor();
@@ -207,7 +207,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
       positionStyle = '';
       availableHeightStyle = '';
       arrowStyle = '';
-      return;
+      return undefined;
     }
 
     const placement = options.placement?.() ?? DEFAULT_PLACEMENT;

@@ -6,6 +6,7 @@
  * (`ChatMessagePart`) that sits on top of the structural `Message` mirror.
  */
 
+import type { ApprovalState } from '@lostgradient/cinder';
 import type {
   Message,
   MultiModalContent,
@@ -104,15 +105,16 @@ export type ImageMessagePart = {
   image: Extract<MultiModalContent, { type: 'image' }>;
 };
 
+export type ToolApprovalAction = Extract<ToolAction, { type: 'approval' }>;
+
 /**
- * A tool-approval render part — emitted in place of a `tool-result` part when
- * the result's `outcome === 'action_required'` and an `action` is present.
+ * A tool-approval render part — emitted in place of a `tool-result` part only
+ * when the result's `outcome === 'action_required'` and the action is an
+ * explicit approval request. Input requests keep the neutral tool-result
+ * presentation.
  *
- * Renders a prompt asking the user to approve or deny a pending tool action.
- * `approved` is a tri-state: `true` (approved), `false` (denied), or `undefined`
- * (still pending). The `approved` field is derived from the container's
- * `approvedToolCallIds`/`deniedToolCallIds` sets — it is never written back to
- * the transcript.
+ * The state is UI-only and comes from the container's approval state map; it is
+ * never written back to the transcript.
  */
 export type ToolApprovalMessagePart = {
   type: 'tool-approval';
@@ -120,9 +122,9 @@ export type ToolApprovalMessagePart = {
   key: string;
   toolCallId: string;
   toolName: string;
-  action: ToolAction;
-  /** `true` = approved, `false` = denied, `undefined` = pending. */
-  approved: boolean | undefined;
+  action: ToolApprovalAction;
+  state: ApprovalState;
+  resolutionInFlight: boolean;
 };
 
 /**
@@ -154,11 +156,7 @@ export type ReasoningInfo = {
 };
 
 export type TranscriptEntryKind =
-  | 'interrupted'
-  | 'redirect'
-  | 'stateChange'
-  | 'slashCommand'
-  | 'turnSummary';
+  'interrupted' | 'redirect' | 'stateChange' | 'slashCommand' | 'turnSummary';
 
 export type TranscriptEntryInfo = {
   kind: TranscriptEntryKind;
@@ -273,17 +271,12 @@ export type MessagePartDerivationContext = {
   /** Whether long content is expanded (drives the markdown part's truncation). */
   expanded?: boolean | undefined;
   /**
-   * The set of tool-call IDs the consumer has already approved. Used to
-   * derive the `approved: true` state on a `tool-approval` part without mutating
-   * the transcript. Tool calls NOT in either set render as pending (`undefined`).
+   * UI-only approval state keyed by tool-call id. Missing entries render as
+   * pending; terminal entries are never written back to the transcript.
    */
-  approvedToolCallIds?: ReadonlySet<string> | undefined;
-  /**
-   * The set of tool-call IDs the consumer has denied. Used to derive the
-   * `approved: false` state on a `tool-approval` part without mutating the
-   * transcript.
-   */
-  deniedToolCallIds?: ReadonlySet<string> | undefined;
+  approvalStates?: ReadonlyMap<string, ApprovalState> | undefined;
+  /** Tool-call ids currently submitting a resolution. Used to disable duplicate submits. */
+  approvalResolutionInFlightIds?: ReadonlySet<string> | undefined;
   /**
    * Pre-body extended thinking block. When present and non-empty, a
    * `reasoning` part is emitted before the markdown body part. An empty string

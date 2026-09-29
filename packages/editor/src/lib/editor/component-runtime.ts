@@ -5,46 +5,51 @@
  * markdown rendering pipeline at module-evaluation time.
  *
  * This module is the **single canonical re-export source** for the symbols
- * listed below. `./index.ts` (the package root) re-exports these names from
- * here rather than from `./commands.js` directly, so every consumer of the
- * package sees one re-export path per name. Bun's bundler on Linux emits a
- * `Duplicate export of '<name>'` SyntaxError at module evaluation when both
- * package entry points re-export the same name from `./commands.js`
- * independently — routing index through component-runtime collapses those
- * two paths into one and eliminates the duplicate.
+ * listed below. Bun's bundler on Linux emits a `Duplicate export of '<name>'`
+ * SyntaxError at module evaluation when two package entry points re-export the
+ * same name from the same module independently — routing through one module
+ * collapses those paths into one and eliminates the duplicate.
+ *
+ * Upstream drew the command names from a single `./commands.ts`; corvidae split
+ * that module into `commands-blocks`, `commands-links`, `commands-marks` and
+ * `commands-state`, so each name is re-exported from its new home. The
+ * placeholder configuration types come from `@lostgradient/markdown`'s single source
+ * export rather than upstream's `@lostgradient/markdown/templates/types`
+ * subpath, which corvidae's one-key `exports` map does not carry.
  */
 
 export type {
   PlaceholderCompletionConfiguration,
   PlaceholderDecorationConfiguration,
-} from '@lostgradient/markdown/templates/types';
-export { createEditorAttachment } from './attach.js';
+} from '@lostgradient/markdown';
+export { createEditorAttachment } from './attach.ts';
+export {
+  redo,
+  setHeading,
+  setParagraph,
+  toggleBlockquote,
+  toggleBulletList,
+  toggleOrderedList,
+  undo,
+} from './commands-blocks.ts';
 export {
   applyLinkToSelection,
-  getActiveBlockType,
-  getActiveMarks,
   getLinkAtCursor,
   getLinkRangeAtCursor,
   getLinkTextAtCursor,
   insertLinkAtCursor,
-  isSelectionCollapsed,
-  redo,
   removeLink,
-  setHeading,
-  setParagraph,
-  toggleBlockquote,
-  toggleBold,
-  toggleBulletList,
-  toggleCode,
-  toggleItalic,
-  toggleOrderedList,
-  toggleStrikethrough,
-  undo,
   updateLinkAtCursor,
+} from './commands-links.ts';
+export { toggleBold, toggleCode, toggleItalic, toggleStrikethrough } from './commands-marks.ts';
+export {
+  getActiveBlockType,
+  getActiveMarks,
+  isSelectionCollapsed,
   type ActiveBlockType,
   type ActiveMarks,
-} from './commands.js';
-export { setEditorReadonly } from './editor.js';
-export { getShortcutDisplay } from './keymap-plugin.js';
-export { DEFAULT_DEBOUNCE_MS } from './types.js';
-export type { EditorHandle, EditorSelection, EditorState } from './types.js';
+} from './commands-state.ts';
+export { setEditorReadonly } from './editor.ts';
+export { getShortcutDisplay } from './keymap-plugin.ts';
+export { DEFAULT_DEBOUNCE_MS } from './types.ts';
+export type { EditorHandle, EditorSelection, EditorState } from './types.ts';

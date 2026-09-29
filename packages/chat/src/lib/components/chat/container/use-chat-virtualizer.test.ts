@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 import { calculateChatVirtualWindow, ChatVirtualizer } from './use-chat-virtualizer.svelte.ts';
 
 setupHappyDom();
@@ -283,7 +283,7 @@ describe('ChatVirtualizer', () => {
       }
     }
 
-    globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver;
+    globalThis.ResizeObserver = TestResizeObserver;
 
     try {
       const { virtualizer } = createVirtualizer({ count: 2, size: 80 });

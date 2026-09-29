@@ -6,7 +6,7 @@ Overlapping collaborator stack built on Avatar, with focusable names and an over
 
 ```svelte
 <script lang="ts">
-  import AvatarGroup from '@lostgradient/cinder/avatar-group';
+  import { AvatarGroup } from '@lostgradient/cinder';
 </script>
 
 <AvatarGroup avatars={[{ name: 'Ada Lovelace' }, { name: 'Grace Hopper' }]} />
@@ -35,6 +35,7 @@ Overlapping collaborator stack built on Avatar, with focusable names and an over
 <!-- generated:variables:start -->
 
 - `--cinder-avatar-group-overlap`
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

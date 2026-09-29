@@ -88,10 +88,10 @@
     for (const datum of data) {
       const value = datum[xField];
       if (value === null || value === undefined) continue;
-      const label = String(value);
-      if (!seen.has(label)) {
-        seen.add(label);
-        result.push(label);
+      const xLabel = String(value);
+      if (!seen.has(xLabel)) {
+        seen.add(xLabel);
+        result.push(xLabel);
       }
     }
     return result;
@@ -103,10 +103,10 @@
     for (const datum of data) {
       const value = datum[yField];
       if (value === null || value === undefined) continue;
-      const label = String(value);
-      if (!seen.has(label)) {
-        seen.add(label);
-        result.push(label);
+      const yLabel = String(value);
+      if (!seen.has(yLabel)) {
+        seen.add(yLabel);
+        result.push(yLabel);
       }
     }
     return result;

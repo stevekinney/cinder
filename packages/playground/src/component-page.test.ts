@@ -32,7 +32,7 @@
  */
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 
-import { setupHappyDom } from '../../components/src/test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 // Install happy-dom globals via the shared, idempotent helper BEFORE
 // dynamic-importing @testing-library/svelte. Using the single shared window

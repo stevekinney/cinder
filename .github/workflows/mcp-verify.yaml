@@ -1,0 +1,40 @@
+name: verify-cinder-mcp
+
+on:
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-mcp:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.4.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        uses: ./.github/actions/install-dependencies
+
+      - name: Validate packed cinder-mcp consumer
+        run: bun run --filter=@lostgradient/cinder-mcp validate:consumer
+
+      - name: Lint cinder-mcp
+        run: bun run --filter=@lostgradient/cinder-mcp lint
+
+      - name: Typecheck cinder-mcp
+        run: bun run --filter=@lostgradient/cinder-mcp typecheck
+
+      - name: Test cinder-mcp
+        run: bun run --filter=@lostgradient/cinder-mcp test

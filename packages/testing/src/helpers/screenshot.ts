@@ -1,17 +1,17 @@
 import {
-  expect,
-  test,
   type FullConfig,
   type Locator,
   type Page,
   type PageAssertionsToHaveScreenshotOptions,
+  type TestInfo,
 } from '@playwright/test';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import type { MaskRule } from '../../../components/scripts/lib/visual-fixtures/schema.ts';
-import { screenshotPath, snapshotPath, type ArtifactKey } from './artifact-path.ts';
+import { environmentConfiguration } from '../environment-configuration.ts';
+import type { MaskRule } from '../visual-fixtures.ts';
+import { screenshotPath, type ArtifactKey } from './artifact-path.ts';
 import { parseComponentFilter, parseComponentScopeValue } from './component-filter.ts';
 import { loadManifest } from './manifest.ts';
 
@@ -38,7 +38,7 @@ function isVisualDiffMode(value: string): value is VisualDiffMode {
  * Invalid or unset values fall back to `'off'` with a one-time console warning.
  */
 export function resolveVisualDiffMode(): VisualDiffMode {
-  const raw = process.env['CINDER_VISUAL_DIFF'];
+  const raw = environmentConfiguration().cinderVisualDiff;
 
   if (raw === undefined || raw === '') {
     return 'off';
@@ -48,7 +48,7 @@ export function resolveVisualDiffMode(): VisualDiffMode {
     return raw;
   }
 
-  console.warn(
+  process.emitWarning(
     `[cinder/testing] CINDER_VISUAL_DIFF="${raw}" is not a valid mode (off | report | block). Falling back to 'off'.`,
   );
   return 'off';
@@ -116,7 +116,7 @@ export const SNAPSHOT_DIFF_OPTIONS: ToHaveScreenshotOptions = {
  * Playwright's `config.updateSnapshots` value, narrowed to what block mode
  * cares about. `'none'` means we are validating against committed baselines.
  * The other values (`'all'`, `'missing'`, `'changed'`) only count as authoring
- * when Cinder's update script also set `CINDER_UPDATE_SNAPSHOTS=1`; Playwright
+ * when the application's update script also set `CINDER_UPDATE_SNAPSHOTS=1`; Playwright
  * can otherwise default local runs to `'missing'`, and block mode must still
  * fail with the project-specific update-baselines message.
  *
@@ -136,7 +136,7 @@ export type UpdateSnapshotsState = FullConfig['updateSnapshots'];
 export type BlockBaselineGuardResult = { ok: true } | { ok: false; message: string };
 
 /**
- * Whether Playwright is in Cinder's baseline-authoring state, in which a
+ * Whether Playwright is in the application's baseline-authoring state, in which a
  * missing baseline is expected and must NOT trigger the guard.
  *
  * Written as an exhaustive switch over every {@link UpdateSnapshotsState}
@@ -156,7 +156,7 @@ function isAuthoringState(
     case 'all':
     case 'changed':
     case 'missing':
-      // Playwright defaults to writing missing snapshots in local runs. Cinder
+      // Playwright defaults to writing missing snapshots in local runs. The application
       // only treats this as baseline authoring when the update script has set
       // the explicit repo-owned marker.
       return explicitUpdateRun;
@@ -167,70 +167,38 @@ function isAuthoringState(
   }
 }
 
-function isCanonicalVisualDiffEnvironment(environment: NodeJS.ProcessEnv): boolean {
-  return (
-    environment['PLAYWRIGHT_DOCKER'] === '1' &&
-    typeof environment['CINDER_PLAYWRIGHT_VERSION'] === 'string' &&
-    environment['CINDER_PLAYWRIGHT_VERSION'].trim().length > 0
-  );
-}
-
 /**
  * Decides whether a block-mode capture should fail fast with an actionable
  * "update baselines" message instead of delegating to `toHaveScreenshot`.
  *
  * In block mode a missing baseline is a hard error: there is no committed
  * golden image to compare against, so the only safe outcomes are (a) the
- * developer authors a baseline via the documented Docker workflow, or (b) the
+ * developer authors a baseline via the documented application workflow, or (b) the
  * run is explicitly an update run. Playwright's default missing-snapshot
  * message reports that a snapshot is absent but not how this repo expects you
  * to produce one, so we substitute a message that names the update command.
  *
  * Stays silent (returns `{ ok: true }`) when Playwright is in an update state,
  * or when the baseline exists and the comparison is running inside the
- * canonical Docker image.
+ * application workflow.
  *
  * @param baselinePath - Absolute path to the expected committed baseline PNG.
  * @param baselineExists - Whether that file is present on disk.
  * @param updateSnapshots - Playwright's `config.updateSnapshots` value.
- * @param explicitUpdateRun - Whether Cinder's update script is intentionally authoring baselines.
- * @param environment - Process environment used to verify canonical Docker comparison.
+ * @param explicitUpdateRun - Whether the application's update script is intentionally authoring baselines.
  */
 export function blockBaselineGuard(
   baselinePath: string,
   baselineExists: boolean,
   updateSnapshots: UpdateSnapshotsState,
-  explicitUpdateRun = process.env['CINDER_UPDATE_SNAPSHOTS'] === '1',
-  environment: NodeJS.ProcessEnv = process.env,
+  explicitUpdateRun = environmentConfiguration().cinderUpdateSnapshots,
 ): BlockBaselineGuardResult {
   if (isAuthoringState(updateSnapshots, explicitUpdateRun)) {
     return { ok: true };
   }
 
   if (baselineExists) {
-    if (isCanonicalVisualDiffEnvironment(environment)) {
-      return { ok: true };
-    }
-
-    const message = [
-      'Visual-regression baseline comparison requires the canonical cinder-playwright Docker image (CINDER_VISUAL_DIFF=block):',
-      `  ${baselinePath}`,
-      '',
-      'A committed baseline exists, but this process is not running with the',
-      'PLAYWRIGHT_DOCKER=1 and CINDER_PLAYWRIGHT_VERSION markers baked into the',
-      'baseline image. Host-rendered pixels can diverge from committed baselines,',
-      'so run the comparison in Docker instead:',
-      '',
-      '  CINDER_VISUAL_DIFF=block bun run --filter=@cinder/testing test:browser:docker',
-      '',
-      'To update missing or changed baselines, run:',
-      '',
-      '  bun run --filter=@cinder/testing test:browser:update:docker',
-      '',
-      'See docs/visual-regression/baselines.md for the full update workflow.',
-    ].join('\n');
-
-    return { ok: false, message };
+    return { ok: true };
   }
 
   const message = [
@@ -238,13 +206,13 @@ export function blockBaselineGuard(
     `  ${baselinePath}`,
     '',
     'Block mode compares against committed baselines, but none exists for this case.',
-    'Baselines are authored only inside the canonical cinder-playwright Docker image',
-    '(macOS / Linux dev-host pixels diverge from CI and would be flaky), so run:',
+    'To author missing or changed baselines, run:',
     '',
-    '  bun run --filter=@cinder/testing test:browser:update:docker',
+    '  bun run test:browser:update',
     '',
-    'or trigger the "update-baselines" workflow_dispatch on the browser-tests workflow.',
-    'See docs/visual-regression/baselines.md for the full update workflow.',
+    'Then rerun the root visual regression command:',
+    '',
+    '  bun run test:browser:visual',
   ].join('\n');
 
   return { ok: false, message };
@@ -252,7 +220,7 @@ export function blockBaselineGuard(
 
 export function isScreenshotInComponentScope(
   slug: string,
-  rawComponentScope = process.env['CINDER_TEST_COMPONENTS'],
+  rawComponentScope = environmentConfiguration().cinderTestComponents,
   knownSlugs?: ReadonlySet<string>,
 ): boolean {
   if (parseComponentScopeValue(rawComponentScope).length === 0) return true;
@@ -281,7 +249,7 @@ function reportFragmentPath(testId: string, key: ArtifactKey): string {
   const hash = createHash('sha256')
     .update(JSON.stringify([testId, key.slug, key.theme, key.viewport, key.fixture]))
     .digest('hex');
-  const workerId = process.env['TEST_WORKER_INDEX'] ?? '0';
+  const workerId = environmentConfiguration().testWorkerIndex ?? '0';
   return `test-results/visual-report/${workerId}/${hash}.json`;
 }
 
@@ -303,6 +271,27 @@ function masksToLocators(page: Page, masks: MaskRule[]): Locator[] {
   // page.getByTestId() is safe against CSS selector injection — never interpolate
   // testId values directly into a CSS selector string.
   return masks.map((rule) => page.getByTestId(rule.testId));
+}
+
+function screenshotName(key: ArtifactKey): [string, string] {
+  return [key.slug, `${key.theme}-${key.viewport}-${key.fixture}.png`];
+}
+
+function screenshotBaselinePath(key: ArtifactKey, testInfo: TestInfo): string {
+  return testInfo.snapshotPath(...screenshotName(key));
+}
+
+function screenshotOptions(
+  page: Page,
+  options: CaptureScreenshotOptions | undefined,
+): ToHaveScreenshotOptions {
+  const snapshotOptions: ToHaveScreenshotOptions = { ...SNAPSHOT_DIFF_OPTIONS };
+
+  if (options?.masks !== undefined && options.masks.length > 0) {
+    snapshotOptions.mask = masksToLocators(page, options.masks);
+  }
+
+  return snapshotOptions;
 }
 
 // ---------------------------------------------------------------------------
@@ -378,30 +367,39 @@ async function captureBlockMode(
   key: ArtifactKey,
   options: CaptureScreenshotOptions | undefined,
 ): Promise<void> {
+  const { expect, test } = await import('@playwright/test');
+  const testInfo = test.info();
   // Fail fast with an actionable message when the committed baseline is absent
   // and we are validating (not authoring). Playwright's default missing-snapshot
-  // error does not point at this repo's Docker-only update workflow.
-  const baseline = snapshotPath(key);
-  const guard = blockBaselineGuard(
-    baseline,
-    existsSync(baseline),
-    test.info().config.updateSnapshots,
-  );
+  // error does not point at the application's update workflow.
+  const baseline = screenshotBaselinePath(key, testInfo);
+  const guard = blockBaselineGuard(baseline, existsSync(baseline), testInfo.config.updateSnapshots);
   if (!guard.ok) {
     throw new Error(guard.message);
   }
 
-  // Pass [slug, filename] so Playwright nests under `snapshots/<slug>/` via
-  // snapshotPathTemplate. Using only basename would collapse all components
-  // into a flat directory and cause cross-component name collisions.
-  const name: [string, string] = [key.slug, `${key.theme}-${key.viewport}-${key.fixture}.png`];
-  const snapshotOptions: ToHaveScreenshotOptions = { ...SNAPSHOT_DIFF_OPTIONS };
+  // Pass [slug, filename] so the app's snapshotPathTemplate resolves the
+  // baseline under snapshots/<projectName>/<platform>/<slug>/filename.
+  await expect(page).toHaveScreenshot(screenshotName(key), screenshotOptions(page, options));
+}
 
-  if (options?.masks !== undefined && options.masks.length > 0) {
-    snapshotOptions.mask = masksToLocators(page, options.masks);
-  }
+function diffPixelsFromError(error: unknown): number {
+  const message = error instanceof Error ? error.message : String(error);
+  const diffMatch = /(\d+) pixels?/.exec(message);
+  const pixelString = diffMatch?.[1];
+  return pixelString !== undefined ? parseInt(pixelString, 10) : -1;
+}
 
-  await expect(page).toHaveScreenshot(name, snapshotOptions);
+async function attachDiffIfPresent(testInfo: TestInfo, attachmentsBefore: number): Promise<void> {
+  const diffAttachment = testInfo.attachments
+    .slice(attachmentsBefore)
+    .find((attachment) => attachment.name === 'diff' && attachment.path !== undefined);
+  if (diffAttachment?.path === undefined) return;
+
+  await testInfo.attach('visual-diff', {
+    path: diffAttachment.path,
+    contentType: 'image/png',
+  });
 }
 
 async function captureReportMode(
@@ -409,56 +407,35 @@ async function captureReportMode(
   key: ArtifactKey,
   options: CaptureScreenshotOptions | undefined,
 ): Promise<void> {
-  const baseline = snapshotPath(key);
+  const { expect, test } = await import('@playwright/test');
+  const testInfo = test.info();
+  const baseline = screenshotBaselinePath(key, testInfo);
 
-  // Skip silently when no baseline is committed yet; the baseline-coverage-check
-  // script will surface missing baselines in its own CI job.
+  // Report mode is optional diagnostics: skip silently when no baseline is
+  // committed. Block mode remains the validation gate for missing baselines.
   if (!existsSync(baseline)) {
     return;
   }
 
-  const attachmentsBefore = test.info().attachments.length;
+  const attachmentsBefore = testInfo.attachments.length;
 
   try {
-    const name: [string, string] = [key.slug, `${key.theme}-${key.viewport}-${key.fixture}.png`];
-    const snapshotOptions: ToHaveScreenshotOptions = { ...SNAPSHOT_DIFF_OPTIONS };
-
-    if (options?.masks !== undefined && options.masks.length > 0) {
-      snapshotOptions.mask = masksToLocators(page, options.masks);
-    }
-
-    await expect(page).toHaveScreenshot(name, snapshotOptions);
+    await expect(page).toHaveScreenshot(screenshotName(key), screenshotOptions(page, options));
   } catch (error) {
-    // Extract diffPixels from Playwright's error message when available.
-    const message = error instanceof Error ? error.message : String(error);
-    const diffMatch = /(\d+) pixels?/.exec(message);
-    const pixelString = diffMatch?.[1];
-    const diffPixels = pixelString !== undefined ? parseInt(pixelString, 10) : -1;
-
-    const testInfo = test.info();
     const fragment: ReportFragment = {
       testId: testInfo.testId,
       slug: key.slug,
       theme: key.theme,
       viewport: key.viewport,
       fixture: key.fixture,
-      diffPixels,
+      diffPixels: diffPixelsFromError(error),
     };
 
     const fragmentPath = reportFragmentPath(testInfo.testId, key);
     await mkdir(dirname(fragmentPath), { recursive: true });
     await writeFile(fragmentPath, JSON.stringify(fragment, null, 2));
 
-    // Attach the diff PNG if Playwright produced one.
-    const diffAttachment = testInfo.attachments
-      .slice(attachmentsBefore)
-      .find((attachment) => attachment.name === 'diff' && attachment.path !== undefined);
-    if (diffAttachment?.path !== undefined) {
-      await testInfo.attach('visual-diff', {
-        path: diffAttachment.path,
-        contentType: 'image/png',
-      });
-    }
+    await attachDiffIfPresent(testInfo, attachmentsBefore);
     // Never throw in report mode — the fragment records the mismatch.
   }
 }

@@ -143,7 +143,7 @@
 {/snippet}
 
 {#if rendersCustomResponsiveFallbackStyle}
-  <svelte:element this={'style'} data-cinder-sidebar-breakpoint-style>
+  <svelte:element this={"style"} data-cinder-sidebar-breakpoint-style>
     {responsiveFallbackCss}
   </svelte:element>
 {/if}

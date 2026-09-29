@@ -112,7 +112,7 @@
  * NOTE (CSS audit, Batch D): the soft surface is synthesized rather than read
  * from the `--cinder-color-{status}-{bg,fg,border}` triples because the
  * dark-theme triple background sits ~8 oklch-L points lighter (28% vs 20% L),
- * exceeding the 0.02 ΔL threshold. See docs/css-audit/status-triple-equivalence.md.
+ * exceeding the 0.02 ΔL threshold. See documentation/css-audit/status-triple-equivalence.md.
  *
  * NOTE (post-P7 reversal): P7 previously shed Alert's status-colored frame,
  * because the pre-P7 border was a hand-tuned saturated color sub-3:1 against

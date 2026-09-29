@@ -2,7 +2,7 @@
 import * as matchers from '@testing-library/jest-dom/matchers';
 import { afterEach, beforeEach, describe, expect, setSystemTime, test } from 'bun:test';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
 
 expect.extend(matchers as Parameters<typeof expect.extend>[0]);
 setupHappyDom();

@@ -6,6 +6,8 @@ import {
   assertSourceManifest,
   buildPublishedManifest,
   runtimeExternalSpecifiers,
+  serverEntrypointsFromManifest,
+  styleDeclarationPathsFromManifest,
   type PackageManifest,
 } from './pack-for-publish.ts';
 
@@ -37,6 +39,58 @@ const plannedCinderVersion =
   cinderManifest.version;
 
 describe('Editor package ownership boundary', () => {
+  test('hashes every shared Cinder script imported by the Editor build', async () => {
+    const build = await Bun.file(join(packageRoot, 'scripts', 'build.ts')).text();
+    const sharedScripts = [
+      ...build.matchAll(/from '\.\.\/\.\.\/components\/scripts\/([^']+)'/g),
+    ].map((match) => match[1]);
+    expect(sharedScripts.length).toBeGreaterThan(0);
+    for (const script of sharedScripts) {
+      expect(build).toContain('${WORKSPACE_ROOT}/packages/components/scripts/' + script);
+    }
+  });
+
+  test('builds each public Node component entry from its source export', () => {
+    const manifest = {
+      ...editorManifest,
+      exports: {
+        ...editorManifest.exports,
+        './diff-review': {
+          svelte: './src/lib/components/diff-review/index.ts',
+          node: './dist/server/components/diff-review/index.js',
+        },
+        './diff-review-comments': {
+          svelte: './src/lib/components/diff-review-comments/index.ts',
+          node: './dist/server/components/diff-review-comments/index.js',
+        },
+      },
+    };
+    expect(serverEntrypointsFromManifest(manifest)).toContainEqual({
+      sourceRelativePath: 'components/diff-review/index.ts',
+      outputRelativePath: 'components/diff-review/index.js',
+    });
+    expect(serverEntrypointsFromManifest(manifest)).toContainEqual({
+      sourceRelativePath: 'components/diff-review-comments/index.ts',
+      outputRelativePath: 'components/diff-review-comments/index.js',
+    });
+  });
+
+  test('declares every exported component stylesheet', () => {
+    const manifest = {
+      ...editorManifest,
+      exports: {
+        ...editorManifest.exports,
+        './diff-review/styles': {
+          types: './dist/components/diff-review/diff-review.css.d.ts',
+          default: './dist/components/diff-review/diff-review.css',
+        },
+      },
+    };
+    expect(styleDeclarationPathsFromManifest(manifest)).toContain(
+      'dist/components/diff-review/diff-review.css.d.ts',
+    );
+  });
+
   test('keeps component tests serial without isolating the Svelte preload plugin', () => {
     for (const scriptName of ['test', 'test:coverage']) {
       const script = editorManifest.scripts?.[scriptName];
@@ -67,9 +121,22 @@ describe('Editor package ownership boundary', () => {
     // positioning, dev-only warnings) — not singletons, so Editor owns them
     // as regular dependencies, matching Cinder's own treatment of the same
     // two packages, rather than asking every host to install them.
+    // COR-1196 (fd6e19b): the synced source manifest also carries `workspace:*` for the two
+    // intra-target edges and `catalog:` for the milkdown/prosemirror stack —
+    // `assertSourceManifest`'s `REQUIRED_DEPENDENCIES` is the authoritative contract for this raw,
+    // pre-resolution shape; this literal mirrors it so a change to either is caught here too.
     expect(editorManifest.dependencies).toEqual({
       '@floating-ui/dom': '1.7.6',
+      '@lostgradient/cinder': 'workspace:*',
+      '@lostgradient/markdown': 'workspace:*',
+      '@milkdown/kit': 'catalog:',
+      '@milkdown/prose': 'catalog:',
+      '@noble/hashes': 'catalog:',
       'esm-env': '^1.2.0',
+      'prosemirror-inputrules': 'catalog:',
+      'prosemirror-model': 'catalog:',
+      'prosemirror-state': 'catalog:',
+      'prosemirror-view': 'catalog:',
     });
     // `@lostgradient/cinder` and `@lostgradient/markdown` are both excluded
     // from this literal comparison, not just Cinder: both ranges move
@@ -103,6 +170,11 @@ describe('Editor package ownership boundary', () => {
     // just not its exact range -- that's what the dynamic guard below
     // checks.
     expect(Object.keys(editorManifest.peerDependencies ?? {})).toContain('@lostgradient/markdown');
+    // COR-1196 (fd6e19b): `runtimeExternalSpecifiers` reads `peerDependencies` then
+    // `dependencies`, and the synced source manifest now lists `@lostgradient/cinder`/
+    // `@lostgradient/markdown`/`@milkdown/kit`/`@milkdown/prose`/the four `prosemirror-*` packages
+    // in both (peer for the real published contract, `workspace:*`/`catalog:` dependency so the
+    // monorepo build can resolve them locally) — so each now appears twice.
     expect(runtimeExternalSpecifiers(editorManifest)).toEqual([
       '@lostgradient/cinder',
       '@lostgradient/cinder/*',
@@ -126,9 +198,35 @@ describe('Editor package ownership boundary', () => {
       'svelte/*',
       '@floating-ui/dom',
       '@floating-ui/dom/*',
+      '@lostgradient/cinder',
+      '@lostgradient/cinder/*',
+      '@lostgradient/markdown',
+      '@lostgradient/markdown/*',
+      '@milkdown/kit',
+      '@milkdown/kit/*',
+      '@milkdown/prose',
+      '@milkdown/prose/*',
+      '@noble/hashes',
+      '@noble/hashes/*',
       'esm-env',
       'esm-env/*',
+      'prosemirror-inputrules',
+      'prosemirror-inputrules/*',
+      'prosemirror-model',
+      'prosemirror-model/*',
+      'prosemirror-state',
+      'prosemirror-state/*',
+      'prosemirror-view',
+      'prosemirror-view/*',
     ]);
+  });
+
+  test('rejects a manifest that omits the source-owned hashing dependency', () => {
+    const dependencies = { ...editorManifest.dependencies };
+    delete dependencies['@noble/hashes'];
+    expect(() => assertSourceManifest({ ...editorManifest, dependencies })).toThrow(
+      'production dependency contract mismatch',
+    );
   });
 
   test('keeps Editor’s Cinder peer range covering the planned Cinder release', () => {
@@ -191,12 +289,28 @@ describe('Editor package ownership boundary', () => {
     const published = buildPublishedManifest(editorManifest);
     const serialized = JSON.stringify(published);
 
-    expect(published.dependencies).toEqual(editorManifest.dependencies);
+    // COR-1196 (fd6e19b): `dependencies` keeps the same key set, but `resolveDependencySpecifiers`
+    // turns every `workspace:*`/`catalog:` specifier from the synced source manifest into a real,
+    // publishable range first — a host installing the packed tarball with plain npm/bun has no
+    // `workspace:*` protocol to resolve, so `published.dependencies` can no longer equal
+    // `editorManifest.dependencies` (checked structurally below instead of by exact version, which
+    // would otherwise go stale every time a workspace sibling or the root catalog bumps).
+    expect(Object.keys(published.dependencies ?? {})).toEqual(
+      Object.keys(editorManifest.dependencies ?? {}),
+    );
+    for (const [name, range] of Object.entries(published.dependencies ?? {})) {
+      expect(
+        range,
+        `${name}'s published range must not carry a workspace:*/catalog: specifier`,
+      ).not.toMatch(/^(workspace:|catalog:)/);
+    }
     expect(published.devDependencies).toBeUndefined();
     expect(published.scripts).toBeUndefined();
     expect(serialized).not.toContain('workspace:');
     expect(serialized).not.toContain('./src/');
     expect(published.peerDependencies).toEqual(editorManifest.peerDependencies);
+    expect(published.files).toContain('!dist/session/fixtures.*');
+    expect(published.files).not.toContain('!dist/**/fixtures.*');
   });
 
   /**

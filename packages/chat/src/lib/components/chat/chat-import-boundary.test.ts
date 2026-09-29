@@ -1,20 +1,24 @@
 /**
  * Conversationalist boundary regression test for the Chat component.
  *
- * Chat should get transcript types from the published package. Runtime
- * Conversationalist imports are allowed only through the Chat builder seam
- * and public barrel.
+ * Chat should get transcript types and runtime helpers from the workspace
+ * package root. Runtime Conversationalist imports are allowed only through
+ * the Chat builder seam, public barrel, and schema-version seam.
  */
 
 import { describe, expect, it } from 'bun:test';
-import * as conversationalist from 'conversationalist';
 import ts from 'typescript';
-import { rewindBeforeMessage, rewindBeforePosition } from './builders.ts';
 
 const CHAT_ROOT = import.meta.dir;
+// COR-1284 renamed the conversationalist workspace to its unscoped public npm name, so the bare
+// specifier below is the current, correct import form rather than a retired one. Before that
+// rename this file guarded the opposite direction: an internally-scoped import was current and
+// this same bare specifier was the retired, pre-monorepo form the ruling has now reinstated. That
+// guard is obsolete by the ruling itself, so it is gone rather than inverted — there is no longer
+// a meaningful "old bare import" to reject when bare is current.
 const CONVERSATIONALIST_PACKAGE = 'conversationalist';
 const CONVERSATIONALIST_MODULE_SPECIFIER_PATTERN =
-  /(?:from\s*['"]conversationalist(?:\/[^'"]*)?['"]|import\s*['"]conversationalist(?:\/[^'"]*)?['"]|import\s*\(\s*['"]conversationalist(?:\/[^'"]*)?['"])/;
+  /(?:from\s*['"]conversationalist['"]|import\s*['"]conversationalist['"]|import\s*\(\s*['"]conversationalist['"])/;
 const RUNTIME_IMPORT_ALLOWLIST = new Set([
   'builders.ts',
   'chat-import-boundary.test.ts',
@@ -100,13 +104,6 @@ function extractSvelteScripts(source: string): string {
 }
 
 describe('chat import boundary', () => {
-  it('exports the rewind helpers from the supported Conversationalist root', () => {
-    expect(rewindBeforeMessage).toBe(conversationalist.rewindBeforeMessage);
-    expect(rewindBeforePosition).toBe(conversationalist.rewindBeforePosition);
-    expect(typeof rewindBeforeMessage).toBe('function');
-    expect(typeof rewindBeforePosition).toBe('function');
-  });
-
   it('conversation-model re-exports Conversationalist types without local declarations', async () => {
     const filePath = `${CHAT_ROOT}/conversation-model.ts`;
     const source = await Bun.file(filePath).text();
@@ -119,23 +116,18 @@ describe('chat import boundary', () => {
       )
       .map((statement) => statement.name.text);
 
-    expect(exportedPackages).toContain(CONVERSATIONALIST_PACKAGE);
-    expect(exportedPackages).toContain(`${CONVERSATIONALIST_PACKAGE}/utilities`);
-    expect([...new Set(exportedPackages)]).toEqual([
-      CONVERSATIONALIST_PACKAGE,
-      `${CONVERSATIONALIST_PACKAGE}/utilities`,
-    ]);
+    expect(exportedPackages).toEqual([CONVERSATIONALIST_PACKAGE, CONVERSATIONALIST_PACKAGE]);
     expect(specifiers.every(({ typeOnly }) => typeOnly)).toBe(true);
     expect(localTypeDeclarations).toEqual(['ExportOptions', 'ToMarkdownOptions']);
   });
 
-  it('Conversationalist module-specifier prefilter catches every import form', () => {
+  it('internal module-specifier prefilter catches every root import form', () => {
     expect(CONVERSATIONALIST_MODULE_SPECIFIER_PATTERN.test("import 'conversationalist';")).toBe(
       true,
     );
     expect(
       CONVERSATIONALIST_MODULE_SPECIFIER_PATTERN.test(
-        "import { getMessages } from 'conversationalist/conversation';",
+        "import { getMessages } from 'conversationalist';",
       ),
     ).toBe(true);
     expect(
@@ -148,16 +140,16 @@ describe('chat import boundary', () => {
       'inline.ts',
       `
         import { type ConversationHistory } from 'conversationalist';
-        import { type Message, createConversationHistory } from 'conversationalist/conversation';
-        export { type ToolCallPair } from 'conversationalist/utilities';
+        import { type Message, createConversationHistory } from 'conversationalist';
+        export { type ToolCallPair } from 'conversationalist';
         export { type MessageInput, appendMessages } from 'conversationalist';
       `,
     );
 
     expect(specifiers).toEqual([
       { specifier: CONVERSATIONALIST_PACKAGE, typeOnly: true },
-      { specifier: `${CONVERSATIONALIST_PACKAGE}/conversation`, typeOnly: false },
-      { specifier: `${CONVERSATIONALIST_PACKAGE}/utilities`, typeOnly: true },
+      { specifier: CONVERSATIONALIST_PACKAGE, typeOnly: false },
+      { specifier: CONVERSATIONALIST_PACKAGE, typeOnly: true },
       { specifier: CONVERSATIONALIST_PACKAGE, typeOnly: false },
     ]);
   });
@@ -173,10 +165,7 @@ describe('chat import boundary', () => {
         if (!CONVERSATIONALIST_MODULE_SPECIFIER_PATTERN.test(raw)) return undefined;
         const source = filePath.endsWith('.svelte') ? extractSvelteScripts(raw) : raw;
         const runtimeImports = collectModuleSpecifiers(filePath, source).filter(
-          ({ specifier, typeOnly }) =>
-            !typeOnly &&
-            (specifier === CONVERSATIONALIST_PACKAGE ||
-              specifier.startsWith(`${CONVERSATIONALIST_PACKAGE}/`)),
+          ({ specifier, typeOnly }) => !typeOnly && specifier === CONVERSATIONALIST_PACKAGE,
         );
         return runtimeImports.length > 0 ? relativePath : undefined;
       }),
@@ -203,31 +192,18 @@ describe('chat import boundary', () => {
     expect(indexSpecifiers).toContain('./schema-version.ts');
   });
 
-  it('the public chat barrel and schema seam own Conversationalist runtime imports', async () => {
+  it('the public chat barrel and schema seam keep direct Conversationalist runtime imports bounded', async () => {
     const source = await Bun.file(`${CHAT_ROOT}/index.ts`).text();
     const indexSpecifiers = collectModuleSpecifiers(`${CHAT_ROOT}/index.ts`, source).filter(
-      ({ specifier, typeOnly }) =>
-        !typeOnly &&
-        (specifier === CONVERSATIONALIST_PACKAGE ||
-          specifier.startsWith(`${CONVERSATIONALIST_PACKAGE}/`)),
+      ({ specifier, typeOnly }) => !typeOnly && specifier === CONVERSATIONALIST_PACKAGE,
     );
     const schemaSource = await Bun.file(`${CHAT_ROOT}/schema-version.ts`).text();
     const schemaSpecifiers = collectModuleSpecifiers(
       `${CHAT_ROOT}/schema-version.ts`,
       schemaSource,
-    ).filter(
-      ({ specifier, typeOnly }) =>
-        !typeOnly &&
-        (specifier === CONVERSATIONALIST_PACKAGE ||
-          specifier.startsWith(`${CONVERSATIONALIST_PACKAGE}/`)),
-    );
+    ).filter(({ specifier, typeOnly }) => !typeOnly && specifier === CONVERSATIONALIST_PACKAGE);
 
-    expect(indexSpecifiers).toEqual([
-      { specifier: `${CONVERSATIONALIST_PACKAGE}/streaming`, typeOnly: false },
-      { specifier: CONVERSATIONALIST_PACKAGE, typeOnly: false },
-    ]);
-    expect(schemaSpecifiers).toEqual([
-      { specifier: `${CONVERSATIONALIST_PACKAGE}/versioning`, typeOnly: false },
-    ]);
+    expect(indexSpecifiers).toEqual([{ specifier: CONVERSATIONALIST_PACKAGE, typeOnly: false }]);
+    expect(schemaSpecifiers).toEqual([{ specifier: CONVERSATIONALIST_PACKAGE, typeOnly: false }]);
   });
 });

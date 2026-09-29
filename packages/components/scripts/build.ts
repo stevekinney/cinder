@@ -1,7 +1,7 @@
 import { $, Glob } from 'bun';
 import { existsSync } from 'node:fs';
-import { chmod, mkdir, rm } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { chmod, mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { dirname, join, normalize } from 'node:path';
 import { emitDts } from 'svelte2tsx';
 
 import { checkComponentCss, formatViolation } from './check-component-css.ts';
@@ -19,6 +19,18 @@ import {
   discoverComponentEnhancements,
 } from './lib/component-enhancements.ts';
 import { discoverComponents, type ComponentDiscovery } from './lib/discover-components.ts';
+import {
+  findExtensionlessDeclarationSpecifiers,
+  findRelativeSpecifiers,
+  findSelfReferentialTypeImports,
+  findUnresolvedArbitraryExtensionImports,
+  findUnresolvedRelativeImports,
+  type ExtensionlessDeclarationSpecifier,
+  type SelfReferentialTypeImport,
+  type UnresolvedArbitraryExtensionImport,
+  type UnresolvedRelativeImport,
+} from './lib/dist-relative-imports.ts';
+import { emitArbitraryExtensionDeclarations } from './lib/emit-arbitrary-extension-declarations.ts';
 import { hasSourceCssImport } from './prepend-source-index-css-import.ts';
 import { createServerEntrySource } from './server-entry.ts';
 import {
@@ -644,6 +656,193 @@ await emitDts({
   libRoot: sourceRoot,
   tsconfig: `${repositoryRoot}/tsconfig.build.json`,
 });
+
+// -----------------------------------------------------------------------------
+// 5b. Mirror JSON sidecars the compiled `.d.ts` output imports. `emitDts()` faithfully
+//     preserves every `with { type: 'json' }` import from the synced source (the per-component
+//     `.constraints.json`/`.examples.json` sidecars `src/exports/metadata-*.ts` imports, and the
+//     DTCG token JSON `src/index.ts` re-exports) as a real import specifier in the declaration
+//     file, but nothing before this point ever copies the referenced JSON into `dist/` — the JS
+//     build inlines the same JSON as literal data instead of preserving a file reference, so this
+//     gap is `.d.ts`-only and easy to miss by testing only the runtime bundle. Walk every emitted
+//     `.d.ts`, find each relative JSON specifier, and copy the file from the matching path under
+//     `sourceRoot` to the matching path under `dist/` if it is not already there.
+// -----------------------------------------------------------------------------
+{
+  const declarationGlob = new Glob('**/*.d.ts');
+  for await (const relative of declarationGlob.scan({ cwd: distributionDirectory })) {
+    const filePath = `${distributionDirectory}/${relative}`;
+    const content = await Bun.file(filePath).text();
+    for (const specifier of findRelativeSpecifiers(content)) {
+      if (!specifier.endsWith('.json')) continue;
+      const relativeTarget = normalize(join(dirname(relative), specifier));
+      const destination = `${distributionDirectory}/${relativeTarget}`;
+      if (existsSync(destination)) continue;
+      const source = `${sourceRoot}/${relativeTarget}`;
+      // A source-less target is caught by the resolution check just below instead of silently
+      // skipped here — this loop only ever copies a file that genuinely exists to copy.
+      if (!existsSync(source)) continue;
+      await mkdir(dirname(destination), { recursive: true });
+      await Bun.write(destination, await Bun.file(source).text());
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 5c. Materialize `scripts/knowledge/`'s declarations into `dist/` and repoint
+//     `dist/cli/knowledge.d.ts` at them. `scripts/` is repository tooling, outside
+//     `sourceRoot` — `emitDts()` above only ever processes `src/`, so `src/cli/knowledge.ts`'s
+//     own `export * from '../../scripts/knowledge/knowledge.ts'` compiles into a `.d.ts`
+//     specifier that reaches past the published tarball's `files` allowlist entirely (an
+//     `attw` `InternalResolutionError` under every resolution option). The runtime JS bundle
+//     already inlines `scripts/knowledge/knowledge.ts`'s implementation into `dist/cli/knowledge.js`
+//     (`src/cli/knowledge.ts`'s own doc comment: "the build bundles dist/cli/knowledge.js from
+//     this path") — only the type declaration was missing the same treatment.
+// -----------------------------------------------------------------------------
+{
+  const knowledgeSourceDirectory = `${repositoryRoot}/scripts/knowledge`;
+  const knowledgeDeclarationOutput = `${distributionDirectory}/scripts/knowledge`;
+  // A generated `--project` file, extending the same `tsconfig.build.json` every other
+  // declaration in this build is compiled under (so this gets the same `lib`/`types`/strictness),
+  // with only `rootDir`/`outDir`/`include`/`exclude` overridden to scope it to `scripts/knowledge`
+  // and `emitDeclarationOnly`/`allowImportingTsExtensions` flipped for a declaration-only compile
+  // of source that (unlike `src/`) imports its siblings with an explicit `.ts` extension. Passing
+  // `knowledge.ts` as a file argument on the command line instead (with `scripts/knowledge` as
+  // `cwd`) hits TS5112 — tsc refuses to silently ignore the *package's* `tsconfig.json` it still
+  // discovers by walking up from that `cwd` once files are also given on the command line.
+  const knowledgeConfigurationDirectory = await mkdtemp(
+    join(repositoryRoot, '.knowledge-declarations-'),
+  );
+  const knowledgeTsconfigPath = join(
+    knowledgeConfigurationDirectory,
+    'knowledge-declarations.tsconfig.json',
+  );
+  const knowledgeDtsResult = await (async () => {
+    try {
+      await Bun.write(
+        knowledgeTsconfigPath,
+        JSON.stringify({
+          extends: `${repositoryRoot}/tsconfig.build.json`,
+          compilerOptions: {
+            rootDir: knowledgeSourceDirectory,
+            outDir: knowledgeDeclarationOutput,
+            composite: false,
+            incremental: false,
+            emitDeclarationOnly: true,
+            allowImportingTsExtensions: true,
+            sourceMap: false,
+            inlineSources: false,
+          },
+          include: [`${knowledgeSourceDirectory}/**/*.ts`],
+          exclude: [`${knowledgeSourceDirectory}/**/*.test.ts`],
+        }),
+      );
+      return await $`bunx tsc -p ${knowledgeTsconfigPath}`.nothrow();
+    } finally {
+      await rm(knowledgeConfigurationDirectory, { recursive: true, force: true });
+    }
+  })();
+  if (knowledgeDtsResult.exitCode !== 0) {
+    process.stderr.write(
+      `Build aborted: could not emit declarations for scripts/knowledge:\n${knowledgeDtsResult.stdout.toString()}${knowledgeDtsResult.stderr.toString()}\n`,
+    );
+    process.exit(1);
+  }
+  const knowledgeDeclarationPath = `${distributionDirectory}/cli/knowledge.d.ts`;
+  const knowledgeDeclarationContent = await Bun.file(knowledgeDeclarationPath).text();
+  const rewrittenKnowledgeDeclaration = knowledgeDeclarationContent.replace(
+    "'../../scripts/knowledge/knowledge.ts'",
+    "'../scripts/knowledge/knowledge.js'",
+  );
+  if (rewrittenKnowledgeDeclaration === knowledgeDeclarationContent) {
+    process.stderr.write(
+      `Build aborted: expected ${knowledgeDeclarationPath} to reference '../../scripts/knowledge/knowledge.ts'\n`,
+    );
+    process.exit(1);
+  }
+  await Bun.write(knowledgeDeclarationPath, rewrittenKnowledgeDeclaration);
+}
+
+// -----------------------------------------------------------------------------
+// 5d. Node16/bundler ESM resolution needs an arbitrary-extension `<base>.d.svelte.ts` /
+//     `<base>.d.css.ts` companion for every `.svelte`/`.css` specifier a `.d.ts` file
+//     references (see `emit-arbitrary-extension-declarations.ts`'s module doc — `emitDts()`
+//     only ever emits the Svelte ecosystem's legacy `<base>.svelte.d.ts` naming, which that
+//     resolution mode does not accept), and every extensionless relative specifier inside a
+//     `.d.ts` file rewritten to carry the extension it requires.
+// -----------------------------------------------------------------------------
+await emitArbitraryExtensionDeclarations(distributionDirectory);
+
+// Dist relative-import guard: fail the build if any relative specifier in emitted `.js`/`.d.ts`
+// output — under a static `from '<path>'` or dynamic `import('<path>')` — points at a JSON, CSS
+// or JS-family target that does not exist under `dist/`. This is the prevention for the class of
+// bug the JSON-mirroring step above fixes: a future static asset the build forgets to copy now
+// fails the build immediately instead of shipping a tarball `attw`/`publint` discover broken.
+// `.ts`/`.svelte` specifiers are exempt by design — see `dist-relative-imports.ts`'s module doc.
+// Also fails on an unresolved arbitrary-extension (`.svelte`/`.css`) specifier or an
+// extensionless declaration specifier — the two other classes `attw` flags under Node16/bundler
+// resolution; step 5d above is what should have already fixed every instance of both.
+{
+  const distScanGlob = new Glob('**/*.{js,d.ts}');
+  const unresolvedImports: UnresolvedRelativeImport[] = [];
+  const unresolvedArbitraryExtensionImports: UnresolvedArbitraryExtensionImport[] = [];
+  const extensionlessDeclarationSpecifiers: ExtensionlessDeclarationSpecifier[] = [];
+  const selfReferentialTypeImports: SelfReferentialTypeImport[] = [];
+  for await (const relative of distScanGlob.scan({ cwd: distributionDirectory })) {
+    const filePath = `${distributionDirectory}/${relative}`;
+    const content = await Bun.file(filePath).text();
+    unresolvedImports.push(
+      ...findUnresolvedRelativeImports(relative, content, (distRelativePath) =>
+        existsSync(`${distributionDirectory}/${distRelativePath}`),
+      ),
+    );
+    unresolvedArbitraryExtensionImports.push(
+      ...findUnresolvedArbitraryExtensionImports(relative, content, (distRelativePath) =>
+        existsSync(`${distributionDirectory}/${distRelativePath}`),
+      ),
+    );
+    extensionlessDeclarationSpecifiers.push(
+      ...findExtensionlessDeclarationSpecifiers(relative, content),
+    );
+    selfReferentialTypeImports.push(...findSelfReferentialTypeImports(relative, content));
+  }
+  if (
+    unresolvedImports.length > 0 ||
+    unresolvedArbitraryExtensionImports.length > 0 ||
+    extensionlessDeclarationSpecifiers.length > 0 ||
+    selfReferentialTypeImports.length > 0
+  ) {
+    process.stderr.write(
+      'Build aborted: relative import(s) in compiled output do not resolve to a file under dist/:\n' +
+        unresolvedImports
+          .map((offender) => `  ${offender.file} -> ${offender.specifier}`)
+          .join('\n') +
+        (unresolvedArbitraryExtensionImports.length > 0
+          ? '\nArbitrary-extension (.svelte/.css) specifier missing its Node16 declaration companion:\n' +
+            unresolvedArbitraryExtensionImports
+              .map(
+                (offender) =>
+                  `  ${offender.file} -> ${offender.specifier} (needs ${offender.requiredDeclarationPath})`,
+              )
+              .join('\n')
+          : '') +
+        (extensionlessDeclarationSpecifiers.length > 0
+          ? '\nExtensionless specifier in declaration output (Node16 requires an explicit extension):\n' +
+            extensionlessDeclarationSpecifiers
+              .map((offender) => `  ${offender.file} -> ${offender.specifier}`)
+              .join('\n')
+          : '') +
+        (selfReferentialTypeImports.length > 0
+          ? '\nBare "." self-referential type import (should be a relative sibling path):\n' +
+            selfReferentialTypeImports
+              .map((offender) => `  ${offender.file} -> import(".").${offender.typeName}`)
+              .join('\n')
+          : '') +
+        '\n',
+    );
+    process.exit(1);
+  }
+}
 
 // Residue guard: scan every emitted JS/`.d.ts` file for a leaked
 // workspace-private `@cinder/*` import specifier — those must never survive

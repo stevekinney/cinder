@@ -24,7 +24,7 @@
     TimelineWeekStartsOn,
   } from './timeline.types.ts';
 
-  // See docs/decisions/chronological-display-boundaries.md for this family's boundary.
+  // See documentation/decisions/chronological-display-boundaries.md for this family's boundary.
 </script>
 
 <script lang="ts">
@@ -69,14 +69,14 @@
   );
 </script>
 
-<!-- svelte-ignore a11y_no_noninteractive_tabindex (The horizontal overflow list must be focusable for native keyboard scrolling.) -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex (The horizontal overflow list needs keyboard access to scroll its content while retaining list semantics.) -->
 <ol
   {...rest}
   class={classNames('cinder-timeline', className)}
   data-cinder-orientation={orientation}
+  tabindex={orientation === 'horizontal' ? 0 : undefined}
   aria-label={resolvedAriaLabel}
   aria-labelledby={ariaLabelledby}
-  tabindex={orientation === 'horizontal' ? 0 : undefined}
 >
   {#each renderGroups as group (group.key)}
     {#each group.entries as renderEntry (renderEntry.entry.id)}

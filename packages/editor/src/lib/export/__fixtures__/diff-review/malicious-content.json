@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "scope": "all",
+  "reviewTitle": "Review feedback",
+  "reviewNote": "Note contains ``` a fence ``` and <b>bold-looking</b> text.",
+  "totals": {
+    "records": 1,
+    "messageBodies": 1,
+    "open": 1,
+    "resolved": 0,
+    "outdated": 0
+  },
+  "records": [
+    {
+      "recordKind": "diff",
+      "exportId": "[\"diff\",\"comment-malicious\"]",
+      "commentId": "comment-malicious",
+      "targetId": "html-target",
+      "current": true,
+      "targetKind": "source",
+      "targetLabel": "src/render.ts",
+      "repositoryLabel": null,
+      "baseRevisionLabel": null,
+      "headRevisionLabel": null,
+      "snapshotId": "html-target-snapshot",
+      "fileOccurrence": 0,
+      "oldPath": "src/render.ts",
+      "newPath": "src/render.ts",
+      "anchor": {
+        "kind": "range",
+        "side": "new",
+        "startLine": 1,
+        "endLine": 2,
+        "coordinateSpace": "raw-source",
+        "hunkOccurrence": 0,
+        "selectedText": "```js\nconst x = \"````closing four\";\n```\n<script>alert(1)</script>",
+        "contextBefore": [],
+        "contextAfter": []
+      },
+      "rawMapping": {
+        "status": "exact"
+      },
+      "body": "Escaping looks wrong here: `````` and <img src=x onerror=alert(1)> should never render.",
+      "resolved": false,
+      "outdated": false,
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    }
+  ]
+}

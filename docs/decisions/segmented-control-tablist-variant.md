@@ -117,28 +117,7 @@ actually satisfy.
 
 ## Verification for the follow-up
 
-The follow-up should run the focused component and browser verification already
-used by this repository, including:
-
-```bash
-bun run --filter @cinder/testing test:playwright
-bun run --filter @cinder/testing test:browser:update
-```
-
-If the existing baselines were generated with the containerized update command,
-use the matching [Docker](https://www.docker.com/) baseline update script instead
-so the screenshot diff is stable:
-
-```bash
-bun run --filter @cinder/testing test:browser:update:docker
-```
-
-Only screenshot baselines for segmented-control and review-editor should change.
-Because segmented-control screenshots contain multiple variants in one image,
-the guard is region-based: the tablist region should change, while radiogroup
-and multiple-selection regions should remain visually unchanged. Baselines
-outside the segmented-control and review-editor screenshot directories should
-not change.
+The follow-up required focused component tests and browser verification for segmented-control and review-editor. The browser fixtures and screenshot baselines recorded for the original Cinder workspace now live in the private Corvidae source workspace; this public mirror no longer carries that Playwright harness. Run the component package's focused tests here and verify the corresponding Corvidae browser fixtures before synchronizing a visual change.
 
 ## Rejected option
 

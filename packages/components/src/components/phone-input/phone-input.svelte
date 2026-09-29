@@ -22,13 +22,12 @@
 
 <script lang="ts">
   import type {
-    PhoneInputChange,
     PhoneInputCountryCode,
     PhoneInputCountryOption,
     PhoneInputProps,
   } from './phone-input.types.ts';
-  import Input from '@lostgradient/cinder/input';
-  import Select from '@lostgradient/cinder/select';
+  import { default as Input } from '../input/index.ts';
+  import { default as Select } from '../select/index.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
 
   import {
@@ -49,6 +48,7 @@
     parseE164Value,
     resolveCountryList,
   } from './phone-input-formatting.ts';
+  import { createPhoneInputState } from './phone-input-state.svelte.ts';
 
   let {
     id,
@@ -144,6 +144,9 @@
   // emitted `''` (incomplete / invalid) does not wipe the user's in-progress
   // digits from the field.
   let nationalDisplay = $state('');
+  // The composed Select owns its native reset binding independently of the
+  // externally controlled country. Reconcile it after form reset finishes.
+  let selectedCountry = $derived(isAllowed(country) ? country : fallbackCountry());
 
   // Snapshots of the value/country/allow-list the component is "in sync with"
   // so we can detect external rewrites without re-acting to our own
@@ -152,6 +155,38 @@
   let knownCountry: PhoneInputCountryCode | null = null;
   let knownAllowList: readonly PhoneInputCountryCode[] = [];
   let fieldRoot = $state<HTMLElement>();
+
+  const phoneInputState = createPhoneInputState({
+    getCountry: () => country,
+    setCountry: (next) => {
+      country = next;
+    },
+    getDisplay: () => nationalDisplay,
+    setDisplay: (next) => {
+      nationalDisplay = next;
+    },
+    getValue: () => value,
+    setValue: (next) => {
+      value = next;
+    },
+    setKnownValue: (next) => {
+      knownValue = next;
+    },
+    setKnownCountry: (next) => {
+      knownCountry = next;
+    },
+    isAllowed,
+    isCountryCode,
+    fallbackCountry,
+    getInitialValue: () => initialValue,
+    getInitialCountry: () => initialCountry,
+    getFieldRoot: () => fieldRoot,
+    setSelectedCountry: (next) => {
+      selectedCountry = next;
+    },
+    getOnValueChange: () => onValueChange,
+  });
+  const { handleCountryChange, handleFormReset, handleNationalInput } = phoneInputState;
 
   /**
    * Synchronise to external `value` changes. Covers initial hydration too
@@ -247,157 +282,11 @@
     }
   });
 
-  /**
-   * Compose a `PhoneInputChange` detail for a country that is not in the
-   * allow-list. `targetCountry` is typed as `PhoneInputCountryCode` because
-   * libphonenumber and `<select>` only ever surface ISO 3166-1 alpha-2 codes,
-   * even when the runtime allow-list rejects the value.
-   */
-  function detailForCountryNotAllowed(
-    targetCountry: PhoneInputCountryCode,
-    nationalDigits: string,
-  ): PhoneInputChange {
-    return {
-      value: '',
-      country: targetCountry,
-      nationalNumber: nationalDigits,
-      isValid: false,
-      isPossible: false,
-      reason: 'country-not-allowed',
-    };
-  }
-
-  function submitFor(detail: PhoneInputChange): void {
-    if (detail.value !== value) {
-      value = detail.value;
-      knownValue = detail.value;
-    }
-    onValueChange?.(detail);
-  }
-
-  function handleNationalInput(event: Event): void {
-    const target = event.target;
-    if (!(target instanceof HTMLInputElement)) return;
-    const rawValue = target.value;
-    const trimmed = rawValue.trim();
-
-    // If the user pasted or typed a `+`-prefixed E.164 string, attempt to
-    // re-detect the country and rehydrate the visible field from the parsed
-    // national format. Documented behaviour in the a11y guidance.
-    if (trimmed.startsWith('+')) {
-      const parsed = parseE164Value(trimmed);
-      if (parsed) {
-        if (!isAllowed(parsed.country)) {
-          nationalDisplay = trimmed;
-          submitFor(detailForCountryNotAllowed(parsed.country, parsed.nationalNumber));
-          return;
-        }
-        country = parsed.country;
-        knownCountry = parsed.country;
-        nationalDisplay = parsed.formatted;
-        const result = computeNationalResult(parsed.country, parsed.nationalNumber);
-        submitFor({
-          value: result.value,
-          country: parsed.country,
-          nationalNumber: result.nationalNumber,
-          isValid: result.isValid,
-          isPossible: result.isPossible,
-          reason: result.reason,
-        });
-        return;
-      }
-    }
-
-    const digits = digitsOnly(rawValue);
-    const result = computeNationalResult(country, digits);
-    nationalDisplay = result.formatted;
-    submitFor({
-      value: result.value,
-      country,
-      nationalNumber: result.nationalNumber,
-      isValid: result.isValid,
-      isPossible: result.isPossible,
-      reason: result.reason,
-    });
-  }
-
-  function handleCountryChange(event: Event): void {
-    const target = event.target;
-    if (!(target instanceof HTMLSelectElement)) return;
-    const rawCode = target.value;
-    if (!isCountryCode(rawCode)) {
-      const detail = detailForCountryNotAllowed(
-        rawCode as PhoneInputCountryCode,
-        digitsOnly(nationalDisplay),
-      );
-      submitFor(detail);
-      return;
-    }
-    const nextCountry: PhoneInputCountryCode = rawCode;
-    country = nextCountry;
-    knownCountry = nextCountry;
-    const digits = digitsOnly(nationalDisplay);
-    const result = computeNationalResult(nextCountry, digits);
-    nationalDisplay = result.formatted;
-    submitFor({
-      value: result.value,
-      country: nextCountry,
-      nationalNumber: result.nationalNumber,
-      isValid: result.isValid,
-      isPossible: result.isPossible,
-      reason: result.reason,
-    });
-  }
-
-  function handleFormReset(event: Event): void {
-    const valueAtReset = value;
-    const countryAtReset = country;
-    queueMicrotask(() =>
-      queueMicrotask(() => {
-        if (event.defaultPrevented) return;
-        if (value !== valueAtReset || country !== countryAtReset) return;
-        const rawCountry = fieldRoot?.querySelector<HTMLSelectElement>('select')?.value;
-        if (!rawCountry || !isCountryCode(rawCountry)) return;
-        const initialParsed = parseE164Value(initialValue);
-        const initialParsedCountryAllowed =
-          initialParsed !== null && isAllowed(initialParsed.country);
-        const resetCountry = initialParsed
-          ? initialParsedCountryAllowed
-            ? initialParsed.country
-            : fallbackCountry()
-          : isCountryCode(initialCountry)
-            ? initialCountry
-            : rawCountry;
-        country = resetCountry;
-        knownCountry = resetCountry;
-        value = initialValue;
-        knownValue = initialValue;
-        const countrySelect = fieldRoot?.querySelector<HTMLSelectElement>('select');
-        if (countrySelect && countrySelect.value !== resetCountry)
-          countrySelect.value = resetCountry;
-        const resetDisplay = initialParsedCountryAllowed
-          ? initialParsed.formatted
-          : initialParsed
-            ? initialValue
-            : initialValue === digitsOnly(initialValue)
-              ? formatNationalAsYouType(resetCountry, initialValue)
-              : initialValue;
-        nationalDisplay = resetDisplay;
-        const nationalInput = fieldRoot?.querySelector<HTMLInputElement>(
-          'input:not([type="hidden"])',
-        );
-        if (nationalInput && nationalInput.value !== resetDisplay)
-          nationalInput.value = resetDisplay;
-      }),
-    );
-  }
-
   $effect(() => {
     const form = fieldRoot?.closest('form');
     if (!form) return;
-    const handleReset = (event: Event) => handleFormReset(event);
-    form.addEventListener('reset', handleReset);
-    return () => form.removeEventListener('reset', handleReset);
+    form.addEventListener('reset', handleFormReset);
+    return () => form.removeEventListener('reset', handleFormReset);
   });
 
   const groupLabelId = $derived(label ? `${id}-label` : undefined);
@@ -540,7 +429,7 @@
       <Select
         id={countrySelectId}
         options={selectOptions}
-        value={isAllowed(country) ? country : fallbackCountry()}
+        bind:value={selectedCountry}
         aria-label={controlAriaLabel(countryAccessibleLabel)}
         aria-labelledby={controlLabelledBy(countryLabelId)}
         aria-describedby={describedBy}

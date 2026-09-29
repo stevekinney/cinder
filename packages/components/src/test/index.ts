@@ -6,10 +6,9 @@
  * by consumers.
  */
 
+export { setupHappyDom } from '@lostgradient/testing';
 export { expectAttribute, expectAttributes, getRelated } from './aria.ts';
 export { stripCinderComponentsLayer } from './css.ts';
-export { setupHappyDom } from './happy-dom.ts';
-export { renderThenHydrate, type HydrateResult } from './hydrate.ts';
 export {
   expectFocused,
   getFocused,
@@ -18,5 +17,3 @@ export {
   type Key,
   type KeyModifiers,
 } from './keyboard.ts';
-export { expectNoLeakedTimers, trackTimers } from './lifecycle.ts';
-export { renderToServerHtml } from './server-render.ts';

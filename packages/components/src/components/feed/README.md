@@ -6,12 +6,11 @@ See the [chronological display boundary decision](https://github.com/stevekinney
 
 ## Usage
 
-`Feed` is a compound component. Import the parent and compose `Feed.Event`
-(and, in streams, `Feed.Boundary`) via the namespace API.
+`Feed` is a compound component. Import the parent and compose `Feed.Event` (and, in streams, `Feed.Boundary`) via the namespace API.
 
 ```svelte
 <script lang="ts">
-  import { Feed } from '@lostgradient/cinder/feed';
+  import { Feed } from '@lostgradient/cinder';
 </script>
 
 <Feed aria-label="Project activity">
@@ -24,17 +23,11 @@ See the [chronological display boundary decision](https://github.com/stevekinney
 </Feed>
 ```
 
-The event body is the default child content. The visible time label is the
-`timestamp` string (use the `timestampLabel` snippet only when the label needs
-markup); if omitted, it falls back to the raw `datetime` value.
+The event body is the default child content. The visible time label is the `timestamp` string (use the `timestampLabel` snippet only when the label needs markup); if omitted, it falls back to the raw `datetime` value.
 
 ### The log arm
 
-For operator-facing append-only streams (job runners, deploy logs, webhook
-traces), pass `kind="log"`. The feed renders a `role="log"` scroll viewport
-with follow-latest scrolling — it pauses when the user scrolls away from the
-bottom and resumes when they return or press the built-in control — plus
-optional `loading`, `truncated`, and `connectionState` chrome:
+For operator-facing append-only streams (job runners, deploy logs, webhook traces), pass `kind="log"`. The feed renders a `role="log"` scroll viewport with follow-latest scrolling — it pauses when the user scrolls away from the bottom and resumes when they return or press the built-in control — plus optional `loading`, `truncated`, and `connectionState` chrome:
 
 ```svelte
 <Feed kind="log" label="Deploy events" connectionState="connected" bind:following>
@@ -48,14 +41,9 @@ optional `loading`, `truncated`, and `connectionState` chrome:
 </Feed>
 ```
 
-Filtering, copy actions, and structured detail inspection are consumer
-compositions: pass controls via the `toolbar` snippet and render details
-inside `Feed.Event` children. `Feed.Boundary` marks stream discontinuities
-(reconnects, sequence gaps) with `role="separator"` semantics — the consumer
-owns the wording.
+Filtering, copy actions, and structured detail inspection are consumer compositions: pass controls via the `toolbar` snippet and render details inside `Feed.Event` children. `Feed.Boundary` marks stream discontinuities (reconnects, sequence gaps) with `role="separator"` semantics — the consumer owns the wording.
 
-The leaves remain importable individually for à-la-carte builds — see
-`@lostgradient/cinder/feed-event` and `@lostgradient/cinder/feed-boundary`.
+The leaves are also named exports of `@lostgradient/cinder`.
 
 ## Props
 
@@ -81,16 +69,13 @@ The leaves remain importable individually for à-la-carte builds — see
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents
 
 <!-- generated:subcomponents:start -->
 
-- `Feed.Event` — a dated event entry with `icon` or `minimal` variant; see
-  [`feed-event`](../feed-event/README.md).
-- `Feed.Boundary` — a `role="separator"` entry marking a stream discontinuity
-  (reconnect, sequence gap); see [`feed-boundary`](../feed-boundary/README.md).
+- `Feed.Event` — a dated event entry with `icon` or `minimal` variant; see [`feed-event`](../feed-event/README.md).
+- `Feed.Boundary` — a `role="separator"` entry marking a stream discontinuity (reconnect, sequence gap); see [`feed-boundary`](../feed-boundary/README.md).
 
 <!-- generated:subcomponents:end -->

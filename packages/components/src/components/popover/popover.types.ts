@@ -9,14 +9,7 @@ import type { Snippet } from 'svelte';
  * `right` or `left` as the starting hint and let flip refine if needed.
  */
 export type PopoverPlacement =
-  | 'top'
-  | 'bottom'
-  | 'left'
-  | 'right'
-  | 'top-start'
-  | 'top-end'
-  | 'bottom-start'
-  | 'bottom-end';
+  'top' | 'bottom' | 'left' | 'right' | 'top-start' | 'top-end' | 'bottom-start' | 'bottom-end';
 export type PopoverRole = 'dialog' | 'group' | 'listbox';
 export type PopoverFocusManagement = 'panel' | 'preserve';
 export type PopoverWidthMode = 'content' | 'match-anchor' | 'menu' | 'none';

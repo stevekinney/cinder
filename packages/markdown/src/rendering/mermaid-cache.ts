@@ -82,17 +82,17 @@ function hashCode(str: string): string {
  * @param code - Mermaid diagram source code
  * @param theme - Current theme ('default', 'dark', etc.)
  */
-export function getCacheKey(code: string, theme: string): string {
+export function getMermaidCacheKey(code: string, theme: string): string {
   return `${theme}:${hashCode(code)}`;
 }
 
 /**
  * Get a cached SVG if available.
  *
- * @param key - Cache key from getCacheKey()
+ * @param key - Cache key from getMermaidCacheKey()
  * @returns Cached SVG string or undefined
  */
-export function getCachedSvg(key: string): string | undefined {
+export function getMermaidCachedSvg(key: string): string | undefined {
   const svg = cache.get(key);
   if (svg) {
     // Move to end (LRU behavior)
@@ -105,10 +105,10 @@ export function getCachedSvg(key: string): string | undefined {
 /**
  * Store an SVG in the cache.
  *
- * @param key - Cache key from getCacheKey()
+ * @param key - Cache key from getMermaidCacheKey()
  * @param svg - Rendered SVG string
  */
-export function setCachedSvg(key: string, svg: string): void {
+export function setMermaidCachedSvg(key: string, svg: string): void {
   // Evict oldest if at capacity (but only if adding a new key)
   if (cache.size >= CACHE_SIZE && !cache.has(key)) {
     const firstKey = cache.keys().next().value;

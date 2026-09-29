@@ -1,13 +1,12 @@
 # Grid
 
-Grid renders a low-chrome CSS grid container for explicit columns, intrinsic
-auto-fill layouts, and optional child placement through `Grid.Item`.
+Grid renders a low-chrome CSS grid container for explicit columns, intrinsic auto-fill layouts, and optional child placement through `Grid.Item`.
 
 ## Usage
 
 ```svelte
 <script lang="ts">
-  import { Grid } from '@lostgradient/cinder/grid';
+  import { Grid } from '@lostgradient/cinder';
 </script>
 
 <Grid columns={3} gap="var(--cinder-space-4)">
@@ -15,6 +14,8 @@ auto-fill layouts, and optional child placement through `Grid.Item`.
   <div>Regular item</div>
 </Grid>
 ```
+
+A numeric `columns` renders `repeat(<columns>, minmax(0, 1fr))`, not bare `1fr` tracks — a deliberate overflow-safe choice, so a child with intrinsically wide content (a long unbreakable string, a fixed-width image) cannot force a column past its share of the available space. Pass a full `grid-template-columns` string instead when you need bare `1fr` tracks or another sizing function.
 
 Use `minItemWidth` for intrinsic responsive grids without adding media queries:
 
@@ -49,14 +50,12 @@ Use `minItemWidth` for intrinsic responsive grids without adding media queries:
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
-
 <!-- generated:variables:end -->
 
 ## Subcomponents
 
 <!-- generated:subcomponents:start -->
 
-- `Grid.Item` - optional placement child for spanning or pinning a grid item;
-  see [`grid-item`](../grid-item/README.md).
+- `Grid.Item` - optional placement child for spanning or pinning a grid item; see [`grid-item`](../grid-item/README.md).
 
 <!-- generated:subcomponents:end -->

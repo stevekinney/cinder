@@ -70,6 +70,21 @@ function findLastIndex(
   return currentIndex;
 }
 
+function rovingDirection(key: string, vertical: boolean, horizontal: boolean): 1 | -1 | null {
+  switch (key) {
+    case 'ArrowRight':
+      return horizontal ? 1 : null;
+    case 'ArrowDown':
+      return vertical ? 1 : null;
+    case 'ArrowLeft':
+      return horizontal ? -1 : null;
+    case 'ArrowUp':
+      return vertical ? -1 : null;
+    default:
+      return null;
+  }
+}
+
 /**
  * Return the index that a roving-tabindex widget should move to for a key event.
  */
@@ -83,21 +98,16 @@ export function handleRovingKeydown(
 
   if (length === 0) return null;
 
-  switch (event.key) {
-    case 'ArrowRight':
-      return horizontal ? findNextIndex(currentIndex, length, 1, isDisabled) : null;
-    case 'ArrowDown':
-      return vertical ? findNextIndex(currentIndex, length, 1, isDisabled) : null;
-    case 'ArrowLeft':
-      return horizontal ? findNextIndex(currentIndex, length, -1, isDisabled) : null;
-    case 'ArrowUp':
-      return vertical ? findNextIndex(currentIndex, length, -1, isDisabled) : null;
+  const key = event.key;
+  switch (key) {
     case 'Home':
       return findFirstIndex(length, isDisabled, currentIndex);
     case 'End':
       return findLastIndex(length, isDisabled, currentIndex);
-    default:
-      return null;
+    default: {
+      const direction = rovingDirection(key, vertical, horizontal);
+      return direction === null ? null : findNextIndex(currentIndex, length, direction, isDisabled);
+    }
   }
 }
 

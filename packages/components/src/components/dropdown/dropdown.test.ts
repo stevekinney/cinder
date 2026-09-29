@@ -1,9 +1,10 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { createRawSnippet } from 'svelte';
+import { afterEach, beforeEach, describe, expect, jest, test } from 'bun:test';
+import { createRawSnippet, flushSync } from 'svelte';
 
+import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
+import { createTransitionEndEvent } from '../../_internal/transition-completion-test-events.ts';
 import { stripCinderComponentsLayer } from '../../test/css.ts';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
@@ -20,7 +21,7 @@ const { default: DropdownCompoundFixture } =
   await import('../../test/fixtures/dropdown-compound-fixture.svelte');
 const { default: DropdownTriggerNoCaretFixture } =
   await import('../../test/fixtures/dropdown-trigger-no-caret-fixture.svelte');
-const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
+const { pushEscapeHandler, resetEscapeStack } = await import('../../_internal/overlay.ts');
 
 // Tests render into the shared `document.body` (see the `render` wrapper below).
 // Without unmounting between tests, prior renders linger in the DOM and leave
@@ -30,7 +31,7 @@ const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/o
 afterEach(() => {
   cleanup();
   document.body.replaceChildren();
-  _resetEscapeStack();
+  resetEscapeStack();
 });
 
 const triggerSnippet = createRawSnippet(() => ({
@@ -214,7 +215,7 @@ describe('Dropdown', () => {
       },
     });
 
-    const root = container.querySelector('.cinder-dropdown') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-dropdown'), HTMLElement);
     expect(root).not.toBeNull();
     await fireEvent.keyDown(root, { key: 'Escape' });
     expect(openValue).toBe(false);
@@ -230,7 +231,7 @@ describe('Dropdown', () => {
       const { container, rerender } = render(Dropdown, {
         props: { open: true, trigger: triggerSnippet, children: textSnippet('Menu item') },
       });
-      const root = container.querySelector('.cinder-dropdown') as HTMLElement;
+      const root = requiredInstance(container.querySelector('.cinder-dropdown'), HTMLElement);
 
       const escapeEvent = new window.KeyboardEvent('keydown', {
         key: 'Escape',
@@ -481,7 +482,7 @@ describe('Dropdown', () => {
   test('compound menu renders labels, separators, and items', async () => {
     const { container } = renderCompoundDropdown();
 
-    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await fireEvent.click(requiredInstance(container.querySelector('.trigger'), HTMLElement));
 
     expect(container.querySelector('[role="menu"]')?.id).toBe('actions-menu-menu');
     expect(container.querySelector('.cinder-dropdown-label')?.textContent).toContain('Document');
@@ -493,7 +494,7 @@ describe('Dropdown', () => {
   test('compound fallback menu focuses the first enabled item when opened', async () => {
     const { container } = renderCompoundDropdown();
 
-    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await fireEvent.click(requiredInstance(container.querySelector('.trigger'), HTMLElement));
 
     await waitFor(() => {
       expect(document.activeElement?.textContent).toContain('Copy link');
@@ -502,19 +503,20 @@ describe('Dropdown', () => {
 
   test('compound fallback menu restores focus to trigger on Escape', async () => {
     const { container } = renderCompoundDropdown();
-    const trigger = container.querySelector('.trigger') as HTMLElement;
+    const trigger = requiredInstance(container.querySelector('.trigger'), HTMLElement);
 
     await fireEvent.click(trigger);
     await waitFor(() => {
       expect(document.activeElement?.textContent).toContain('Copy link');
     });
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
-
-    await waitFor(() => {
-      expect(container.querySelector('[role="menu"]')).toBeNull();
-      expect(document.activeElement).toBe(trigger);
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'Escape',
     });
+
+    flushSync();
+    expect(container.querySelector('[role="menu"]')?.outerHTML ?? null).toBeNull();
+    expect(document.activeElement).toBe(trigger);
   });
 
   test('Escape with focus on trigger (outside menu) still closes compound menu', async () => {
@@ -523,7 +525,7 @@ describe('Dropdown', () => {
     // not traverse the menu element. The parent dropdown's handler must
     // fall back to closeCompoundMenu/focusCompoundTrigger.
     const { container } = renderCompoundDropdown();
-    const trigger = container.querySelector('.trigger') as HTMLElement;
+    const trigger = requiredInstance(container.querySelector('.trigger'), HTMLElement);
 
     await fireEvent.click(trigger);
     await waitFor(() => {
@@ -536,10 +538,9 @@ describe('Dropdown', () => {
 
     await fireEvent.keyDown(trigger, { key: 'Escape' });
 
-    await waitFor(() => {
-      expect(container.querySelector('[role="menu"]')).toBeNull();
-      expect(document.activeElement).toBe(trigger);
-    });
+    flushSync();
+    expect(container.querySelector('[role="menu"]')?.outerHTML ?? null).toBeNull();
+    expect(document.activeElement).toBe(trigger);
   });
 
   test('CIN-428 (modern/compound branch): inherits escape-stack registration transitively from DropdownMenu — with another registration underneath, Escape dismisses only the compound menu', async () => {
@@ -550,7 +551,7 @@ describe('Dropdown', () => {
 
     try {
       const { container } = renderCompoundDropdown();
-      const trigger = container.querySelector('.trigger') as HTMLElement;
+      const trigger = requiredInstance(container.querySelector('.trigger'), HTMLElement);
 
       await fireEvent.click(trigger);
       await waitFor(() => {
@@ -560,9 +561,8 @@ describe('Dropdown', () => {
       window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 
       expect(parentEscapeCount).toBe(0);
-      await waitFor(() => {
-        expect(container.querySelector('[role="menu"]')).toBeNull();
-      });
+      flushSync();
+      expect(container.querySelector('[role="menu"]')?.outerHTML ?? null).toBeNull();
     } finally {
       releaseParent();
     }
@@ -576,7 +576,7 @@ describe('Dropdown', () => {
     // observable failure mode of the double-call would be subtle, but at
     // minimum this guards against regression of the parent-handler split.
     const { container } = renderCompoundDropdown();
-    const trigger = container.querySelector('.trigger') as HTMLElement;
+    const trigger = requiredInstance(container.querySelector('.trigger'), HTMLElement);
 
     await fireEvent.click(trigger);
     await waitFor(() => {
@@ -590,12 +590,13 @@ describe('Dropdown', () => {
       originalFocus();
     };
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Escape' });
-
-    await waitFor(() => {
-      expect(container.querySelector('[role="menu"]')).toBeNull();
-      expect(document.activeElement).toBe(trigger);
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'Escape',
     });
+
+    flushSync();
+    expect(container.querySelector('[role="menu"]')?.outerHTML ?? null).toBeNull();
+    expect(document.activeElement).toBe(trigger);
     // Exactly one focus restoration — without the fix, the compound parent
     // handler would call focusCompoundTrigger() a second time.
     expect(triggerFocusCalls).toBe(1);
@@ -604,8 +605,10 @@ describe('Dropdown', () => {
   test('compound item click closes the menu and invokes onclick', async () => {
     const { container } = renderCompoundDropdown();
 
-    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
-    await fireEvent.click(container.querySelector('[role="menuitem"]') as HTMLElement);
+    await fireEvent.click(requiredInstance(container.querySelector('.trigger'), HTMLElement));
+    await fireEvent.click(
+      requiredInstance(container.querySelector('[role="menuitem"]'), HTMLElement),
+    );
 
     expect(container.querySelector('output')?.textContent).toBe('copy');
   });
@@ -613,12 +616,14 @@ describe('Dropdown', () => {
   test('clicking portaled compound menu chrome stays inside the dropdown', async () => {
     const { container } = renderCompoundDropdown();
 
-    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await fireEvent.click(requiredInstance(container.querySelector('.trigger'), HTMLElement));
     await waitFor(() => {
       expect(document.body.querySelector('#actions-menu-menu')).not.toBeNull();
     });
 
-    await fireEvent.click(document.body.querySelector('.cinder-dropdown-label') as HTMLElement);
+    await fireEvent.click(
+      requiredInstance(document.body.querySelector('.cinder-dropdown-label'), HTMLElement),
+    );
 
     expect(document.body.querySelector('#actions-menu-menu')).not.toBeNull();
   });
@@ -626,7 +631,7 @@ describe('Dropdown', () => {
   test('grouped menu exposes aria-labelledby boundaries', async () => {
     const { container } = renderCompoundDropdown();
 
-    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await fireEvent.click(requiredInstance(container.querySelector('.trigger'), HTMLElement));
 
     const groups = Array.from(container.querySelectorAll<HTMLElement>('[role="group"]'));
     expect(groups).toHaveLength(2);
@@ -642,75 +647,85 @@ describe('Dropdown', () => {
 
   test('ArrowDown and ArrowUp move across grouped menu boundaries', async () => {
     const { container } = renderCompoundDropdown();
-    const trigger = container.querySelector('.trigger') as HTMLElement;
+    const trigger = requiredInstance(container.querySelector('.trigger'), HTMLElement);
 
     await fireEvent.click(trigger);
     await waitFor(() => {
       expect(document.activeElement?.textContent).toContain('Copy link');
     });
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'ArrowDown',
+    });
     expect(document.activeElement?.textContent).toContain('Invite people');
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowUp' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'ArrowUp',
+    });
     expect(document.activeElement?.textContent).toContain('Copy link');
   });
 
   test('Home and End land on the first and last enabled grouped menu items', async () => {
     const { container } = renderCompoundDropdown();
-    const trigger = container.querySelector('.trigger') as HTMLElement;
+    const trigger = requiredInstance(container.querySelector('.trigger'), HTMLElement);
 
     await fireEvent.click(trigger);
     await waitFor(() => {
       expect(document.activeElement?.textContent).toContain('Copy link');
     });
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'End' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), { key: 'End' });
     expect(document.activeElement?.textContent).toContain('Archive');
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'Home' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), { key: 'Home' });
     expect(document.activeElement?.textContent).toContain('Copy link');
   });
 
   test('ArrowUp from the first item wraps to the last item', async () => {
     const { container } = renderCompoundDropdown();
-    const trigger = container.querySelector('.trigger') as HTMLElement;
+    const trigger = requiredInstance(container.querySelector('.trigger'), HTMLElement);
 
     await fireEvent.click(trigger);
     await waitFor(() => {
       expect(document.activeElement?.textContent).toContain('Copy link');
     });
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowUp' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'ArrowUp',
+    });
     expect(document.activeElement?.textContent).toContain('Archive');
   });
 
   test('ArrowDown from the last item wraps to the first item', async () => {
     const { container } = renderCompoundDropdown();
-    const trigger = container.querySelector('.trigger') as HTMLElement;
+    const trigger = requiredInstance(container.querySelector('.trigger'), HTMLElement);
 
     await fireEvent.click(trigger);
     await waitFor(() => {
       expect(document.activeElement?.textContent).toContain('Copy link');
     });
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'End' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), { key: 'End' });
     expect(document.activeElement?.textContent).toContain('Archive');
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'ArrowDown',
+    });
     expect(document.activeElement?.textContent).toContain('Copy link');
   });
 
   test('Enter activates the focused menu item and closes the menu', async () => {
     const { container } = renderCompoundDropdown();
-    const trigger = container.querySelector('.trigger') as HTMLElement;
+    const trigger = requiredInstance(container.querySelector('.trigger'), HTMLElement);
 
     await fireEvent.click(trigger);
     await waitFor(() => {
       expect(document.activeElement?.textContent).toContain('Copy link');
     });
 
-    await fireEvent.keyDown(document.activeElement as HTMLElement, { key: 'ArrowDown' });
+    await fireEvent.keyDown(requiredInstance(document.activeElement, HTMLElement), {
+      key: 'ArrowDown',
+    });
     expect(document.activeElement?.textContent).toContain('Invite people');
 
     // In a real browser, pressing Enter on a focused <button> dispatches a native
@@ -718,11 +733,10 @@ describe('Dropdown', () => {
     // synthesizes its own click on keydown (that caused double-activation), and
     // happy-dom does not synthesize the native click from keydown — so we fire
     // the click directly on the focused item to exercise the same native path.
-    await fireEvent.click(document.activeElement as HTMLElement);
+    await fireEvent.click(requiredInstance(document.activeElement, HTMLElement));
 
-    await waitFor(() => {
-      expect(container.querySelector('[role="menu"]')).toBeNull();
-    });
+    flushSync();
+    expect(container.querySelector('[role="menu"]')?.outerHTML ?? null).toBeNull();
     expect(container.querySelector('output')?.textContent).toBe('share');
   });
 
@@ -765,9 +779,10 @@ describe('Dropdown', () => {
       });
       legacyContainer = legacyDropdown.container;
 
-      const placementMenu = legacyDropdown.container.querySelector(
-        '.cinder-dropdown__menu',
-      ) as HTMLElement;
+      const placementMenu = requiredInstance(
+        legacyDropdown.container.querySelector('.cinder-dropdown__menu'),
+        HTMLElement,
+      );
       expect(placementMenu).not.toBeNull();
       document.body.appendChild(legacyDropdown.container);
 
@@ -777,11 +792,14 @@ describe('Dropdown', () => {
       const componentDropdown = render(DropdownCompoundFixture);
       componentContainer = componentDropdown.container;
       document.body.appendChild(componentDropdown.container);
-      await fireEvent.click(componentDropdown.container.querySelector('.trigger') as HTMLElement);
+      await fireEvent.click(
+        requiredInstance(componentDropdown.container.querySelector('.trigger'), HTMLElement),
+      );
 
-      const componentMenu = document.body.querySelector(
-        '#actions-menu-menu.cinder-dropdown-menu',
-      ) as HTMLElement;
+      const componentMenu = requiredInstance(
+        document.body.querySelector('#actions-menu-menu.cinder-dropdown-menu'),
+        HTMLElement,
+      );
       expect(componentMenu).not.toBeNull();
 
       const componentStyles = readSurfaceStyles(componentMenu);
@@ -843,7 +861,7 @@ describe('Dropdown', () => {
     // instead of resolving on the next microtask — this is the only way to
     // observe the intermediate "closing but still mounted" DOM state.
     const originalGetComputedStyle = window.getComputedStyle.bind(window);
-    window.getComputedStyle = ((target: Element) => {
+    window.getComputedStyle = (target: Element) => {
       if (target instanceof HTMLElement && target.classList.contains('cinder-dropdown__menu')) {
         return {
           transitionProperty: 'opacity, translate',
@@ -852,8 +870,16 @@ describe('Dropdown', () => {
         } as CSSStyleDeclaration;
       }
       return originalGetComputedStyle(target);
-    }) as typeof window.getComputedStyle;
+    };
 
+    // Freeze the clock so the helper's computed-duration fallback timer can
+    // never complete the exit on its own: only the dispatched `transitionend`
+    // events below can. Every assertion is synchronous (`flushSync`, no
+    // `waitFor`), so the test's runtime cannot scale with host load — a
+    // `waitFor` whose first poll fails `expect(<element>).toBeNull()` makes
+    // bun serialize the whole happy-dom element graph (tens of megabytes),
+    // which once pushed this test past the 5s per-test timeout under load.
+    jest.useFakeTimers();
     try {
       const { container, rerender } = render(Dropdown, {
         props: { open: true, trigger: triggerSnippet, children: textSnippet('Menu item') },
@@ -862,6 +888,7 @@ describe('Dropdown', () => {
       const queryMenu = () => container.querySelector('.cinder-dropdown__menu');
       expect(queryMenu()).not.toBeNull();
 
+      const timersBeforeClose = jest.getTimerCount();
       await rerender({ open: false, trigger: triggerSnippet, children: textSnippet('Menu item') });
 
       // Regression guard: this menu previously unmounted in the exact same
@@ -871,22 +898,30 @@ describe('Dropdown', () => {
       const closingMenu = queryMenu();
       expect(closingMenu).not.toBeNull();
       expect(closingMenu?.hasAttribute('data-cinder-closing')).toBe(true);
+      // The fallback timer is armed but frozen, so nothing but the events
+      // below can finish the exit.
+      expect(jest.getTimerCount()).toBeGreaterThan(timersBeforeClose);
 
-      for (const propertyName of ['opacity', 'translate']) {
-        const event = new Event('transitionend');
-        Object.defineProperty(event, 'propertyName', { value: propertyName });
-        closingMenu?.dispatchEvent(event);
-      }
+      closingMenu?.dispatchEvent(createTransitionEndEvent('opacity'));
+      flushSync();
+      expect(queryMenu()?.hasAttribute('data-cinder-closing')).toBe(true);
 
-      await waitFor(() => expect(queryMenu()).toBeNull());
+      closingMenu?.dispatchEvent(createTransitionEndEvent('translate'));
+      flushSync();
+      // Wall-clock independence: the menu is gone the moment the last tracked
+      // transition ends, with the fake clock never advanced. Compare markup,
+      // not the element, so a failure reports quickly instead of serializing
+      // the happy-dom node graph.
+      expect(queryMenu()?.outerHTML ?? null).toBeNull();
     } finally {
+      jest.useRealTimers();
       window.getComputedStyle = originalGetComputedStyle;
     }
   });
 
   test('a reopen mid-close keeps the fallback menu mounted (generation guard, CIN-376)', async () => {
     const originalGetComputedStyle = window.getComputedStyle.bind(window);
-    window.getComputedStyle = ((target: Element) => {
+    window.getComputedStyle = (target: Element) => {
       if (target instanceof HTMLElement && target.classList.contains('cinder-dropdown__menu')) {
         return {
           transitionProperty: 'opacity, translate',
@@ -895,8 +930,12 @@ describe('Dropdown', () => {
         } as CSSStyleDeclaration;
       }
       return originalGetComputedStyle(target);
-    }) as typeof window.getComputedStyle;
+    };
 
+    // Frozen clock: the close genuinely cannot complete before the reopen, so
+    // the generation guard is always exercised rather than raced by the
+    // fallback timer on a slow host.
+    jest.useFakeTimers();
     try {
       const { container, rerender } = render(Dropdown, {
         props: { open: true, trigger: triggerSnippet, children: textSnippet('Menu item') },
@@ -905,14 +944,17 @@ describe('Dropdown', () => {
       expect(queryMenu()).not.toBeNull();
 
       await rerender({ open: false, trigger: triggerSnippet, children: textSnippet('Menu item') });
-      expect(queryMenu()?.hasAttribute('data-cinder-closing')).toBe(true);
+      const closingMenu = queryMenu();
+      expect(closingMenu?.hasAttribute('data-cinder-closing')).toBe(true);
 
       // Reopen before the (transitionend-driven) close ever completes.
       await rerender({ open: true, trigger: triggerSnippet, children: textSnippet('Menu item') });
 
-      expect(queryMenu()).not.toBeNull();
+      // Same node, not a remount; a boolean keeps a failure cheap to report.
+      expect(queryMenu() === closingMenu).toBe(true);
       expect(queryMenu()?.hasAttribute('data-cinder-closing')).toBe(false);
     } finally {
+      jest.useRealTimers();
       window.getComputedStyle = originalGetComputedStyle;
     }
   });

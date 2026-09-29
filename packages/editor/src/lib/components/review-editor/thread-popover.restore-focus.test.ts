@@ -2,7 +2,8 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { tick } from 'svelte';
 
-import { setupHappyDom } from '../../test/happy-dom.ts';
+import { setupHappyDom } from '@lostgradient/testing';
+import type { Thread } from '../../comments/types.ts';
 
 setupHappyDom();
 
@@ -45,7 +46,7 @@ const THREAD = {
     },
   ],
   createdAt: '2026-01-01T00:00:00.000Z',
-} as never;
+} satisfies Thread;
 
 const BASE_PROPS = {
   id: 'test-thread-popover',
@@ -91,15 +92,18 @@ function mountOpener(): HTMLButtonElement {
  * flag never arrives the suite's own timeout fails the test, which is the
  * correct outcome: never-ready is a real failure, not something to wait out.
  */
-function waitForPositionReady(): Promise<void> {
-  const isReady = () =>
-    document.querySelector('[data-position-ready]')?.getAttribute('data-position-ready') === 'true';
+function isPositionReady(): boolean {
+  return (
+    document.querySelector('[data-position-ready]')?.getAttribute('data-position-ready') === 'true'
+  );
+}
 
-  if (isReady()) return Promise.resolve();
+function waitForPositionReady(): Promise<void> {
+  if (isPositionReady()) return Promise.resolve();
 
   return new Promise((resolve) => {
     const observer = new MutationObserver(() => {
-      if (!isReady()) return;
+      if (!isPositionReady()) return;
       observer.disconnect();
       resolve();
     });
@@ -162,7 +166,7 @@ describe('ThreadPopover focus restoration', () => {
   });
 
   test('goes to the fallback after a delete even while the opener is still on screen', async () => {
-    // The asynchronous-removal window. A consumer whose `onthreaddelete` waits
+    // The asynchronous-removal window. A consumer whose `onThreadDelete` waits
     // on a server keeps the sidebar item mounted while the request is in
     // flight, so the popover closes with its opener still perfectly focusable.
     // Ordinary restoration hands focus straight back to it — and then the

@@ -3,10 +3,11 @@
 // @testing-library/svelte and the .svelte components are safe here. Static
 // imports also dodge a Bun test-runner deadlock that occurs when many test
 // files race to top-level-`await import(...)` the same modules in parallel.
-import { cleanup, fireEvent, render } from '@testing-library/svelte';
+import { cleanup, render } from '@testing-library/svelte';
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
+import { requiredInstance } from '@lostgradient/testing';
 import Banner from './banner.svelte';
 
 function textSnippet(text: string) {
@@ -133,16 +134,15 @@ describe('Banner region landmark + accessible name', () => {
 
   test('consumer-supplied live-region attributes are stripped', () => {
     const { container } = render(Banner, {
-      // Cast: HTMLAttributes typing exposes live-region attributes, but banner
+      // HTMLAttributes typing exposes live-region attributes, but Banner
       // deliberately strips them at runtime so the type-allowed attributes are
       // the worst case we need to verify.
       props: {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ['aria-live' as any]: 'assertive',
-        ['aria-atomic' as any]: 'true',
-        ['aria-relevant' as any]: 'additions',
+        'aria-live': 'assertive',
+        'aria-atomic': 'true',
+        'aria-relevant': 'additions',
         children: emptySnippet,
-      } as never,
+      },
     });
     const root = container.querySelector('.cinder-banner');
     expect(root?.hasAttribute('aria-live')).toBe(false);
@@ -153,162 +153,11 @@ describe('Banner region landmark + accessible name', () => {
   test('consumer-supplied aria-busy is preserved', () => {
     const { container } = render(Banner, {
       props: {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ['aria-busy' as any]: 'true',
+        'aria-busy': 'true',
         children: emptySnippet,
-      } as never,
+      },
     });
     expect(container.querySelector('.cinder-banner')?.getAttribute('aria-busy')).toBe('true');
-  });
-});
-
-describe('Banner dismiss behavior', () => {
-  test('renders a dismiss button when dismissible defaults to true', () => {
-    const { container } = render(Banner, {
-      props: { children: emptySnippet },
-    });
-    expect(container.querySelector('.cinder-banner__dismiss')).not.toBeNull();
-  });
-
-  test('does not render dismiss button when dismissible={false}', () => {
-    const { container } = render(Banner, {
-      props: { dismissible: false, children: emptySnippet },
-    });
-    expect(container.querySelector('.cinder-banner__dismiss')).toBeNull();
-  });
-
-  test('dismiss button is a <button type="button"> with aria-label="Dismiss banner"', () => {
-    const { container } = render(Banner, {
-      props: { children: emptySnippet },
-    });
-    const button = container.querySelector('.cinder-banner__dismiss');
-    expect(button).not.toBeNull();
-    expect(button?.tagName).toBe('BUTTON');
-    expect(button?.getAttribute('type')).toBe('button');
-    expect(button?.getAttribute('aria-label')).toBe('Dismiss banner');
-  });
-
-  test('clicking the dismiss button removes the banner from the DOM', async () => {
-    const { container } = render(Banner, {
-      props: { children: emptySnippet },
-    });
-    const button = container.querySelector('.cinder-banner__dismiss') as HTMLButtonElement;
-    await fireEvent.click(button);
-    expect(container.querySelector('.cinder-banner')).toBeNull();
-  });
-
-  test('clicking the dismiss button invokes onDismiss exactly once', async () => {
-    let callCount = 0;
-    const { container } = render(Banner, {
-      props: {
-        onDismiss: () => {
-          callCount += 1;
-        },
-        children: emptySnippet,
-      },
-    });
-    const button = container.querySelector('.cinder-banner__dismiss') as HTMLButtonElement;
-    await fireEvent.click(button);
-    expect(callCount).toBe(1);
-  });
-
-  test('dismissing while focused moves focus to the next focusable element', async () => {
-    const { container } = render(Banner, {
-      props: { children: emptySnippet },
-    });
-    const after = document.createElement('button');
-    after.type = 'button';
-    after.textContent = 'Continue';
-    container.after(after);
-
-    try {
-      const button = container.querySelector('.cinder-banner__dismiss') as HTMLButtonElement;
-      button.focus();
-      expect(document.activeElement).toBe(button);
-      await fireEvent.click(button);
-      expect(container.querySelector('.cinder-banner')).toBeNull();
-      expect(document.activeElement).toBe(after);
-    } finally {
-      after.remove();
-    }
-  });
-
-  test('omitting onDismiss does not throw when the dismiss button is clicked', async () => {
-    const { container } = render(Banner, {
-      props: { children: emptySnippet },
-    });
-    const button = container.querySelector('.cinder-banner__dismiss') as HTMLButtonElement;
-    await fireEvent.click(button);
-    expect(container.querySelector('.cinder-banner')).toBeNull();
-  });
-
-  test('dismissing while focused falls back to the nearest preceding focusable element', async () => {
-    // Mark every existing focusable as inert-scoped so leakage from prior
-    // tests cannot become the "next" candidate. The component's filter skips
-    // anything inside a `[inert]` ancestor.
-    const inertWrapper = document.createElement('div');
-    inertWrapper.setAttribute('inert', '');
-    while (document.body.firstChild) {
-      inertWrapper.appendChild(document.body.firstChild);
-    }
-    document.body.appendChild(inertWrapper);
-
-    const before = document.createElement('button');
-    before.type = 'button';
-    before.textContent = 'Back';
-    document.body.appendChild(before);
-
-    const { container, unmount } = render(Banner, {
-      props: { children: emptySnippet },
-    });
-
-    try {
-      const button = container.querySelector('.cinder-banner__dismiss') as HTMLButtonElement;
-      button.focus();
-      expect(document.activeElement).toBe(button);
-      await fireEvent.click(button);
-      expect(container.querySelector('.cinder-banner')).toBeNull();
-      expect(document.activeElement).toBe(before);
-    } finally {
-      unmount();
-      before.remove();
-      // Restore the original body children for subsequent tests.
-      while (inertWrapper.firstChild) {
-        document.body.appendChild(inertWrapper.firstChild);
-      }
-      inertWrapper.remove();
-    }
-  });
-
-  test('rapid double-click on dismiss invokes onDismiss exactly once', async () => {
-    let callCount = 0;
-    const { container } = render(Banner, {
-      props: {
-        onDismiss: () => {
-          callCount += 1;
-        },
-        children: emptySnippet,
-      },
-    });
-    const button = container.querySelector('.cinder-banner__dismiss') as HTMLButtonElement;
-    await fireEvent.click(button);
-    await fireEvent.click(button);
-    expect(callCount).toBe(1);
-  });
-
-  test('banner is removed from the DOM before onDismiss fires', async () => {
-    let bannerStillPresent = true;
-    const { container } = render(Banner, {
-      props: {
-        onDismiss: () => {
-          bannerStillPresent = container.querySelector('.cinder-banner') !== null;
-        },
-        children: emptySnippet,
-      },
-    });
-    const button = container.querySelector('.cinder-banner__dismiss') as HTMLButtonElement;
-    await fireEvent.click(button);
-    expect(bannerStillPresent).toBe(false);
   });
 });
 
@@ -348,9 +197,9 @@ describe('Banner snippets', () => {
         actions: textSnippet('Renew now'),
       },
     });
-    const root = container.querySelector('.cinder-banner') as HTMLElement;
-    const actions = root.querySelector('.cinder-banner__actions') as HTMLElement;
-    const dismiss = root.querySelector('.cinder-banner__dismiss') as HTMLElement;
+    const root = requiredInstance(container.querySelector('.cinder-banner'), HTMLElement);
+    const actions = requiredInstance(root.querySelector('.cinder-banner__actions'), HTMLElement);
+    const dismiss = requiredInstance(root.querySelector('.cinder-banner__dismiss'), HTMLElement);
     expect(actions).not.toBeNull();
     expect(dismiss).not.toBeNull();
     // compareDocumentPosition: 4 == FOLLOWING

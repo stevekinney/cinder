@@ -1,8 +1,8 @@
 /// <reference lib="dom" />
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 
+import { setupHappyDom } from '@lostgradient/testing';
 import type { ChartMarkContext, ChartXAxisConfiguration, ChartXValue } from '../../index.ts';
-import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 

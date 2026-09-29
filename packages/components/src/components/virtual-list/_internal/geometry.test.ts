@@ -5,6 +5,7 @@ import {
   domWritingDirectionReader,
   normalizeInlineScrollOffset,
   resolveAbsoluteRowStyle,
+  resolveObservedCrossAxisSize,
   resolveObservedMainAxisSize,
   resolveRowLayoutDescriptor,
   resolveWritingDirection,
@@ -396,6 +397,52 @@ describe('resolveObservedMainAxisSize', () => {
     ).toBe(0);
     expect(
       resolveObservedMainAxisSize({ blockSize: 0, inlineSize: 0 }, contentRect, 'horizontal'),
+    ).toBe(0);
+  });
+});
+
+describe('resolveObservedCrossAxisSize', () => {
+  const contentRect = { width: 160, height: 48 };
+
+  test('takes the inline size for a vertical list', () => {
+    const size = resolveObservedCrossAxisSize(
+      { blockSize: 48, inlineSize: 160 },
+      contentRect,
+      'vertical',
+    );
+    expect(size).toBe(160);
+  });
+
+  test('takes the block size for a horizontal list — the axis the main-axis reader ignores', () => {
+    const size = resolveObservedCrossAxisSize(
+      { blockSize: 48, inlineSize: 160 },
+      contentRect,
+      'horizontal',
+    );
+    expect(size).toBe(48);
+  });
+
+  test('falls back to the physical contentRect axis when borderBoxSize is absent', () => {
+    expect(resolveObservedCrossAxisSize(undefined, contentRect, 'vertical')).toBe(160);
+    expect(resolveObservedCrossAxisSize(undefined, contentRect, 'horizontal')).toBe(48);
+  });
+
+  test('prefers borderBoxSize over contentRect, which excludes padding and border', () => {
+    const padded = { width: 100, height: 20 };
+    expect(
+      resolveObservedCrossAxisSize({ blockSize: 48, inlineSize: 160 }, padded, 'vertical'),
+    ).toBe(160);
+    expect(
+      resolveObservedCrossAxisSize({ blockSize: 48, inlineSize: 160 }, padded, 'horizontal'),
+    ).toBe(48);
+  });
+
+  test('keeps a genuine zero rather than falling through to the rect', () => {
+    expect(
+      resolveObservedCrossAxisSize({ blockSize: 0, inlineSize: 0 }, contentRect, 'vertical'),
+    ).toBe(0);
+    expect(
+      resolveObservedCrossAxisSize({ blockSize: 0, inlineSize: 0 }, contentRect, 'horizontal'),
     ).toBe(0);
   });
 });
