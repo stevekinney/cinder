@@ -17,6 +17,7 @@ import {
   manualReleaseVerifiesDispatchShaMatchesTag,
   parseChangesetPackageNames,
   publicPackagePublishOrderIsValid,
+  releaseUsesMirrorVerification,
   rootPublishScriptUsesStagedPackers,
   rootValidationSeparatesSourceAndConsumerGates,
   workflowDeclaresPermission,
@@ -235,7 +236,7 @@ describe('workflow-level env block scanning', () => {
 });
 
 describe('Playwright dependency setup', () => {
-  test.each(['unit-tests.yaml', 'main-green.yaml', 'release.yaml', 'release-manual.yaml'])(
+  test.each(['release.yaml', 'release-manual.yaml'])(
     '%s normalizes the hosted-runner Ubuntu mirror before installing Playwright dependencies',
     (workflowName) => {
       const workspaceRoot = resolve(import.meta.dirname, '../../..');
@@ -271,59 +272,21 @@ describe('Playwright dependency setup', () => {
     },
   );
 
-  test('requires PR hydration smoke to block the static lane and required unit-tests gate', () => {
+  test('requires release to wait for generated mirror verification', () => {
     const workspaceRoot = resolve(import.meta.dirname, '../../..');
-    const workflowSource = readFileSync(
-      join(workspaceRoot, '.github', 'workflows', 'unit-tests.yaml'),
-      'utf8',
+    const release = loadYaml(
+      readFileSync(join(workspaceRoot, '.github/workflows/release.yaml'), 'utf8'),
     );
-    const workflow = loadYaml(workflowSource) as {
-      jobs: Record<
-        string,
-        { if?: string; needs?: string | string[]; steps?: Array<Record<string, unknown>> }
-      >;
-    };
-    const staticLane = workflow.jobs['static-artifact'];
-    const unitGate = workflow.jobs['unit-tests'];
-    const hydrationStep = staticLane?.steps?.find(
-      (step) => step['name'] === 'Consumer hydration smoke (cinder)',
+    const mirror = loadYaml(
+      readFileSync(join(workspaceRoot, '.github/workflows/mirror-verify.yaml'), 'utf8'),
     );
-
-    expect(workflowSource).toContain('  pull_request: {}');
-    expect(staticLane?.needs).toBe('scope');
-    expect(hydrationStep?.['run']).toBe(
-      'bun run --filter=@lostgradient/cinder validate:consumer:hydration-smoke',
-    );
-    expect(hydrationStep?.['if']).toBeUndefined();
-    expect(hydrationStep?.['continue-on-error']).toBeUndefined();
-    expect(staticLane?.steps?.some((step) => step['name'] === 'Validate workflow contracts')).toBe(
-      true,
-    );
-
-    const stepNames = staticLane?.steps?.map((step) => step['name']) ?? [];
-    const mirrorIndex = stepNames.indexOf('Normalize Ubuntu mirror for Playwright dependencies');
-    const chromiumIndex = stepNames.indexOf('Install Chromium for hydration smoke');
-    const hydrationIndex = stepNames.indexOf('Consumer hydration smoke (cinder)');
-    expect(mirrorIndex).toBeGreaterThanOrEqual(0);
-    expect(chromiumIndex).toBeGreaterThanOrEqual(0);
-    expect(hydrationIndex).toBeGreaterThanOrEqual(0);
-    expect(mirrorIndex).toBeLessThan(chromiumIndex);
-    expect(chromiumIndex).toBeLessThan(hydrationIndex);
-
-    expect(unitGate?.needs).toEqual([
-      'scope',
-      'static-artifact',
-      'package',
-      'playground',
-      'component',
-    ]);
-    const aggregatorStep = unitGate?.steps?.find(
-      (step) => step['name'] === 'Require every selected lane to succeed',
-    );
-    expect(aggregatorStep?.['env']).toMatchObject({
-      STATIC: '${{ needs.static-artifact.result }}',
-    });
-    expect(aggregatorStep?.['run']).toContain('*,static,*) [ "$STATIC" = success ] || exit 1');
+    expect(releaseUsesMirrorVerification(release, mirror)).toBe(true);
+    const missingGate = structuredClone(release) as { jobs: { release: { needs?: string } } };
+    delete missingGate.jobs.release.needs;
+    expect(releaseUsesMirrorVerification(missingGate, mirror)).toBe(false);
+    const missingVerifier = structuredClone(release) as { jobs: { 'verify-mirror'?: unknown } };
+    delete missingVerifier.jobs['verify-mirror'];
+    expect(releaseUsesMirrorVerification(missingVerifier, mirror)).toBe(false);
   });
 });
 
@@ -424,49 +387,6 @@ describe('validate-release-workflow changeset guards', () => {
     expect(publicPackagePublishOrderIsValid(workflow([...driftedPush, ...correctDry]))).toBe(false);
   });
 
-  test('builds Cinder before Chat in fresh-checkout coverage workflows', () => {
-    // Both workflows now build Cinder and Chat through a single `turbo run
-    // build --filter=... --filter=...` invocation rather than two sequential
-    // `bun run --filter=<pkg> build` commands — Cinder-before-Chat ordering
-    // is enforced structurally by turbo's dependency graph (`build`
-    // `dependsOn: ["^build"]`, and Chat depends on Cinder), not by which
-    // `--filter` flag appears first in the command text. What this test can
-    // still pin textually: a turbo build step exists covering both packages,
-    // and Chat's coverage test step appears after it in the workflow file.
-    const workspaceRoot = resolve(import.meta.dirname, '../../..');
-    for (const workflowName of ['unit-tests.yaml', 'main-green.yaml']) {
-      const workflow = readFileSync(
-        join(workspaceRoot, '.github', 'workflows', workflowName),
-        'utf8',
-      );
-      const buildStepIndex = workflow.indexOf('turbo run build');
-      expect(buildStepIndex).toBeGreaterThan(-1);
-
-      // Bound the search to the build step's OWN block — the next `- name:`
-      // step (at the same indentation as a job step) or end of file —
-      // instead of "anywhere later in the workflow". Without this bound, a
-      // regression to a Chat-only build filter would still pass by matching
-      // `--filter=@lostgradient/cinder` from an unrelated later step (e.g.
-      // an audit or test step).
-      const nextStepMatch = /\n {6}- name:/.exec(workflow.slice(buildStepIndex));
-      const buildStepEnd =
-        nextStepMatch === undefined || nextStepMatch === null
-          ? workflow.length
-          : buildStepIndex + nextStepMatch.index;
-      const buildStepBlock = workflow.slice(buildStepIndex, buildStepEnd);
-
-      // Both packages must be filter targets of the SAME build step — not
-      // just Chat — or a regression to a Chat-only filter would still pass.
-      expect(buildStepBlock).toContain('--filter=@lostgradient/cinder');
-      expect(buildStepBlock).toContain('--filter=@lostgradient/chat');
-
-      const chatCoverageIndex = workflow.indexOf(
-        'turbo run test:coverage --filter=@lostgradient/chat',
-      );
-      expect(chatCoverageIndex).toBeGreaterThan(buildStepIndex);
-    }
-  });
-
   test('pins Node, npm, and OpenSSL support for both provenance publish paths', () => {
     const workspaceRoot = resolve(import.meta.dirname, '../../..');
     for (const workflowName of ['release.yaml', 'release-manual.yaml']) {
@@ -507,52 +427,24 @@ describe('validate-release-workflow changeset guards', () => {
     ).toBe(false);
   });
 
-  test('keeps root source validation separate from the packed-consumer release gate', () => {
-    const manifest = (validate: string, validateConsumer: string) => ({
-      scripts: { validate, 'validate:consumer': validateConsumer },
+  test('keeps source validation in Corvidae and the packed-consumer release gate here', () => {
+    const manifest = (consumer: string, validate?: string) => ({
+      scripts: { 'validate:consumer': consumer, ...(validate === undefined ? {} : { validate }) },
     });
     const markdown = 'bun run --filter=@lostgradient/markdown validate:consumer';
     const cinder = 'bun run --filter=@lostgradient/cinder validate:consumer';
-    const mcp = 'bun run --filter=@lostgradient/cinder-mcp validate:consumer';
     const editor = 'bun run --filter=@lostgradient/editor validate:consumer';
     const chat = 'bun run --filter=@lostgradient/chat validate:consumer';
-
+    const mcp = 'bun run --filter=@lostgradient/cinder-mcp validate:consumer';
+    const complete = `${markdown} && ${cinder} && ${editor} && ${chat} && ${mcp}`;
+    expect(rootValidationSeparatesSourceAndConsumerGates(manifest(complete))).toBe(true);
     expect(
-      rootValidationSeparatesSourceAndConsumerGates(
-        manifest(
-          'turbo run validate --concurrency=1',
-          `${markdown} && ${cinder} && ${editor} && ${chat} && ${mcp}`,
-        ),
-      ),
-    ).toBe(true);
-    expect(
-      rootValidationSeparatesSourceAndConsumerGates(
-        manifest(
-          `turbo run validate --concurrency=1 && ${chat}`,
-          `${markdown} && ${cinder} && ${editor} && ${chat} && ${mcp}`,
-        ),
-      ),
+      rootValidationSeparatesSourceAndConsumerGates(manifest(complete, 'turbo run validate')),
     ).toBe(false);
+    expect(rootValidationSeparatesSourceAndConsumerGates(manifest(cinder))).toBe(false);
     expect(
       rootValidationSeparatesSourceAndConsumerGates(
-        manifest('turbo run validate --concurrency=1', cinder),
-      ),
-    ).toBe(false);
-    expect(
-      rootValidationSeparatesSourceAndConsumerGates(
-        manifest(
-          `bun run --filter='*' validate && ${chat}`,
-          `${markdown} && ${cinder} && ${chat} && ${mcp}`,
-        ),
-      ),
-    ).toBe(false);
-    // A `turbo run validate` missing `--concurrency=1` must fail: without it,
-    // turbo parallelizes independent packages by default, reintroducing the
-    // concurrent-load fragility the old --sequential flag guarded against
-    // (the playground's dev-server-backed validate step in particular).
-    expect(
-      rootValidationSeparatesSourceAndConsumerGates(
-        manifest('turbo run validate', `${markdown} && ${cinder} && ${chat} && ${mcp}`),
+        manifest(`${cinder} && ${markdown} && ${editor} && ${chat} && ${mcp}`),
       ),
     ).toBe(false);
   });

@@ -31,10 +31,8 @@
  *
  * Registered as `check:virtual-list-dependency-free` and wired into
  * `lint:invariants` so it is CI-gated, not merely runnable.
- * `check-pipeline-coverage.ts`'s `DECLARATION_TABLE` still needs a row for
- * this command naming the layers it runs in (`unit-tests`, `main-green`,
- * alongside its `lint:invariants` siblings) — that table lives outside this
- * script and is not edited here.
+ * `check-pipeline-coverage.ts` must retain the structural mirror workflow
+ * contract when this guard changes.
  * `_internal/dependency-free.test.ts` is a companion Bun regression asserting
  * the same invariant independently, so a local `bun test` run (not just CI)
  * catches a violation without needing this script.

@@ -278,7 +278,7 @@ build` step becomes a near-instant no-op instead of a full rebuild when
 - **Contract test** (coming separately) — a planned end-to-end assertion that
   a representative command actually produces the effect its layer expects
   (not just "the coverage map says it's declared"). Not yet implemented; noted
-  here so its layer gets declared in `check-pipeline-coverage.ts` when it lands.
+  here so the structural pipeline guard remains aligned when it lands.
 
 ## Local iteration ownership
 
@@ -294,7 +294,7 @@ diagnose that gate itself or when changing its implementation.
 
 **Adding a new validation command requires declaring its layer(s) in
 `check-pipeline-coverage.ts`.** If a command is added to a workflow,
-`package.json`, or a hook without a corresponding row in the declaration
+`package.json`, or a hook without updating the structural contract
 table, it simply won't be checked — the coverage map only verifies commands
 it knows about, by design (it is not an exhaustive "every script must be
 declared" gate, which would make routine dev-only scripts a maintenance

@@ -195,12 +195,11 @@ Useful root commands:
 
 ```bash
 bun run build
-bun run lint
 bun run typecheck
-bun run test
-bun run test:browser
-bun run validate
+bun run validate:consumer
 ```
+
+Source lint, unit, coverage, and browser suites run in the private Corvidae workspace. Public mirror pull requests run the generated `mirror-verify` workflow against their exact package artifacts.
 
 Useful package commands:
 

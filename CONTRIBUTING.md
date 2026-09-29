@@ -5,9 +5,8 @@
 ```bash
 bun install
 bun run dev          # start the playground
-bun test             # run all unit tests
-bun run lint         # oxlint + stylelint
 bun run typecheck
+bun run --filter=@lostgradient/cinder test  # focused component tests
 ```
 
 See [README.md](./README.md) for the consumer-facing API overview.
@@ -35,12 +34,7 @@ Block-axis physical properties (`margin-top`, `padding-bottom`, `border-top`, `t
 
 Positioning properties (`left`, `right`) and `text-align: left | right` are **not** stylelint-enforced today. Many components position decorative or geometrically rotated elements (popover arrows, anchor positioning, fixed insets) where physical placement is intentional. When you add a new positioned element that should follow text direction, prefer `inset-inline-start` / `inset-inline-end` by hand. When you keep physical `left`/`right` (e.g., `data-placement="left"` selectors, rotated CSS-triangle decorations), it's worth a short comment so a future reader knows the choice was deliberate.
 
-Stylelint enforces this on every CSS file and `<style>` block under `packages/*/src/**`. The pre-commit hook formats staged files and sorts package metadata; broad style and source validation runs in required CI. To run the check locally:
-
-```bash
-bun run lint        # full lint pipeline, including stylelint
-bun run lint:fix    # auto-fix what's safe
-```
+The component package checks its source with `bun run --filter=@lostgradient/cinder lint`. For CSS and Svelte style blocks in this mirror, run `bunx stylelint "packages/**/src/**/*.{css,svelte}"`. Corvidae owns the complete source lint gate before synchronization.
 
 When `left`/`right` carries semantic placement (e.g. `data-placement="left"` selectors on a tooltip), use the rule's `/* stylelint-disable-next-line csstools/use-logical */` escape hatch and add a comment explaining why the physical axis is intentional.
 
@@ -48,134 +42,29 @@ When `left`/`right` carries semantic placement (e.g. `data-placement="left"` sel
 
 ## Validation ownership
 
-The `pre-commit` hook checks lockfile staging and runs staged formatters and
-package sorting only. Required PR CI and `main-green` own broad source lint,
-typecheck, and test gates. Release owns consumer/tarball validation and package
-weight checks. During ordinary issue or pull request work, run focused
-regression tests and any necessary generated-artifact checks. Do not use the
-root `bun run validate`, full test/coverage/browser suites, or consumer
-validation as an ordinary local pull request gate; required CI and release own
-those broad checks.
+Corvidae owns complete source lint, type, unit, coverage, and browser validation. Its exact validated revision is recorded in each mirror commit. This public repository verifies the generated package artifacts through `mirror-verify` on pull requests and through the release workflow before publishing. For target-owned changes, run focused package checks and verify the generated tarballs rather than invoking removed root scripts.
 
 ## Turborepo remote cache
 
-`build`, `test`, `test:coverage`, `typecheck`, and `lint` run through Turborepo
-and are content-hashed, so an unchanged package replays its previous result
-instead of re-executing. Locally that cache lives in `.turbo/cache/` at the root
-turbo resolves for the run. Each worktree has its own real `node_modules` (see
-the worktree rule in [AGENTS.md](./AGENTS.md) — never symlink one to another
-checkout), so treat every worktree and every clone as starting with a cold local
-cache.
-
-That is precisely the gap the remote cache closes: a fresh worktree, a fresh
-clone, or a second machine starts warm instead of cold. Export the credentials
-from your shell profile rather than running `turbo link`, which writes
-`.turbo/config.json` into whichever root it was run from:
-
-```bash
-# ~/.zshrc
-export TURBO_TOKEN='<your Vercel access token>'
-export TURBO_TEAM='<vercel team slug>'
-export TURBO_PLATFORM="$(uname -s)"
-```
-
-Mint the token at Vercel → Account Settings → Tokens, scoped to the team rather
-than Full Account. None of this is required — without it turbo silently falls
-back to the local `.turbo/` cache.
-
-`TURBO_PLATFORM` is an OS discriminator, not a credential. Turbo's task hash
-covers declared files, environment variables, and engines, but has **no platform
-component**. Since parts of the suite branch on `process.platform`, sharing one
-remote namespace between macOS laptops and Linux CI would let a success be
-replayed on the OS that never ran that branch. `turbo.json` declares it on
-`test`/`test:coverage` only, so `build`, `typecheck`, and `lint` keep full
-CI-to-laptop sharing. It fails safe when unset: an unset value hashes differently
-from any set value, so a laptop cannot read a CI test entry by accident.
-
-CI needs no equivalent setting — the same task declaration also lists
-`RUNNER_OS`, which GitHub defines in every job automatically.
-
-In CI the same variables come from `secrets.TURBO_TOKEN` and `vars.TURBO_TEAM` in
-`unit-tests.yaml` and `main-green.yaml`. Two deliberate asymmetries:
-
-- `main-green.yaml` sets `TURBO_FORCE=true` so it never _reads_ any cache. It is
-  the full-execution safety net; replaying entries would defeat its purpose. It
-  also has no `actions/cache` step at all — a restore could never be read under
-  force, and a save would be dead weight, because `actions/cache` matches an
-  exact key before consulting `restore-keys` and `unit-tests.yaml` already owns
-  the unsuffixed primary key.
-- `unit-tests.yaml` keeps its `actions/cache` step for `.turbo`. It triggers on
-  `pull_request` (not `pull_request_target`), so fork PRs get empty secrets and
-  no remote cache — the local archive is the only cache they can reach.
-
-> [!WARNING] Cache correctness is a shared concern now
-> Because entries are shared across machines, an under-declared task input
-> becomes a wrong result everywhere rather than one stale local hit. Several
-> packages import across the boundary from `packages/components/scripts/**`
-> (`svelte-plugin.ts`, `check-coverage-ratchet.ts`, the artifact generators),
-> and those files never land in cinder's `dist/**`, so the `^build` edge does
-> not cover them. `turbo.json` declares that directory as an explicit input on
-> the affected tasks, and does the same for `packages/testing/scripts/**` (which
-> the playground imports) and `packages/playground/src/**` (which the testing
-> package imports back). If you add a new cross-package import from a cached
-> task, add its directory to that task's `inputs` too — a relative `../../`
-> import into a package you do not declare a dependency on is invisible to the
-> task graph.
-
-> [!IMPORTANT] A package-task override replaces the base task — it does not merge
-> Writing `"@scope/pkg#build": { "dependsOn": ["@scope/other#build"] }` discards
-> the base task's `^build` rather than adding to it, which silently drops every
-> workspace-dependency edge. That is how the editor tasks came to omit Cinder's
-> build hash despite importing Cinder components. Always keep `^build` in the
-> list and append: `["^build", "@scope/other#build"]`. After any change, run
-> `bunx turbo run build lint typecheck test --dry=json` and confirm each task's
-> resolved `dependencies` is a superset of what it was before.
+The retained root `build` and `typecheck` commands use Turborepo. Local cache entries live in this checkout's `.turbo/cache/`; each worktree needs its own frozen Bun installation. If a target-owned task imports files outside its package, declare those inputs in `turbo.json` so a cache hit cannot hide a change. A package-task override replaces the base task definition, so retain required dependency edges when adding one.
 
 ## Tests
 
 - Unit tests use `bun:test` and live alongside the source as `*.test.ts`.
-- Component browser tests live in `packages/testing` and run under Playwright (`bun run test:browser`).
+- The private Corvidae source workspace owns component browser fixtures; this public mirror retains package tests and consumer verification.
 - Every fix should land with a regression test.
 
 ### Visual regression
 
-The Playwright sweep can compare each component screenshot against a committed baseline PNG. The mode is controlled by the `CINDER_VISUAL_DIFF` environment variable, surfaced as the `mode` input on the `browser-tests` workflow's manual dispatch:
+The Playwright screenshot harness and baseline-update workflow moved to the private Corvidae source workspace. This mirror no longer contains `packages/testing/tests`, snapshot baselines, or browser-update scripts. Run the package's focused tests here and review the corresponding Corvidae browser fixture results for visual changes before synchronizing the mirror.
 
-- **`off`** (default) — screenshots are captured and uploaded as artifacts, but never compared. This is the current PR-gating default: visual diffs do not block PRs.
-- **`report`** — screenshots are compared against baselines; mismatches are summarized in the job summary and a sticky PR comment, but the run still passes (soak mode).
-- **`block`** — mismatches fail the job. **A missing baseline is a hard error in this mode**, so `block` cannot be enabled until a baseline set is committed.
+### Coverage
 
-> [!IMPORTANT]
-> `block` mode is wired but **not yet active on PRs**, because no baselines are committed (`packages/testing/snapshots/` is empty). Flipping the PR-gating default to `block` before committing baselines would red every PR. Commit baselines first (below), then enable `block` in a single-line follow-up.
+Corvidae's complete source validation enforces component coverage before mirroring. The public mirror's `mirror-verify` workflow checks the exact built and packed artifacts instead of replaying source coverage on copied files.
 
-**When a visual change is intentional**, regenerate the baselines rather than fighting the diff:
+## Mirror verification
 
-1. Trigger the `browser-tests` workflow manually (`workflow_dispatch`) with `update_baselines=true`, `source_ref` set to your branch, and `base_ref` set to the branch the snapshot PR should target. The `update-baselines` job renders inside the canonical Playwright Docker image (so PNGs match CI byte-for-byte) and opens a snapshot-only follow-up PR.
-2. Review and merge that snapshot PR alongside your change.
-
-Locally, `bun run --filter='@cinder/testing' test:browser:update` regenerates baselines on your machine, but only the Docker-rendered PNGs from the workflow are authoritative for CI comparison — local PNGs differ by platform/font rendering and should not be committed.
-
-### Coverage ratchet
-
-`packages/components` defines coverage floors in `packages/components/coverage-ratchet.json`, checked by `packages/components/scripts/check-coverage-ratchet.ts`. `unit-tests.yaml` runs `test:coverage` for this package on every pull request, so this is a required CI gate, not just an advisory local check — run `bun run --filter=@lostgradient/cinder test:coverage` yourself before opening a PR that touches component coverage to catch a drop before CI does, and the script exits non-zero if a file drops below its floor.
-
-The floor is a **ratchet: it only ever moves up.** When you add tests that lift the real numbers, raise `lines` / `functions` in `coverage-ratchet.json` to the new measured floor in the same change. Never lower them to make a red run pass locally — fix the missing coverage instead. To read the current numbers, run `bun run --filter=@lostgradient/cinder test:coverage`; `lines` follows the file-weighted `All files` line coverage, and `functions` follows the LCOV aggregate function coverage.
-
-The `svelte` sub-block is the one exception to "raise it to the exact new measured floor": CI's `.svelte`/`.svelte.ts` measurement is nondeterministic run-to-run on an unchanged corpus (see `coverage-ratchet.json`'s `svelteMeasuredOn` note), so it is pinned with a deliberate margin below several observed CI samples rather than to one run's exact number. Raising it later requires re-measuring variance across several fresh CI runs and re-deriving that margin, not moving it to match the newest single measurement — pinning it tight is what caused CIN-604's CI failure.
-
-## Main Branch Health
-
-After `.github/workflows/main-green.yaml` lands on `main`, `main-green / workspace-gates` is the central default-branch signal for the same workspace gates developers run locally:
-
-```bash
-bun run lint
-bun run typecheck
-bun run test
-```
-
-If a local pre-push failure looks unrelated to your branch, check the latest `main-green / workspace-gates` run on `main` before spending time isolating your diff. A red `main-green` run means the failure is already present on the default branch; a green `main-green` run means you should keep debugging your branch.
-
-This workflow runs on pushes to `main`, on a daily schedule, and by manual dispatch. It is a default-branch monitor, not a pull-request required check: this repository currently reports `Branch not protected` for `main`, and `main-green / workspace-gates` should not be configured as a required pull-request status unless a future change adds a `pull_request` trigger. To roll this monitor back, revert `.github/workflows/main-green.yaml` and this section.
+The generated `.github/workflows/mirror-verify.yaml` is the public pull request gate. It installs the target with the release workflow's Bun settings, builds and packs each published package, checks declarations and package entry points, and runs isolated consumer checks. The release workflow calls the same verifier before publication.
 
 ## Deploying the playground to Vercel
 
@@ -238,7 +127,7 @@ It does not contact Vercel or deploy anything — it just produces the static `p
 ## Commits and pull requests
 
 - Conventional commit prefixes (`feat`, `fix`, `refactor`, `docs`, `chore`).
-- Run `bun run lint && bun run typecheck && bun test` before opening a PR.
+- Run focused checks for changed target-owned files, `bun run typecheck` when types are affected, and confirm the generated `mirror-verify` pull request check passes.
 - PRs go through the multi-agent committee review before merging.
 - If this PR's completion depends on a manual step outside CI (a UI toggle, a credential-gated bootstrap, a flag flip plus deploy), file a blocking issue in the project's tracker (Linear internally; a GitHub issue for external contributors) in the owning team at merge time with binary evidence criteria — an authenticated endpoint response, a registry query, a deployment status. A merged PR and a checked box in the PR body are not evidence.
 
@@ -252,15 +141,15 @@ bun x changeset
 
 Pick the appropriate semver bump (`patch`, `minor`, `major`), write a short summary, and commit the generated file under `.changeset/`. The release workflow (`.github/workflows/release.yaml`) consumes pending changesets to open a "Version Packages" pull request; merging that PR publishes to npm through npm Trusted Publishing.
 
-Every public package is pre-1.0 — every changeset for one of them must use `minor` or `patch`, never `major` (`bun run --filter=@lostgradient/cinder check:changeset-prerelease-bumps` enforces this and runs in `main-green` and `release.yaml`).
+Every public package is pre-1.0 — every changeset for one of them must use `minor` or `patch`, never `major` (`bun run --filter=@lostgradient/cinder check:changeset-prerelease-bumps` enforces this during release).
 
 `@lostgradient/cinder-mcp` depends on `@lostgradient/cinder`'s `./knowledge` export (published `dist/cli/knowledge.js`) rather than owning any component metadata itself. A change to Cinder's knowledge service (`packages/components/src/cli/knowledge.ts` and friends) that could affect `cinder-mcp`'s behavior should carry a changeset for both packages, not just Cinder.
 
 Each npm artifact has one staged-pack source of truth: `packages/components/scripts/pack-for-publish.ts` for Cinder, `packages/markdown/scripts/pack-for-publish.ts` for Markdown, `packages/mcp/scripts/pack-for-publish.ts` for cinder-mcp, `packages/editor/scripts/pack-for-publish.ts` for Editor, and `packages/chat/scripts/pack-for-publish.ts` for Chat. Consumer validation, release dry-runs, and both publish paths use those exact tarballs. Do not publish directly from any source manifest; workspace-only development dependencies and scripts are intentionally stripped from released artifacts. `cinder-mcp`'s packer additionally rewrites its `@lostgradient/cinder: workspace:*` dependency to a concrete `^<Cinder version>` range in the staged manifest.
 
-Before a release, `main-green` owns source validation: lint, typecheck, generated artifact checks, source audits, and full package tests. Push runs are keyed by SHA and are not cancelled by newer pushes because the release workflow waits for the same-SHA `main-green` run before publishing. The release workflow validates every artifact before publishing any of them: each package's `validate:consumer` command installs staged tarballs into consumer fixtures, and each `package:weight:check -- --existing-tarball` command applies a package-specific budget. `cinder-mcp`'s `validate:consumer` installs BOTH its own and Cinder's staged tarballs via npm (never the workspace source, and never a registry-resolved Cinder — an `overrides` entry forces resolution to the staged tarball), then runs a full MCP handshake through `npx --no-install cinder-mcp` under plain Node with Bun made unresolvable in the child environment. Publish order follows the dependency DAG — markdown → cinder → cinder-mcp → editor → chat — and every publisher skips idempotently when the exact registry version already exists.
+Before a release, Corvidae validates the source revision and the public mirror checks the target artifact in its generated workflow. The release workflow validates every artifact before publishing any of them: each package's `validate:consumer` command installs staged tarballs into consumer fixtures, and each `package:weight:check -- --existing-tarball` command applies a package-specific budget. `cinder-mcp`'s `validate:consumer` installs BOTH its own and Cinder's staged tarballs via npm (never the workspace source, and never a registry-resolved Cinder — an `overrides` entry forces resolution to the staged tarball), then runs a full MCP handshake through `npx --no-install cinder-mcp` under plain Node with Bun made unresolvable in the child environment. Publish order follows the dependency DAG — markdown → cinder → cinder-mcp → editor → chat — and every publisher skips idempotently when the exact registry version already exists.
 
-Changes confined to `@cinder/playground` or `@cinder/testing` do not need a changeset — those workspaces are private and never publish. Changes to other private workspaces bundled by Cinder generally require a Cinder changeset because their output ships in its artifact.
+Changes confined to `@cinder/playground` or `@lostgradient/testing` do not need a changeset — those workspaces are private and never publish. Changes to other private workspaces bundled by Cinder generally require a Cinder changeset because their output ships in its artifact.
 
 ### Publishing to npm
 

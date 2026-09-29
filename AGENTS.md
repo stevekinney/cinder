@@ -46,9 +46,10 @@ checklist:
 - [ ] Add tests for resulting state and resting appearance, not only transitions. (#931)
 - [ ] For every leaf, add a substantive test, README skeleton, stylesheet registration in src/styles/components.css, generated exports, and the sidebar count-gate update. (#310)
 - [ ] For every new token, add check-token-contrast.test.ts coverage and its docs/tokens.md entry; tokens-doc-drift.test.ts must stay green. (#310)
-- [ ] Register every new guard script in check-pipeline-coverage.ts in the same change. (#310)
+- [ ] Keep the structural mirror pipeline guard and its regression tests in sync when changing the public workflow contract. (#310)
 - [ ] Get a design review for every new component; record its nearest neighbours, why it exists, and the review outcome in `*.a11y.md`. (#968)
 - [ ] For a novel interaction model, get an accessibility review covering focus management, the keyboard matrix, and assistive-technology announcements; record the outcome in `*.a11y.md`. (#968)
+
 <!-- component-authoring-checklist:end -->
 
 The checklist's machine-readable source of truth is
@@ -73,67 +74,27 @@ bun run build            # Build @lostgradient/cinder, @lostgradient/cinder-mcp,
 
 ### Testing
 
-```bash
-bun run test             # Run all workspace test scripts
-bun run typecheck        # TypeScript and Svelte type checks
-bun run lint             # Oxlint plus Stylelint
-bun run test:browser     # Playwright browser suite
-bun run validate         # Full workspace/package validation gate
-```
+This public repository builds and publishes the mirror artifacts. Corvidae owns the full source lint, type, unit, coverage, and browser suites; its `bun run validate` runs before a source revision is mirrored. The generated `.github/workflows/mirror-verify.yaml` checks the public pull request's exact package builds, tarballs, declarations, and consumers. The release workflow checks the same published artifacts again.
 
-For component-package tests, prefer the package script so the browser and locale conditions are applied:
+Run focused checks for target-owned changes using scripts that the affected package actually defines:
 
 ```bash
+bun run typecheck
 bun run --filter=@lostgradient/cinder test
-bun run --filter=@lostgradient/cinder test:coverage
+bun run --filter=@lostgradient/testing test
+bun run --filter=@lostgradient/cinder validate:consumer
+bunx prettier --check AGENTS.md
 ```
 
-`test:coverage`'s Svelte floor (`coverage-ratchet.json`'s `svelte` block, checked by
-`packages/components/scripts/check-coverage-ratchet.ts`) is platform-dependent: Bun measures
-`.svelte`/`.svelte.ts` coverage differently on macOS than on the `ubuntu-latest` (linux x64) runner
-CI uses, and CI's number is the authoritative one—the JSON's `svelteMeasuredOn` block records
-which platform/architecture, commit, and CI run the current floor was measured on, and why. A local
-run on a different platform still enforces the floor (it is not skipped), but prints a non-fatal
-notice when its platform doesn't match the recorded one, so a local Svelte pass or fail is never
-mistaken for CI's result.
-
-The Svelte number is also **nondeterministic run-to-run in CI itself**, even against an unchanged
-291-file svelte corpus: three fresh (non-cache-replayed) CI runs measured 76.53/76.53/76.57%
-functions and 21.07/21.07/20.97% lines. Because of that, the Svelte floor is deliberately pinned
-well below the lowest observed sample (see `svelteMeasuredOn.note` for the exact margin math) rather
-than to one run's exact printed number—pinning it tight reproduces the CIN-604 failure this margin
-exists to prevent. Treat the Svelte floor as a catastrophic-regression detector, not a fine-grained
-ratchet: raising it later requires re-measuring variance across several fresh CI runs on an
-unchanged svelte corpus, not just moving it to match the newest single measurement.
-
-Bun has no corepack equivalent, so nothing besides CI's `setup-bun` steps and
-`pinned-bun-version.test.ts` enforces that a contributor's local Bun matches the workspace's pinned
-`packageManager` version. The `test:coverage` command runs `check:local-bun-version-guard` before coverage instrumentation; this advisory uses `packages/testing/scripts/local-bun-version-guard.ts` to warn without failing when the running Bun differs from that pin.
+The root manifest no longer defines `test`, `lint`, `test:browser`, `validate`, `format`, or `format:check`. Do not present those old commands as public-mirror quality gates. The Playwright fixtures and screenshot baseline workflow live in the private Corvidae source workspace.
 
 ### Validation ownership
 
-The `pre-commit` hook checks lockfile staging and runs staged formatters and
-package sorting only. Required PR CI and `main-green` own broad source lint,
-typecheck, and test gates; release owns consumer/tarball validation and package
-weight checks. During ordinary issue or pull request work, run focused
-regression tests and any necessary generated-artifact checks. Do not use the
-root `bun run validate`, full test/coverage/browser suites, or consumer
-validation as an ordinary local pull request gate; required CI and release own
-those broad checks.
-
-The `post-checkout` hook is informational only. When dependency files change,
-it tells you to run `bun install --frozen-lockfile`; it never installs
-automatically or mutates the checked-out worktree. Hook runtime modules use
-only Bun, Node, and repository-local code so checkout and push remain usable
-before a worktree has installed dependencies.
+For ordinary work here, run focused regressions and generated-artifact checks for touched target-owned files. A mirror pull request must pass its generated `mirror-verify` workflow before merge; publication requires the target release workflow and live registry checks. Corvidae's complete source validation is separate evidence tied to the source revision in the mirror commit trailer.
 
 ### Code Quality
 
-```bash
-bun run format           # Format all supported source and documentation files
-bun run format:check     # Check formatting without changes
-bun run lint:fix         # Auto-fix supported lint issues
-```
+Use `bunx prettier --check <paths>` for touched files and `bunx prettier --write <paths>` when formatting them. Run package-specific lint or type checks when those scripts cover the changed files.
 
 ### Package Artifacts
 

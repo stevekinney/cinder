@@ -81,16 +81,11 @@ const ALWAYS_RUN_PATHS = [
 const ALWAYS_RUN_ROOT_TESTS = [
   'src/api-contract.test.ts',
   'src/components.test.ts',
-  'src/compound-leaf-import-boundary.test.ts',
-  'src/compound-namespace.test.ts',
   'src/convention.test.ts',
   'src/domain-suite.test.ts',
-  'src/experimental-aliases.test.ts',
-  'src/exports-drift.test.ts',
   'src/index.test.ts',
   'src/manifest.test.ts',
   'src/root-type-exports.test.ts',
-  'src/tree-shake.test.ts',
 ] as const;
 
 /**

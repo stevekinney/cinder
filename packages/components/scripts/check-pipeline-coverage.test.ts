@@ -1,766 +1,87 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { checkMirrorPipeline, MIRROR_PACKAGES, type Workflow } from './check-pipeline-coverage.ts';
 
-import {
-  checkPipelineCoverage,
-  checkStylelintRuleCoverage,
-  DECLARATION_TABLE,
-  extractRunStepBodies,
-  loadParsedSources,
-  resolveScriptChain,
-  scopeRunBodyToPackage,
-  type DeclarationRow,
-} from './check-pipeline-coverage.ts';
-
-describe('Turbo input topology', () => {
-  it('keeps broad script trees out of base tasks while retaining platform test keys', () => {
-    const turboConfiguration = Bun.JSONC.parse(
-      readFileSync(resolve(import.meta.dir, '../../../turbo.json'), 'utf8'),
-    ) as { tasks: Record<string, { inputs?: string[]; env?: string[] }> };
-    for (const taskName of ['build', 'test', 'test:coverage', 'typecheck', 'lint']) {
-      const task = turboConfiguration.tasks[taskName];
-      expect(task).toBeDefined();
-      expect(task?.inputs).not.toContain('$TURBO_ROOT$/packages/components/scripts/**');
-      expect(task?.inputs).not.toContain('$TURBO_ROOT$/packages/testing/scripts/**');
-    }
-    expect(turboConfiguration.tasks['test']?.env).toEqual([
-      'TURBO_PLATFORM',
-      'RUNNER_OS',
-      'NODE_ENV',
-    ]);
-    const componentsPackage = JSON.parse(
-      readFileSync(resolve(import.meta.dir, '../package.json'), 'utf8'),
-    ) as { scripts: Record<string, string> };
-    expect(DECLARATION_TABLE['check:local-bun-version-guard']?.layers).toEqual([
-      'unit-tests',
-      'main-green',
-    ]);
-    expect(componentsPackage.scripts['test:coverage']).toStartWith(
-      'bun run check:local-bun-version-guard &&',
-    );
-    expect(turboConfiguration.tasks['@lostgradient/cinder#test:coverage']?.inputs).toContain(
-      '$TURBO_ROOT$/packages/testing/scripts/**',
-    );
-  });
-
-  it('pins fail-closed PR aggregators and forced audit policy in workflow source', () => {
-    const root = resolve(import.meta.dir, '../../..');
-    const unitWorkflow = readFileSync(resolve(root, '.github/workflows/unit-tests.yaml'), 'utf8');
-    const browserWorkflow = readFileSync(
-      resolve(root, '.github/workflows/browser-tests.yaml'),
-      'utf8',
-    );
-    const mainWorkflow = readFileSync(resolve(root, '.github/workflows/main-green.yaml'), 'utf8');
-    const turboConfiguration = Bun.JSONC.parse(
-      readFileSync(resolve(root, 'turbo.json'), 'utf8'),
-    ) as { tasks: Record<string, { inputs?: string[]; env?: string[] }> };
-    const componentsManifest = JSON.parse(
-      readFileSync(resolve(root, 'packages/components/package.json'), 'utf8'),
-    ) as { devDependencies: Record<string, string> };
-    expect(unitWorkflow).toContain('name: unit-tests');
-    expect(unitWorkflow).toContain(
-      'needs: [scope, static-artifact, package, playground, component]',
-    );
-    expect(unitWorkflow).toContain('component_matrix={"chunk":[1,2,3,4]}');
-    expect(unitWorkflow).toContain(
-      "needs.scope.result == 'success' && needs.scope.outputs.component_matrix",
-    );
-    expect(unitWorkflow).toContain(
-      'bun test packages/components/scripts/check-css-duplication.test.ts',
-    );
-    expect(browserWorkflow).toContain(
-      `image: mcr.microsoft.com/playwright:v${componentsManifest.devDependencies['@playwright/test']}-noble`,
-    );
-    expect(browserWorkflow).toContain(
-      'functional_matrix=\'{"shard":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"total":[16]}\'',
-    );
-    expect(browserWorkflow).toContain(
-      'filtered_matrix=\'{"shard":[1,2,3,4,5,6,7,8],"total":[8]}\'',
-    );
-    expect(browserWorkflow).toContain('visual_matrix=\'{"shard":[1,2,3,4,5,6,7,8],"total":[8]}\'');
-    expect(browserWorkflow).not.toContain('functional_matrix=\'{"shard":[1]}\'');
-    expect(
-      browserWorkflow.match(/--shard=\$\{\{ matrix\.shard \}\}\/\$\{\{ matrix\.total \}\}/g),
-    ).toHaveLength(2);
-    expect(browserWorkflow).not.toContain('if [ "$CINDER_TEST_SCOPE_MODE" = full ]; then');
-    expect(browserWorkflow).not.toContain(
-      'if [ "${{ needs.scope.outputs.component_scope_mode }}" = filtered ]; then',
-    );
-    expect(browserWorkflow).toContain(
-      "needs.scope.result == 'success' && needs.scope.outputs.functional_matrix",
-    );
-    expect(browserWorkflow).toContain(
-      "needs.scope.result == 'success' && needs.scope.outputs.visual_matrix",
-    );
-    expect(browserWorkflow).toContain('playwright-visual:');
-    expect(browserWorkflow).toContain('baseline-coverage:');
-    expect(browserWorkflow).toContain(
-      "github.event_name != 'workflow_dispatch' || github.event.inputs.update_baselines != 'true'",
-    );
-    expect(browserWorkflow).toContain('test:browser:docker');
-    expect(browserWorkflow).not.toMatch(/^\s*push:/m);
-    expect(browserWorkflow).toContain('echo "browser_relevant=true" >> "$GITHUB_OUTPUT"');
-    expect(browserWorkflow).toContain('CLASSIFIER_BROWSER_RELEVANT');
-    expect(browserWorkflow).toContain('Merge visual-report fragments');
-    expect(browserWorkflow).toContain('name: playwright-visual shard ${{ matrix.shard }}');
-    expect(browserWorkflow).toContain('needs: [scope, playwright-visual-shard]');
-    expect(browserWorkflow).toContain(
-      "github.event_name != 'workflow_dispatch' || github.event.inputs.mode != 'off'",
-    );
-    expect(browserWorkflow).toContain(
-      "name: ${{ github.event_name == 'workflow_dispatch' && format('playwright ({0})'",
-    );
-    expect(browserWorkflow).toContain(
-      'if [ "$EVENT_NAME" = pull_request ] || [ "$EVENT_NAME" = merge_group ]; then',
-    );
-    expect(browserWorkflow).toContain('[ "$VISUAL" = success ] || exit 1');
-    expect(browserWorkflow).toContain('sudo rm -rf packages/testing/snapshots');
-    expect(browserWorkflow).toContain(
-      'source_branch baseline updates require an explicit components scope or validated shard',
-    );
-    expect(browserWorkflow).toContain(
-      'source_branch baseline updates cannot target the base branch',
-    );
-    expect(browserWorkflow).toContain('shard must use the form N/8 where N is 1 through 8');
-    expect(browserWorkflow).toContain('test:browser:update:docker -- --shard="$SHARD"');
-    expect(browserWorkflow).toContain(
-      "CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}",
-    );
-    expect(browserWorkflow).not.toContain(
-      "github.event.inputs.shard == '' && needs.scope.outputs.component_scope_mode == 'filtered'",
-    );
-    expect(browserWorkflow).toContain('path: packages/testing/blob-report');
-    expect(browserWorkflow).toContain(
-      'bunx playwright merge-reports --reporter html packages/testing/blob-reports',
-    );
-    // The merge is skipped when no shard uploaded a blob — a reachable state
-    // now that the diagnostic uploads are best-effort — so that an artifact
-    // outage cannot fail the aggregate on behalf of code that passed.
-    expect(browserWorkflow).toContain(
-      "echo 'No blob reports were uploaded; skipping the merged report.'",
-    );
-    expect(mainWorkflow).toContain("github.event_name == 'schedule'");
-    expect(mainWorkflow).toContain("github.event.inputs.force_audit == 'true'");
-    expect(turboConfiguration.tasks['@lostgradient/cinder#test']?.inputs).toContain(
-      '$TURBO_ROOT$/.github/workflows/**',
-    );
-    expect(turboConfiguration.tasks['@lostgradient/cinder#test']?.inputs).toContain(
-      '$TURBO_ROOT$/packages/*/package.json',
-    );
-    expect(turboConfiguration.tasks['@cinder/playground#typecheck']?.inputs).toContain(
-      '$TURBO_ROOT$/packages/testing/scripts/source-fingerprint.ts',
-    );
-    expect(turboConfiguration.tasks['@cinder/playground#test']?.inputs).toContain(
-      '$TURBO_ROOT$/README.md',
-    );
-    expect(turboConfiguration.tasks['@cinder/playground#test']?.env).toEqual([
-      'TURBO_PLATFORM',
-      'RUNNER_OS',
-      'NODE_ENV',
-    ]);
-    expect(turboConfiguration.tasks['@lostgradient/markdown#test']?.inputs).toContain(
-      '$TURBO_ROOT$/packages/components/package.json',
-    );
-  });
-});
-
-describe('resolveScriptChain', () => {
-  it('resolves a script chain transitively, following bun run invocations', () => {
-    const packageScripts = {
-      validate: 'bun run lint && bun run subcheck',
-      subcheck: 'bun run scripts/subcheck.ts',
-      lint: 'oxlint',
-    };
-
-    const chain = resolveScriptChain('validate', packageScripts);
-
-    expect(chain.has('validate')).toBe(true);
-    expect(chain.has('lint')).toBe(true);
-    expect(chain.has('subcheck')).toBe(true);
-  });
-
-  it('does not conflate overlapping script name prefixes', () => {
-    const packageScripts = {
-      test: 'bun test',
-      'test:changed': 'bun run scripts/test-changed.ts',
-      'test:coverage': 'bun test --coverage',
-    };
-
-    // `test` should not resolve to include `test:changed`/`test:coverage` —
-    // its own body never invokes them via `bun run <name>`.
-    const chain = resolveScriptChain('test', packageScripts);
-
-    expect(chain.has('test')).toBe(true);
-    expect(chain.has('test:changed')).toBe(false);
-    expect(chain.has('test:coverage')).toBe(false);
-  });
-});
-
-describe('checkStylelintRuleCoverage', () => {
-  it('requires each declared rule, plugin, and pipeline layer', () => {
-    expect(
-      checkStylelintRuleCoverage(
-        {
-          plugins: [
-            './no-surface-on-form-control.mjs',
-            './interior-border-weight.mjs',
-            './z-index-scale.mjs',
-          ],
-          rules: {
-            'cinder/no-surface-on-form-control': true,
-            'cinder/interior-border-weight': true,
-            'cinder/z-index-scale': true,
+const directory = (name: string) =>
+  `packages/${name === '@lostgradient/cinder' ? 'components' : name.slice('@lostgradient/'.length)}`;
+const mirror = (): Workflow => ({
+  name: 'mirror-verify',
+  jobs: {
+    verify: {
+      steps: [
+        ...MIRROR_PACKAGES.flatMap((name) => [
+          { name: `build ${name}`, 'working-directory': directory(name), run: 'bun run build' },
+          {
+            name: `typecheck ${name}`,
+            'working-directory': directory(name),
+            run: 'bun run typecheck',
           },
+          {
+            name: `pack ${name}`,
+            'working-directory': directory(name),
+            run: 'bun run scripts/pack-for-publish.ts',
+          },
+          {
+            name: `move ${name}'s packed tarball into the shared tarballs directory`,
+            run: `rename lostgradient-${name.replace(/^@/, '').replace('/', '-')}.tgz`,
+          },
+        ]),
+        {
+          name: 'import 1077 specifier(s)',
+          run: MIRROR_PACKAGES.map((name) => `import '${name}/entry'`).join('\n'),
         },
-        { stylelint: { layers: ['unit-tests', 'main-green'], reason: 'test' } },
-      ),
-    ).toEqual([]);
-  });
-
-  it('fails when configuration or a declared layer drifts', () => {
-    const violations = checkStylelintRuleCoverage(
-      { plugins: [], rules: {} },
-      { stylelint: { layers: ['unit-tests'], reason: 'test' } },
-    );
-    expect(violations).toHaveLength(9);
-    expect(violations.some((violation) => violation.layer === 'main-green')).toBe(true);
-  });
-
-  it('rejects covered rules that are present but disabled', () => {
-    const violations = checkStylelintRuleCoverage(
-      {
-        plugins: [
-          './no-surface-on-form-control.mjs',
-          './interior-border-weight.mjs',
-          './z-index-scale.mjs',
-        ],
-        rules: {
-          'cinder/no-surface-on-form-control': true,
-          'cinder/interior-border-weight': false,
-          'cinder/z-index-scale': true,
+        {
+          name: 'import 881 specifier(s) from packed tarballs under node',
+          run: MIRROR_PACKAGES.map((name) => `import '${name}/entry'`).join('\n'),
         },
-      },
-      { stylelint: { layers: ['unit-tests', 'main-green'], reason: 'test' } },
-    );
-    expect(violations).toHaveLength(1);
-    expect(violations[0]?.command).toBe('stylelint:cinder/interior-border-weight');
-  });
+      ],
+    },
+  },
+});
+const release = (): Workflow => ({
+  jobs: {
+    'verify-mirror': { uses: './.github/workflows/mirror-verify.yaml' },
+    release: {
+      needs: 'verify-mirror',
+      steps: [
+        {
+          name: 'Validate cinder-mcp package artifact',
+          run: 'bun run --filter=@lostgradient/cinder-mcp validate:consumer',
+        },
+        {
+          name: 'Publish validated cinder-mcp package artifact to npm',
+          run: 'bun run --filter=@lostgradient/cinder-mcp publish:release -- --skip-validation',
+        },
+      ],
+    },
+  },
 });
 
-describe('extractRunStepBodies', () => {
-  it('extracts only run: step bodies, excluding comments and job/step metadata', () => {
-    const workflowYaml = [
-      '# `check:changeset-prerelease-bumps` also runs inside `bun run validate` (release',
-      'name: example',
-      'on: push',
-      'jobs:',
-      '  guard:',
-      '    name: Pre-1.0 changeset bump guard',
-      '    steps:',
-      '      - name: Checkout',
-      '        uses: actions/checkout@v4',
-      '      - name: Run guard',
-      '        run: bun run check:changeset-prerelease-bumps',
-      '',
-    ].join('\n');
-
-    const runText = extractRunStepBodies(workflowYaml);
-
-    expect(runText).toContain('bun run check:changeset-prerelease-bumps');
-    // The comment mentioning `bun run validate` must not leak into the
-    // extracted run text — comments are not part of the parsed YAML value.
-    expect(runText).not.toContain('validate');
-  });
-
-  it('returns an empty string when the workflow has no jobs', () => {
-    expect(extractRunStepBodies('name: empty\non: push\n')).toBe('');
-  });
-
-  it('scopes a working-directory step to the workspace package that owns that directory', () => {
-    // CIN-514: the lab's stylesheet guard runs as `bun run check:client-styles`
-    // inside `labs/chat-room`. Resolved through the root manifest it exists
-    // nowhere and the gate would be invisible to the coverage map.
-    const workflowYaml = [
-      'name: example',
-      'on: push',
-      'jobs:',
-      '  client-styles:',
-      '    steps:',
-      '      - name: Check the client bundle carries every workspace stylesheet',
-      '        run: bun run check:client-styles',
-      '        working-directory: labs/chat-room',
-      '      - name: Root-scoped step',
-      '        run: bun run lint',
-      '',
-    ].join('\n');
-
-    const runText = extractRunStepBodies(workflowYaml);
-
-    expect(runText).toContain('bun run --filter=@cinder/chat-room-lab check:client-styles');
-    expect(runText).toContain('\nbun run lint');
-    expect(runText).not.toContain('--filter=@cinder/chat-room-lab lint');
-  });
-
-  it('leaves a working-directory outside the workspace map unscoped', () => {
-    const workflowYaml = [
-      'name: example',
-      'on: push',
-      'jobs:',
-      '  other:',
-      '    steps:',
-      '      - run: bun run lint',
-      '        working-directory: tools/somewhere-else',
-      '',
-    ].join('\n');
-
-    expect(extractRunStepBodies(workflowYaml)).toBe('bun run lint');
-  });
-});
-
-describe('scopeRunBodyToPackage', () => {
-  it('rewrites every unfiltered bun run invocation and leaves explicit filters alone', () => {
-    const body =
-      'bun run lint && bun run --filter=@lostgradient/chat build && bunx playwright test';
-
-    expect(scopeRunBodyToPackage(body, '@cinder/chat-room-lab')).toBe(
-      'bun run --filter=@cinder/chat-room-lab lint && bun run --filter=@lostgradient/chat build && bunx playwright test',
-    );
-  });
-});
-
-describe('checkPipelineCoverage', () => {
-  const packageScripts = {
-    validate: 'bun run lint && bun run components:check',
-    lint: 'oxlint',
-    'components:check': 'bun run scripts/generate-component-artifacts.ts --check',
-  };
-
-  it('resolves check-placeholder-docs through components:check in both CI layers', () => {
-    const result = checkPipelineCoverage(
-      {
-        'check:placeholder-docs': { layers: ['unit-tests', 'main-green'], reason: 'test fixture' },
-      },
-      {
-        packageScripts: {
-          'components:check': 'bun run check:placeholder-docs',
-          'check:placeholder-docs': 'bun run scripts/check-placeholder-docs.ts',
-        },
-        rootScripts: {},
-        workflowText: {
-          'unit-tests': 'bun run --filter=@lostgradient/cinder components:check',
-          'browser-tests': '',
-          'main-green': 'bun run --filter=@lostgradient/cinder components:check',
-          release: '',
-          'changeset-guard': '',
-          'main-red-watch': '',
-          'labs-chat-room': '',
-        },
-        hookText: {},
-      },
-    );
-    expect(result.violations).toEqual([]);
-  });
-
-  it('detects an undeclared duplicate: a command runs in a layer the table does not declare', () => {
-    const table: Record<string, DeclarationRow> = {
-      lint: { layers: [], reason: 'test fixture — declares no layers' },
-    };
-    const result = checkPipelineCoverage(table, {
-      packageScripts,
-      rootScripts: { lint: 'bun run --filter=@lostgradient/cinder lint' },
-      workflowText: { 'main-green': 'bun run lint' },
-      hookText: {},
-    });
-
-    expect(result.violations).toContainEqual(
-      expect.objectContaining({ command: 'lint', kind: 'undeclared', layer: 'main-green' }),
-    );
-  });
-
-  it('detects a missing declared layer: the table declares a layer the command never actually runs in', () => {
-    const table: Record<string, DeclarationRow> = {
-      lint: { layers: ['main-green'], reason: 'test fixture — declares main-green' },
-    };
-    const result = checkPipelineCoverage(table, {
-      packageScripts,
-      rootScripts: {},
-      workflowText: { 'main-green': 'bun run typecheck' },
-      hookText: {},
-    });
-
-    expect(result.violations).toContainEqual(
-      expect.objectContaining({ command: 'lint', kind: 'missing', layer: 'main-green' }),
-    );
-  });
-
-  it('resolves transitive script chains so an indirectly-invoked command is not flagged missing', () => {
-    const table: Record<string, DeclarationRow> = {
-      'components:check': {
-        layers: ['release'],
-        reason: 'test fixture — reached only via `validate`',
-      },
-    };
-    const result = checkPipelineCoverage(table, {
-      packageScripts,
-      rootScripts: { validate: 'bun run --filter=@lostgradient/cinder validate' },
-      workflowText: {
-        'unit-tests': '',
-        'browser-tests': '',
-        'main-green': '',
-        release: 'bun run validate',
-        'changeset-guard': '',
-        'main-red-watch': '',
-        'labs-chat-room': '',
-      },
-      hookText: {},
-    });
-
-    expect(result.violations).toEqual([]);
-  });
-
-  it('tracks package-qualified Chat commands independently from Cinder', () => {
-    const table: Record<string, DeclarationRow> = {
-      '@lostgradient/chat#validate:consumer': {
-        layers: ['release'],
-        reason: 'test fixture — Chat artifact validation',
-      },
-    };
-    const result = checkPipelineCoverage(table, {
-      packageScripts: { 'validate:consumer': 'bun run scripts/validate-consumers.ts' },
-      workspacePackageScripts: {
-        '@lostgradient/cinder': {
-          'validate:consumer': 'bun run scripts/validate-consumers.ts',
-        },
-        '@lostgradient/chat': {
-          'validate:consumer': 'bun run scripts/validate-consumers.ts',
-        },
-      },
-      rootScripts: {},
-      workflowText: {
-        'unit-tests': '',
-        'browser-tests': '',
-        'main-green': '',
-        release: 'bun run --filter=@lostgradient/chat validate:consumer',
-        'changeset-guard': '',
-        'main-red-watch': '',
-        'labs-chat-room': '',
-      },
-      hookText: {},
-    });
-
-    expect(result.violations).toEqual([]);
-  });
-
-  it('recognizes the Chat coverage command as the unit-tests and main-green gate', () => {
-    const table: Record<string, DeclarationRow> = {
-      '@lostgradient/chat#test:coverage': {
-        layers: ['unit-tests', 'main-green'],
-        reason: 'test fixture — Chat coverage gate',
-      },
-    };
-    const chatScripts = {
-      test: 'bun test src/lib',
-      'test:coverage': 'bun test --coverage src/lib',
-    };
-    const result = checkPipelineCoverage(table, {
-      packageScripts: {},
-      workspacePackageScripts: {
-        '@lostgradient/cinder': {},
-        '@lostgradient/chat': chatScripts,
-      },
-      rootScripts: {},
-      workflowText: {
-        'unit-tests': 'bun run --filter=@lostgradient/chat test:coverage',
-        'browser-tests': '',
-        'main-green': 'bun run --filter=@lostgradient/chat test:coverage',
-        release: '',
-        'changeset-guard': '',
-        'main-red-watch': '',
-        'labs-chat-room': '',
-      },
-      hookText: {},
-    });
-
-    expect(result.violations).toEqual([]);
-  });
-
-  it('does not let a Cinder filter falsely cover a package-qualified Chat command', () => {
-    const table: Record<string, DeclarationRow> = {
-      '@lostgradient/chat#validate:consumer': {
-        layers: ['release'],
-        reason: 'test fixture — Chat artifact validation',
-      },
-    };
-    const result = checkPipelineCoverage(table, {
-      packageScripts: {},
-      workspacePackageScripts: {
-        '@lostgradient/cinder': { 'validate:consumer': 'bun run cinder-validation.ts' },
-        '@lostgradient/chat': { 'validate:consumer': 'bun run chat-validation.ts' },
-      },
-      rootScripts: {},
-      workflowText: {
-        'unit-tests': '',
-        'browser-tests': '',
-        'main-green': '',
-        release: 'bun run --filter=@lostgradient/cinder validate:consumer',
-        'changeset-guard': '',
-        'main-red-watch': '',
-        'labs-chat-room': '',
-      },
-      hookText: {},
-    });
-
-    expect(result.violations).toContainEqual(
-      expect.objectContaining({
-        command: '@lostgradient/chat#validate:consumer',
-        kind: 'missing',
-        layer: 'release',
-      }),
-    );
-  });
-
-  it('does not let an unqualified root entry point falsely cover a package gate', () => {
-    const table: Record<string, DeclarationRow> = {
-      'components:check': {
-        layers: ['release'],
-        reason: 'test fixture — package validate would reach it, but root validate no longer does',
-      },
-    };
-    const result = checkPipelineCoverage(table, {
-      packageScripts,
-      rootScripts: { validate: 'bun run validate:playground' },
-      workflowText: {
-        'unit-tests': '',
-        'browser-tests': '',
-        'main-green': '',
-        release: 'bun run validate',
-        'changeset-guard': '',
-        'main-red-watch': '',
-        'labs-chat-room': '',
-      },
-      hookText: {},
-    });
-
-    expect(result.violations).toContainEqual(
-      expect.objectContaining({
-        command: 'components:check',
-        kind: 'missing',
-        layer: 'release',
-      }),
-    );
-  });
-
-  it('resolves an external-binary command (e.g. stylelint) through the ROOT script chain, not just the package chain', () => {
-    const table: Record<string, DeclarationRow> = {
-      stylelint: { layers: ['main-green'], reason: 'test fixture — reached via root `lint`' },
-    };
-    const result = checkPipelineCoverage(table, {
-      packageScripts: { lint: 'oxlint' },
-      rootScripts: { lint: 'bun run --filter=\'*\' lint && stylelint "packages/**"' },
-      workflowText: {
-        'unit-tests': '',
-        'browser-tests': '',
-        'main-green': 'bun run lint',
-        release: '',
-        'changeset-guard': '',
-        'main-red-watch': '',
-        'labs-chat-room': '',
-      },
-      hookText: {},
-    });
-
-    expect(result.violations).toEqual([]);
-  });
-
-  it("resolves a bare `turbo run <name>` workflow step through the ROOT script chain, treating the missing --filter as the same wildcard as `--filter='*'`", () => {
-    const table: Record<string, DeclarationRow> = {
-      lint: { layers: ['main-green'], reason: 'test fixture — reached via root `turbo run lint`' },
-    };
-    const result = checkPipelineCoverage(table, {
-      packageScripts: { lint: 'oxlint' },
-      rootScripts: { lint: 'turbo run lint && stylelint "packages/**"' },
-      workflowText: {
-        'unit-tests': '',
-        'browser-tests': '',
-        'main-green': 'bunx turbo run lint',
-        release: '',
-        'changeset-guard': '',
-        'main-red-watch': '',
-        'labs-chat-room': '',
-      },
-      hookText: {},
-    });
-
-    expect(result.violations).toEqual([]);
-  });
-
-  it('resolves a package-qualified `turbo run <name> --filter=<pkg>` workflow step, including repeated --filter flags turbo allows but bun does not', () => {
-    const table: Record<string, DeclarationRow> = {
-      '@lostgradient/chat#build': {
-        layers: ['unit-tests'],
-        reason:
-          'test fixture — reached via a multi-package `turbo run build --filter=... --filter=...`',
-      },
-    };
-    const result = checkPipelineCoverage(table, {
-      packageScripts: {},
-      workspacePackageScripts: {
-        '@lostgradient/cinder': { build: 'bun run scripts/build.ts' },
-        '@lostgradient/chat': { build: 'bun run scripts/build.ts' },
-      },
-      rootScripts: {},
-      workflowText: {
-        'unit-tests':
-          'bunx turbo run build --filter=@lostgradient/cinder --filter=@lostgradient/chat',
-        'browser-tests': '',
-        'main-green': '',
-        release: '',
-        'changeset-guard': '',
-        'main-red-watch': '',
-        'labs-chat-room': '',
-      },
-      hookText: {},
-    });
-
-    expect(result.violations).toEqual([]);
-  });
-
-  it('does not let a `turbo run <name> --filter=<other-pkg>` step falsely cover an unlisted package', () => {
-    const table: Record<string, DeclarationRow> = {
-      '@lostgradient/chat#build': {
-        layers: ['unit-tests'],
-        reason: 'test fixture — Chat is not among the --filter targets below',
-      },
-    };
-    const result = checkPipelineCoverage(table, {
-      packageScripts: {},
-      workspacePackageScripts: {
-        '@lostgradient/cinder': { build: 'bun run scripts/build.ts' },
-        '@lostgradient/chat': { build: 'bun run scripts/build.ts' },
-      },
-      rootScripts: {},
-      workflowText: {
-        'unit-tests': 'bunx turbo run build --filter=@lostgradient/cinder',
-        'browser-tests': '',
-        'main-green': '',
-        release: '',
-        'changeset-guard': '',
-        'main-red-watch': '',
-        'labs-chat-room': '',
-      },
-      hookText: {},
-    });
-
-    expect(result.violations).toContainEqual(
-      expect.objectContaining({
-        command: '@lostgradient/chat#build',
-        kind: 'missing',
-        layer: 'unit-tests',
-      }),
-    );
-  });
-
-  it('flags an external-binary command as missing when the layer never reaches it through either manifest', () => {
-    const table: Record<string, DeclarationRow> = {
-      stylelint: { layers: ['release'], reason: 'test fixture — falsely declared for release' },
-    };
-    const result = checkPipelineCoverage(table, {
-      packageScripts: { validate: 'bun run lint' },
-      rootScripts: {},
-      workflowText: {
-        'unit-tests': '',
-        'browser-tests': '',
-        'main-green': '',
-        release: 'bun run validate',
-        'changeset-guard': '',
-        'main-red-watch': '',
-        'labs-chat-room': '',
-      },
-      hookText: {},
-    });
-
-    expect(result.violations).toContainEqual(
-      expect.objectContaining({ command: 'stylelint', kind: 'missing', layer: 'release' }),
-    );
-  });
-
-  const noopWorkflowText = {
-    'unit-tests': '',
-    'browser-tests': '',
-    'main-green': '',
-    release: '',
-    'changeset-guard': '',
-    'main-red-watch': '',
-    'labs-chat-room': '',
-  };
-
-  it('flags a hook-layer mismatch as a warning, not a violation, when the hook script is present', () => {
-    const table: Record<string, DeclarationRow> = {
-      typecheck: { layers: ['pre-commit'], reason: 'test fixture' },
-    };
-    const result = checkPipelineCoverage(table, {
-      packageScripts: {},
-      rootScripts: {},
-      workflowText: noopWorkflowText,
-      hookText: { 'pre-commit': 'no matching token here' },
-    });
-
-    expect(result.violations).toEqual([]);
-    expect(result.warnings.some((warning) => warning.includes('advisory only'))).toBe(true);
-  });
-
-  it('warns (does not fail) when a hook script cannot be read', () => {
-    const table: Record<string, DeclarationRow> = {
-      typecheck: { layers: ['pre-commit'], reason: 'test fixture' },
-    };
-    const result = checkPipelineCoverage(table, {
-      packageScripts: {},
-      rootScripts: {},
-      workflowText: noopWorkflowText,
-      hookText: {},
-    });
-
-    expect(result.violations).toEqual([]);
-    expect(result.warnings.some((warning) => warning.includes('could not be read'))).toBe(true);
-  });
-
-  it('fails (not warns) when a non-hook workflow file cannot be read', () => {
-    const table: Record<string, DeclarationRow> = {
-      lint: { layers: ['main-green'], reason: 'test fixture' },
-    };
-    const result = checkPipelineCoverage(table, {
-      packageScripts,
-      rootScripts: {},
-      workflowText: {},
-      hookText: {},
-    });
-
+describe('mirror pipeline coverage', () => {
+  it('accepts the parsed target topology', () =>
+    expect(checkMirrorPipeline(mirror(), release()).violations).toEqual([]));
+  it('rejects a wrong package directory and command', () => {
+    const changed = mirror();
+    const typecheckStep = changed.jobs?.['verify']?.steps?.[1];
+    if (!typecheckStep) throw new Error('Fixture missing Markdown typecheck step');
+    typecheckStep['working-directory'] = 'packages/wrong';
+    typecheckStep.run = 'bun run build';
     expect(
-      result.violations.some(
-        (violation) => violation.command === 'lint' && violation.layer === 'main-green',
-      ),
-    ).toBe(true);
+      checkMirrorPipeline(changed, release()).violations.map(({ detail }) => detail),
+    ).toContain('typecheck contract missing for @lostgradient/markdown');
   });
-
-  it('passes on the current tree: the real declaration table matches real parsed sources', async () => {
-    const sources = await loadParsedSources();
-    const result = checkPipelineCoverage(DECLARATION_TABLE, sources);
-
-    expect(result.violations).toEqual([]);
+  it('rejects release linkage mutations', () => {
+    const changed = release();
+    changed.jobs!['release']!.needs = [];
+    changed.jobs!['verify-mirror']!.uses = './.github/workflows/old.yaml';
+    const details = checkMirrorPipeline(mirror(), changed).violations.map(({ detail }) => detail);
+    expect(details).toContain('verify-mirror must call mirror-verify.yaml');
+    expect(details).toContain('release job must need verify-mirror');
   });
-});
-
-describe('CIN-29 review finding: tokens:generate reason text', () => {
-  it('does not claim tokens:check takes a --check flag it does not accept', () => {
-    // tokens:check is `tokens:validate && tokens:generate -- --check` (see package.json) --
-    // the `--check` flag belongs to the `tokens:generate` invocation tokens:check runs
-    // internally, not to `tokens:check` itself. The reason text previously read "Invoked via
-    // `tokens:check -- --check`", which would mislead someone reproducing the invocation
-    // locally into passing a flag `tokens:check` does not accept.
-    const reason = DECLARATION_TABLE['tokens:generate']?.reason;
-    expect(reason).toBeDefined();
-    expect(reason).not.toContain('tokens:check -- --check');
-    expect(reason).toContain('tokens:check`, which runs `tokens:generate -- --check`');
+  it('requires the fifth published package release contract', () => {
+    const changed = release();
+    changed.jobs!['release']!.steps = [];
+    expect(checkMirrorPipeline(mirror(), changed).violations.map(({ detail }) => detail)).toContain(
+      'cinder-mcp consumer validation missing',
+    );
   });
 });

@@ -9,9 +9,8 @@
  *   - The file .github/workflows/release.yaml is present.
  *   - The file has `id-token: write` (the OIDC permission required for Trusted
  *     Publishing) somewhere in its permissions declarations.
- *   - The release workflow can dispatch every validation workflow required by
- *     a Changesets-created pull request, whose GITHUB_TOKEN-originated events
- *     otherwise require manual approval.
+ *   - Release waits for the generated mirror verifier and dispatches the
+ *     Playground preview for a Changesets-created pull request.
  *   - Manual playground dispatches default to preview, so release validation
  *     cannot accidentally deploy a version branch to production.
  *   - Workflow actions use Node 24-compatible majors instead of deprecated
@@ -475,28 +474,18 @@ export function rootPublishScriptUsesStagedPackers(manifest: unknown): boolean {
   );
 }
 
-/** The root source gate stays separate from the explicit packed-consumer release gate. */
+/** Source validation lives in Corvidae; this mirror retains the packed-consumer release gate. */
 export function rootValidationSeparatesSourceAndConsumerGates(manifest: unknown): boolean {
   if (!isObjectRecord(manifest) || !isObjectRecord(manifest['scripts'])) return false;
   const validateScript = manifest['scripts']['validate'];
   const consumerScript = manifest['scripts']['validate:consumer'];
-  if (typeof validateScript !== 'string' || typeof consumerScript !== 'string') return false;
+  if (validateScript !== undefined || typeof consumerScript !== 'string') return false;
 
   const consumerIndices = findOrderedIndices(
     consumerScript,
     (packageName) => `bun run --filter=${packageName} validate:consumer`,
   );
-  // --concurrency=1 preserves the serialization the old --sequential flag
-  // gave: turbo parallelizes independent packages by default, and the
-  // playground's dev-server-backed validate step is documented as fragile
-  // under concurrent load. Packed-consumer validation remains an explicit
-  // release gate rather than running on every source validation.
-  return (
-    validateScript.trim() === 'turbo run validate --concurrency=1' &&
-    !validateScript.includes('validate:consumer') &&
-    consumerIndices !== undefined &&
-    isStrictlyIncreasing(consumerIndices)
-  );
+  return consumerIndices !== undefined && isStrictlyIncreasing(consumerIndices);
 }
 
 export function findMissingWorkflowDispatches(
@@ -516,6 +505,36 @@ export function findMissingWorkflowDispatches(
           );
         }),
       ),
+  );
+}
+
+export function releaseUsesMirrorVerification(
+  releaseWorkflow: unknown,
+  mirrorWorkflow: unknown,
+): boolean {
+  if (!isObjectRecord(releaseWorkflow) || !isObjectRecord(releaseWorkflow['jobs'])) return false;
+  const jobs = releaseWorkflow['jobs'];
+  const verify = jobs['verify-mirror'];
+  const release = jobs['release'];
+  if (!isObjectRecord(verify) || !isObjectRecord(release)) return false;
+  const needs = release['needs'];
+  if (
+    verify['uses'] !== './.github/workflows/mirror-verify.yaml' ||
+    !(needs === 'verify-mirror' || (Array.isArray(needs) && needs.includes('verify-mirror')))
+  )
+    return false;
+  if (
+    !isObjectRecord(mirrorWorkflow) ||
+    !isObjectRecord(mirrorWorkflow['on']) ||
+    !isObjectRecord(mirrorWorkflow['jobs'])
+  )
+    return false;
+  const triggers = mirrorWorkflow['on'];
+  return (
+    'workflow_call' in triggers &&
+    'pull_request' in triggers &&
+    'merge_group' in triggers &&
+    isObjectRecord(mirrorWorkflow['jobs']['verify'])
   );
 }
 
@@ -573,41 +592,25 @@ function runValidation(): void {
 
   if (!workflowDeclaresPermission(parsedWorkflow, 'actions', 'write')) {
     fail(
-      'release.yaml is missing `actions: write`. The version path must dispatch validation ' +
-        'for Changesets-created pull requests, and the publish path must inspect main-green.',
+      'release.yaml is missing `actions: write`. The version path dispatches the Playground preview.',
     );
   }
   pass('actions: write is present');
 
-  if (!workflowDeclaresPermission(parsedWorkflow, 'checks', 'read')) {
-    fail(
-      'release.yaml is missing `checks: read`. `gh run watch` needs read access to follow ' +
-        'the same-SHA main-green workflow run before publishing.',
+  let parsedMirrorWorkflow: unknown;
+  try {
+    parsedMirrorWorkflow = loadYaml(
+      readFileSync(join(workflowsDirectoryPath, 'mirror-verify.yaml'), 'utf8'),
     );
+  } catch (error) {
+    fail(`mirror-verify.yaml is missing or invalid: ${errorMessageFrom(error)}`);
   }
-  pass('checks: read is present');
-
-  const hasMainGreenPublishGate =
-    workflowContent.includes('Wait for main-green source validation') &&
-    workflowContent.includes("steps.changesets.outputs.hasChangesets == 'false'") &&
-    workflowContent.includes('--workflow main-green.yaml') &&
-    workflowContent.includes('gh run watch "$main_green_run_id" --exit-status');
-
-  if (!hasMainGreenPublishGate) {
-    fail(
-      'release.yaml must wait for the same-SHA main-green run before publishing. ' +
-        'Keep source validation centralized in main-green, but do not let release publish ' +
-        'when that source gate is absent, pending forever, or failed.',
-    );
+  if (!releaseUsesMirrorVerification(parsedWorkflow, parsedMirrorWorkflow)) {
+    fail('release.yaml must wait for the generated mirror-verify workflow on every release run.');
   }
-  pass('Publish path waits for same-SHA main-green source validation');
+  pass('Release waits for generated mirror verification');
 
-  const requiredVersionPullRequestWorkflows = [
-    'unit-tests.yaml',
-    'browser-tests.yaml',
-    'changeset-guard.yaml',
-    'deploy-playground.yaml',
-  ];
+  const requiredVersionPullRequestWorkflows = ['deploy-playground.yaml'];
   const missingWorkflowDispatches = findMissingWorkflowDispatches(
     parsedWorkflow,
     requiredVersionPullRequestWorkflows,
@@ -696,8 +699,8 @@ function runValidation(): void {
   pass('Root publish shortcut uses every staged package artifact in dependency order');
   if (!rootValidationSeparatesSourceAndConsumerGates(rootManifest)) {
     fail(
-      'package.json#scripts.validate must contain only `turbo run validate --concurrency=1`; ' +
-        'the explicit validate:consumer release gate must validate Markdown, Cinder, Editor, Chat, then cinder-mcp, ' +
+      'Source validation belongs in Corvidae; this mirror must not define a root validate script. ' +
+        'The explicit validate:consumer release gate must validate Markdown, Cinder, Editor, Chat, then cinder-mcp, ' +
         'in that publish order.',
     );
   }

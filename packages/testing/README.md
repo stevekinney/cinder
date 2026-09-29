@@ -1,4 +1,4 @@
-# @cinder/testing
+# @lostgradient/testing
 
 A private workspace of small, target-owned checks the rest of the mirror depends on.
 
@@ -14,4 +14,4 @@ bun run --filter='@lostgradient/testing' typecheck
 bun run --filter='@lostgradient/testing' test
 ```
 
-`@lostgradient/testing` is the name the mirror sync rewrites this workspace's `package.json` `name` to on every sync (the committed `package.json` on this branch may still read the retired `@cinder/testing` name between syncs).
+The mirror sync keeps this private workspace's package name aligned with Corvidae.
