@@ -150,6 +150,14 @@ describe('published tarball import closure', () => {
     const packed = (relativePath: string) =>
       include.some((g) => g.match(relativePath)) && !exclude.some((g) => g.match(relativePath));
 
+    test(`${label}: excludes test-only helper modules from the tarball`, () => {
+      const leaked = walk(sourceRoot, [])
+        .map((file) => relative(packageRoot, file))
+        .filter((file) => /-(?:test-(?:helpers|support)|snippet-helpers)(?:\.svelte)?\.ts$/.test(file))
+        .filter(packed);
+      expect(leaked).toEqual([]);
+    });
+
     test(`${label}: every relative import from a packed source resolves to a packed file`, () => {
       const violations: string[] = [];
       const sources = walk(sourceRoot, []).filter((file) => {

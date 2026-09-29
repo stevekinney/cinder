@@ -337,6 +337,7 @@ export const PUBLISHED_SOURCE_FILES_GLOBS: readonly string[] = [
   'src/components/**/*.ts',
   '!src/components/**/*-test-helpers.ts',
   '!src/components/**/*-test-support.ts',
+  '!src/components/**/*-test-support.svelte.ts',
   '!src/components/**/*-snippet-helpers.ts',
   'src/components/**/*.svelte',
   '!src/components/**/*.test.ts',
