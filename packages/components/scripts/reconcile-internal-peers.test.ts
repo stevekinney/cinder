@@ -82,9 +82,13 @@ describe('reconcileInternalPeers', () => {
     const prepareIndex = versionCommand.indexOf('prepare-internal-peer-changesets.ts');
     const changesetsIndex = versionCommand.indexOf('changeset version');
     const reconcileIndex = versionCommand.indexOf('reconcile-internal-peers.ts');
+    const regenerateLockfileIndex = versionCommand.indexOf('bun install --lockfile-only');
+    const frozenInstallIndex = versionCommand.indexOf('bun install --frozen-lockfile');
     expect(prepareIndex).toBeGreaterThanOrEqual(0);
     expect(changesetsIndex).toBeGreaterThan(prepareIndex);
     expect(reconcileIndex).toBeGreaterThan(changesetsIndex);
+    expect(regenerateLockfileIndex).toBeGreaterThan(reconcileIndex);
+    expect(frozenInstallIndex).toBeGreaterThan(regenerateLockfileIndex);
   });
 
   test('does not write when every internal dependency version is already satisfied', async () => {
