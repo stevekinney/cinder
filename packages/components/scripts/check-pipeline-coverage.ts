@@ -115,7 +115,7 @@ function checkMcp(mcp: Workflow, violations: PipelineViolation[]): void {
     !('merge_group' in (mcp.on ?? {}))
   )
     add(violations, MCP_VERIFY_WORKFLOW, 'cinder-mcp pull request triggers missing');
-  const steps = mcp.jobs?.['verify']?.steps;
+  const steps = mcp.jobs?.['verify-mcp']?.steps;
   for (const [name, command] of [
     ['Validate packed cinder-mcp consumer', 'validate:consumer'],
     ['Lint cinder-mcp', 'lint'],

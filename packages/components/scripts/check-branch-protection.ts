@@ -14,13 +14,12 @@
  * branches to be up to date is the only thing that forces a pull request to be
  * re-validated against current `main`. The bulk-drain protocol lifts it
  * deliberately and restores it by hand; the manual restore is the step that
- * already failed, so this runs daily to catch a lift that was never undone.
+ * already failed. Run this check during mirror cutover and subsequent audits.
  *
  * Run with `bun run check:branch-protection`. Reads `GITHUB_TOKEN` (or
  * `GH_TOKEN`) — falling back to `gh auth token` for local use — since reading
  * branch protection needs Administration: Read, which is not a grantable
- * GitHub Actions `permissions` scope; `main-red-watch.yaml` supplies a
- * `REPO_ADMIN_TOKEN` secret for that reason. Exits `EXIT_OK` (0) when live
+ * GitHub Actions `permissions` scope. Exits `EXIT_OK` (0) when live
  * settings match, `EXIT_DRIFT` (1) with a named diff when they don't, and
  * `EXIT_SETUP_FAILURE` (2) when the check itself couldn't run (a missing or
  * under-scoped token, a network or API failure) — a setup failure is not
@@ -62,12 +61,9 @@ export type LiveProtection = {
 };
 
 /**
- * Exit codes this script produces. `main-red-watch.yaml` reads the numeric
- * value — not just success/failure — to route `EXIT_DRIFT` to the
- * branch-protection-drift issue and `EXIT_SETUP_FAILURE` to a failed-run
- * annotation instead. A setup problem (missing token scope, a non-2xx that
- * isn't "protection absent") is not evidence that `main`'s protection
- * actually changed, and must not file an incident claiming it did.
+ * Exit codes this script produces. A caller must distinguish `EXIT_DRIFT`
+ * from `EXIT_SETUP_FAILURE`; a missing token scope or API failure is not
+ * evidence that `main`'s protection changed.
  */
 export const EXIT_OK = 0;
 export const EXIT_DRIFT = 1;

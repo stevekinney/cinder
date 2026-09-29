@@ -77,8 +77,7 @@ describe('protectionDrift', () => {
 
   // GitHub can report required checks through the legacy `contexts` (string[])
   // field instead of `checks`. Reading only `checks` here would treat a
-  // contexts-only repository as enforcing nothing and file a daily false
-  // drift issue.
+  // contexts-only repository as enforcing nothing and report false drift.
   it('treats a contexts-only response as equivalent to checks', () => {
     const withContextsOnly: LiveProtection = {
       required_status_checks: {
@@ -157,11 +156,8 @@ describe('classifyProtectionResponse', () => {
 });
 
 describe('exit codes', () => {
-  // `main-red-watch.yaml` parses this numeric value to decide whether a
-  // failed run means real drift (file the incident) or a setup problem
-  // (annotate the run, don't file). They must stay distinct for that routing
-  // to be possible at all.
-  it('are distinct so the workflow can route drift from setup failures', () => {
+  // Callers need distinct codes to separate real drift from setup failures.
+  it('are distinct so callers can distinguish drift from setup failures', () => {
     expect(new Set([EXIT_OK, EXIT_DRIFT, EXIT_SETUP_FAILURE]).size).toBe(3);
   });
 });
@@ -169,18 +165,11 @@ describe('exit codes', () => {
 describe('the checked-in expectation', () => {
   // Guards the file the whole check reads. A typo in a context name here would
   // otherwise make the guard assert something GitHub never reports.
-  it('declares strict and the six required contexts', async () => {
+  it('declares strict and both mirror verification contexts', async () => {
     const onDisk = await readJsonFile<ProtectionExpectation>(EXPECTATION_PATH);
 
     expect(onDisk.branch).toBe('main');
     expect(onDisk.requiredStatusChecks.strict).toBe(true);
-    expect(onDisk.requiredStatusChecks.contexts).toEqual([
-      'unit-tests',
-      'typecheck',
-      'playwright',
-      'playwright-visual',
-      'baseline-coverage',
-      'Pre-1.0 changeset bump guard',
-    ]);
+    expect(onDisk.requiredStatusChecks.contexts).toEqual(['verify', 'verify-mcp']);
   });
 });

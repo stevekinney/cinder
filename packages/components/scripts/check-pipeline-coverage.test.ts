@@ -59,7 +59,7 @@ const mcp = (): Workflow => ({
   name: 'verify-cinder-mcp',
   on: { pull_request: {}, merge_group: {} },
   jobs: {
-    verify: {
+    'verify-mcp': {
       steps: [
         {
           name: 'Validate packed cinder-mcp consumer',
@@ -108,7 +108,7 @@ describe('mirror pipeline coverage', () => {
   });
   it('requires target-owned cinder-mcp pull request verification', () => {
     const changed = mcp();
-    changed.jobs!['verify']!.steps = [];
+    changed.jobs!['verify-mcp']!.steps = [];
     expect(
       checkMirrorPipeline(mirror(), release(), changed).violations.map(({ detail }) => detail),
     ).toContain('cinder-mcp pull request consumer validation missing');
