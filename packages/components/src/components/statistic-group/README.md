@@ -18,7 +18,7 @@ Grid container that lays out multiple stat tiles with consistent spacing and ali
 </StatisticGroup>
 ```
 
-The leaf remains importable individually for à-la-carte builds — see `@lostgradient/cinder`.
+The leaf is also a named export of `@lostgradient/cinder`.
 
 ## Rendering and customization
 

@@ -4,7 +4,7 @@ Individual tab trigger within a tab list for switching between labelled content 
 
 ## Usage
 
-`Tab` is a compose-only leaf of [`Tabs`](../tabs/README.md). The idiomatic API is `Tabs.Trigger`, reached through the parent namespace — see the [tabs README](../tabs/README.md#usage) for the composed snippet. The flat `@lostgradient/cinder` subpath remains exported for à-la-carte builds that import the leaf directly.
+`Tab` is a compose-only leaf of [`Tabs`](../tabs/README.md). The idiomatic API is `Tabs.Trigger`, reached through the parent namespace — see the [tabs README](../tabs/README.md#usage) for the composed snippet. The leaf is also a named export of `@lostgradient/cinder`.
 
 ## Props
 

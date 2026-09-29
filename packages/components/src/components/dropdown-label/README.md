@@ -4,7 +4,7 @@ Non-interactive section heading within a dropdown menu for grouping related item
 
 ## Usage
 
-`DropdownLabel` is a compose-only leaf of [`Dropdown`](../dropdown/README.md). The idiomatic API is `Dropdown.Label`, reached through the parent namespace — see the [dropdown README](../dropdown/README.md#usage) for the composed snippet. The flat `@lostgradient/cinder` subpath remains exported for à-la-carte builds that import the leaf directly.
+`DropdownLabel` is a compose-only leaf of [`Dropdown`](../dropdown/README.md). The idiomatic API is `Dropdown.Label`, reached through the parent namespace — see the [dropdown README](../dropdown/README.md#usage) for the composed snippet. The leaf is also a named export of `@lostgradient/cinder`.
 
 ## Props
 

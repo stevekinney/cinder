@@ -43,7 +43,7 @@ For operator-facing append-only streams (job runners, deploy logs, webhook trace
 
 Filtering, copy actions, and structured detail inspection are consumer compositions: pass controls via the `toolbar` snippet and render details inside `Feed.Event` children. `Feed.Boundary` marks stream discontinuities (reconnects, sequence gaps) with `role="separator"` semantics — the consumer owns the wording.
 
-The leaves remain importable individually for à-la-carte builds — see `@lostgradient/cinder` and `@lostgradient/cinder`.
+The leaves are also named exports of `@lostgradient/cinder`.
 
 ## Props
 

@@ -4,7 +4,7 @@ Visual divider between groups of items within a dropdown menu.
 
 ## Usage
 
-`DropdownSeparator` is a compose-only leaf of [`Dropdown`](../dropdown/README.md). The idiomatic API is `Dropdown.Separator`, reached through the parent namespace — see the [dropdown README](../dropdown/README.md#usage) for the composed snippet. The flat `@lostgradient/cinder` subpath remains exported for à-la-carte builds that import the leaf directly.
+`DropdownSeparator` is a compose-only leaf of [`Dropdown`](../dropdown/README.md). The idiomatic API is `Dropdown.Separator`, reached through the parent namespace — see the [dropdown README](../dropdown/README.md#usage) for the composed snippet. The leaf is also a named export of `@lostgradient/cinder`.
 
 ## Props
 

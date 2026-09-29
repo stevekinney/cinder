@@ -26,7 +26,7 @@ Composite tabs root that coordinates tab list, tab triggers, and their content p
 </Tabs>
 ```
 
-The leaves remain importable individually for à-la-carte builds — see `@lostgradient/cinder`, `@lostgradient/cinder`, and `@lostgradient/cinder`.
+The leaves are also named exports of `@lostgradient/cinder`.
 
 ## Caller-owned panels
 

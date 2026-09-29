@@ -4,7 +4,7 @@ Individual link within a side navigation, supporting nesting and active highligh
 
 ## Usage
 
-`SideNavigationItem` is a compose-only leaf of [`SideNavigation`](../side-navigation/README.md). The idiomatic API is `SideNavigation.Item`, reached through the parent namespace — see the [side-navigation README](../side-navigation/README.md#usage) for the composed snippet. The flat `@lostgradient/cinder` subpath remains exported for à-la-carte builds that import the leaf directly.
+`SideNavigationItem` is a compose-only leaf of [`SideNavigation`](../side-navigation/README.md). The idiomatic API is `SideNavigation.Item`, reached through the parent namespace — see the [side-navigation README](../side-navigation/README.md#usage) for the composed snippet. The leaf is also a named export of `@lostgradient/cinder`.
 
 ## Props
 

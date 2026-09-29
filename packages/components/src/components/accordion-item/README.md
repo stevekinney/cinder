@@ -4,7 +4,7 @@ A single expandable panel inside an `Accordion`. Reads the accordion context to 
 
 ## Usage
 
-`AccordionItem` is a compose-only leaf of [`Accordion`](../accordion/README.md). The idiomatic API is `Accordion.Item`, reached through the parent namespace — see the [Accordion README](../accordion/README.md#usage) for the composed snippet. The flat `@lostgradient/cinder` subpath remains exported for à-la-carte builds that import the leaf directly.
+`AccordionItem` is a compose-only leaf of [`Accordion`](../accordion/README.md). The idiomatic API is `Accordion.Item`, reached through the parent namespace — see the [Accordion README](../accordion/README.md#usage) for the composed snippet. The leaf is also a named export of `@lostgradient/cinder`.
 
 `AccordionItem` throws if used outside an `Accordion` — the context lookup is required.
 

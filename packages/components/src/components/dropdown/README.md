@@ -23,7 +23,7 @@ Composite dropdown root that coordinates the trigger, menu, and item subcomponen
 </Dropdown>
 ```
 
-The leaves remain importable individually for à-la-carte builds — see `@lostgradient/cinder`, `@lostgradient/cinder`, `@lostgradient/cinder`, `@lostgradient/cinder`, `@lostgradient/cinder`, and `@lostgradient/cinder`.
+The leaves are also named exports of `@lostgradient/cinder`.
 
 `Dropdown` supports two mutually exclusive APIs: the compound `Dropdown.Trigger`/`Dropdown.Menu` composition shown above, and a legacy `trigger`/`open` snippet-prop API. Do not mix the two on the same instance.
 

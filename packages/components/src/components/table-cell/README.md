@@ -4,7 +4,7 @@ Standard td cell within a table row for displaying a single data value.
 
 ## Usage
 
-`TableCell` is a compose-only leaf of [`Table`](../table/README.md). The idiomatic API is `Table.Cell`, reached through the parent namespace — see the [table README](../table/README.md#usage) for the composed snippet. The flat `@lostgradient/cinder` subpath remains exported for à-la-carte builds that import the leaf directly.
+`TableCell` is a compose-only leaf of [`Table`](../table/README.md). The idiomatic API is `Table.Cell`, reached through the parent namespace — see the [table README](../table/README.md#usage) for the composed snippet. The leaf is also a named export of `@lostgradient/cinder`.
 
 ## Props
 

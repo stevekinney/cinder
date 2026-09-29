@@ -6,8 +6,7 @@ import SideNavigationRoot from './side-navigation.svelte';
 /**
  * `SideNavigation` is the parent compound component and a namespace exposing
  * the compose-only `SideNavigation.Group` and `SideNavigation.Item` leaves.
- * The leaves remain importable individually via `@lostgradient/cinder`
- * and `@lostgradient/cinder`.
+ * The leaves are also named exports of `@lostgradient/cinder`.
  */
 const SideNavigation = Object.assign(SideNavigationRoot, {
   Group: SideNavigationGroup,
