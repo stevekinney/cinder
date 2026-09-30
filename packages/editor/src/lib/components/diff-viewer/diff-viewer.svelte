@@ -41,9 +41,10 @@
    * - Modified lines show word-level inline changes
    *
    * Size-based gating (DEP-47):
-   * - <20KB: Real-time diff computation
-   * - 20-100KB: Debounced (500ms) with warning badge
-   * - >100KB: Manual trigger only, shows stale diff with "Outdated" badge
+   * Size is the larger input's `string.length` (UTF-16 code units); thresholds are inclusive.
+   * - size < 20,000: Real-time diff computation
+   * - 20,000 <= size < 100,000: Debounced (500ms) with warning badge
+   * - size >= 100,000: Manual trigger only, shows stale diff with "Outdated" badge
    */
 
   import { computeLineDiff, getDiffStats, groupIntoHunks } from '@lostgradient/markdown';

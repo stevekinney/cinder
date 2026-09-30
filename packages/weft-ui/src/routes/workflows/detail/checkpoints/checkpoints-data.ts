@@ -55,6 +55,16 @@ export interface ForkClient {
   fork(workflowId: string, options?: ForkOptions): Promise<{ readonly id: string }>;
 }
 
+/**
+ * The one read the fork dialog's open-time refetch needs (COR-15): the
+ * source run's current persisted `revision`, or `null` for a purged run
+ * (`HttpClient.get`'s documented 404 contract). A real `HttpClient`
+ * satisfies it structurally — its `WorkflowState` result has `revision`.
+ */
+export interface ForkSourceClient {
+  get(workflowId: string): Promise<{ readonly revision?: string | undefined } | null>;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }

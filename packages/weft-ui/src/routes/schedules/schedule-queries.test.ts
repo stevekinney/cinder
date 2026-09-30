@@ -237,9 +237,29 @@ describe('updateScheduleSpec / pauseSchedule / resumeSchedule / cancelSchedule',
       },
     };
 
-    await updateScheduleSpec(client, 's1', { cron: '0 2 * * *' }, 'pinned');
+    await updateScheduleSpec(client, 's1', { cron: '0 2 * * *' }, { revisionPolicy: 'pinned' });
 
     expect(receivedOptions).toEqual({ revisionPolicy: 'pinned' });
+  });
+
+  test('updateScheduleSpec forwards description, overlap, backfill, and jitter together with revisionPolicy (COR-15)', async () => {
+    let receivedOptions: unknown;
+    const client = {
+      updateSchedule: async (_id: string, _spec: unknown, options: unknown) => {
+        receivedOptions = options;
+      },
+    };
+    const options = {
+      description: 'Weekly',
+      overlap: 'queue',
+      backfill: true,
+      jitter: '30s',
+      revisionPolicy: 'pinned',
+    } as const;
+
+    await updateScheduleSpec(client, 's1', { cron: '0 2 * * *' }, options);
+
+    expect(receivedOptions).toEqual(options);
   });
 
   test('updateScheduleSpec passes undefined options when revisionPolicy is omitted', async () => {

@@ -252,6 +252,7 @@
     "!dist/**/*.fixture.*",
     "!dist/**/*-fixture.*",
     "!dist/**/*-fixtures.*",
+    "!dist/**/*-test-*",
     "!dist/**/test/**",
     "components.json"
   ]

@@ -102,6 +102,40 @@ describe('WorkflowList', () => {
     expect(await findByText('order-processing')).not.toBeNull();
   });
 
+  test('rows across several types issue one active-pointer fetch per distinct type and render the comparison badges (COR-15)', async () => {
+    fetchScript.routeUrl('/workflows', {
+      items: [
+        summary({ id: 'wf_a1', type: 'order-processing', revision: 'rev-current' }),
+        summary({ id: 'wf_a2', type: 'order-processing', revision: 'rev-old' }),
+        summary({ id: 'wf_b1', type: 'payment-failing', revision: 'rev-pay' }),
+        summary({ id: 'wf_b2', type: 'payment-failing', revision: 'rev-pay' }),
+        summary({ id: 'wf_legacy', type: 'payment-failing' }),
+      ],
+      total: 5,
+      offset: 0,
+      limit: 50,
+    });
+    fetchScript.routeJsonRpcMethod('weft.workflows.active.get', {
+      revision: 'rev-current',
+      generation: 1,
+      activatedAt: 1,
+    });
+
+    const { findAllByText } = render(WorkflowListHarness, {
+      props: { client: realClient(), principal: GRANTED_PRINCIPAL, queryClient: newQueryClient() },
+    });
+
+    // order-processing: rev-current matches the (shared) scripted pointer,
+    // rev-old does not; payment-failing's two pinned rows both differ from
+    // it; the legacy row carries no revision and so gets no badge.
+    expect(await findAllByText('Differs from active')).toHaveLength(3);
+    expect(await findAllByText('Active')).toHaveLength(1);
+    const activeCalls = fetchScript.calls.filter(
+      (call) => typeof call.init?.body === 'string' && call.init.body.includes('active.get'),
+    );
+    expect(activeCalls).toHaveLength(2);
+  });
+
   test('filtering from a later page requests and renders the first filtered page', async () => {
     resetLocation('/workflows?offset=50');
     fetchScript.enqueueJson({

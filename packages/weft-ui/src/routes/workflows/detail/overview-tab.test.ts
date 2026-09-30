@@ -30,6 +30,7 @@ function baseClient() {
     get: async (): Promise<WorkflowState | null> => null,
     list: async (): Promise<PaginatedResult<WorkflowSummary>> => emptyPage(),
     operations: {
+      'weft.workflows.active.get': async (_input: { name: string }) => null,
       'weft.workflows.scheduleprovenance.get': async () => null,
     },
   };

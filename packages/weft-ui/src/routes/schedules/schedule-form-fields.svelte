@@ -7,15 +7,11 @@
    * a plain rune-backed class, not a bindable prop, so field edits here are
    * visible to the parent drawer without prop-drilling every field.
    *
-   * `mode: 'edit'` disables the workflow type, input payload, overlap
-   * policy, jitter, and backfill fields — those genuinely still can't be
-   * changed after creation. `revisionPolicy` is the one exception (WFT-117):
-   * `weft.schedules.update`/`ScheduleUpdateOptions` (`@lostgradient/weft`)
-   * DOES accept `revisionPolicy` alongside `description`/`overlap`/
-   * `backfill`/`jitter` — this console just hadn't adopted it until now
-   * (`schedule-queries.ts`'s `updateScheduleSpec` doc has the full
-   * correction). The revision-policy `RadioGroup` below is therefore NOT
-   * disabled in edit mode, unlike its four siblings.
+   * `mode: 'edit'` disables only the fields `weft.schedules.update` cannot
+   * change: workflow type, input payload, and start-paused. `description`,
+   * overlap policy, jitter, backfill, and `revisionPolicy` are all editable
+   * (COR-15 unlocked the first four; WFT-117 wired `revisionPolicy`) —
+   * `ScheduleFormState.toUpdateOptions()` sends only the ones that changed.
    */
   import {
     Input,
@@ -83,12 +79,8 @@
 
   /**
    * Same `RadioGroup.value`-is-a-plain-string proxy pattern as `overlapDraft`
-   * above, plus one thing `overlapDraft` doesn't need: `overlapDraft` is
-   * inert in edit mode (the disabled overlap `RadioGroup` is never
-   * submitted there — see the module doc), so a stale one-shot capture is
-   * harmless. `revisionPolicyDraft` IS submitted in edit mode
-   * (`toUpdateRevisionPolicy()`), so a stale draft is a real correctness
-   * bug: `schedule-form-drawer.svelte`'s edit-mode `$effect` can reconstruct
+   * above. Both drafts are submitted in edit mode (`toUpdateOptions()`), so
+   * a stale one-shot capture is a real correctness bug: `schedule-form-drawer.svelte`'s edit-mode `$effect` can reconstruct
    * `form` as a brand-new `ScheduleFormState` — e.g. on a background
    * `editDetailQuery` refetch (window focus, an unrelated invalidation)
    * while this component stays mounted — and Svelte does not remount a
@@ -153,6 +145,12 @@
         disabled
       />
     {/if}
+    <Input
+      id="weft-schedule-form-description"
+      label="Description"
+      description="Optional — shown to operators alongside the schedule."
+      bind:value={form.description}
+    />
     {#if mode === 'create'}
       <JsonEditor
         id="weft-schedule-form-input"
@@ -184,7 +182,6 @@
       name="weft-schedule-overlap"
       label="If a run is still going when the next fire is due"
       variant="card"
-      disabled={mode === 'edit'}
       bind:value={overlapDraft}
     >
       {#each OVERLAP_POLICIES as policy (policy.value)}
@@ -203,7 +200,6 @@
         label="Jitter"
         description="Random delay added to each fire."
         placeholder="30s"
-        disabled={mode === 'edit'}
         bind:value={form.jitterText}
         error={form.errors.jitter ?? ''}
       />
@@ -224,7 +220,6 @@
       <Toggle
         id="weft-schedule-form-backfill"
         label="Backfill missed occurrences"
-        disabled={mode === 'edit'}
         bind:checked={form.backfill}
       />
     </label>
@@ -239,8 +234,7 @@
     {/if}
     {#if mode === 'edit'}
       <p class="weft-schedule-form__edit-note">
-        Overlap policy, jitter, backfill, and workflow input can only be set at creation — editing
-        updates the cadence and revision policy.
+        Workflow type, input payload, and start-paused can only be set at creation.
       </p>
     {/if}
   </section>

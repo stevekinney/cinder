@@ -12,6 +12,7 @@
 
   import { getFleetEventSource } from '../../../app/engine-status.svelte.ts';
   import type { AttributeFilter } from '../../../lib/attribute-filters.ts';
+  import { createActiveRevisionComparisons } from '../../../lib/active-revision-comparisons.svelte.ts';
   import { getClient } from '../../../lib/client.ts';
   import {
     parseWorkflowListFilter,
@@ -73,6 +74,15 @@
 
   const rows = $derived(listQuery.data?.items ?? []);
   const total = $derived(listQuery.data?.total ?? 0);
+
+  // One `weft.workflows.active.get` per DISTINCT workflow type on the page
+  // (COR-15), never per row; gated on `workflows:read`, the operation's own
+  // scope (`listGate` is that same scope).
+  const revisionComparisons = createActiveRevisionComparisons({
+    client,
+    rows: () => rows,
+    enabled: () => !listGate.disabled,
+  });
 
   // --- Live toggle (plan §5.2, §9.2) ---------------------------------------
   const liveController = new WorkflowListLiveController(getFleetEventSource(), queryClient);
@@ -278,7 +288,12 @@
         {/snippet}
       </EmptyState>
     {:else}
-      <WorkflowTable {rows} {selectedIds} onSelectionChange={(next) => (selectedIds = next)} />
+      <WorkflowTable
+        {rows}
+        {selectedIds}
+        onSelectionChange={(next) => (selectedIds = next)}
+        revisionComparison={revisionComparisons.compare}
+      />
       <WorkflowListPagination
         offset={filter.offset ?? 0}
         limit={filter.limit ?? DEFAULT_PAGE_SIZE}

@@ -10,6 +10,7 @@
   import { CalendarPlus, Lock } from 'lucide-svelte';
 
   import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
+  import { untrack } from 'svelte';
 
   import { getClient } from '../../lib/client.ts';
   import { faultTreatment } from '../../lib/faults.ts';
@@ -58,16 +59,41 @@
 
   let form = $state<ScheduleFormState>();
 
+  /**
+   * `updatedAt` of the schedule the current `form` was built from. Plain
+   * (non-reactive) bookkeeping for the effect below.
+   */
+  let builtFromUpdatedAt: number | undefined;
+
+  /**
+   * Edit-mode form rebuild (COR-15). The query result changes identity
+   * whenever a background refetch (tab refocus, live-update invalidation,
+   * another operator's edit) delivers different server data. Rebuilding
+   * `form` on every such change discarded an operator's unsaved edits, so:
+   * the form is (re)built only when the schedule's `updatedAt` has actually
+   * moved since the last build, and even then a form with unsaved edits
+   * (`isDirty`) is kept as-is rather than replaced. A clean form still
+   * follows server changes, so an externally applied change shows up.
+   */
   $effect(() => {
     if (mode === 'create') {
       form = new ScheduleFormState();
+      builtFromUpdatedAt = undefined;
       return;
     }
     const schedule = editDetailQuery.data;
     if (!schedule) return;
+    const current = untrack(() => form);
+    // A form built for a different schedule is never kept: saving it would
+    // write that schedule's edits onto this one.
+    const sameSchedule = current !== undefined && current.id === schedule.id;
+    if (sameSchedule && builtFromUpdatedAt === schedule.updatedAt) return;
+    if (sameSchedule && current.isDirty) return;
+    builtFromUpdatedAt = schedule.updatedAt;
     form = new ScheduleFormState({
       id: schedule.id,
       workflowType: schedule.workflowType,
+      ...(schedule.description !== undefined ? { description: schedule.description } : {}),
       cadence: cadenceToScheduleValue(schedule),
       overlap: schedule.overlap,
       jitterText: schedule.jitterMs !== undefined ? `${schedule.jitterMs}ms` : '',
@@ -101,7 +127,7 @@
         client,
         scheduleId,
         scheduleValueToWireSpec(form.cadence),
-        form.toUpdateRevisionPolicy(),
+        form.toUpdateOptions(),
       );
     },
     onSuccess: () => {

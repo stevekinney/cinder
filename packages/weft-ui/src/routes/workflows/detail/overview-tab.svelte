@@ -32,13 +32,15 @@
   import {
     classifyRevisionAgainstActive,
     type WorkflowCatalogActivePointerLike,
+    type WorkflowActiveRevisionClient,
   } from '../../../lib/workflow-revision.ts';
   import { failureCategoryExplanation, failureCategoryLabel } from './failure-category.ts';
   import LineagePanel from './lineage-panel.svelte';
 
   interface OverviewTabProps {
     readonly client: Pick<HttpClient, 'addTags' | 'removeTags' | 'get' | 'list'> & {
-      readonly operations: Pick<HttpClient['operations'], 'weft.workflows.scheduleprovenance.get'>;
+      readonly operations: Pick<HttpClient['operations'], 'weft.workflows.scheduleprovenance.get'> &
+        WorkflowActiveRevisionClient['operations'];
     };
     readonly workflow: WorkflowState;
     /**

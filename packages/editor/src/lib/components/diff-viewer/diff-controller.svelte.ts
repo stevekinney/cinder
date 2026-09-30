@@ -1,10 +1,13 @@
 /**
  * DiffController with size-based gating (DEP-47).
  *
- * Manages diff computation strategy based on document size:
- * - <20KB: Real-time diff computation
- * - 20-100KB: Debounced (500ms) with warning badge
- * - >100KB: Manual trigger only, shows stale diff with "Outdated" badge
+ * Manages diff computation strategy based on document size. "Size" is the larger
+ * of the two inputs' `string.length` (UTF-16 code units, not encoded bytes), and
+ * each threshold is inclusive, so a document exactly at a threshold is in the
+ * higher tier:
+ * - size < 20,000: Real-time diff computation
+ * - 20,000 <= size < 100,000: Debounced (500ms) with warning badge
+ * - size >= 100,000: Manual trigger only, shows stale diff with "Outdated" badge
  *
  * This protects UI responsiveness for large documents while maintaining
  * full functionality for typical document sizes.
@@ -17,9 +20,9 @@ import { formatBytes } from '../../utilities/format-bytes.ts';
 export type DiffTier = 'realtime' | 'debounced' | 'manual';
 
 export interface DiffControllerOptions {
-  /** Threshold for debounced mode (bytes). Default: 20000 (20KB) */
+  /** Inclusive threshold for debounced mode (UTF-16 code units). Default: 20000 */
   debouncedThreshold?: number;
-  /** Threshold for manual mode (bytes). Default: 100000 (100KB) */
+  /** Inclusive threshold for manual mode (UTF-16 code units). Default: 100000 */
   manualThreshold?: number;
   /** Debounce delay for medium documents (ms). Default: 500 */
   debounceMs?: number;
@@ -34,7 +37,7 @@ export interface DiffState {
   isComputing: boolean;
   /** Time taken for last computation (ms) */
   lastComputeTime: number | null;
-  /** Max document size (bytes) */
+  /** Larger input's `string.length` (UTF-16 code units) */
   documentSize: number;
   /** Warning message for user (null if no warning) */
   warning: string | null;
@@ -53,15 +56,15 @@ export interface DiffController {
   setOriginal(value: string): void;
   /** Set current/modified content */
   setCurrent(value: string): void;
-  /** Trigger manual diff computation (for >100KB tier) */
+  /** Trigger manual diff computation (for the manual tier, size >= manualThreshold) */
   triggerCompute(): void;
   /** Cleanup resources */
   destroy(): void;
 }
 
 const DEFAULT_OPTIONS: Required<DiffControllerOptions> = {
-  debouncedThreshold: 20_000, // 20KB
-  manualThreshold: 100_000, // 100KB
+  debouncedThreshold: 20_000, // 20,000 UTF-16 code units
+  manualThreshold: 100_000, // 100,000 UTF-16 code units
   debounceMs: 500,
 };
 
@@ -132,7 +135,7 @@ export function createDiffController(options: DiffControllerOptions = {}): DiffC
    *
    * @param orig - Original/baseline content to diff against
    * @param curr - Current/modified content to diff
-   * @param size - Document size in bytes (for scheduling strategy)
+   * @param size - Document size in UTF-16 code units (for scheduling strategy)
    */
   function performCompute(orig: string, curr: string, size: number): void {
     const version = ++computeVersion;

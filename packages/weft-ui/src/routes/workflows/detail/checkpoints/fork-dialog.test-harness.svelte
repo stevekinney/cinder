@@ -12,11 +12,12 @@
   import type { Principal } from '../../../../lib/scopes.svelte.ts';
   import WorkflowRouteHarness from '../../list/workflow-route-harness.test-harness.svelte';
   import ForkDialog from './fork-dialog.svelte';
-  import type { ForkClient } from './checkpoints-data.ts';
+  import type { ForkClient, ForkSourceClient } from './checkpoints-data.ts';
   import type { WorkflowRevisionListClient } from './fork-revision-picker.ts';
 
   interface Props {
-    client: ForkClient & WorkflowRevisionListClient;
+    /** `get` (the open-time source refetch, COR-15) is optional here; a harness default resolves a purged run so tests that don't care about it keep the page-load revision. */
+    client: ForkClient & WorkflowRevisionListClient & { get?: ForkSourceClient['get'] };
     workflowId: string;
     initialStep: number;
     workflowType: string;
@@ -44,5 +45,12 @@
 </script>
 
 <WorkflowRouteHarness client={contextClient} {principal} {queryClient}>
-  <ForkDialog {client} {workflowId} {initialStep} {workflowType} {sourceRevision} {onForked} />
+  <ForkDialog
+    client={{ get: async () => null, ...client }}
+    {workflowId}
+    {initialStep}
+    {workflowType}
+    {sourceRevision}
+    {onForked}
+  />
 </WorkflowRouteHarness>
