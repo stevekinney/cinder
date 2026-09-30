@@ -39,6 +39,8 @@ import { createRequire } from 'node:module';
 import { dirname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { componentDirectory } from './component-directory.mjs';
+
 const require = createRequire(import.meta.url);
 
 /** Absolute path to the installed `@lostgradient/cinder` package root inside this fixture. */
@@ -322,7 +324,8 @@ for (const key of exportKeys) {
 
 for (const component of manifest.components) {
   const { id, import: importSpecifier, artifacts } = component;
-  const componentSpecifier = `${manifest.package.name}/${id}`;
+  const directory = componentDirectory(id, artifacts.schema);
+  const componentSpecifier = `${manifest.package.name}/${directory}`;
 
   // 2a. The named-export root and the component's public subpath both resolve.
   assertRuntimeResolvable(importSpecifier);
@@ -341,8 +344,8 @@ for (const component of manifest.components) {
     }
     const expectedPath =
       artifactKey === 'enhancement'
-        ? `src/components/${id}/${id}-enhancement.ts`
-        : `src/components/${id}/${id}.${artifactKey}.json`;
+        ? `src/components/${directory}/${id}-enhancement.ts`
+        : `src/components/${directory}/${id}.${artifactKey}.json`;
     if (specifier !== expectedPath) {
       record(`${id}: artifacts.${artifactKey} ("${specifier}") must equal "${expectedPath}"`);
       continue;
@@ -393,7 +396,7 @@ for (const component of manifest.components) {
   for (const sidecarKey of ['examples', 'constraints']) {
     const artifactPath = artifacts[sidecarKey];
     if (artifactPath === undefined) continue; // not all components ship these
-    const expectedPath = `src/components/${id}/${id}.${sidecarKey}.json`;
+    const expectedPath = `src/components/${directory}/${id}.${sidecarKey}.json`;
     if (artifactPath !== expectedPath) {
       record(`${id}: artifacts.${sidecarKey} ("${artifactPath}") must equal "${expectedPath}"`);
       continue;
