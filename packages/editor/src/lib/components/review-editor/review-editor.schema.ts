@@ -47,6 +47,16 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
+        name: 'diffReviewState',
+        reason: 'unknown-shape',
+        description: 'Optional host-controlled diff-review state for the embedded diff tab.',
+      },
+      {
+        name: 'onDiffReviewStateChange',
+        reason: 'function-or-snippet',
+        description: 'Called when the reconciled diff-review state changes.',
+      },
+      {
         name: 'onValueChange',
         reason: 'function-or-snippet',
         description: 'Called when content changes.',
