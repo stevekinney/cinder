@@ -12,6 +12,16 @@ import ScheduleFormFields from './schedule-form-fields.svelte';
 import { ScheduleFormState } from './schedule-form-state.svelte.ts';
 
 describe('ScheduleFormFields — create mode', () => {
+  test('renders an editable Description field (COR-15)', () => {
+    const form = new ScheduleFormState();
+    const { getByRole } = render(ScheduleFormFields, {
+      props: { form, mode: 'create', workflowTypeOptions: undefined },
+    });
+    expect(
+      requireElement(getByRole('textbox', { name: 'Description' }), HTMLInputElement).disabled,
+    ).toBe(false);
+  });
+
   test('renders a workflow-type Select when registry options are available', async () => {
     const form = new ScheduleFormState();
 
@@ -139,7 +149,7 @@ describe('ScheduleFormFields — create mode', () => {
 });
 
 describe('ScheduleFormFields — edit mode', () => {
-  test('disables workflow type, input, overlap policy, jitter, and backfill; shows the edit-scope note', async () => {
+  test('disables only workflow type and input; overlap, jitter, backfill, and description are editable (COR-15)', async () => {
     const form = new ScheduleFormState({
       id: 'nightly-rollup',
       workflowType: 'report-gen',
@@ -156,22 +166,34 @@ describe('ScheduleFormFields — edit mode', () => {
     expect(queryByRole('textbox', { name: 'Input (JSON)' })).toBeNull();
     expect(queryByRole('textbox', { name: 'Schedule ID' })).toBeNull();
     expect(requireElement(getByRole('radio', { name: 'Skip' }), HTMLInputElement).disabled).toBe(
-      true,
+      false,
     );
     expect(
       requireElement(getByRole('textbox', { name: 'Jitter' }), HTMLInputElement).disabled,
-    ).toBe(true);
+    ).toBe(false);
     expect(
       requireElement(
         getByRole('switch', { name: 'Backfill missed occurrences' }),
         HTMLButtonElement,
       ).disabled,
-    ).toBe(true);
+    ).toBe(false);
     expect(
-      getByText(
-        'Overlap policy, jitter, backfill, and workflow input can only be set at creation — editing updates the cadence and revision policy.',
-      ),
+      requireElement(getByRole('textbox', { name: 'Description' }), HTMLInputElement).disabled,
+    ).toBe(false);
+    expect(
+      getByText('Workflow type, input payload, and start-paused can only be set at creation.'),
     ).not.toBeNull();
+  });
+
+  test('editing the description writes through to the form', async () => {
+    const form = new ScheduleFormState({ workflowType: 'report-gen', description: 'Old' });
+    const { getByRole } = render(ScheduleFormFields, {
+      props: { form, mode: 'edit', workflowTypeOptions: undefined },
+    });
+    const field = requireElement(getByRole('textbox', { name: 'Description' }), HTMLInputElement);
+    expect(field.value).toBe('Old');
+    await fireEvent.input(field, { target: { value: 'New' } });
+    expect(form.description).toBe('New');
   });
 
   test('does NOT disable the revision-policy radio group in edit mode', async () => {

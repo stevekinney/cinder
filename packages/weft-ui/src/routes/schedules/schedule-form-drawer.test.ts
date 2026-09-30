@@ -141,6 +141,185 @@ describe('ScheduleFormDrawer — edit', () => {
     }
   });
 
+  test('a background refetch with changed server data does not discard an unsaved revisionPolicy edit, and the edit still saves (COR-15)', async () => {
+    const server = await startLiveSourceTestServer();
+    await server.engine.schedule({
+      workflow: 'inventory-sync-sweep',
+      id: 'mid-edit',
+      cron: '0 2 * * *',
+      input: { warehouseId: 'wh-main' },
+    });
+    const client = new HttpClient({ baseUrl: server.baseUrl, token: server.token });
+
+    let closed = false;
+    let queryClient: QueryClient | undefined;
+    try {
+      const { getByRole } = render(ScheduleFormDrawerHarness, {
+        props: {
+          client,
+          mode: 'edit',
+          scheduleId: 'mid-edit',
+          onClose: () => (closed = true),
+          onQueryClient: (qc) => (queryClient = qc),
+        },
+      });
+
+      const pinned = await waitFor(() => getByRole('radio', { name: 'Pinned' }));
+      await fireEvent.click(pinned);
+      expect(requireElement(pinned, HTMLInputElement).checked).toBe(true);
+
+      // Another operator edits the description: `updatedAt` moves, so the
+      // refetch delivers a genuinely different `ScheduleSummary` object.
+      await server.engine.updateSchedule('mid-edit', '0 2 * * *', {
+        description: 'edited elsewhere',
+      });
+      if (queryClient === undefined) throw new Error('queryClient was never captured');
+      await queryClient.invalidateQueries({ queryKey: scheduleDetailQueryKey('mid-edit') });
+      await waitFor(() => {
+        const cached = queryClient?.getQueryData<{ description?: string }>(
+          scheduleDetailQueryKey('mid-edit'),
+        );
+        expect(cached?.description).toBe('edited elsewhere');
+      });
+
+      // The operator's unsaved change survives the refetch.
+      expect(requireElement(getByRole('radio', { name: 'Pinned' }), HTMLInputElement).checked).toBe(
+        true,
+      );
+
+      await fireEvent.click(getByRole('button', { name: 'Save changes' }));
+      await waitFor(() => expect(closed).toBe(true));
+      const after = await server.engine.getSchedule('mid-edit');
+      expect(after?.revisionPolicy).toBe('pinned');
+    } finally {
+      await server.stop();
+    }
+  });
+
+  test('a background refetch after the schedule fires does not discard an unsaved cadence-only edit, and the edit still saves (COR-15 review)', async () => {
+    const server = await startLiveSourceTestServer();
+    await server.engine.schedule({
+      workflow: 'inventory-sync-sweep',
+      id: 'cadence-edit',
+      cron: '0 2 * * *',
+      input: { warehouseId: 'wh-main' },
+    });
+    const client = new HttpClient({ baseUrl: server.baseUrl, token: server.token });
+
+    let closed = false;
+    let queryClient: QueryClient | undefined;
+    try {
+      const { container, getByRole } = render(ScheduleFormDrawerHarness, {
+        props: {
+          client,
+          mode: 'edit',
+          scheduleId: 'cadence-edit',
+          onClose: () => (closed = true),
+          onQueryClient: (qc) => (queryClient = qc),
+        },
+      });
+
+      // Edit ONLY the cadence: the hour of the cron expression, 2 -> 5.
+      const hour = await waitFor(() => {
+        const field = container.querySelector('input[id$="cron-field-1-raw"]');
+        if (!(field instanceof HTMLInputElement)) throw new Error('hour field not rendered');
+        return field;
+      });
+      await fireEvent.input(hour, { target: { value: '5' } });
+      await fireEvent.blur(hour);
+
+      // The schedule fires (or a run completes): `updatedAt` moves while the
+      // cadence stays what the server has.
+      const before = await server.engine.getSchedule('cadence-edit');
+      await server.engine.updateSchedule('cadence-edit', '0 2 * * *', {
+        description: 'touched by a fire',
+      });
+      if (queryClient === undefined) throw new Error('queryClient was never captured');
+      await queryClient.invalidateQueries({ queryKey: scheduleDetailQueryKey('cadence-edit') });
+      await waitFor(() => {
+        const cached = queryClient?.getQueryData<{ updatedAt: number }>(
+          scheduleDetailQueryKey('cadence-edit'),
+        );
+        expect(cached?.updatedAt).not.toBe(before?.updatedAt);
+      });
+
+      // The unsaved cadence edit survives the refetch.
+      await fireEvent.click(getByRole('button', { name: 'Save changes' }));
+      await waitFor(() => expect(closed).toBe(true));
+      const saved = await server.engine.getSchedule('cadence-edit');
+      expect(saved?.cronExpression).toBe('0 5 * * *');
+    } finally {
+      await server.stop();
+    }
+  });
+
+  test("switching to another schedule while the form is dirty rebuilds the form instead of saving one schedule's edits onto the other (COR-15 review)", async () => {
+    const server = await startLiveSourceTestServer();
+    for (const id of ['switch-a', 'switch-b']) {
+      await server.engine.schedule({
+        workflow: 'inventory-sync-sweep',
+        id,
+        cron: '0 2 * * *',
+        input: {},
+        description: id,
+      });
+    }
+    const client = new HttpClient({ baseUrl: server.baseUrl, token: server.token });
+    try {
+      const { getByRole, rerender } = render(ScheduleFormDrawerHarness, {
+        props: { client, mode: 'edit', scheduleId: 'switch-a', onClose: () => {} },
+      });
+      const description = await waitFor(() => getByRole('textbox', { name: 'Description' }));
+      await fireEvent.input(description, { target: { value: 'dirty edit for a' } });
+
+      await rerender({ client, mode: 'edit', scheduleId: 'switch-b', onClose: () => {} });
+      await waitFor(() =>
+        expect(
+          requireElement(getByRole('textbox', { name: 'Description' }), HTMLInputElement).value,
+        ).toBe('switch-b'),
+      );
+    } finally {
+      await server.stop();
+    }
+  });
+
+  test('saving edited description, overlap, backfill, and jitter persists them (COR-15)', async () => {
+    const server = await startLiveSourceTestServer();
+    await server.engine.schedule({
+      workflow: 'inventory-sync-sweep',
+      id: 'all-options',
+      cron: '0 2 * * *',
+      input: { warehouseId: 'wh-main' },
+      description: 'before',
+    });
+    const client = new HttpClient({ baseUrl: server.baseUrl, token: server.token });
+
+    let closed = false;
+    try {
+      const { getByRole } = render(ScheduleFormDrawerHarness, {
+        props: { client, mode: 'edit', scheduleId: 'all-options', onClose: () => (closed = true) },
+      });
+
+      const description = await waitFor(() => getByRole('textbox', { name: 'Description' }));
+      expect(requireElement(description, HTMLInputElement).value).toBe('before');
+      await fireEvent.input(description, { target: { value: 'after' } });
+      await fireEvent.click(getByRole('radio', { name: 'Queue' }));
+      await fireEvent.click(getByRole('switch', { name: 'Backfill missed occurrences' }));
+      await fireEvent.input(getByRole('textbox', { name: 'Jitter' }), { target: { value: '30s' } });
+
+      await fireEvent.click(getByRole('button', { name: 'Save changes' }));
+      await waitFor(() => expect(closed).toBe(true));
+
+      const after = await server.engine.getSchedule('all-options');
+      expect(after?.description).toBe('after');
+      expect(after?.overlap).toBe('queue');
+      expect(after?.backfill).toBe(true);
+      expect(after?.jitterMs).toBe(30_000);
+    } finally {
+      await server.stop();
+    }
+  });
+
   test('a rejected revision-policy save (ambiguous dynamic-source revision, no catalog active pointer) renders a fault instead of silently pinning (review, PR #978)', async () => {
     // `resolveScheduleRevisionForPin()` (engine-side) requires an
     // unambiguous revision for the type being pinned — for a
@@ -155,26 +334,10 @@ describe('ScheduleFormDrawer — edit', () => {
     // candidate, with nobody ever having called `engine.workflows.activate()`),
     // and only THEN does the operator try to switch the schedule to `pinned`.
     //
-    // NOT a `Conflict` fault, empirically (verified against a live server,
-    // not assumed from the sibling mapping fork/catalog operations use):
-    // `packages/weft/src/server/operations/schedule-faults.ts`'s
-    // `mapScheduleErrorToFault()` only special-cases
-    // `WorkflowRevisionUnavailableError` (via `mapRevisionUnavailableToFault`)
-    // — `DynamicWorkflowSourceUnavailableError` falls through its
-    // message-based classification (matches none of `isScheduleConflictMessage`/
-    // `isScheduleInvalidParamsMessage`) to the generic `EngineFailure`
-    // fallback. That is a real, narrow gap in `packages/weft` (this ambiguous-
-    // revision error IS mapped to `Conflict` for fork and catalog operations —
-    // `workflow-catalog-operation-helpers.test.ts`, `fork-workflow.ts` — just
-    // not for schedule updates) worth its own upstream fix, but out of this
-    // console-only PR's scope (`components/weft-ui`) to touch. What this test
-    // asserts instead is the console's actual, correct behavior given that
-    // engine response: an `EngineFailure` masked over REST renders as the
-    // generic "Something went wrong" internal-fault banner (`faults.ts`'s
-    // `EngineFailure: 'internal'` mapping, `FAULT_TREATMENT_TITLE.internal`)
-    // — not a silent, wrongly-applied pin. The underlying acceptance
-    // criterion ("mutation-conflict states are explicit and covered by
-    // tests") holds either way: the console never lies about what happened.
+    // `mapScheduleErrorToFault()` maps `DynamicWorkflowSourceUnavailableError`
+    // to a `Conflict` fault (COR-19), so the console renders the explicit
+    // "Conflict" banner — not a silent, wrongly-applied pin and not a masked
+    // generic internal failure.
     const server = await startLiveSourceTestServer();
     const workflowType = 'ambiguous-pin-target';
 
@@ -239,7 +402,7 @@ describe('ScheduleFormDrawer — edit', () => {
       await fireEvent.click(getByRole('radio', { name: 'Pinned' }));
       await fireEvent.click(getByRole('button', { name: 'Save changes' }));
 
-      await waitFor(() => expect(getByText('Something went wrong')).not.toBeNull());
+      await waitFor(() => expect(getByText('Conflict')).not.toBeNull());
       expect(closed).toBe(false);
 
       // The rejected mutation must not have silently pinned the schedule.

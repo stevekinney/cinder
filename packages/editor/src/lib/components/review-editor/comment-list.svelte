@@ -58,6 +58,9 @@
 
   function handleEditKeyDown(event: KeyboardEvent, commentId: string) {
     if (event.key === 'Escape') {
+      // Cancel only the edit. Without this the keydown bubbles to the enclosing
+      // thread popover, which treats an unhandled Escape as "close me".
+      event.preventDefault();
       cancelEdit();
     } else if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
       event.preventDefault();

@@ -26,6 +26,40 @@ function happyDomAPI(): DetachedWindowAPI {
   return window.happyDOM;
 }
 
+describe('WorkflowTable — active-versus-bound badge (COR-15)', () => {
+  test('shows "Active" for a row whose revision matches and "Differs from active" for one that does not', () => {
+    const { getByText } = render(WorkflowTable, {
+      props: {
+        rows: [
+          summary({ id: 'wf_match', revision: 'rev-match' }),
+          summary({ id: 'wf_differs', revision: 'rev-differs' }),
+        ],
+        revisionComparison: (_type: string, revision: string | undefined) =>
+          revision === 'rev-match' ? 'active' : 'stale',
+      },
+    });
+
+    expect(getByText('Active')).not.toBeNull();
+    expect(getByText('Differs from active')).not.toBeNull();
+  });
+
+  test('shows no comparison badge for unknown comparisons or when no comparison is supplied', () => {
+    const withUnknown = render(WorkflowTable, {
+      props: {
+        rows: [summary({ revision: 'rev-x' })],
+        revisionComparison: () => 'unknown',
+      },
+    });
+    expect(withUnknown.queryByText('Active')).toBeNull();
+    expect(withUnknown.queryByText('Differs from active')).toBeNull();
+    withUnknown.unmount();
+
+    const without = render(WorkflowTable, { props: { rows: [summary({ revision: 'rev-x' })] } });
+    expect(without.queryByText('Active')).toBeNull();
+    expect(without.queryByText('Differs from active')).toBeNull();
+  });
+});
+
 describe('WorkflowTable', () => {
   test('renders a row per workflow with status label and truncated id', async () => {
     const { getByText } = render(WorkflowTable, {

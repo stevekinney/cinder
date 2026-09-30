@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import {
   assertSourceManifest,
   buildPublishedManifest,
+  rewriteCompiledWorkerSpecifier,
   type PackageManifest,
 } from './pack-for-publish.ts';
 
@@ -35,6 +36,14 @@ const MARKDOWN_ONLY_SHIKI_PACKAGES = ['@shikijs/langs'];
 const dependencyFields = ['dependencies', 'peerDependencies', 'optionalDependencies'] as const;
 
 describe('@lostgradient/markdown package ownership boundary', () => {
+  test('published async renderer points at the staged JavaScript worker', () => {
+    const emitted = "new Worker(new URL('./render-worker.ts', import.meta.url))";
+    expect(rewriteCompiledWorkerSpecifier(emitted)).toContain(
+      "new URL('./render-worker.js', import.meta.url)",
+    );
+    expect(() => rewriteCompiledWorkerSpecifier('no worker URL')).toThrow();
+    expect(() => rewriteCompiledWorkerSpecifier(`${emitted}\n${emitted}`)).toThrow();
+  });
   test('is headless: no Svelte dependency, no peer dependencies', () => {
     for (const field of dependencyFields) {
       expect(markdownManifest[field]?.['svelte']).toBeUndefined();

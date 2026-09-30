@@ -14,6 +14,7 @@ import {
   diffReviewStatesEqual,
   projectReviewEditorDocumentThreads,
 } from './review-editor-diff-review.ts';
+import reviewEditorSchema from './review-editor.schema.ts';
 
 describe('ReviewEditor diff comments: buildReviewEditorDiffReviewTarget', () => {
   test('builds a single markdown target keyed by the editor id', () => {
@@ -149,4 +150,22 @@ describe('ReviewEditor diff comments: projectReviewEditorDocumentThreads', () =>
   test('empty thread list projects to an empty array', () => {
     expect(projectReviewEditorDocumentThreads('doc-1', [])).toEqual([]);
   });
+});
+
+test('ReviewEditor schema artifacts include the public diff-review props', async () => {
+  const jsonSchema = await Bun.file(new URL('./review-editor.schema.json', import.meta.url)).json();
+  expect(jsonSchema).toEqual(reviewEditorSchema);
+  const documentedProps = new Set([
+    ...Object.keys(reviewEditorSchema.properties),
+    ...(reviewEditorSchema.metadata?.unsupportedProps?.map(({ name }) => name) ?? []),
+  ]);
+  expect(documentedProps.has('diffReviewState')).toBe(true);
+  expect(documentedProps.has('onDiffReviewStateChange')).toBe(true);
+  const readme = await Bun.file(new URL('./README.md', import.meta.url)).text();
+  const documentedOpaqueProps = [...readme.matchAll(/^\| `([^`]+)` \| `\(opaque\)` \|/gm)].map(
+    ([, name]) => name,
+  );
+  expect(documentedOpaqueProps).toEqual(
+    reviewEditorSchema.metadata?.unsupportedProps?.map(({ name }) => name) ?? [],
+  );
 });

@@ -9,7 +9,11 @@
  */
 import type { ScheduleValue } from '@lostgradient/cinder';
 
-import type { ScheduleOverlapPolicy, ScheduleRevisionPolicy } from '@lostgradient/weft';
+import type {
+  ScheduleOverlapPolicy,
+  ScheduleRevisionPolicy,
+  ScheduleUpdateOptions,
+} from '@lostgradient/weft';
 
 import { scheduleValueToWireSpec } from './cadence.ts';
 import type { CreateScheduleArgs } from './schedule-queries.ts';
@@ -68,6 +72,7 @@ export interface ScheduleFormFieldErrors {
 export interface ScheduleFormInit {
   readonly id?: string;
   readonly workflowType?: string;
+  readonly description?: string;
   readonly inputText?: string;
   readonly cadence?: ScheduleValue;
   readonly overlap?: ScheduleOverlapPolicy;
@@ -104,6 +109,7 @@ function withDefault<T>(value: T | undefined, fallback: T): T {
 export class ScheduleFormState {
   id = $state('');
   workflowType = $state('');
+  description = $state('');
   inputText = $state('{}');
   cadence = $state<ScheduleValue>(DEFAULT_CADENCE);
   overlap = $state<ScheduleOverlapPolicy>('skip');
@@ -123,9 +129,18 @@ export class ScheduleFormState {
    */
   readonly initialRevisionPolicy: ScheduleRevisionPolicy;
 
+  /** The other editable options as loaded, for the same omit-when-unchanged diff `toUpdateOptions()` applies to every option (COR-15). */
+  readonly initialDescription: string;
+  readonly initialOverlap: ScheduleOverlapPolicy;
+  readonly initialJitterText: string;
+  readonly initialBackfill: boolean;
+  /** The cadence as loaded, in wire form, so `isDirty` sees a cadence-only edit. */
+  readonly initialCadenceSpec: string;
+
   constructor(init: ScheduleFormInit = {}) {
     this.id = withDefault(init.id, this.id);
     this.workflowType = withDefault(init.workflowType, this.workflowType);
+    this.description = withDefault(init.description, this.description);
     this.inputText = withDefault(init.inputText, this.inputText);
     this.cadence = withDefault(init.cadence, this.cadence);
     this.overlap = withDefault(init.overlap, this.overlap);
@@ -134,18 +149,31 @@ export class ScheduleFormState {
     this.startPaused = withDefault(init.startPaused, this.startPaused);
     this.revisionPolicy = withDefault(init.revisionPolicy, this.revisionPolicy);
     this.initialRevisionPolicy = this.revisionPolicy;
+    this.initialDescription = this.description;
+    this.initialOverlap = this.overlap;
+    this.initialJitterText = this.jitterText.trim();
+    this.initialBackfill = this.backfill;
+    this.initialCadenceSpec = JSON.stringify(scheduleValueToWireSpec(this.cadence));
   }
 
   get errors(): ScheduleFormFieldErrors {
     const idIssue = scheduleIdError(this.id);
     const inputIssue = inputJsonError(this.inputText);
-    const jitterIssue = jitterError(this.jitterText);
+    const jitterIssue = jitterError(this.jitterText) ?? this.clearedJitterError();
     return {
       ...(this.workflowType.trim().length === 0 ? { workflowType: 'Choose a workflow type.' } : {}),
       ...(idIssue !== undefined ? { id: idIssue } : {}),
       ...(inputIssue !== undefined ? { input: inputIssue } : {}),
       ...(jitterIssue !== undefined ? { jitter: jitterIssue } : {}),
     };
+  }
+
+  /** `weft.schedules.update` accepts only a positive `jitter`; there is no way to unset one, so an edit draft that empties a loaded jitter cannot be expressed and is rejected inline instead of being silently dropped. */
+  private clearedJitterError(): string | undefined {
+    if (this.initialJitterText.length > 0 && this.jitterText.trim().length === 0) {
+      return 'Jitter can be changed but not removed once set — enter a new duration.';
+    }
+    return undefined;
   }
 
   get isValid(): boolean {
@@ -165,6 +193,7 @@ export class ScheduleFormState {
   toCreateArgs(): CreateScheduleArgs {
     const trimmedId = this.id.trim();
     const trimmedJitter = this.jitterText.trim();
+    const trimmedDescription = this.description.trim();
     return {
       workflowType: this.workflowType,
       input: this.parsedInput,
@@ -173,6 +202,7 @@ export class ScheduleFormState {
       backfill: this.backfill,
       revisionPolicy: this.revisionPolicy,
       ...(trimmedId.length > 0 ? { id: trimmedId } : {}),
+      ...(trimmedDescription.length > 0 ? { description: trimmedDescription } : {}),
       ...(trimmedJitter.length > 0 ? { jitter: trimmedJitter } : {}),
     };
   }
@@ -191,5 +221,41 @@ export class ScheduleFormState {
    */
   toUpdateRevisionPolicy(): ScheduleRevisionPolicy | undefined {
     return this.revisionPolicy === this.initialRevisionPolicy ? undefined : this.revisionPolicy;
+  }
+
+  /** Whether any editable field differs from what the draft was constructed with. Lets the edit drawer keep an operator's unsaved changes when a background refetch delivers newer server data (COR-15). */
+  get isDirty(): boolean {
+    return (
+      JSON.stringify(scheduleValueToWireSpec(this.cadence)) !== this.initialCadenceSpec ||
+      this.description !== this.initialDescription ||
+      this.overlap !== this.initialOverlap ||
+      this.jitterText.trim() !== this.initialJitterText ||
+      this.backfill !== this.initialBackfill ||
+      this.revisionPolicy !== this.initialRevisionPolicy
+    );
+  }
+
+  /**
+   * The `weft.schedules.update` options an edit submission should send, or
+   * `undefined` when nothing changed. Every option follows
+   * `toUpdateRevisionPolicy()`'s omit-when-unchanged rule so an unrelated
+   * cadence-only edit never resends a value the operator did not touch.
+   * `description` is sent trimmed and may be `''`, which clears it (the
+   * engine stores any string). `jitter` cannot be cleared this way — the
+   * engine only accepts a positive duration — which is why emptying a loaded
+   * jitter is a validation error rather than an omitted key.
+   */
+  toUpdateOptions(): ScheduleUpdateOptions | undefined {
+    const revisionPolicy = this.toUpdateRevisionPolicy();
+    const description = this.description.trim();
+    const jitter = this.jitterText.trim();
+    const options: ScheduleUpdateOptions = {
+      ...(description !== this.initialDescription.trim() ? { description } : {}),
+      ...(this.overlap !== this.initialOverlap ? { overlap: this.overlap } : {}),
+      ...(this.backfill !== this.initialBackfill ? { backfill: this.backfill } : {}),
+      ...(jitter !== this.initialJitterText && jitter.length > 0 ? { jitter } : {}),
+      ...(revisionPolicy !== undefined ? { revisionPolicy } : {}),
+    };
+    return Object.keys(options).length === 0 ? undefined : options;
   }
 }

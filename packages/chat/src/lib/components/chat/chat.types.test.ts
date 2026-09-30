@@ -18,6 +18,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ComponentProps } from 'svelte';
 
+import chatSchema from './chat.schema.ts';
 import Chat from './chat.svelte';
 import type {
   ChatAnnounceLevel,
@@ -192,4 +193,9 @@ test('composer popover example imports the named public component export', () =>
 
   expect(examples.examples[0]?.code).toContain('import { ChatComposerPopover,');
   expect(examples.examples[0]?.code).not.toMatch(/import ChatComposerPopover\s*,/);
+});
+
+test('the committed Chat JSON schema matches the typed schema', async () => {
+  const jsonSchema = await Bun.file(new URL('./chat.schema.json', import.meta.url)).json();
+  expect(jsonSchema).toEqual(chatSchema);
 });

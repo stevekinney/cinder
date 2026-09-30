@@ -37,6 +37,7 @@
     listCheckpoints,
     type CheckpointsOperationsClient,
     type ForkClient,
+    type ForkSourceClient,
   } from './checkpoints-data.ts';
   import ForkDialog from './fork-dialog.svelte';
   import type { WorkflowRevisionListClient } from './fork-revision-picker.ts';
@@ -46,6 +47,7 @@
     readonly client: CheckpointsOperationsClient &
       Pick<HttpClient, 'replayTo' | 'getTimeline'> &
       ForkClient &
+      ForkSourceClient &
       WorkflowRevisionListClient;
     readonly workflowId: string;
     /** The workflow TYPE this run is — threaded to `ForkDialog`'s revision picker. */

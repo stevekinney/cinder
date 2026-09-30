@@ -33,6 +33,7 @@ interface HeaderPropOverrides {
   finalizerStatus?: WorkflowFinalizerStatus | null | undefined;
   onRunQuery?: (name: string, input: string) => Promise<unknown>;
   activeRevision?: WorkflowCatalogActivePointerLike | null | undefined;
+  onRestart?: (() => void) | undefined;
 }
 
 /** Renders `Header` with sensible defaults, overridable per test — keeps each test focused on what it varies rather than repeating the full prop set. */
@@ -48,6 +49,7 @@ function renderHeader(overrides: HeaderPropOverrides = {}) {
       finalizerStatus: overrides.finalizerStatus ?? null,
       onRunQuery: overrides.onRunQuery ?? noopAsync,
       activeRevision: overrides.activeRevision,
+      ...(overrides.onRestart !== undefined ? { onRestart: overrides.onRestart } : {}),
     },
   });
 }
@@ -186,5 +188,32 @@ describe('WorkflowDetailHeader', () => {
     await fireEvent.click(getByRole('button', { name: 'Suspend' }));
     expect(received.action).toBe('suspend');
     expect(queryByRole('dialog')).toBeNull();
+  });
+  test('offers Restart for every terminal status when a handler is wired, and calls it (COR-15)', async () => {
+    for (const status of ['completed', 'failed', 'cancelled', 'timed-out'] as const) {
+      let restarts = 0;
+      const { getByRole, unmount } = renderHeader({
+        workflow: workflow({ status }),
+        onRestart: () => (restarts += 1),
+      });
+
+      await fireEvent.click(getByRole('button', { name: 'Restart' }));
+      expect(restarts).toBe(1);
+      unmount();
+    }
+  });
+
+  test('offers no Restart for a non-terminal run or when no handler is wired (COR-15)', () => {
+    for (const status of ['pending', 'running', 'suspended'] as const) {
+      const { queryByRole, unmount } = renderHeader({
+        workflow: workflow({ status }),
+        onRestart: () => {},
+      });
+      expect(queryByRole('button', { name: 'Restart' })).toBeNull();
+      unmount();
+    }
+
+    const { queryByRole } = renderHeader({ workflow: workflow({ status: 'completed' }) });
+    expect(queryByRole('button', { name: 'Restart' })).toBeNull();
   });
 });

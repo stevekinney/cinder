@@ -10,6 +10,7 @@ import {
   styleDeclarationPathsFromManifest,
   type PackageManifest,
 } from './pack-for-publish.ts';
+import { assertPackedManifest, isForbiddenPackedFile } from './validate-consumer.ts';
 
 const packageRoot = join(import.meta.dir, '..');
 const workspaceRoot = join(packageRoot, '..', '..');
@@ -310,7 +311,28 @@ describe('Editor package ownership boundary', () => {
     expect(serialized).not.toContain('./src/');
     expect(published.peerDependencies).toEqual(editorManifest.peerDependencies);
     expect(published.files).toContain('!dist/session/fixtures.*');
+    expect(published.files).toContain('!dist/**/*-test-*');
     expect(published.files).not.toContain('!dist/**/fixtures.*');
+  });
+
+  test('accepts resolved dependencies in a packed Editor manifest', () => {
+    const published = buildPublishedManifest(editorManifest);
+    expect(() => assertPackedManifest(published, editorManifest)).not.toThrow();
+    expect(() =>
+      assertPackedManifest(
+        { ...published, dependencies: { ...published.dependencies, 'esm-env': '^0.0.0' } },
+        editorManifest,
+      ),
+    ).toThrow('packed dependency contract mismatch');
+  });
+
+  test('keeps the public diff-review fixture module while rejecting private fixtures', () => {
+    expect(isForbiddenPackedFile('dist/diff-review-state/fixtures.js')).toBe(false);
+    expect(isForbiddenPackedFile('dist/diff-review-state/fixtures.d.ts')).toBe(false);
+    expect(isForbiddenPackedFile('dist/session/fixtures.js')).toBe(true);
+    expect(isForbiddenPackedFile('dist/other/fixtures.js')).toBe(true);
+    expect(isForbiddenPackedFile('dist/session/persistence-test-support.js')).toBe(true);
+    expect(isForbiddenPackedFile('dist/editor/test-utilities.js')).toBe(false);
   });
 
   /**

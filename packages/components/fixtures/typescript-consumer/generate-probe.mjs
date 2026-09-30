@@ -22,6 +22,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { toIdentifier } from '../../scripts/readme-usage-contract.mjs';
+import { componentDirectory } from '../component-directory.mjs';
 
 const require = createRequire(import.meta.url);
 const here = dirname(fileURLToPath(import.meta.url));
@@ -73,12 +74,14 @@ const tsBodyLines = [];
 for (const component of manifest.components) {
   const ident = toIdentifier(component.id);
   const propsType = `${component.exportName}Props`;
+  const directory = componentDirectory(component.id, component.artifacts.schema);
+  const componentSpecifier = `${manifest.package.name}/${directory}`;
   // Props type — resolves via the component main export's `types` condition.
-  tsLines.push(`import type { ${propsType} as ${ident}Props } from '${component.import}';`);
+  tsLines.push(`import type { ${propsType} as ${ident}Props } from '${componentSpecifier}';`);
   // Default schema type — resolves via the schema subpath's `types` condition.
-  tsLines.push(`import type ${ident}Schema from '${component.import}/schema';`);
+  tsLines.push(`import type ${ident}Schema from '${componentSpecifier}/schema';`);
   // Default variables type — resolves via the variables subpath's `types`.
-  tsLines.push(`import type ${ident}Variables from '${component.import}/variables';`);
+  tsLines.push(`import type ${ident}Variables from '${componentSpecifier}/variables';`);
 
   // Reference the schema + variables defaults at the type level (they are not
   // generic, so a typeof query is safe and additionally proves the imported
@@ -112,9 +115,11 @@ const svelteImports = [];
 const svelteRefs = [];
 for (const component of manifest.components) {
   const ident = toIdentifier(component.id);
-  svelteImports.push(`  import ${ident} from '${component.import}';`);
-  svelteImports.push(`  import ${ident}SchemaValue from '${component.import}/schema';`);
-  svelteImports.push(`  import ${ident}VariablesValue from '${component.import}/variables';`);
+  const directory = componentDirectory(component.id, component.artifacts.schema);
+  const componentSpecifier = `${manifest.package.name}/${directory}`;
+  svelteImports.push(`  import ${ident} from '${componentSpecifier}';`);
+  svelteImports.push(`  import ${ident}SchemaValue from '${componentSpecifier}/schema';`);
+  svelteImports.push(`  import ${ident}VariablesValue from '${componentSpecifier}/variables';`);
   svelteRefs.push(`  void ${ident};`);
   svelteRefs.push(`  void ${ident}SchemaValue;`);
   svelteRefs.push(`  void ${ident}VariablesValue;`);

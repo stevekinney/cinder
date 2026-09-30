@@ -191,6 +191,26 @@ async function stageFiles(manifest: PackageManifest): Promise<void> {
   }
 
   await stripDanglingSourceMapCommentsInStaging();
+  await rewriteCompiledWorkerSpecifierInStaging();
+}
+
+const sourceWorkerUrl = "new URL('./render-worker.ts', import.meta.url)";
+const publishedWorkerUrl = "new URL('./render-worker.js', import.meta.url)";
+
+export function rewriteCompiledWorkerSpecifier(source: string): string {
+  if (source.split(sourceWorkerUrl).length !== 2) {
+    throw new Error('compiled render-async.js must contain exactly one source worker URL');
+  }
+  return source.replace(sourceWorkerUrl, publishedWorkerUrl);
+}
+
+async function rewriteCompiledWorkerSpecifierInStaging(): Promise<void> {
+  const workerPath = join(STAGING_ROOT, 'dist', 'rendering', 'render-worker.js');
+  const asyncPath = join(STAGING_ROOT, 'dist', 'rendering', 'render-async.js');
+  if (!existsSync(workerPath) || !existsSync(asyncPath)) {
+    throw new Error('published Markdown worker and async renderer must both be staged');
+  }
+  await Bun.write(asyncPath, rewriteCompiledWorkerSpecifier(await Bun.file(asyncPath).text()));
 }
 
 /**

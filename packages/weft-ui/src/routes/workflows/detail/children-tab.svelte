@@ -31,14 +31,17 @@
   import { createQuery } from '@tanstack/svelte-query';
   import type { HttpClient, WorkflowState } from '@lostgradient/weft';
 
+  import { createActiveRevisionComparisons } from '../../../lib/active-revision-comparisons.svelte.ts';
   import { formatRelativeTime, truncateId } from '../../../lib/format/index.ts';
   import { queryKeys } from '../../../lib/query.ts';
+  import type { WorkflowActiveRevisionClient } from '../../../lib/workflow-revision.ts';
   import { router, workflowDetailPath } from '../../../lib/router.svelte.ts';
   import { workflowStatusBadge } from '../list/workflow-status-badge.ts';
   import WorkflowStatusIcon from '../list/workflow-status-icon.svelte';
+  import RevisionComparisonBadge from '../revision-comparison-badge.svelte';
 
   interface ChildrenTabProps {
-    readonly client: Pick<HttpClient, 'list'>;
+    readonly client: Pick<HttpClient, 'list'> & WorkflowActiveRevisionClient;
     readonly workflow: WorkflowState;
   }
 
@@ -57,6 +60,16 @@
   const children = $derived(childrenQuery.data?.items ?? []);
   const total = $derived(childrenQuery.data?.total ?? 0);
   const hasMore = $derived(total > children.length);
+
+  // Active-versus-bound badge (COR-15): one `weft.workflows.active.get` per
+  // distinct child type. No `workflows:read` gate is needed — listing these
+  // children already required it.
+  const revisionComparisons = createActiveRevisionComparisons({
+    get client() {
+      return client;
+    },
+    rows: () => children,
+  });
 
   function goToWorkflow(id: string): void {
     router.navigate(workflowDetailPath(id));
@@ -97,9 +110,14 @@
           <span class="weft-children-tab__id" title={child.id}>{truncateId(child.id)}</span>
           <span>{child.type}</span>
           {#if child.revision !== undefined}
-            <Tooltip text={`Revision (exact executable artifact): ${child.revision}`}>
-              <span class="weft-children-tab__revision">{truncateId(child.revision)}</span>
-            </Tooltip>
+            <span class="weft-children-tab__revision-cell">
+              <Tooltip text={`Revision (exact executable artifact): ${child.revision}`}>
+                <span class="weft-children-tab__revision">{truncateId(child.revision)}</span>
+              </Tooltip>
+              <RevisionComparisonBadge
+                comparison={revisionComparisons.compare(child.type, child.revision)}
+              />
+            </span>
           {:else}
             <span class="weft-children-tab__revision weft-children-tab__revision--unpinned">
               Unpinned
@@ -125,7 +143,7 @@
      this repo's ≤500-line implementation-file guidance — `events-tab.svelte`
      sets this precedent). */
   .weft-children-tab__row {
-    grid-template-columns: 120px 200px 1fr 130px 110px;
+    grid-template-columns: 120px 200px 1fr 210px 110px;
   }
 
   .weft-children-tab__row--link {
@@ -149,6 +167,13 @@
     font-size: var(--cinder-text-xs);
     color: var(--cinder-text-subtle);
     font-family: var(--cinder-font-mono);
+  }
+
+  .weft-children-tab__revision-cell {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
   }
 
   .weft-children-tab__revision {
