@@ -6,7 +6,7 @@ Render an accessible form from a JSON Schema object and submit one validated val
 
 ```svelte
 <script lang="ts">
-  import SchemaForm, { readSchemaFormData } from '@lostgradient/cinder';
+  import { SchemaForm, readSchemaFormData } from '@lostgradient/cinder';
 
   const schema = {
     type: 'object',

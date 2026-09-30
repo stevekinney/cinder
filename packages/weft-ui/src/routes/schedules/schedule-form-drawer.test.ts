@@ -155,26 +155,10 @@ describe('ScheduleFormDrawer — edit', () => {
     // candidate, with nobody ever having called `engine.workflows.activate()`),
     // and only THEN does the operator try to switch the schedule to `pinned`.
     //
-    // NOT a `Conflict` fault, empirically (verified against a live server,
-    // not assumed from the sibling mapping fork/catalog operations use):
-    // `packages/weft/src/server/operations/schedule-faults.ts`'s
-    // `mapScheduleErrorToFault()` only special-cases
-    // `WorkflowRevisionUnavailableError` (via `mapRevisionUnavailableToFault`)
-    // — `DynamicWorkflowSourceUnavailableError` falls through its
-    // message-based classification (matches none of `isScheduleConflictMessage`/
-    // `isScheduleInvalidParamsMessage`) to the generic `EngineFailure`
-    // fallback. That is a real, narrow gap in `packages/weft` (this ambiguous-
-    // revision error IS mapped to `Conflict` for fork and catalog operations —
-    // `workflow-catalog-operation-helpers.test.ts`, `fork-workflow.ts` — just
-    // not for schedule updates) worth its own upstream fix, but out of this
-    // console-only PR's scope (`components/weft-ui`) to touch. What this test
-    // asserts instead is the console's actual, correct behavior given that
-    // engine response: an `EngineFailure` masked over REST renders as the
-    // generic "Something went wrong" internal-fault banner (`faults.ts`'s
-    // `EngineFailure: 'internal'` mapping, `FAULT_TREATMENT_TITLE.internal`)
-    // — not a silent, wrongly-applied pin. The underlying acceptance
-    // criterion ("mutation-conflict states are explicit and covered by
-    // tests") holds either way: the console never lies about what happened.
+    // `mapScheduleErrorToFault()` maps `DynamicWorkflowSourceUnavailableError`
+    // to a `Conflict` fault (COR-19), so the console renders the explicit
+    // "Conflict" banner — not a silent, wrongly-applied pin and not a masked
+    // generic internal failure.
     const server = await startLiveSourceTestServer();
     const workflowType = 'ambiguous-pin-target';
 
@@ -239,7 +223,7 @@ describe('ScheduleFormDrawer — edit', () => {
       await fireEvent.click(getByRole('radio', { name: 'Pinned' }));
       await fireEvent.click(getByRole('button', { name: 'Save changes' }));
 
-      await waitFor(() => expect(getByText('Something went wrong')).not.toBeNull());
+      await waitFor(() => expect(getByText('Conflict')).not.toBeNull());
       expect(closed).toBe(false);
 
       // The rejected mutation must not have silently pinned the schedule.

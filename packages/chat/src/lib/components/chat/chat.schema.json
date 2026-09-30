@@ -20,7 +20,7 @@
     },
     "class": {
       "type": "string",
-      "description": "Additional class name merged onto the outer Chat layout element."
+      "description": "Additional class name merged onto the `.chat-container` root element."
     },
     "surfaceMode": {
       "enum": ["default", "transparent"],
@@ -28,7 +28,7 @@
     },
     "scrollFadeVisible": {
       "type": "boolean",
-      "description": "Show a scroll-driven edge fade on the top and bottom of the message\ntimeline as it overflows. Opt-in and presentation-only — never the sole\nsignal that more messages exist; the jump-to-latest button and unread\ncount remain the authoritative affordances. Only visible when\n`surfaceMode` is `'default'`: with `surfaceMode=\"transparent\"` the\ntimeline paints no background of its own, so there is no color the fade\ncould correctly fade toward, and it stays inert rather than painting an\nincorrect opaque band. Default `false`."
+      "description": "Show a scroll-driven edge fade on the top and bottom of the message\ntimeline as it overflows. Opt-in and presentation-only \u2014 never the sole\nsignal that more messages exist; the jump-to-latest button and unread\ncount remain the authoritative affordances. Only visible when\n`surfaceMode` is `'default'`: with `surfaceMode=\"transparent\"` the\ntimeline paints no background of its own, so there is no color the fade\ncould correctly fade toward, and it stays inert rather than painting an\nincorrect opaque band. Default `false`."
     },
     "density": {
       "enum": ["comfortable", "compact"],
@@ -52,7 +52,7 @@
     },
     "streamingStatus": {
       "type": "string",
-      "description": "Optional status label displayed in the typing indicator while `streaming` is `true` and no streaming content has arrived yet (e.g. `\"Thinking…\"` or `\"Analyzing file…\"`). When omitted, three animated dots are shown."
+      "description": "Optional status label displayed in the typing indicator while `streaming` is `true` and no streaming content has arrived yet (e.g. `\"Thinking\u2026\"` or `\"Analyzing file\u2026\"`). When omitted, three animated dots are shown."
     },
     "composerRole": {
       "type": "string",
@@ -151,7 +151,7 @@
       {
         "name": "messagePart",
         "reason": "function-or-snippet",
-        "description": "Per-message-part override. Replaces the rendering of an individual body part\n(markdown, tool call, tool result) while delegating the rest to the built-ins\nvia the `renderDefault` snippet it receives. Image parts are excluded — they\nrender through the grouped attachment grid, not this override."
+        "description": "Per-message-part override. Replaces the rendering of an individual body part\n(markdown, tool call, tool result) while delegating the rest to the built-ins\nvia the `renderDefault` snippet it receives. Image parts are excluded \u2014 they\nrender through the grouped attachment grid, not this override."
       },
       {
         "name": "messageReasoning",
@@ -176,17 +176,7 @@
       {
         "name": "onAdapterError",
         "reason": "function-or-snippet",
-        "description": "Called when an adapter command fails — either a rejected promise or a synchronous throw from the method."
-      },
-      {
-        "name": "onApprovalResolve",
-        "reason": "function-or-snippet",
-        "description": "Called when the user resolves an action-required approval. The complete\nresolution payload is forwarded unchanged. When an adapter is also wired,\nChat calls `adapter.resolveToolApproval(toolCallId, resolution)` first and\nuses this callback only when the adapter does not implement that method."
-      },
-      {
-        "name": "onArtifactOpen",
-        "reason": "function-or-snippet",
-        "description": "Overrides Chat's built-in artifact panel. When supplied, Chat calls this\nonce with the resolved artifact and does not open its local panel."
+        "description": "Called when an adapter command fails \u2014 either a rejected promise or a synchronous throw from the method."
       },
       {
         "name": "onAttachmentAdd",
@@ -285,7 +275,7 @@
       {
         "name": "readReceipts",
         "reason": "unknown-shape",
-        "description": "Per-message read receipt state. Out-of-band UI state — NOT stored on `Message`.\nPass a `Map` keyed by message id with a {@link ReadReceipt} value; the\ncomponent renders a receipt badge on USER messages only. While defined,\nincluding as an empty `Map`, this prop determines the visible receipts instead\nof adapter-derived state. Adapter events still call `onReadReceipt`, and their\nderived state may continue accumulating and become visible if this prop later\nbecomes `undefined`. Omit the prop or pass `undefined` to show adapter-derived\nstate. Default `undefined` (no receipts shown until adapter state is available)."
+        "description": "Per-message read receipt state. Out-of-band UI state \u2014 NOT stored on `Message`.\nPass a `Map` keyed by message id with a {@link ReadReceipt} value; the\ncomponent renders a receipt badge on USER messages only. While defined,\nincluding as an empty `Map`, this prop determines the visible receipts instead\nof adapter-derived state. Adapter events still call `onReadReceipt`, and their\nderived state may continue accumulating and become visible if this prop later\nbecomes `undefined`. Omit the prop or pass `undefined` to show adapter-derived\nstate. Default `undefined` (no receipts shown until adapter state is available)."
       },
       {
         "name": "row",
@@ -295,11 +285,16 @@
       {
         "name": "typingParticipants",
         "reason": "unknown-shape",
-        "description": "Participants who are currently typing. Out-of-band UI state — NOT stored on\n`Message`. Pass an array of {@link TypingParticipant} objects; the component\nrenders a per-participant typing indicator above the input. While defined,\nincluding as an empty array, this prop determines the visible indicator instead\nof adapter-derived state. Adapter events still call `onTypingChange`, and their\nderived state may continue updating and become visible if this prop later becomes\n`undefined`. Omit the prop or pass `undefined` to show adapter-derived state.\nDefault `undefined` (indicator hidden until adapter state is available)."
+        "description": "Participants who are currently typing. Out-of-band UI state \u2014 NOT stored on\n`Message`. Pass an array of {@link TypingParticipant} objects; the component\nrenders a per-participant typing indicator above the input. While defined,\nincluding as an empty array, this prop determines the visible indicator instead\nof adapter-derived state. Adapter events still call `onTypingChange`, and their\nderived state may continue updating and become visible if this prop later becomes\n`undefined`. Omit the prop or pass `undefined` to show adapter-derived state.\nDefault `undefined` (indicator hidden until adapter state is available)."
       },
       {
         "name": "viewportAttachment",
         "reason": "function-or-snippet"
+      },
+      {
+        "name": "onApprovalResolve",
+        "reason": "function-or-snippet",
+        "description": "Called when the user resolves an action-required approval. The complete\nresolution payload is forwarded unchanged. When an adapter is also wired,\nChat calls `adapter.resolveToolApproval(toolCallId, resolution)` first and\nuses this callback only when the adapter does not implement that method."
       }
     ]
   }

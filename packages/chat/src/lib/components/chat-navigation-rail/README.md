@@ -33,6 +33,7 @@ Navigate directly between user-authored turns in a long Chat transcript with key
 <!-- generated:variables:start -->
 
 This component does not declare any local CSS variables.
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

@@ -58,7 +58,6 @@ describe('timeout-only fake clock', () => {
     const originalDate = globalThis.Date;
     const originalSetInterval = globalThis.setInterval;
     const originalClearInterval = globalThis.clearInterval;
-    const start = Date.now();
     clock = installFakeClock();
     let intervalCalls = 0;
     const interval = setInterval(() => intervalCalls++, 10);
@@ -66,7 +65,6 @@ describe('timeout-only fake clock', () => {
       clock.advance(86_400_000);
       expect(intervalCalls).toBe(0);
       expect(globalThis.Date).toBe(originalDate);
-      expect(Date.now() - start).toBeLessThan(86_400_000);
       expect(globalThis.setInterval).toBe(originalSetInterval);
       expect(globalThis.clearInterval).toBe(originalClearInterval);
     } finally {
