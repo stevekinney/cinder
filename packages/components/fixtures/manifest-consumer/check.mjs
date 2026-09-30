@@ -39,7 +39,7 @@ import { createRequire } from 'node:module';
 import { dirname, join, normalize, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { componentDirectory } from './component-directory.mjs';
+import { componentDirectory } from '../component-directory.mjs';
 
 const require = createRequire(import.meta.url);
 

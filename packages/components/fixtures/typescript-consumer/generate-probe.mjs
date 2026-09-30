@@ -22,6 +22,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { toIdentifier } from '../../scripts/readme-usage-contract.mjs';
+import { componentDirectory } from '../component-directory.mjs';
 
 const require = createRequire(import.meta.url);
 const here = dirname(fileURLToPath(import.meta.url));
@@ -73,7 +74,8 @@ const tsBodyLines = [];
 for (const component of manifest.components) {
   const ident = toIdentifier(component.id);
   const propsType = `${component.exportName}Props`;
-  const componentSpecifier = `${manifest.package.name}/${component.id}`;
+  const directory = componentDirectory(component.id, component.artifacts.schema);
+  const componentSpecifier = `${manifest.package.name}/${directory}`;
   // Props type — resolves via the component main export's `types` condition.
   tsLines.push(`import type { ${propsType} as ${ident}Props } from '${componentSpecifier}';`);
   // Default schema type — resolves via the schema subpath's `types` condition.
@@ -113,7 +115,8 @@ const svelteImports = [];
 const svelteRefs = [];
 for (const component of manifest.components) {
   const ident = toIdentifier(component.id);
-  const componentSpecifier = `${manifest.package.name}/${component.id}`;
+  const directory = componentDirectory(component.id, component.artifacts.schema);
+  const componentSpecifier = `${manifest.package.name}/${directory}`;
   svelteImports.push(`  import ${ident} from '${componentSpecifier}';`);
   svelteImports.push(`  import ${ident}SchemaValue from '${componentSpecifier}/schema';`);
   svelteImports.push(`  import ${ident}VariablesValue from '${componentSpecifier}/variables';`);

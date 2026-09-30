@@ -25,6 +25,8 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { componentDirectory } from '../component-directory.mjs';
+
 const require = createRequire(import.meta.url);
 const here = dirname(fileURLToPath(import.meta.url));
 const generatedExamplesDirectory = join(here, 'src', 'generated', 'examples');
@@ -91,7 +93,8 @@ for (const component of componentsWithExamples) {
 
   // The manifest records a package-relative file for local knowledge tooling;
   // consumers load the matching public component subpath.
-  const exampleSet = require(`${manifest.package.name}/${component.id}/examples`);
+  const directory = componentDirectory(component.id, component.artifacts.schema);
+  const exampleSet = require(`${manifest.package.name}/${directory}/examples`);
   if (!Array.isArray(exampleSet.examples)) {
     process.stderr.write(`generate-examples: ${component.id} examples is not an array\n`);
     process.exit(1);
