@@ -387,16 +387,26 @@ describe('Autocomplete — keyboard completion', () => {
     const parentEscape = mock(() => {});
     const releaseParentEscape = pushEscapeHandler(parentEscape);
     try {
+      const suggestionRequest = deferred<Suggestion[]>();
+      const suggestionSource = mock(() => suggestionRequest.promise);
       const { container } = render(Autocomplete, {
         props: {
           id: 'fruit-search',
-          suggestionSource: () => fruits,
+          suggestionSource,
         },
       });
 
       const input = getInput(container);
       await fireEvent.input(input, { target: { value: 'ap' } });
-      await waitFor(() => expect(getListbox()).not.toBeNull());
+      flushSync();
+      expect(suggestionSource).toHaveBeenCalledTimes(1);
+
+      // The component registered its `.then` on this promise before this
+      // `await`, so its callback has run by the time the test resumes.
+      suggestionRequest.resolve(fruits);
+      await suggestionRequest.promise;
+      flushSync();
+      expect(getListbox()).not.toBeNull();
 
       const firstEscape = new KeyboardEvent('keydown', {
         key: 'Escape',
@@ -404,7 +414,13 @@ describe('Autocomplete — keyboard completion', () => {
         cancelable: true,
       });
       window.dispatchEvent(firstEscape);
-      await waitFor(() => expect(getListbox()?.outerHTML ?? null).toBeNull());
+      // Escape closes through the popover's exit lifecycle: the first flush
+      // runs the effect that starts the exit, which (with no transition
+      // duration) queues one microtask to finish it. `tick()` awaits a
+      // promise queued after that microtask, then flushes the unmount.
+      flushSync();
+      await tick();
+      expect(getListbox()).toBeNull();
 
       expect(firstEscape.defaultPrevented).toBe(true);
       expect(parentEscape).not.toHaveBeenCalled();
