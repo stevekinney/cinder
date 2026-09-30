@@ -3,10 +3,12 @@ import { existsSync, realpathSync } from 'node:fs';
 import { mkdir, mkdtemp, rename, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join, resolve } from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
 import {
   assertSourceManifest,
+  buildPublishedManifest,
   exportTargets,
   packForPublish,
   parsePackageManifest,
@@ -53,10 +55,15 @@ async function run(command: string, arguments_: string[], cwd = packageRoot): Pr
   if (exitCode !== 0) fail(`${command} ${arguments_.join(' ')} exited ${exitCode}`);
 }
 
-function assertPackedManifest(manifest: PackageManifest): void {
-  // assertSourceManifest enforces the exact `dependencies` contract
-  // and the exact peer set.
-  assertSourceManifest(manifest);
+export function assertPackedManifest(manifest: PackageManifest, source: PackageManifest): void {
+  assertSourceManifest(source);
+  const expected = buildPublishedManifest(source);
+  if (!isDeepStrictEqual(manifest.dependencies, expected.dependencies)) {
+    fail('packed dependency contract mismatch');
+  }
+  if (!isDeepStrictEqual(manifest.peerDependencies, expected.peerDependencies)) {
+    fail('packed peer dependency contract mismatch');
+  }
   if (manifest.devDependencies !== undefined) fail('packed manifest must omit devDependencies');
   if (manifest.optionalDependencies !== undefined) {
     fail('packed manifest must omit optionalDependencies');
@@ -86,6 +93,7 @@ async function assertPackedFileSet(installedChatRoot: string): Promise<void> {
     const fileName = normalizedPath.split('/').at(-1) ?? normalizedPath;
     if (
       /\.(?:test|spec)\.[^.]+$/u.test(fileName) ||
+      /-test-/u.test(fileName) ||
       /(?:^|[-.])fixtures?(?:[-.]|$)/u.test(fileName) ||
       normalizedPath.includes('/test/') ||
       normalizedPath.endsWith('.map')
@@ -546,6 +554,9 @@ async function runPlainNodeConsumer(fixture: ValidationFixture): Promise<void> {
 }
 
 export async function validateConsumer(): Promise<void> {
+  const sourceManifest = parsePackageManifest(
+    await Bun.file(join(packageRoot, 'package.json')).text(),
+  );
   const fixtureRoot = await mkdtemp(join(tmpdir(), 'lostgradient-chat-consumer-'));
   const fixture: ValidationFixture = {
     root: fixtureRoot,
@@ -560,7 +571,7 @@ export async function validateConsumer(): Promise<void> {
     await run('bun', ['run', 'build']);
     const { tarballPath } = await packForPublish();
     const packedManifest = await extractPackedArtifact(tarballPath, fixture);
-    assertPackedManifest(packedManifest);
+    assertPackedManifest(packedManifest, sourceManifest);
     assertPackedExports(packedManifest, fixture.installedChatRoot);
     await assertPackedFileSet(fixture.installedChatRoot);
     await assertNoBundledRuntimeProvenance(packedManifest, fixture.installedChatRoot);

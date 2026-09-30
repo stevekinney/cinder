@@ -80,10 +80,12 @@ import { existsSync, realpathSync } from 'node:fs';
 import { mkdir, mkdtemp, rename, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join, resolve } from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
 import {
   assertSourceManifest,
+  buildPublishedManifest,
   exportTargets,
   packForPublish,
   parsePackageManifest,
@@ -112,7 +114,6 @@ const requiredPeers = [
 // package manager does automatically for a regular `dependencies` entry
 // (nested resolution), never into the fixture's top-level node_modules. A
 // host app never provides these.
-const requiredOwnDependencies = ['@floating-ui/dom', 'esm-env'] as const;
 
 type ValidationFixture = {
   root: string;
@@ -135,10 +136,15 @@ async function run(command: string, arguments_: string[], cwd = packageRoot): Pr
   if (exitCode !== 0) fail(`${command} ${arguments_.join(' ')} exited ${exitCode}`);
 }
 
-function assertPackedManifest(manifest: PackageManifest): void {
-  // assertSourceManifest enforces the exact `dependencies` contract
-  // (@floating-ui/dom + esm-env) and the exact peer set.
-  assertSourceManifest(manifest);
+export function assertPackedManifest(manifest: PackageManifest, source: PackageManifest): void {
+  assertSourceManifest(source);
+  const expected = buildPublishedManifest(source);
+  if (!isDeepStrictEqual(manifest.dependencies, expected.dependencies)) {
+    fail('packed dependency contract mismatch');
+  }
+  if (!isDeepStrictEqual(manifest.peerDependencies, expected.peerDependencies)) {
+    fail('packed peer dependency contract mismatch');
+  }
   if (manifest.devDependencies !== undefined) fail('packed manifest must omit devDependencies');
   if (manifest.optionalDependencies !== undefined) {
     fail('packed manifest must omit optionalDependencies');
@@ -161,17 +167,29 @@ function assertPackedExports(manifest: PackageManifest, installedEditorRoot: str
   }
 }
 
+// The diff-review-state entrypoint deliberately exports these typed fixtures as public API.
+const publicDiffReviewFixtureFiles = new Set([
+  'dist/diff-review-state/fixtures.js',
+  'dist/diff-review-state/fixtures.d.ts',
+]);
+
+export function isForbiddenPackedFile(normalizedPath: string): boolean {
+  if (publicDiffReviewFixtureFiles.has(normalizedPath)) return false;
+  const fileName = normalizedPath.split('/').at(-1) ?? normalizedPath;
+  return (
+    /\.(?:test|spec)\.[^.]+$/u.test(fileName) ||
+    /-test-/u.test(fileName) ||
+    /(?:^|[-.])fixtures?(?:[-.]|$)/u.test(fileName) ||
+    normalizedPath.includes('/test/') ||
+    normalizedPath.endsWith('.map')
+  );
+}
+
 async function assertPackedFileSet(installedEditorRoot: string): Promise<void> {
   const forbidden: string[] = [];
   for await (const relativePath of new Glob('**/*').scan({ cwd: installedEditorRoot })) {
     const normalizedPath = relativePath.replaceAll('\\', '/');
-    const fileName = normalizedPath.split('/').at(-1) ?? normalizedPath;
-    if (
-      /\.(?:test|spec)\.[^.]+$/u.test(fileName) ||
-      /(?:^|[-.])fixtures?(?:[-.]|$)/u.test(fileName) ||
-      normalizedPath.includes('/test/') ||
-      normalizedPath.endsWith('.map')
-    ) {
+    if (isForbiddenPackedFile(normalizedPath)) {
       forbidden.push(normalizedPath);
     }
   }
@@ -237,15 +255,11 @@ async function linkPeer(
 /**
  * Links an Editor-owned dependency into the *installed editor package's own*
  * node_modules — never the fixture's top-level node_modules. This is what
- * proves the fix: a host app that never installed `@floating-ui/dom` or
- * `esm-env` itself can still resolve them, because they arrive nested under
- * `@lostgradient/editor` the way a package manager installs any other
- * regular `dependencies` entry.
+ * proves that a host can resolve every declared Editor-owned dependency
+ * without installing it at the top level. The manifest is the source of
+ * truth, so a new dependency cannot silently escape this fixture.
  */
-async function linkOwnDependency(
-  dependency: (typeof requiredOwnDependencies)[number],
-  installedEditorRoot: string,
-): Promise<void> {
+async function linkOwnDependency(dependency: string, installedEditorRoot: string): Promise<void> {
   await linkModule(dependency, join(installedEditorRoot, 'node_modules'));
 }
 
@@ -271,9 +285,12 @@ async function extractPackedArtifact(
 }
 
 /** Links the fixture's simulated install graph: host peers at the top level, Editor's own dependencies nested under it. */
-async function linkFixtureDependencyGraph(fixture: ValidationFixture): Promise<void> {
+async function linkFixtureDependencyGraph(
+  fixture: ValidationFixture,
+  manifest: PackageManifest,
+): Promise<void> {
   for (const peer of requiredPeers) await linkPeer(peer, fixture.nodeModules);
-  for (const dependency of requiredOwnDependencies) {
+  for (const dependency of Object.keys(manifest.dependencies ?? {})) {
     await linkOwnDependency(dependency, fixture.installedEditorRoot);
   }
 }
@@ -852,6 +869,9 @@ async function runPlainNodeConsumer(fixture: ValidationFixture): Promise<void> {
 }
 
 export async function validateConsumer(): Promise<void> {
+  const sourceManifest = parsePackageManifest(
+    await Bun.file(join(packageRoot, 'package.json')).text(),
+  );
   const fixtureRoot = await mkdtemp(join(tmpdir(), 'lostgradient-editor-consumer-'));
   const fixture: ValidationFixture = {
     root: fixtureRoot,
@@ -868,12 +888,12 @@ export async function validateConsumer(): Promise<void> {
     await run('bun', ['run', 'build']);
     const { tarballPath } = await packForPublish();
     const packedManifest = await extractPackedArtifact(tarballPath, fixture);
-    assertPackedManifest(packedManifest);
+    assertPackedManifest(packedManifest, sourceManifest);
     assertPackedExports(packedManifest, fixture.installedEditorRoot);
     await assertPackedFileSet(fixture.installedEditorRoot);
     await assertNoBundledRuntimeProvenance(packedManifest, fixture.installedEditorRoot);
     await assertImportClosure(packedManifest, fixture.installedEditorRoot);
-    await linkFixtureDependencyGraph(fixture);
+    await linkFixtureDependencyGraph(fixture, packedManifest);
     await buildConsumerEntries(fixture);
     await runPlainNodeConsumer(fixture);
     process.stdout.write('[validate-consumer] running svelte-check against the packed artifact…\n');

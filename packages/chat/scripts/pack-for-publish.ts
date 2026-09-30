@@ -104,9 +104,7 @@ function resolveWorkspaceSiblingVersion(name: string): string {
 
 /** The root workspace manifest's `catalog` block (see the cinder script's `readRootCatalog`). */
 function readRootCatalog(): Readonly<Record<string, string>> {
-  const parsed: unknown = JSON.parse(
-    readFileSync(join(WORKSPACE_ROOT, 'package.json'), 'utf8'),
-  );
+  const parsed: unknown = JSON.parse(readFileSync(join(WORKSPACE_ROOT, 'package.json'), 'utf8'));
   if (typeof parsed !== 'object' || parsed === null) return {};
   const catalog = (parsed as { catalog?: unknown }).catalog;
   return typeof catalog === 'object' && catalog !== null ? (catalog as Record<string, string>) : {};
@@ -274,6 +272,7 @@ export function buildPublishedManifest(
       '!dist/**/*.fixture.*',
       '!dist/**/*-fixture.*',
       '!dist/**/*-fixtures.*',
+      '!dist/**/*-test-*',
       '!dist/**/test/**',
       '!dist/**/*.map',
       'components.json',

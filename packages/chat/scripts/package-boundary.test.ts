@@ -8,6 +8,7 @@ import {
   runtimeExternalSpecifiers,
   type PackageManifest,
 } from './pack-for-publish.ts';
+import { assertPackedManifest } from './validate-consumer.ts';
 
 const packageRoot = join(import.meta.dir, '..');
 const workspaceRoot = join(packageRoot, '..', '..');
@@ -211,6 +212,18 @@ describe('Chat package ownership boundary', () => {
     expect(serialized).not.toContain('workspace:');
     expect(serialized).not.toContain('./src/');
     expect(published.peerDependencies).toEqual(chatManifest.peerDependencies);
+    expect(published.files).toContain('!dist/**/*-test-*');
+  });
+
+  test('accepts resolved dependencies in a packed Chat manifest', () => {
+    const published = buildPublishedManifest(chatManifest);
+    expect(() => assertPackedManifest(published, chatManifest)).not.toThrow();
+    expect(() =>
+      assertPackedManifest(
+        { ...published, dependencies: { ...published.dependencies, zod: '^0.0.0' } },
+        chatManifest,
+      ),
+    ).toThrow('packed dependency contract mismatch');
   });
 
   test('keeps the dist barrel side-effect markers and drops the source glob', () => {

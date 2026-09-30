@@ -305,6 +305,7 @@ export function buildPublishedManifest(
       '!dist/**/*.fixture.*',
       '!dist/**/*-fixture.*',
       '!dist/**/*-fixtures.*',
+      '!dist/**/*-test-*',
       '!dist/session/fixtures.*',
       '!dist/**/test/**',
       '!dist/**/*.map',
