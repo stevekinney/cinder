@@ -67,7 +67,7 @@ describe('DiffToolbar: [ / ] shortcut hints (CIN-334)', () => {
   });
 });
 
-describe('DiffViewer: large-payload gating (>100KB → manual trigger)', () => {
+describe('DiffViewer: toolbar in the manual tier (tier boundaries: diff-controller.svelte.test.ts)', () => {
   const manualState: DiffToolbarState = {
     tier: 'manual',
     isStale: true,

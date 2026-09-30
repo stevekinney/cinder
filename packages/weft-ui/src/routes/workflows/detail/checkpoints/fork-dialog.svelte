@@ -53,6 +53,22 @@
    * source execution token, a `packages/weft` change, out of scope here) —
    * the retention line's copy is qualified below to say so honestly rather
    * than promise more than this snapshot can guarantee.
+   *
+   * ## Refetch on open (COR-15)
+   *
+   * Added ON TOP of the disclosure above, not instead of it: mounting the
+   * dialog (it is remounted on every checkpoint selection and Fork-tab
+   * switch — see `checkpoints-tab.svelte`) refetches the source run's
+   * persisted `revision` (`sourceQuery`, `refetchOnMount: 'always'`) and
+   * shows THAT once it lands, so a `start-new` replacement that landed
+   * between page load and dialog open is reflected before the operator
+   * confirms. This narrows the race but cannot close it — a replacement
+   * landing between this fetch and `Create fork` is still possible, which is
+   * exactly what the "as last loaded here" copy and tooltip keep saying, and
+   * closing it fully would still need `ForkOptions` to accept a source
+   * execution token (`packages/weft`, out of scope). While the refetch is in
+   * flight, or if it fails or finds the run purged, the page-load
+   * `sourceRevision` prop is what the dialog shows, unchanged.
    */
   import { Badge, Button, Input, Select, Skeleton, Tooltip } from '@lostgradient/cinder';
   import { createMutation, createQuery } from '@tanstack/svelte-query';
@@ -64,7 +80,7 @@
   import { getPrincipalStore, scopeGate } from '../../../../lib/scopes.svelte.ts';
   import { EAGER_REVISION_HEDGE } from '../../../../lib/workflow-revision.ts';
   import { router, workflowDetailPath } from '../../../../lib/router.svelte.ts';
-  import type { ForkClient } from './checkpoints-data.ts';
+  import type { ForkClient, ForkSourceClient } from './checkpoints-data.ts';
   import {
     forkConflictGuidance,
     isForkRevisionConflict,
@@ -75,7 +91,7 @@
   } from './fork-revision-picker.ts';
 
   interface ForkDialogProps {
-    readonly client: ForkClient & WorkflowRevisionListClient;
+    readonly client: ForkClient & ForkSourceClient & WorkflowRevisionListClient;
     readonly workflowId: string;
     /** Pre-fills the target step from whichever checkpoint the operator selected. */
     readonly initialStep: number;
@@ -87,8 +103,38 @@
     readonly onForked?: (forkedWorkflowId: string) => void;
   }
 
-  let { client, workflowId, initialStep, workflowType, sourceRevision, onForked }: ForkDialogProps =
-    $props();
+  let {
+    client,
+    workflowId,
+    initialStep,
+    workflowType,
+    sourceRevision: loadedSourceRevision,
+    onForked,
+  }: ForkDialogProps = $props();
+
+  // Refetch-on-open (COR-15) — see the module doc. Keyed under the detail
+  // key's prefix so a fleet-driven invalidation of the run's detail refreshes
+  // it too, but distinct from it so this fetch never rewrites the detail
+  // page's own cached record. `client.get` resolves `null` for a purged run.
+  const sourceQuery = createQuery(() => ({
+    queryKey: [...queryKeys.workflows.detail(workflowId), 'fork-source'] as const,
+    queryFn: () => client.get(workflowId),
+    refetchOnMount: 'always' as const,
+  }));
+
+  const openedAt = Date.now();
+
+  /**
+   * What the retention line reports: the revision from a fetch that landed
+   * AFTER this dialog opened (`dataUpdatedAt >= openedAt`, so a cache entry
+   * left by an EARLIER open is never shown as if current), provided the run
+   * still exists; otherwise the page-load prop.
+   */
+  const sourceRevision = $derived(
+    sourceQuery.isSuccess && sourceQuery.data !== null && sourceQuery.dataUpdatedAt >= openedAt
+      ? sourceQuery.data.revision
+      : loadedSourceRevision,
+  );
 
   // Intentional one-shot capture, not a bug: `checkpoints-tab.svelte` always
   // destroys and remounts this dialog (it lives behind an `{#if panel ===

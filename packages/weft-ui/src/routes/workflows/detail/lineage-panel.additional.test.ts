@@ -42,6 +42,7 @@ function baseClient(
     get: overrides.get ?? (async () => null),
     list: overrides.list ?? (async () => emptyChildren()),
     operations: {
+      'weft.workflows.active.get': async (_input: { name: string }) => null,
       'weft.workflows.scheduleprovenance.get': overrides.scheduleProvenance ?? noProvenance,
     },
   };
@@ -254,6 +255,56 @@ describe('additional coverage', () => {
     await waitFor(() => {
       expect(getByText('reconcile-ledger')).not.toBeNull();
     });
+  });
+
+  test('children preview rows show an active-versus-bound badge from one active-pointer fetch per distinct type (COR-15)', async () => {
+    const requested: string[] = [];
+    const client = {
+      ...baseClient({
+        list: async () => ({
+          items: [
+            {
+              id: 'wf_c1',
+              type: 'validate-shipment',
+              status: 'completed',
+              version: '1',
+              revision: 'rev-current',
+              createdAt: 1_000,
+              updatedAt: 1_000,
+            },
+            {
+              id: 'wf_c2',
+              type: 'validate-shipment',
+              status: 'completed',
+              version: '1',
+              revision: 'rev-old',
+              createdAt: 1_000,
+              updatedAt: 1_000,
+            },
+          ],
+          total: 2,
+          offset: 0,
+          limit: 5,
+        }),
+      }),
+      operations: {
+        'weft.workflows.scheduleprovenance.get': noProvenance,
+        'weft.workflows.active.get': async (input: { name: string }) => {
+          requested.push(input.name);
+          return { revision: 'rev-current', generation: 1, activatedAt: 1 };
+        },
+      },
+    };
+
+    const { getAllByText, getByText } = render(LineagePanelHarness, {
+      props: { client, workflow: workflow() },
+    });
+
+    await waitFor(() => {
+      expect(getByText('Active')).not.toBeNull();
+    });
+    expect(getAllByText('Differs from active')).toHaveLength(1);
+    expect(requested).toEqual(['validate-shipment']);
   });
 
   test('renders no continuation chain when the run was not started via start-new', async () => {

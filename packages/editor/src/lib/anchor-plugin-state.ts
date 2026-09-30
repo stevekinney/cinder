@@ -215,8 +215,25 @@ function mapOneAnchorThroughTransaction(
   newDoc: ProseMirrorNode,
 ): MappedAnchor {
   const isUnplacedOrphan = anchor.status === 'orphaned' && anchor.from === 0 && anchor.to === 0;
-  const mappedFrom = tr.mapping.map(anchor.from, -1);
   const mappedTo = tr.mapping.map(anchor.to, 1);
+  let mappedFrom = tr.mapping.map(anchor.from, -1);
+  // A block split exactly at `anchor.from` inserts a close and an open token
+  // there. Mapping backward leaves the start before them, so the range would
+  // begin with a block separator and read as drifted. When the forward
+  // mapping recovers the tracked quote and the backward one does not, prefer it.
+  // Only structural insertions qualify: typed text at `anchor.from` must stay
+  // inside the range, matching the inclusive-boundary behavior at the end.
+  if (mappedFrom < mappedTo && newDoc.textBetween(mappedFrom, mappedTo, '\n') !== anchor.quote) {
+    const forwardFrom = tr.mapping.map(anchor.from, 1);
+    if (
+      forwardFrom > mappedFrom &&
+      forwardFrom < mappedTo &&
+      newDoc.textBetween(mappedFrom, forwardFrom, '\n').replaceAll('\n', '') === '' &&
+      newDoc.textBetween(forwardFrom, mappedTo, '\n') === anchor.quote
+    ) {
+      mappedFrom = forwardFrom;
+    }
+  }
 
   if (mappedFrom >= mappedTo) {
     const lastKnownOffset = isUnplacedOrphan

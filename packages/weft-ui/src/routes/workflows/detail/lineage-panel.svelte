@@ -131,20 +131,24 @@
   import type { HttpClient, WorkflowState } from '@lostgradient/weft';
   import { ArrowRight, CalendarClock, CornerDownRight, GitBranch, GitFork } from 'lucide-svelte';
 
+  import { createActiveRevisionComparisons } from '../../../lib/active-revision-comparisons.svelte.ts';
   import { formatRelativeTime, truncateId } from '../../../lib/format/index.ts';
   import { queryKeys } from '../../../lib/query.ts';
   import { router, workflowDetailPath } from '../../../lib/router.svelte.ts';
   import {
     EAGER_REVISION_HEDGE,
     FRESH_START_REVISION_HEDGE,
+    type WorkflowActiveRevisionClient,
   } from '../../../lib/workflow-revision.ts';
   import { workflowStatusBadge } from '../list/workflow-status-badge.ts';
   import WorkflowStatusIcon from '../list/workflow-status-icon.svelte';
+  import RevisionComparisonBadge from '../revision-comparison-badge.svelte';
   import { getScheduleProvenance, scheduleProvenanceQueryKey } from './workflow-observability.ts';
 
   interface LineagePanelProps {
     readonly client: Pick<HttpClient, 'get' | 'list'> & {
-      readonly operations: Pick<HttpClient['operations'], 'weft.workflows.scheduleprovenance.get'>;
+      readonly operations: Pick<HttpClient['operations'], 'weft.workflows.scheduleprovenance.get'> &
+        WorkflowActiveRevisionClient['operations'];
     };
     readonly workflow: WorkflowState;
   }
@@ -185,6 +189,17 @@
   const children = $derived(childrenQuery.data?.items ?? []);
   const childrenTotal = $derived(childrenQuery.data?.total ?? 0);
   const moreChildren = $derived(Math.max(0, childrenTotal - children.length));
+
+  // Active-versus-bound badge on the children preview (COR-15): one
+  // `weft.workflows.active.get` per distinct child type, sharing
+  // `queryKeys.catalog.active(type)`. No `workflows:read` gate is needed —
+  // listing these children already required it.
+  const revisionComparisons = createActiveRevisionComparisons({
+    get client() {
+      return client;
+    },
+    rows: () => children,
+  });
 
   const thisRunBadge = $derived(workflowStatusBadge(workflow.status));
 
@@ -357,6 +372,9 @@
                 >
                   rev {truncateId(child.revision)}
                 </span>
+                <RevisionComparisonBadge
+                  comparison={revisionComparisons.compare(child.type, child.revision)}
+                />
               {:else}
                 <span class="weft-lineage-panel__id">Unpinned</span>
               {/if}

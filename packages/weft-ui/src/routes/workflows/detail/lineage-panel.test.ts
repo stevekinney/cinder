@@ -42,6 +42,7 @@ function baseClient(
     get: overrides.get ?? (async () => null),
     list: overrides.list ?? (async () => emptyChildren()),
     operations: {
+      'weft.workflows.active.get': async (_input: { name: string }) => null,
       'weft.workflows.scheduleprovenance.get': overrides.scheduleProvenance ?? noProvenance,
     },
   };
