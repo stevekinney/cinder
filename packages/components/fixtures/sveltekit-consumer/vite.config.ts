@@ -1,13 +1,11 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
+const chatHydration = process.env['CINDER_CHAT_DEV_HYDRATION'] === '1';
+
 export default defineConfig({
-  optimizeDeps:
-    process.env['CINDER_CHAT_DEV_HYDRATION'] === '1'
-      ? undefined
-      : {
-          holdUntilCrawlEnd: false,
-          noDiscovery: true,
-        },
+  ...(chatHydration
+    ? { ssr: { optimizeDeps: { include: ['@lostgradient/chat'] } } }
+    : { optimizeDeps: { holdUntilCrawlEnd: false, noDiscovery: true } }),
   plugins: [sveltekit()],
 });
