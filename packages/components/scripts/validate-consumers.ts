@@ -1287,10 +1287,7 @@ const SVELTEKIT_DEV_SSR_ROUTES = [
 ] as const;
 
 export type SvelteKitHydrationRoute =
-  | '/chat-layout'
-  | '/dev-ssr-dialog'
-  | '/dev-ssr-navigation'
-  | '/dev-ssr-tabs';
+  '/chat-layout' | '/dev-ssr-dialog' | '/dev-ssr-navigation' | '/dev-ssr-tabs';
 
 export const SVELTEKIT_HYDRATION_ROUTES = [
   '/chat-layout',
@@ -1644,14 +1641,19 @@ export async function preoptimizeSvelteKitChatHydration(
   fixtureDirectory: string,
   runCommand: typeof runHookCommand = runHookCommand,
   signal?: AbortSignal,
+  resolvedNodeBinaryPath: string = nodeBinaryPath || resolveRealNodeBinary(),
 ): Promise<void> {
-  const result = await runCommand('bun', ['x', 'vite', 'optimize', '--force'], {
-    cwd: fixtureDirectory,
-    stdout: 'pipe',
-    stderr: 'pipe',
-    environment: svelteKitChatHydrationEnvironment,
-    ...(signal === undefined ? {} : { signal }),
-  });
+  const result = await runCommand(
+    resolvedNodeBinaryPath,
+    [resolvePath(fixtureDirectory, 'node_modules/vite/bin/vite.js'), 'optimize', '--force'],
+    {
+      cwd: fixtureDirectory,
+      stdout: 'pipe',
+      stderr: 'pipe',
+      environment: svelteKitChatHydrationEnvironment,
+      ...(signal === undefined ? {} : { signal }),
+    },
+  );
   const sourceMapWarnings = extractPublishedPackageSourceMapWarnings(
     `${result.stdout}\n${result.stderr}`,
   );

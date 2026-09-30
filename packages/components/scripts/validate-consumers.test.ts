@@ -2,6 +2,7 @@ import { describe, expect, mock, test } from 'bun:test';
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 import { getPackFileName } from './publish-release.ts';
 import { packageTarballPath } from './report-package-weight.ts';
@@ -161,21 +162,45 @@ describe('consumer fixture cleanup', () => {
 });
 
 describe('SvelteKit Chat hydration optimizer preflight', () => {
+  test('eagerly optimizes the Chat SSR dependency in the hydration fixture', async () => {
+    const fixtureDirectory = join(import.meta.dir, '../fixtures/sveltekit-consumer');
+    const configurationUrl = pathToFileURL(join(fixtureDirectory, 'vite.config.ts')).href;
+    const result = Bun.spawnSync(
+      [
+        process.execPath,
+        '-e',
+        `const { default: configuration } = await import(${JSON.stringify(configurationUrl)}); process.stdout.write(JSON.stringify(configuration.ssr?.optimizeDeps?.include ?? []));`,
+      ],
+      {
+        cwd: fixtureDirectory,
+        env: { ...Bun.env, CINDER_CHAT_DEV_HYDRATION: '1' },
+        stdout: 'pipe',
+        stderr: 'pipe',
+      },
+    );
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout.toString())).toEqual(['@lostgradient/chat']);
+  });
+
   test('forces dependency optimization under the Chat hydration environment', async () => {
     const runCommand = mock(async () => ({ exitCode: 0, stdout: 'optimized', stderr: '' }));
 
-    await preoptimizeSvelteKitChatHydration('/fixture', runCommand);
+    await preoptimizeSvelteKitChatHydration('/fixture', runCommand, undefined, '/validated/node');
 
-    expect(runCommand).toHaveBeenCalledWith('bun', ['x', 'vite', 'optimize', '--force'], {
-      cwd: '/fixture',
-      stdout: 'pipe',
-      stderr: 'pipe',
-      environment: {
-        CINDER_CHAT_DEV_HYDRATION: '1',
-        LANG: 'en_US.UTF-8',
-        TZ: 'UTC',
+    expect(runCommand).toHaveBeenCalledWith(
+      '/validated/node',
+      ['/fixture/node_modules/vite/bin/vite.js', 'optimize', '--force'],
+      {
+        cwd: '/fixture',
+        stdout: 'pipe',
+        stderr: 'pipe',
+        environment: {
+          CINDER_CHAT_DEV_HYDRATION: '1',
+          LANG: 'en_US.UTF-8',
+          TZ: 'UTC',
+        },
       },
-    });
+    );
   });
 
   test('stops before route readiness when dependency optimization fails', async () => {
@@ -196,13 +221,18 @@ describe('SvelteKit Chat hydration optimizer preflight', () => {
     const runCommand = mock(async () => ({ exitCode: 130, stdout: '', stderr: '' }));
 
     await expect(
-      preoptimizeSvelteKitChatHydration('/fixture', runCommand, controller.signal),
+      preoptimizeSvelteKitChatHydration(
+        '/fixture',
+        runCommand,
+        controller.signal,
+        '/validated/node',
+      ),
     ).rejects.toThrow(
       'Vite dependency optimization exceeded the shared Chat hydration readiness budget',
     );
     expect(runCommand).toHaveBeenCalledWith(
-      'bun',
-      ['x', 'vite', 'optimize', '--force'],
+      '/validated/node',
+      ['/fixture/node_modules/vite/bin/vite.js', 'optimize', '--force'],
       expect.objectContaining({ signal: controller.signal }),
     );
   });
