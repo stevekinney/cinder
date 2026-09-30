@@ -842,6 +842,7 @@ async function buildTarballExpectations(): Promise<TarballExpectations> {
     // exclude here.
     forbiddenPatterns: [
       /\.(test|spec)\.[cm]?[jt]s$/,
+      /(?:\.(?:test|spec)|-test)\.svelte(?:\.d\.ts)?$/,
       /\.type-test\./,
       /(^|\/)[^/]*-fixtures\./,
       /(^|\/)[^/]*fixtures\./,
