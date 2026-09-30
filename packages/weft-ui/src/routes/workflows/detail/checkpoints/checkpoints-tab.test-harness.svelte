@@ -11,7 +11,11 @@
   import type { Principal } from '../../../../lib/scopes.svelte.ts';
   import WorkflowRouteHarness from '../../list/workflow-route-harness.test-harness.svelte';
   import CheckpointsTab from './checkpoints-tab.svelte';
-  import type { CheckpointsOperationsClient, ForkClient } from './checkpoints-data.ts';
+  import type {
+    CheckpointsOperationsClient,
+    ForkClient,
+    ForkSourceClient,
+  } from './checkpoints-data.ts';
   import type { WorkflowRevisionListClient } from './fork-revision-picker.ts';
 
   interface Props {
@@ -20,6 +24,8 @@
       WorkflowRevisionListClient & {
         replayTo: (id: string, step: number) => Promise<WorkflowReplay | null>;
         getTimeline: (id: string) => Promise<WorkflowTimelineEntry[]>;
+        /** The fork dialog's open-time source refetch (COR-15); defaults to "purged" so tests that don't care keep the page-load revision. */
+        get?: ForkSourceClient['get'];
       };
     workflowId: string;
     principal: Principal;
@@ -46,5 +52,10 @@
 </script>
 
 <WorkflowRouteHarness client={contextClient} {principal} {queryClient}>
-  <CheckpointsTab {client} {workflowId} {workflowType} {sourceRevision} />
+  <CheckpointsTab
+    client={{ get: async () => null, ...client }}
+    {workflowId}
+    {workflowType}
+    {sourceRevision}
+  />
 </WorkflowRouteHarness>

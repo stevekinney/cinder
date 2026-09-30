@@ -29,15 +29,13 @@
    * Shows each row's own persisted `WorkflowSummary.revision` — never
    * `undefined` collapsed to a blank cell, always an explicit "Unpinned"
    * text badge for a pre-revision-pinning (legacy) record, so a missing
-   * value never reads as a loading glitch. Deliberately does NOT compare
-   * against the catalog's currently active revision here: that comparison
-   * needs one `weft.workflows.active.get` fetch per distinct workflow TYPE
-   * on the page, which this table's own rows don't carry and this
-   * component has no query client to perform — the active-vs-persisted
-   * comparison is a detail-page-only feature (`header.svelte`/
-   * `overview-tab.svelte`), where there is exactly one record and one
-   * cheap fetch. See the batch's PR body for why a per-row list
-   * comparison was scoped out rather than folded in silently.
+   * value never reads as a loading glitch. When the parent supplies
+   * `revisionComparison` (COR-15), each pinned row also carries an
+   * active-versus-bound badge ("Active" / "Differs from active"). The table
+   * stays presentational: the parent (`workflow-list.svelte`) owns the
+   * fetching — one `weft.workflows.active.get` per DISTINCT workflow type
+   * on the page, via `createActiveRevisionComparisons` — so this component
+   * still needs no query client and renders standalone.
    */
   import { Copy } from 'lucide-svelte';
   import { Badge, CopyButton, Table, Tooltip } from '@lostgradient/cinder';
@@ -45,6 +43,8 @@
 
   import { formatRelativeTime, truncateId } from '../../../lib/format/index.ts';
   import { router, workflowDetailPath } from '../../../lib/router.svelte.ts';
+  import type { RevisionActiveComparison } from '../../../lib/workflow-revision.ts';
+  import RevisionComparisonBadge from '../revision-comparison-badge.svelte';
   import { workflowStatusBadge } from './workflow-status-badge.ts';
   import WorkflowStatusIcon from './workflow-status-icon.svelte';
 
@@ -63,9 +63,17 @@
     onSelectionChange?: (next: Set<string>) => void;
     /** Ids that arrived live since the page was last fetched, for a brief highlight (plan §10.5: "new rows highlight briefly"). */
     recentlyChangedIds?: ReadonlySet<string>;
+    /** How a row's persisted revision compares to its type's active revision (COR-15). Omitted: no comparison badge is shown. */
+    revisionComparison?: (type: string, revision: string | undefined) => RevisionActiveComparison;
   }
 
-  let { rows, selectedIds, onSelectionChange, recentlyChangedIds }: WorkflowTableProps = $props();
+  let {
+    rows,
+    selectedIds,
+    onSelectionChange,
+    recentlyChangedIds,
+    revisionComparison,
+  }: WorkflowTableProps = $props();
 
   const selectionEnabled = $derived(selectedIds !== undefined);
   const allSelected = $derived(
@@ -167,9 +175,14 @@
         <Table.Cell>{row.type}</Table.Cell>
         <Table.Cell>
           {#if row.revision !== undefined}
-            <Tooltip text={`Revision (exact executable artifact): ${row.revision}`}>
-              <code class="weft-workflows-table__revision">{truncateId(row.revision)}</code>
-            </Tooltip>
+            <span class="weft-workflows-table__revision-cell">
+              <Tooltip text={`Revision (exact executable artifact): ${row.revision}`}>
+                <code class="weft-workflows-table__revision">{truncateId(row.revision)}</code>
+              </Tooltip>
+              {#if revisionComparison}
+                <RevisionComparisonBadge comparison={revisionComparison(row.type, row.revision)} />
+              {/if}
+            </span>
           {:else}
             <Badge variant="neutral" size="xs">Unpinned</Badge>
           {/if}

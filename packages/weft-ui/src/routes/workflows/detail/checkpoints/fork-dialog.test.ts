@@ -78,6 +78,87 @@ describe('ForkDialog', () => {
     expect(getByText(/as last loaded here/)).not.toBeNull();
   });
 
+  test('refetches the source run on open and reflects a revision that changed since the page loaded, keeping the snapshot disclosure (COR-15)', async () => {
+    const requestedIds: string[] = [];
+    const client = {
+      ...baseClient(),
+      get: async (id: string) => {
+        requestedIds.push(id);
+        return { revision: 'order-processing-rev-replacement' };
+      },
+    };
+
+    const { getByText, queryByText } = render(ForkDialogHarness, {
+      props: {
+        client,
+        workflowId: 'wf-1',
+        initialStep: 3,
+        workflowType: 'order-processing',
+        sourceRevision: 'order-processing-rev-current',
+        principal: allScopesPrincipal(),
+        queryClient: newQueryClient(),
+      },
+    });
+
+    await waitFor(() => {
+      expect(getByText('rev order-pr…ment')).not.toBeNull();
+    });
+    expect(queryByText('rev order-pr…rent')).toBeNull();
+    expect(requestedIds).toEqual(['wf-1']);
+    // The refetch is added ON TOP of the snapshot disclosure, not instead of it.
+    expect(getByText(/as last loaded here/)).not.toBeNull();
+  });
+
+  test('falls back to the page-load revision when the open-time refetch finds the run purged or fails (COR-15)', async () => {
+    for (const outcome of ['purged', 'fails'] as const) {
+      let calls = 0;
+      const queryClient = newQueryClient();
+      const { getByText, unmount } = render(ForkDialogHarness, {
+        props: {
+          client: {
+            ...baseClient(),
+            get: async () => {
+              calls += 1;
+              if (outcome === 'fails') throw new Error('network down');
+              return null;
+            },
+          },
+          workflowId: 'wf-1',
+          initialStep: 3,
+          workflowType: 'order-processing',
+          sourceRevision: 'order-processing-rev-current',
+          principal: allScopesPrincipal(),
+          queryClient,
+        },
+      });
+      // The refetch settles (no fetch left in flight) before asserting the fallback held.
+      await waitFor(() => expect(calls).toBe(1));
+      await waitFor(() => expect(queryClient.isFetching()).toBe(0));
+      expect(getByText('rev order-pr…rent')).not.toBeNull();
+      unmount();
+    }
+  });
+
+  test('an unpinned page-load source picks up a revision persisted since (COR-15)', async () => {
+    const client = { ...baseClient(), get: async () => ({ revision: 'order-processing-rev-new' }) };
+
+    const { getByText } = render(ForkDialogHarness, {
+      props: {
+        client,
+        workflowId: 'wf-1',
+        initialStep: 3,
+        workflowType: 'order-processing',
+        sourceRevision: undefined,
+        principal: allScopesPrincipal(),
+        queryClient: newQueryClient(),
+      },
+    });
+
+    await waitFor(() => {
+      expect(getByText(/^Retains/)).not.toBeNull();
+    });
+  });
+
   test('default state shows the unpinned-legacy variant when sourceRevision is undefined', async () => {
     const { getByText } = render(ForkDialogHarness, {
       props: {

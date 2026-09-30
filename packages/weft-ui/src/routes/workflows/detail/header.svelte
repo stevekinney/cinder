@@ -70,6 +70,7 @@
     actionLabel,
     availableActions,
     finalizerStatusPresentation,
+    isTerminalStatus,
     type WorkflowContextualAction,
   } from './workflow-status.ts';
 
@@ -90,6 +91,13 @@
      * for "never activated." See module doc "`activeRevision` (WFT-117)".
      */
     readonly activeRevision: WorkflowCatalogActivePointerLike | null | undefined;
+    /**
+     * Opens the terminal-restart dialog (COR-15, `restart-dialog.svelte`).
+     * Optional: the Restart button only renders when this is supplied AND the
+     * run is in a terminal status. `workflow-detail.svelte` owns the dialog,
+     * same dumb-component split as `onAction`.
+     */
+    readonly onRestart?: (() => void) | undefined;
   }
 
   let {
@@ -102,10 +110,12 @@
     finalizerStatus,
     onRunQuery,
     activeRevision,
+    onRestart,
   }: WorkflowDetailHeaderProps = $props();
 
   const presentation = $derived(finalizerStatusPresentation(workflow.status, finalizerStatus));
   const actions = $derived(availableActions(workflow.status));
+  const canRestart = $derived(onRestart !== undefined && isTerminalStatus(workflow.status));
 
   const revisionComparison = $derived(
     classifyRevisionAgainstActive(workflow.revision, activeRevision),
@@ -288,7 +298,13 @@
       />
     {/each}
 
-    {#if actions.length > 0}
+    {#if canRestart}
+      <Tooltip text="Replace this run with a fresh one under the same id">
+        <Button variant="secondary" size="sm" label="Restart" onclick={() => onRestart?.()} />
+      </Tooltip>
+    {/if}
+
+    {#if actions.length > 0 || canRestart}
       <span class="weft-workflow-detail__actions-divider"></span>
     {/if}
 

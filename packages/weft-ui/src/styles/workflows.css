@@ -170,6 +170,13 @@
   font-family: var(--cinder-font-mono);
 }
 
+.weft-workflows-table__revision-cell {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+}
+
 .weft-workflows-table__revision {
   font-family: var(--cinder-font-mono);
   font-size: var(--cinder-text-xs);

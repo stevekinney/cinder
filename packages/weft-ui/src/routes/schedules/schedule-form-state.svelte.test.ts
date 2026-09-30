@@ -196,4 +196,84 @@ describe('ScheduleFormState', () => {
       expect(form.toUpdateRevisionPolicy()).toBeUndefined();
     });
   });
+  describe('description', () => {
+    test('defaults to empty and is forwarded by toCreateArgs only when non-blank', () => {
+      const form = new ScheduleFormState({ workflowType: 'report-gen' });
+      expect(form.description).toBe('');
+      expect(form.toCreateArgs()).not.toHaveProperty('description');
+      form.description = '  Nightly rollup  ';
+      expect(form.toCreateArgs().description).toBe('Nightly rollup');
+    });
+  });
+
+  describe('toUpdateOptions (COR-15: omit-when-unchanged for every editable option)', () => {
+    const loaded = {
+      workflowType: 'report-gen',
+      description: 'Nightly rollup',
+      overlap: 'skip',
+      jitterText: '30000ms',
+      backfill: false,
+      revisionPolicy: 'active-at-fire',
+    } as const;
+
+    test('returns undefined when nothing changed, so a cadence-only edit resends nothing', () => {
+      expect(new ScheduleFormState(loaded).toUpdateOptions()).toBeUndefined();
+    });
+
+    test('includes only the description when only it changed', () => {
+      const form = new ScheduleFormState(loaded);
+      form.description = 'Weekly rollup';
+      expect(form.toUpdateOptions()).toEqual({ description: 'Weekly rollup' });
+    });
+
+    test('includes only the overlap policy when only it changed', () => {
+      const form = new ScheduleFormState(loaded);
+      form.overlap = 'queue';
+      expect(form.toUpdateOptions()).toEqual({ overlap: 'queue' });
+    });
+
+    test('includes only backfill when only it changed', () => {
+      const form = new ScheduleFormState(loaded);
+      form.backfill = true;
+      expect(form.toUpdateOptions()).toEqual({ backfill: true });
+    });
+
+    test('includes only the trimmed jitter when only it changed', () => {
+      const form = new ScheduleFormState(loaded);
+      form.jitterText = ' 5m ';
+      expect(form.toUpdateOptions()).toEqual({ jitter: '5m' });
+    });
+
+    test('includes revisionPolicy alongside the others when it changed', () => {
+      const form = new ScheduleFormState(loaded);
+      form.revisionPolicy = 'pinned';
+      form.backfill = true;
+      expect(form.toUpdateOptions()).toEqual({ backfill: true, revisionPolicy: 'pinned' });
+    });
+
+    test('a value switched away and back is omitted again', () => {
+      const form = new ScheduleFormState(loaded);
+      form.overlap = 'queue';
+      form.overlap = 'skip';
+      expect(form.toUpdateOptions()).toBeUndefined();
+    });
+
+    test('clearing a jitter that was set is a validation error (the engine cannot unset it)', () => {
+      const form = new ScheduleFormState(loaded);
+      form.jitterText = '';
+      expect(form.errors.jitter).toBe(
+        'Jitter can be changed but not removed once set — enter a new duration.',
+      );
+      expect(form.isValid).toBe(false);
+    });
+  });
+
+  describe('isDirty', () => {
+    test('is false for a fresh edit draft and true after any editable field changes', () => {
+      const form = new ScheduleFormState({ workflowType: 'report-gen' });
+      expect(form.isDirty).toBe(false);
+      form.revisionPolicy = 'pinned';
+      expect(form.isDirty).toBe(true);
+    });
+  });
 });

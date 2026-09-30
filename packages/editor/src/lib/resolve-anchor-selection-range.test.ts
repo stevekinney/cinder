@@ -30,16 +30,9 @@ setupHappyDom();
  * This drives a REAL editor with the REAL anchor plugin and a REAL
  * `view.dispatch()` insertion — not a hand-constructed position — so the
  * mapping under test is the same one `computeDecorations` and the plugin's
- * own `apply()` use, not a reimplementation of it. The insertion is
- * strictly inside an EXISTING paragraph's text (not at a block boundary):
- * a boundary-adjacent insertion (e.g. splitting a new block immediately
- * before the anchor's own start) hits a separate, pre-existing position-
- * mapping ambiguity in this plugin unrelated to this fix — reproduced
- * during development, confirmed independent of `resolveAnchorSelectionRange`
- * (it manifested identically with the fix fully reverted), and out of scope
- * for cinder#1302/#1304/#1306. An in-paragraph insertion avoids it while
- * still proving the exact claim the review finding made: a position shift
- * from an edit that never orphans or re-anchors the thread.
+ * own `apply()` use, not a reimplementation of it. The first test inserts
+ * strictly inside an existing paragraph; the block-boundary case (a split
+ * exactly at the anchor's start) has its own test below.
  */
 
 let editorState: EditorState | undefined;
@@ -140,6 +133,67 @@ describe('resolveAnchorSelectionRange (cinder#1304)', () => {
     const afterEdit = resolveAnchorSelectionRange(view, 'thread-shift', staleFallback);
     expect(afterEdit).toEqual({ from: 24, to: 33 });
     expect(view.state.doc.textBetween(afterEdit.from, afterEdit.to)).toBe('Commented');
+  });
+
+  test('a block split immediately before the anchor keeps the mapped range on the quote', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    clock = installFakeClock();
+    editorState = await drainMount(
+      createEditor(container, {
+        initialContent: 'Preface paragraph.\n\nCommented text follows in this paragraph.',
+        plugins: [createAnchorPlugin()],
+      }),
+      clock,
+    );
+    const { view } = editorState;
+    if (!view) throw new Error('view not ready');
+
+    view.dispatch(
+      view.state.tr.setMeta(anchorPluginKey, {
+        type: 'sync',
+        threads: [makeThread()],
+        source: 'external',
+      }),
+    );
+
+    // Enter pressed at the very start of the anchored paragraph's text: the
+    // split inserts a close + open token exactly at anchor.from.
+    view.dispatch(view.state.tr.split(21));
+
+    const range = resolveAnchorSelectionRange(view, 'thread-shift', { from: 21, to: 30 });
+    expect(view.state.doc.textBetween(range.from, range.to, '\n')).toBe('Commented');
+  });
+
+  test('text typed at the anchor start extends the anchor, like text typed at its end', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    clock = installFakeClock();
+    editorState = await drainMount(
+      createEditor(container, {
+        initialContent: 'Preface paragraph.\n\nCommented text follows in this paragraph.',
+        plugins: [createAnchorPlugin()],
+      }),
+      clock,
+    );
+    const { view } = editorState;
+    if (!view) throw new Error('view not ready');
+
+    view.dispatch(
+      view.state.tr.setMeta(anchorPluginKey, {
+        type: 'sync',
+        threads: [makeThread()],
+        source: 'external',
+      }),
+    );
+
+    view.dispatch(view.state.tr.insertText('XX', 21));
+    const atStart = resolveAnchorSelectionRange(view, 'thread-shift', { from: 21, to: 30 });
+    expect(view.state.doc.textBetween(atStart.from, atStart.to, '\n')).toBe('XXCommented');
+
+    view.dispatch(view.state.tr.insertText('YY', atStart.to));
+    const atEnd = resolveAnchorSelectionRange(view, 'thread-shift', { from: 21, to: 30 });
+    expect(view.state.doc.textBetween(atEnd.from, atEnd.to, '\n')).toBe('XXCommentedYY');
   });
 
   test('falls back to the caller-provided range when the plugin has no live entry for the thread', async () => {

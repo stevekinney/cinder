@@ -73,6 +73,7 @@
   import Header from './header.svelte';
   import LogsTab from './logs-tab.svelte';
   import OverviewTab from './overview-tab.svelte';
+  import RestartDialog from './restart-dialog.svelte';
   import SignalsTab from './signals-tab.svelte';
   import TimelineTab from './timeline-tab.svelte';
   import { TickingClock } from './ticking-clock.svelte.ts';
@@ -169,6 +170,7 @@
   onDestroy(() => liveObservations.dispose());
 
   let pendingAction = $state<WorkflowContextualAction | null>(null);
+  let restartOpen = $state(false);
 
   const ACTION_CALL: Readonly<
     Record<WorkflowContextualAction, (workflowId: string) => Promise<unknown>>
@@ -285,7 +287,12 @@
       finalizerStatus={finalizerQuery.data}
       onRunQuery={runQuery}
       activeRevision={resolvedActiveRevision}
+      onRestart={() => (restartOpen = true)}
     />
+
+    {#if restartOpen}
+      <RestartDialog {client} {workflow} onClose={() => (restartOpen = false)} />
+    {/if}
 
     <div class="weft-workflow-detail__tab-scroll">
       <Tabs bind:value={activeTab}>

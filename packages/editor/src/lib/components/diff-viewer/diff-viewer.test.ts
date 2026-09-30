@@ -23,7 +23,7 @@ import { hasButtonLabelled } from './diff-viewer-test-helpers.ts';
  * - changed strings (renders hunks)    → the engine emits diffs + hunks, and the
  *                                        toolbar surfaces change statistics
  * - view-mode toggle (unified/…/orig)  → `DiffLine` shows/hides lines per mode
- * - large-payload gating (>100KB)      → the toolbar exposes the manual
+ * - large-payload gating (toolbar only)  → the toolbar exposes the manual
  *                                        "Compute Diff" trigger in the manual tier
  *
  * These are real mounts of the diff-viewer's own components plus its diff
