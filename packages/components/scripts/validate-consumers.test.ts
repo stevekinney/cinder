@@ -1,5 +1,5 @@
 import { describe, expect, mock, test } from 'bun:test';
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -164,22 +164,58 @@ describe('consumer fixture cleanup', () => {
 describe('SvelteKit Chat hydration optimizer preflight', () => {
   test('eagerly optimizes the Chat SSR dependency in the hydration fixture', async () => {
     const fixtureDirectory = join(import.meta.dir, '../fixtures/sveltekit-consumer');
-    const configurationUrl = pathToFileURL(join(fixtureDirectory, 'vite.config.ts')).href;
-    const result = Bun.spawnSync(
-      [
-        process.execPath,
-        '-e',
-        `const { default: configuration } = await import(${JSON.stringify(configurationUrl)}); process.stdout.write(JSON.stringify(configuration.ssr?.optimizeDeps?.include ?? []));`,
-      ],
-      {
-        cwd: fixtureDirectory,
-        env: { ...Bun.env, CINDER_CHAT_DEV_HYDRATION: '1' },
-        stdout: 'pipe',
-        stderr: 'pipe',
-      },
-    );
-    expect(result.exitCode).toBe(0);
-    expect(JSON.parse(result.stdout.toString())).toEqual(['@lostgradient/chat']);
+    const isolatedDirectory = mkdtempSync(join(tmpdir(), 'cinder-vite-config-'));
+    try {
+      mkdirSync(join(isolatedDirectory, 'node_modules/@sveltejs/kit'), { recursive: true });
+      mkdirSync(join(isolatedDirectory, 'node_modules/vite'), { recursive: true });
+      writeFileSync(
+        join(isolatedDirectory, 'node_modules/@sveltejs/kit/package.json'),
+        JSON.stringify({
+          name: '@sveltejs/kit',
+          type: 'module',
+          exports: { './vite': './vite.js' },
+        }),
+      );
+      writeFileSync(
+        join(isolatedDirectory, 'node_modules/@sveltejs/kit/vite.js'),
+        'export const sveltekit = () => ({});',
+      );
+      writeFileSync(
+        join(isolatedDirectory, 'node_modules/vite/package.json'),
+        JSON.stringify({ name: 'vite', type: 'module', exports: './index.js' }),
+      );
+      writeFileSync(
+        join(isolatedDirectory, 'node_modules/vite/index.js'),
+        'export const defineConfig = (configuration) => configuration;',
+      );
+      writeFileSync(
+        join(isolatedDirectory, 'vite.config.ts'),
+        readFileSync(join(fixtureDirectory, 'vite.config.ts')),
+      );
+      const configurationUrl = pathToFileURL(join(isolatedDirectory, 'vite.config.ts')).href;
+      for (const [hydration, expected] of [
+        ['1', { ssr: { optimizeDeps: { include: ['@lostgradient/chat'] } } }],
+        ['', { optimizeDeps: { holdUntilCrawlEnd: false, noDiscovery: true } }],
+      ] as const) {
+        const result = Bun.spawnSync(
+          [
+            process.execPath,
+            '-e',
+            `const { default: configuration } = await import(${JSON.stringify(configurationUrl)}); process.stdout.write(JSON.stringify(configuration));`,
+          ],
+          {
+            cwd: isolatedDirectory,
+            env: { ...Bun.env, CINDER_CHAT_DEV_HYDRATION: hydration },
+            stdout: 'pipe',
+            stderr: 'pipe',
+          },
+        );
+        expect(result.exitCode).toBe(0);
+        expect(JSON.parse(result.stdout.toString())).toMatchObject(expected);
+      }
+    } finally {
+      rmSync(isolatedDirectory, { recursive: true, force: true });
+    }
   });
 
   test('forces dependency optimization under the Chat hydration environment', async () => {
