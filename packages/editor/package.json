@@ -349,7 +349,9 @@
     "!dist/**/*-fixtures.*",
     "!dist/**/*-test-*",
     "!dist/session/fixtures.*",
+    "!dist/**/__fixtures__/**",
     "!dist/**/test/**",
+    "!dist/.build-input-hash",
     "components.json"
   ]
 }
