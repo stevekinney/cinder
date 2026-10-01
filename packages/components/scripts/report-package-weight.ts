@@ -71,10 +71,16 @@ const budgetsByPackage: Record<string, PackageWeightBudgets> = {
   // padded before concluding the package legitimately outgrew its budget.
   // A largest-files listing shows which files are big, not whether their
   // contents are wasteful.
+  // The 0.26.3 pack was measured after excluding leaked Svelte test source and
+  // declarations: 6.56 MB packed / 29.51 MB unpacked / 5,979 files. Unlike
+  // the earlier padding defect, this growth comes from the documented root
+  // metadata exports (component examples, constraints, and manifest), which
+  // are part of the public API. Keep roughly 15% headroom while continuing to
+  // reject unexpectedly large future artifacts.
   '@lostgradient/cinder': {
-    packedBytes: 6_000_000,
-    unpackedBytes: 26_000_000,
-    fileCount: 5_200,
+    packedBytes: 7_500_000,
+    unpackedBytes: 34_000_000,
+    fileCount: 6_900,
     largestEntrypointBytes: 2_500_000,
   },
   '@lostgradient/chat': {

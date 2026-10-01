@@ -1,3 +1,4 @@
+import { Glob } from 'bun';
 import { afterEach, describe, expect, it } from 'bun:test';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -124,6 +125,27 @@ describe('buildPublishedManifest', () => {
     expect(files).toContain('!src/components/**/*.fixture.ts');
     expect(files).toContain('!src/components/**/*-fixture.ts');
     expect(files).toContain('!src/components/**/*fixture*.svelte');
+  });
+
+  it('excludes Svelte test components and their emitted declarations from the staged pack', () => {
+    const files =
+      buildPublishedManifest({
+        name: '@lostgradient/cinder',
+        version: '0.0.0',
+        exports: {},
+      }).files ?? [];
+    const exclusions = files.filter((pattern) => pattern.startsWith('!'));
+    const isExcluded = (path: string) =>
+      exclusions.some((pattern) => new Glob(pattern.slice(1)).match(path));
+
+    expect(isExcluded('src/components/button/button-warning-consumer.test.svelte')).toBe(true);
+    expect(isExcluded('dist/components/button/button-warning-consumer.test.svelte.d.ts')).toBe(
+      true,
+    );
+    expect(isExcluded('src/components/portal/_portal-hydration-test.svelte')).toBe(true);
+    expect(isExcluded('dist/components/portal/_portal-hydration-test.svelte.d.ts')).toBe(true);
+    expect(isExcluded('src/components/button/button.svelte')).toBe(false);
+    expect(isExcluded('dist/components/button/button.svelte.d.ts')).toBe(false);
   });
 
   it('includes src/styles/**/*.css.d.ts so reserved styles type stubs are published', () => {
