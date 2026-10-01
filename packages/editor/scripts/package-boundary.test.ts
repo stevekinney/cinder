@@ -1,5 +1,7 @@
 import getReleasePlan from '@changesets/get-release-plan';
 import { describe, expect, test } from 'bun:test';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
@@ -10,7 +12,11 @@ import {
   styleDeclarationPathsFromManifest,
   type PackageManifest,
 } from './pack-for-publish.ts';
-import { assertPackedManifest, isForbiddenPackedFile } from './validate-consumer.ts';
+import {
+  assertPackedFileSet,
+  assertPackedManifest,
+  isForbiddenPackedFile,
+} from './validate-consumer.ts';
 
 const packageRoot = join(import.meta.dir, '..');
 const workspaceRoot = join(packageRoot, '..', '..');
@@ -312,6 +318,8 @@ describe('Editor package ownership boundary', () => {
     expect(published.peerDependencies).toEqual(editorManifest.peerDependencies);
     expect(published.files).toContain('!dist/session/fixtures.*');
     expect(published.files).toContain('!dist/**/*-test-*');
+    expect(published.files).toContain('!dist/**/__fixtures__/**');
+    expect(published.files).toContain('!dist/.build-input-hash');
     expect(published.files).not.toContain('!dist/**/fixtures.*');
   });
 
@@ -332,7 +340,22 @@ describe('Editor package ownership boundary', () => {
     expect(isForbiddenPackedFile('dist/session/fixtures.js')).toBe(true);
     expect(isForbiddenPackedFile('dist/other/fixtures.js')).toBe(true);
     expect(isForbiddenPackedFile('dist/session/persistence-test-support.js')).toBe(true);
+    expect(isForbiddenPackedFile('dist/export/__fixtures__/diff-review/empty-review.json')).toBe(
+      true,
+    );
+    expect(isForbiddenPackedFile('dist/.build-input-hash')).toBe(true);
     expect(isForbiddenPackedFile('dist/editor/test-utilities.js')).toBe(false);
+  });
+
+  test('rejects hidden build-cache markers in a packed artifact', async () => {
+    const packageDirectory = await mkdtemp(join(tmpdir(), 'editor-packed-marker-'));
+    try {
+      await mkdir(join(packageDirectory, 'dist'));
+      await Bun.write(join(packageDirectory, 'dist', '.build-input-hash'), 'local cache');
+      await expect(assertPackedFileSet(packageDirectory)).rejects.toThrow('.build-input-hash');
+    } finally {
+      await rm(packageDirectory, { recursive: true, force: true });
+    }
   });
 
   /**

@@ -177,6 +177,8 @@ export function isForbiddenPackedFile(normalizedPath: string): boolean {
   if (publicDiffReviewFixtureFiles.has(normalizedPath)) return false;
   const fileName = normalizedPath.split('/').at(-1) ?? normalizedPath;
   return (
+    normalizedPath.includes('/__fixtures__/') ||
+    normalizedPath === 'dist/.build-input-hash' ||
     /\.(?:test|spec)\.[^.]+$/u.test(fileName) ||
     /-test-/u.test(fileName) ||
     /(?:^|[-.])fixtures?(?:[-.]|$)/u.test(fileName) ||
@@ -185,13 +187,20 @@ export function isForbiddenPackedFile(normalizedPath: string): boolean {
   );
 }
 
-async function assertPackedFileSet(installedEditorRoot: string): Promise<void> {
+export async function assertPackedFileSet(installedEditorRoot: string): Promise<void> {
   const forbidden: string[] = [];
   for await (const relativePath of new Glob('**/*').scan({ cwd: installedEditorRoot })) {
     const normalizedPath = relativePath.replaceAll('\\', '/');
     if (isForbiddenPackedFile(normalizedPath)) {
       forbidden.push(normalizedPath);
     }
+  }
+  const buildHashMarker = 'dist/.build-input-hash';
+  if (
+    existsSync(join(installedEditorRoot, buildHashMarker)) &&
+    !forbidden.includes(buildHashMarker)
+  ) {
+    forbidden.push(buildHashMarker);
   }
   if (forbidden.length > 0) {
     fail(
