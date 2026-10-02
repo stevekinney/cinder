@@ -61,8 +61,16 @@
         "coordinateSpace": "raw-source",
         "hunkOccurrence": 0,
         "selectedText": "function shared() {\n  return 1;\n}",
-        "contextBefore": ["// before-3", "// before-2", "// before-1"],
-        "contextAfter": ["// after-1", "// after-2", "// after-3"]
+        "contextBefore": [
+          "// before-3",
+          "// before-2",
+          "// before-1"
+        ],
+        "contextAfter": [
+          "// after-1",
+          "// after-2",
+          "// after-3"
+        ]
       },
       "rawMapping": {
         "status": "exact"

@@ -34,8 +34,12 @@
         "coordinateSpace": "normalized-markdown",
         "hunkOccurrence": 0,
         "selectedText": "q",
-        "contextBefore": ["p"],
-        "contextAfter": ["r"]
+        "contextBefore": [
+          "p"
+        ],
+        "contextAfter": [
+          "r"
+        ]
       },
       "rawMapping": {
         "status": "unavailable",

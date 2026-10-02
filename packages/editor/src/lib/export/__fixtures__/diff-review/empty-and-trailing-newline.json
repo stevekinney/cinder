@@ -61,8 +61,12 @@
         "coordinateSpace": "raw-source",
         "hunkOccurrence": 0,
         "selectedText": "",
-        "contextBefore": ["function f() {"],
-        "contextAfter": ["  return 1;"]
+        "contextBefore": [
+          "function f() {"
+        ],
+        "contextAfter": [
+          "  return 1;"
+        ]
       },
       "rawMapping": {
         "status": "exact"
