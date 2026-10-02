@@ -21,17 +21,16 @@
       normalizeInputs: false,
     },
   ]);
-  let state = $state(created.ok ? created.value : undefined);
-
-  if (state) {
-    const withComment = reduceDiffReviewState(state, {
-      type: 'create-comment',
-      targetId: 'doc',
-      anchor: { kind: 'file', fileOccurrence: 0 },
-      body: 'Please double check this paragraph.',
-    });
-    if (withComment.ok) state = withComment.value;
-  }
+  const initial = created.ok ? created.value : undefined;
+  const withComment = initial
+    ? reduceDiffReviewState(initial, {
+        type: 'create-comment',
+        targetId: 'doc',
+        anchor: { kind: 'file', fileOccurrence: 0 },
+        body: 'Please double check this paragraph.',
+      })
+    : undefined;
+  let state = $state(withComment?.ok ? withComment.value : initial);
 </script>
 
 {#if state}
