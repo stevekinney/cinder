@@ -78,7 +78,7 @@
         composerAriaControls={composerProps.composerAriaControls}
         composerAriaActiveDescendant={composerProps.composerAriaActiveDescendant}
         composerAriaAutocomplete={composerProps.composerAriaAutocomplete}
-        oncomposerinput={composerProps.oncomposerinput}
+        onComposerInput={composerProps.onComposerInput}
         oncomposerkeydown={composerProps.oncomposerkeydown}
         oncomposerselectionchange={composerProps.oncomposerselectionchange}
         oncomposerblur={composerProps.oncomposerblur}

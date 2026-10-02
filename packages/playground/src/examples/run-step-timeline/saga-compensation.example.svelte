@@ -22,6 +22,7 @@
       duration: '2s',
       details: [
         {
+          type: 'text',
           id: 'err',
           label: 'Error',
           content: 'Seat 14C was taken before the reservation committed.',

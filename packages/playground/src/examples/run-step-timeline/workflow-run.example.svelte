@@ -60,6 +60,7 @@
           progress: 60,
           details: [
             {
+              type: 'text',
               id: 'retry-log',
               label: 'Retry output',
               content:

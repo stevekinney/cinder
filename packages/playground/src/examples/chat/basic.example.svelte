@@ -36,5 +36,5 @@
 </script>
 
 <div style="height: 34rem;">
-  <Chat id={chatId} {conversation} capabilities={{ attachments: false }} onsubmit={handleSubmit} />
+  <Chat id={chatId} {conversation} capabilities={{ attachments: false }} onSubmit={handleSubmit} />
 </div>
