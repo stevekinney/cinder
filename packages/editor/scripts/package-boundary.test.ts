@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import {
   assertSourceManifest,
   buildPublishedManifest,
+  parseRootCatalog,
   runtimeExternalSpecifiers,
   serverEntrypointsFromManifest,
   styleDeclarationPathsFromManifest,
@@ -44,6 +45,35 @@ const releasePlan = await getReleasePlan(workspaceRoot);
 const plannedCinderVersion =
   releasePlan.releases.find((release) => release.name === '@lostgradient/cinder')?.newVersion ??
   cinderManifest.version;
+
+describe('Editor root catalog parsing', () => {
+  test('returns verified string ranges', () => {
+    expect(parseRootCatalog({ catalog: { svelte: '^5.0.0', typescript: '^5.9.0' } })).toEqual({
+      svelte: '^5.0.0',
+      typescript: '^5.9.0',
+    });
+  });
+
+  test('treats an absent outer manifest or catalog as empty', () => {
+    for (const value of [null, undefined, 1, 'manifest', [], {}]) {
+      expect(parseRootCatalog(value)).toEqual({});
+    }
+  });
+
+  test('rejects a malformed catalog container', () => {
+    for (const catalog of [null, 1, 'catalog', []]) {
+      expect(() => parseRootCatalog({ catalog })).toThrow(
+        new TypeError('Editor root catalog must be an object of string ranges'),
+      );
+    }
+  });
+
+  test('rejects a non-string range with its entry name', () => {
+    expect(() => parseRootCatalog({ catalog: { svelte: 5 } })).toThrow(
+      new TypeError('Editor root catalog entry "svelte" must be a string range'),
+    );
+  });
+});
 
 describe('Editor package ownership boundary', () => {
   test('hashes every shared Cinder script imported by the Editor build', async () => {

@@ -103,12 +103,35 @@ function resolveWorkspaceSiblingVersion(name: string): string {
   return parsed.version;
 }
 
+/** Validate the root workspace manifest's `catalog` before resolving publish ranges. */
+export function parseRootCatalog(value: unknown): Readonly<Record<string, string>> {
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    Array.isArray(value) ||
+    !('catalog' in value) ||
+    !Object.hasOwn(value, 'catalog')
+  ) {
+    return {};
+  }
+  const catalog = value.catalog;
+  if (typeof catalog !== 'object' || catalog === null || Array.isArray(catalog)) {
+    throw new TypeError('Editor root catalog must be an object of string ranges');
+  }
+  const ranges: Record<string, string> = {};
+  for (const [name, range] of Object.entries(catalog)) {
+    if (typeof range !== 'string') {
+      throw new TypeError(`Editor root catalog entry "${name}" must be a string range`);
+    }
+    ranges[name] = range;
+  }
+  return ranges;
+}
+
 /** The root workspace manifest's `catalog` block. */
 function readRootCatalog(): Readonly<Record<string, string>> {
   const parsed: unknown = JSON.parse(readFileSync(join(WORKSPACE_ROOT, 'package.json'), 'utf8'));
-  if (typeof parsed !== 'object' || parsed === null) return {};
-  const catalog = (parsed as { catalog?: unknown }).catalog;
-  return typeof catalog === 'object' && catalog !== null ? (catalog as Record<string, string>) : {};
+  return parseRootCatalog(parsed);
 }
 
 /** Resolves `workspace:*`/`catalog:` specifiers to real, publishable ranges. */
