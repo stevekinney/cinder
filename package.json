@@ -17,7 +17,7 @@
     "clean": "bun run --filter='*' clean",
     "dev": "bun run --filter='@cinder/playground' dev",
     "playground": "bun run --filter='@cinder/playground' dev",
-    "typecheck": "turbo run typecheck",
+    "typecheck": "turbo run typecheck --concurrency=1",
     "validate:consumer": "bun run --filter=@lostgradient/markdown validate:consumer && bun run --filter=@lostgradient/cinder validate:consumer && bun run --filter=@lostgradient/editor validate:consumer && bun run --filter=@lostgradient/chat validate:consumer && bun run --filter=@lostgradient/cinder-mcp validate:consumer"
   },
   "devDependencies": {

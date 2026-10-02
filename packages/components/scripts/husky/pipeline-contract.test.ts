@@ -197,6 +197,17 @@ describe('pipeline contract: removed pre-push helpers stay removed', () => {
 });
 
 describe('pipeline contract: package script composition (source-based: reads packages/*/package.json)', () => {
+  it('serializes the root typecheck while retaining Turbo upstream build edges', async () => {
+    const rootManifest = await readPackageJson(join(REPO_ROOT, 'package.json'));
+    expect(scriptsOf(rootManifest)['typecheck']).toBe('turbo run typecheck --concurrency=1');
+
+    const turboConfiguration = await Bun.file(join(REPO_ROOT, 'turbo.json')).text();
+    expect(turboConfiguration).toMatch(/"typecheck"\s*:\s*\{\s*"dependsOn"\s*:\s*\["\^build"\]/);
+    expect(turboConfiguration).toMatch(
+      /"@cinder\/playground#typecheck"\s*:\s*\{\s*"dependsOn"\s*:\s*\["\^build"\]/,
+    );
+  });
+
   const KNOWN_LINT_INVARIANTS_CHECKS = [
     'check:no-cycle-imports',
     'check:consumer-boundaries',
