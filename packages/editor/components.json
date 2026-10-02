@@ -202,6 +202,59 @@
         "variables": "@lostgradient/editor/diff-viewer/variables",
         "examples": "@lostgradient/editor/diff-viewer/examples"
       }
+    },
+    {
+      "id": "diff-review",
+      "category": "domain",
+      "status": "domain-suite",
+      "purpose": "Single- and multi-target diff review with file navigation, comments, drafts, and Markdown/JSON export.",
+      "tags": ["diff-review"],
+      "useWhen": [
+        "Reviewing one or many mixed Markdown/source-patch targets and collecting comments for an agent handoff."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Rendering a single diff with no comment/export workflow -- use DiffViewer or SourceDiffViewer directly."
+        }
+      ],
+      "related": ["diff-review-comments", "diff-viewer", "review-editor"],
+      "name": "DiffReview",
+      "import": "@lostgradient/editor/diff-review",
+      "exportName": "DiffReview",
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/editor/diff-review/schema",
+        "variables": "@lostgradient/editor/diff-review/variables",
+        "examples": "@lostgradient/editor/diff-review/examples"
+      }
+    },
+    {
+      "id": "diff-review-comments",
+      "category": "domain",
+      "status": "domain-suite",
+      "purpose": "Reusable, resolution-aware comments panel for a `DiffReviewState` session: every saved comment by default, with an unresolved filter, and a review note.",
+      "tags": ["diff-review", "comments"],
+      "useWhen": [
+        "Building a standalone comment panel next to a `DiffViewer` or `SourceDiffViewer` instance.",
+        "Composing the aggregate `DiffReview` shell, which renders this panel internally."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Reviewing ProseMirror document threads with author identity — use ReviewEditor's own comment UI instead."
+        }
+      ],
+      "related": ["diff-review"],
+      "name": "DiffReviewComments",
+      "import": "@lostgradient/editor/diff-review-comments",
+      "exportName": "DiffReviewComments",
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/editor/diff-review-comments/schema",
+        "variables": "@lostgradient/editor/diff-review-comments/variables",
+        "examples": "@lostgradient/editor/diff-review-comments/examples"
+      }
     }
   ]
 }

@@ -20,7 +20,7 @@ This editor supports **rich markdown editing**, toolbar actions, and a source mo
 </script>
 
 <div style="display: grid; gap: 0.75rem;">
-  <MarkdownEditor id={editorId} bind:value showToolbar showModeToggle />
+  <MarkdownEditor id={editorId} bind:value toolbarEnabled modeToggleVisible />
   <p style="margin: 0; color: var(--cinder-text-muted);">
     Characters: {value.length}
   </p>
