@@ -17,7 +17,7 @@
   <MarkdownEditor
     id={editorId}
     bind:value
-    showToolbar={false}
+    toolbarEnabled={false}
     placeholder="Start writing your release notes…"
   />
 </div>

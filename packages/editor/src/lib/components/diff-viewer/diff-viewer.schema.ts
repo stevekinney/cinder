@@ -45,7 +45,7 @@ const schema = {
         name: 'fileAnnotation',
         reason: 'function-or-snippet',
         description:
-          'Rendered once alongside the front-matter section, whenever the document\nhas front matter. Front matter offers file-level comments only (its\nchanges aren’t cleanly attributable to one selectable line), so this\nsnippet receives the changed field names as context rather than a line\nanchor. Unlike `lineAnnotation`, it renders regardless of whether\n`onAnnotationSelectionChange` is supplied.',
+          "Rendered once alongside the front-matter section, whenever the document\nhas front matter. Front matter offers file-level comments only (its\nchanges aren't cleanly attributable to one selectable line), so this\nsnippet receives the changed field names as context rather than a line\nanchor. Unlike `lineAnnotation`, it renders regardless of whether\n`onAnnotationSelectionChange` is supplied.",
       },
       {
         name: 'hunks',
@@ -57,7 +57,7 @@ const schema = {
         name: 'lineAnnotation',
         reason: 'function-or-snippet',
         description:
-          'Rendered next to each commentable row’s add-comment control. Like that\ncontrol, it only appears when `onAnnotationSelectionChange` is also\nsupplied -- pass both to render per-line annotation markers.',
+          "Rendered next to each commentable row's add-comment control. Like that\ncontrol, it only appears when `onAnnotationSelectionChange` is also\nsupplied -- pass both to render per-line annotation markers.",
       },
       {
         name: 'onAnnotationSelectionChange',

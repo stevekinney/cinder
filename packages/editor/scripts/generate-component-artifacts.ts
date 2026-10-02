@@ -70,14 +70,25 @@ const componentDefinitions: readonly ComponentDefinition[] = [
     exportName: 'DiffViewer',
     importSpecifier: '@lostgradient/editor/diff-viewer',
   },
+  {
+    id: 'diff-review',
+    exportName: 'DiffReview',
+    importSpecifier: '@lostgradient/editor/diff-review',
+  },
+  {
+    id: 'diff-review-comments',
+    exportName: 'DiffReviewComments',
+    importSpecifier: '@lostgradient/editor/diff-review-comments',
+  },
 ];
 
 const componentDefinitionById = new Map(
   componentDefinitions.map((definition) => [definition.id, definition]),
 );
-const allowedEditorImportSpecifiers = new Set(
-  componentDefinitions.map((definition) => definition.importSpecifier),
-);
+const allowedEditorImportSpecifiers = new Set([
+  ...componentDefinitions.map((definition) => definition.importSpecifier),
+  '@lostgradient/editor/diff-review-state',
+]);
 
 async function format(content: string, path: string): Promise<string> {
   const configuration = await prettier.resolveConfig(path);

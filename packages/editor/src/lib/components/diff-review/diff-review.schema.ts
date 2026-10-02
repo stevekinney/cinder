@@ -7,26 +7,27 @@ const schema = {
     readonly: {
       type: 'boolean',
       description:
-        'Disables every mutating control (comments, drafts, Reviewed, review\nnote). Navigation, filtering, and export remain available.',
+        'Disables every mutating control (comments, drafts, Reviewed, review\nnote). Navigation, filtering, and export remain available. A line-level\ncomment\'s "Go to" always reports its anchor unavailable in this mode,\nper the underlying viewers\' own contract (see README, "Comment-to-anchor\nnavigation") -- file navigation and comment viewing themselves are not\notherwise affected.',
+      default: false,
     },
     reviewTitle: {
       type: 'string',
       description: 'Markdown export heading.',
+      default: 'Review feedback',
     },
     class: {
       type: 'string',
-      description: 'Additional CSS classes',
     },
   },
   additionalProperties: false,
   metadata: {
     unsupportedProps: [
       {
-        name: 'targets',
-        reason: 'unknown-shape',
+        name: 'onStateChange',
+        reason: 'function-or-snippet',
         required: true,
         description:
-          'The live content for every target in `state`, in the same shape\n`createDiffReviewState`/the `set-targets` action take.',
+          "Called whenever an action succeeds. Named `onStateChange` (camelCase)\nrather than the cross-package contract's lowercase `onstatechange` --\nsee `DiffReviewComments`' identical note.",
       },
       {
         name: 'state',
@@ -35,10 +36,11 @@ const schema = {
         description: 'Controlled diff-review session state. Never mutated directly.',
       },
       {
-        name: 'onStateChange',
-        reason: 'function-or-snippet',
+        name: 'targets',
+        reason: 'unknown-shape',
         required: true,
-        description: 'Called whenever an action succeeds.',
+        description:
+          'The live content for every target in `state`, in the same shape\n`createDiffReviewState`/the `set-targets` action take. `DiffReviewState`\nitself carries only identity (id/kind/label/snapshot) -- the host owns\nthe actual document/patch text and keeps both in sync via its own\n`set-targets` dispatch when content changes.',
       },
     ],
   },

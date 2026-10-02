@@ -4,22 +4,22 @@
   "import": "@lostgradient/editor/diff-review-comments",
   "examples": [
     {
+      "id": "readonly",
+      "title": "Read-only review",
+      "description": "In read-only mode the filter and review note remain viewable but every mutating control is disabled.",
+      "code": "<script lang=\"ts\">\n  import { DiffReviewComments } from '@lostgradient/editor/diff-review-comments';\n  import { createDiffReviewState } from '@lostgradient/editor/diff-review-state';\n\n  const created = createDiffReviewState([\n    {\n      targetId: 'doc',\n      kind: 'markdown',\n      label: 'notes.md',\n      original: 'a',\n      current: 'b',\n      normalizeInputs: false,\n    },\n  ]);\n  let state = $state(created.ok ? created.value : undefined);\n</script>\n\n{#if state}\n  <DiffReviewComments {state} onStateChange={(next) => (state = next)} readonly />\n{/if}\n"
+    },
+    {
       "id": "standalone",
       "title": "Standalone comments panel",
       "description": "DiffReviewComments next to a DiffViewer, sharing one controlled DiffReviewState.",
-      "code": "<script lang=\"ts\">\n  import { DiffViewer } from '@lostgradient/editor/diff-viewer';\n  import { DiffReviewComments } from '@lostgradient/editor/diff-review-comments';\n  import { createDiffReviewState } from '@lostgradient/editor/diff-review-state';\n\n  const original = 'line one\\nline two\\nline three';\n  const current = 'line one\\nline TWO\\nline three';\n\n  const created = createDiffReviewState([\n    { targetId: 'doc', kind: 'markdown', label: 'notes.md', original, current, normalizeInputs: false },\n  ]);\n  let state = $state(created.ok ? created.value : undefined);\n</script>\n\n{#if state}\n  <DiffViewer {original} {current} readonly />\n  <DiffReviewComments {state} onStateChange={(next) => (state = next)} />\n{/if}\n"
+      "code": "<script lang=\"ts\">\n  import { DiffViewer } from '@lostgradient/editor/diff-viewer';\n  import { DiffReviewComments } from '@lostgradient/editor/diff-review-comments';\n  import { createDiffReviewState } from '@lostgradient/editor/diff-review-state';\n\n  const original = 'line one\\nline two\\nline three';\n  const current = 'line one\\nline TWO\\nline three';\n\n  const created = createDiffReviewState([\n    {\n      targetId: 'doc',\n      kind: 'markdown',\n      label: 'notes.md',\n      original,\n      current,\n      normalizeInputs: false,\n    },\n  ]);\n  let state = $state(created.ok ? created.value : undefined);\n</script>\n\n{#if state}\n  <DiffViewer {original} {current} readonly />\n  <DiffReviewComments {state} onStateChange={(next) => (state = next)} />\n{/if}\n"
     },
     {
       "id": "unresolved-only",
       "title": "Reviewing only open feedback",
       "description": "Toggling to the unresolved-only filter hides resolved comments without discarding them.",
-      "code": "<script lang=\"ts\">\n  import { DiffReviewComments } from '@lostgradient/editor/diff-review-comments';\n  import { createDiffReviewState, reduceDiffReviewState } from '@lostgradient/editor/diff-review-state';\n\n  const created = createDiffReviewState([\n    { targetId: 'doc', kind: 'markdown', label: 'notes.md', original: 'a', current: 'b', normalizeInputs: false },\n  ]);\n  let state = $state(created.ok ? created.value : undefined);\n\n  if (state) {\n    const withComment = reduceDiffReviewState(state, {\n      type: 'create-comment',\n      targetId: 'doc',\n      anchor: { kind: 'file', fileOccurrence: 0 },\n      body: 'Please double check this paragraph.',\n    });\n    if (withComment.ok) state = withComment.value;\n  }\n</script>\n\n{#if state}\n  <DiffReviewComments {state} onStateChange={(next) => (state = next)} />\n{/if}\n"
-    },
-    {
-      "id": "readonly",
-      "title": "Read-only review",
-      "description": "In read-only mode the filter and review note remain viewable but every mutating control is disabled.",
-      "code": "<script lang=\"ts\">\n  import { DiffReviewComments } from '@lostgradient/editor/diff-review-comments';\n  import { createDiffReviewState } from '@lostgradient/editor/diff-review-state';\n\n  const created = createDiffReviewState([\n    { targetId: 'doc', kind: 'markdown', label: 'notes.md', original: 'a', current: 'b', normalizeInputs: false },\n  ]);\n  let state = $state(created.ok ? created.value : undefined);\n</script>\n\n{#if state}\n  <DiffReviewComments {state} onStateChange={(next) => (state = next)} readonly />\n{/if}\n"
+      "code": "<script lang=\"ts\">\n  import { DiffReviewComments } from '@lostgradient/editor/diff-review-comments';\n  import {\n    createDiffReviewState,\n    reduceDiffReviewState,\n  } from '@lostgradient/editor/diff-review-state';\n\n  const created = createDiffReviewState([\n    {\n      targetId: 'doc',\n      kind: 'markdown',\n      label: 'notes.md',\n      original: 'a',\n      current: 'b',\n      normalizeInputs: false,\n    },\n  ]);\n  let state = $state(created.ok ? created.value : undefined);\n\n  if (state) {\n    const withComment = reduceDiffReviewState(state, {\n      type: 'create-comment',\n      targetId: 'doc',\n      anchor: { kind: 'file', fileOccurrence: 0 },\n      body: 'Please double check this paragraph.',\n    });\n    if (withComment.ok) state = withComment.value;\n  }\n</script>\n\n{#if state}\n  <DiffReviewComments {state} onStateChange={(next) => (state = next)} />\n{/if}\n"
     }
   ]
 }

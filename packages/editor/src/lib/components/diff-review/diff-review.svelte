@@ -3,7 +3,7 @@
    * @cinder
    * @category domain
    * @status domain-suite
-   * @purpose Aggregate single- and multi-target diff review: file list, comment controls, drafts inventory, and Markdown/JSON export -- composed entirely from the public DiffViewer/SourceDiffViewer annotation hooks and diff-review-state.
+   * @purpose Single- and multi-target diff review with file navigation, comments, drafts, and Markdown/JSON export.
    * @tag diff-review
    * @useWhen Reviewing one or many mixed Markdown/source-patch targets and collecting comments for an agent handoff.
    * @avoidWhen Rendering a single diff with no comment/export workflow -- use DiffViewer or SourceDiffViewer directly.

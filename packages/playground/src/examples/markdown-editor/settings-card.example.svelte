@@ -32,8 +32,8 @@
       bind:value={prompt}
       bind:mode
       label="Agent prompt"
-      showToolbar
-      showModeToggle
+      toolbarEnabled
+      modeToggleVisible
     />
   </Card>
 </div>
