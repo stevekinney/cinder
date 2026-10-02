@@ -43,12 +43,14 @@
       attemptCount: 2,
       details: [
         {
+          type: 'text',
           id: 'test-error',
           label: 'Error output',
           content:
             'AssertionError: expected 1 to equal 2\n  at src/math.test.ts:12:5\n  at test (bun:test/runner.ts:88)',
         },
         {
+          type: 'text',
           id: 'test-env',
           label: 'Environment',
           content: 'NODE_ENV=test\nCI=true\nBUN_VERSION=1.2.0',

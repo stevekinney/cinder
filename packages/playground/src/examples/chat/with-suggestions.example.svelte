@@ -40,8 +40,8 @@
     {conversation}
     capabilities={{ attachments: false }}
     onSuggestionSelect={handleSuggestionSelect}
-    onsubmit={(event) => {
-      conversation = appendUserMessage(conversation, event.message.content as string);
+    onSubmit={(event) => {
+      conversation = appendUserMessage(conversation, event.message.content);
     }}
   />
 </div>

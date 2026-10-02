@@ -23,6 +23,7 @@
       duration: '1s',
       details: [
         {
+          type: 'text',
           id: 'reason',
           label: 'Why it was unwound',
           content:
