@@ -297,10 +297,21 @@ describe('static export', () => {
         allComponents: ['chat', 'chat-composer-popover', 'chat-conversation-header'],
       });
       const pageHtml = await readFile(join(outputDirectory, 'page', 'chat', 'index.html'), 'utf8');
-      const readFingerprintedAsset = async (suffix: string): Promise<string> => {
+      const composerPageHtml = await readFile(
+        join(outputDirectory, 'page', 'chat-composer-popover', 'index.html'),
+        'utf8',
+      );
+      const headerPageHtml = await readFile(
+        join(outputDirectory, 'page', 'chat-conversation-header', 'index.html'),
+        'utf8',
+      );
+      const fingerprintedAssetUrl = (suffix: string): string => {
         const url = [...rendered].find((candidate) => candidate.endsWith(suffix));
         if (url === undefined) throw new Error(`missing fingerprinted ${suffix}`);
-        return readFile(join(outputDirectory, url.slice(1)), 'utf8');
+        return url;
+      };
+      const readFingerprintedAsset = async (suffix: string): Promise<string> => {
+        return readFile(join(outputDirectory, fingerprintedAssetUrl(suffix).slice(1)), 'utf8');
       };
       const chatStyles = await readFingerprintedAsset('/package-components/chat/chat/chat.css');
       const composerStyles = await readFingerprintedAsset(
@@ -322,12 +333,30 @@ describe('static export', () => {
       expect(pageHtml).toMatch(/<h1[^>]*>.*Chat.*<\/h1>/s);
       expect(rendered.has('/page/chat?preview=1')).toBe(false);
       expect(chatStyles).toContain('.cinder-chat');
-      expect(composerStyles).toMatch(
-        /@import '\/assets\/[a-f0-9]{64}\/components\/command-menu\/command-menu\.css';/,
-      );
-      expect(headerStyles).toMatch(
-        /@import '\/assets\/[a-f0-9]{64}\/components\/dropdown\/dropdown\.css';/,
-      );
+      expect(composerStyles).toContain('.chat-composer-popover');
+      expect(headerStyles).toContain('.cinder-chat-conversation-header');
+      for (const [html, stylesheets] of [
+        [
+          composerPageHtml,
+          [
+            '/components/command-menu/command-menu.css',
+            '/package-components/chat/chat-composer-popover/chat-composer-popover.css',
+          ],
+        ],
+        [
+          headerPageHtml,
+          [
+            '/components/dropdown/dropdown.css',
+            '/package-components/chat/chat-conversation-header/chat-conversation-header.css',
+          ],
+        ],
+      ] as const) {
+        for (const suffix of stylesheets) {
+          const url = fingerprintedAssetUrl(suffix);
+          expect(html).toContain(`href="${url}"`);
+          expect(await readFile(join(outputDirectory, url.slice(1)), 'utf8')).not.toBeEmpty();
+        }
+      }
       expect(rendered.has('/api/manifest/chat')).toBe(true);
       expect(rendered.has('/api/documentation/chat')).toBe(true);
       expect(

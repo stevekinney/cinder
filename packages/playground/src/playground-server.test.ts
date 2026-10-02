@@ -1475,24 +1475,31 @@ describe('/page/:name', () => {
     expect(await stylesheet.text()).toContain('.cinder-chat');
   });
 
-  it('rewrites extracted Chat peer styles to reachable playground CSS routes', async () => {
+  it('links extracted Chat peer styles alongside their own CSS routes', async () => {
     const cases = [
       ['chat-composer-popover', 'command-menu'],
       ['chat-conversation-header', 'dropdown'],
     ] as const;
 
     for (const [chatComponent, cinderComponent] of cases) {
-      const stylesheet = await handleRequest(
-        req(`/package-components/chat/${chatComponent}/${chatComponent}.css`),
-      );
+      const chatStylesheetUrl = `/package-components/chat/${chatComponent}/${chatComponent}.css`;
+      const peerStylesheetUrl = `/components/${cinderComponent}/${cinderComponent}.css`;
+      const page = await handleRequest(req(`/page/${chatComponent}`));
+      expect(page.status).toBe(200);
+      const html = await page.text();
+      expect(html).toContain(`href="${chatStylesheetUrl}"`);
+      expect(html).toContain(`href="${peerStylesheetUrl}"`);
+
+      const stylesheet = await handleRequest(req(chatStylesheetUrl));
       expect(stylesheet.status).toBe(200);
+      expect(stylesheet.headers.get('Content-Type')).toBe('text/css');
       const css = await stylesheet.text();
-      expect(css).toContain(`@import '/components/${cinderComponent}/${cinderComponent}.css';`);
+      expect(css).toContain(
+        `.${chatComponent === 'chat-composer-popover' ? 'chat-composer-popover' : 'cinder-chat-conversation-header'}`,
+      );
       expect(css).not.toContain('@lostgradient/cinder/');
 
-      const peerStylesheet = await handleRequest(
-        req(`/components/${cinderComponent}/${cinderComponent}.css`),
-      );
+      const peerStylesheet = await handleRequest(req(peerStylesheetUrl));
       expect(peerStylesheet.status).toBe(200);
       expect(peerStylesheet.headers.get('Content-Type')).toBe('text/css');
     }
