@@ -89,14 +89,13 @@ const budgetsByPackage: Record<string, PackageWeightBudgets> = {
     fileCount: 500,
     largestEntrypointBytes: 1_500_000,
   },
-  // Measured against the real 0.0.0 pack: 240 KB packed, ~1.7 MB unpacked,
-  // 237 files, largest single file ~120 KB (dist/server/components/
-  // review-editor/index.js). Headroom sized like markdown's budget above,
-  // scaled up slightly for editor's three Svelte components.
+  // The 0.15.0 artifact has 482 files after removing private golden fixtures.
+  // Diff Review adds two public components plus their source, declarations,
+  // metadata, and plain-Node server entries. Keep file-count headroom near 14%.
   '@lostgradient/editor': {
     packedBytes: 800_000,
     unpackedBytes: 4_000_000,
-    fileCount: 400,
+    fileCount: 550,
     largestEntrypointBytes: 800_000,
   },
   // Measured against the real 0.0.0 pack: ~4.5 KB packed, ~15.4 KB unpacked,
