@@ -7,8 +7,11 @@ const toolbarDropdownPath = new URL('./editor-toolbar/toolbar-dropdown.svelte', 
 // Cinder owns `.cinder-markdown-content`'s prose and task-list styling —
 // `MarkdownEditor` composes it rather than redeclaring it, so this reaches
 // across the package boundary into cinder's own utilities stylesheet.
+const editorPackageManifest: { private?: boolean } = await Bun.file(
+  new URL('../../../../package.json', import.meta.url),
+).json();
 const utilitiesCssPath = new URL(
-  '../../../../../components/src/styles/utilities.css',
+  `../../../../../${editorPackageManifest.private === true ? 'cinder' : 'components'}/src/styles/utilities.css`,
   import.meta.url,
 );
 
