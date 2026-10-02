@@ -190,8 +190,8 @@ async function showPlayground(): Promise<void> {
 async function findHeroHeading(name: string): Promise<HTMLHeadingElement> {
   return waitFor(() => {
     const heading = document.querySelector<HTMLHeadingElement>('#component-name');
-    expect(heading?.textContent).toBe(name);
     if (heading === null) throw new Error('Component hero heading is missing');
+    expect(heading.textContent).toBe(name);
     return heading;
   });
 }
