@@ -158,6 +158,10 @@ export interface PopupPointerSelection {
  * is open, a pointerup or pointercancel anywhere outside it forgets the
  * gesture, and a cancel inside it is forgotten once the current task ends.
  */
+function preventMouseDownDefault(event: MouseEvent): void {
+  event.preventDefault();
+}
+
 export function bindPopupPointerSelection(
   popup: HTMLElement,
   onSelect: (index: number) => void,
@@ -204,7 +208,6 @@ export function bindPopupPointerSelection(
       ownerDocument.removeEventListener('pointercancel', onPointerEndOutside, true);
     }
   };
-  const onMouseDown = (event: MouseEvent) => event.preventDefault();
   const onClick = (event: MouseEvent) => {
     const index = optionIndexFromEvent(event);
     const recorded = gesture;
@@ -219,7 +222,7 @@ export function bindPopupPointerSelection(
   popup.addEventListener('pointermove', onPointerMove);
   popup.addEventListener('pointercancel', onCancel);
   popup.addEventListener('scroll', onScroll);
-  popup.addEventListener('mousedown', onMouseDown);
+  popup.addEventListener('mousedown', preventMouseDownDefault);
   popup.addEventListener('click', onClick);
   return {
     setOpen(open: boolean) {
@@ -233,7 +236,7 @@ export function bindPopupPointerSelection(
       popup.removeEventListener('pointermove', onPointerMove);
       popup.removeEventListener('pointercancel', onCancel);
       popup.removeEventListener('scroll', onScroll);
-      popup.removeEventListener('mousedown', onMouseDown);
+      popup.removeEventListener('mousedown', preventMouseDownDefault);
       popup.removeEventListener('click', onClick);
     },
   };
