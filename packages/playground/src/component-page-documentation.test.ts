@@ -187,7 +187,31 @@ async function showPlayground(): Promise<void> {
   await tick();
 }
 
+async function findHeroHeading(name: string): Promise<HTMLHeadingElement> {
+  return waitFor(() => {
+    const heading = document.querySelector<HTMLHeadingElement>('#component-name');
+    expect(heading?.textContent).toBe(name);
+    if (heading === null) throw new Error('Component hero heading is missing');
+    return heading;
+  });
+}
+
 describe('component-page single-scroll layout', () => {
+  test('leaves no prior page heading before rendering the next page', async () => {
+    expect(document.querySelectorAll('#component-name')).toHaveLength(0);
+
+    const firstPage = render(ComponentPage);
+    expect(document.querySelectorAll('#component-name')).toHaveLength(1);
+    expect(screen.getAllByRole('heading', { level: 1, name: 'Button' })).toHaveLength(2);
+    firstPage.unmount();
+    await tick();
+
+    expect(document.querySelectorAll('#component-name')).toHaveLength(0);
+    const nextPage = render(ComponentPage);
+    expect(document.querySelectorAll('#component-name')).toHaveLength(1);
+    nextPage.unmount();
+  });
+
   test('groups standalone page actions and exposes focus-visible tooltips', async () => {
     // The page controls live in the SIDEBAR footer now, not a top bar — the band
     // they came from restated the sidebar brand, the hero eyebrow, and the page
@@ -218,7 +242,7 @@ describe('component-page single-scroll layout', () => {
     try {
       const { unmount } = render(ComponentPage);
 
-      expect(screen.getByRole('heading', { level: 1, name: 'Button' })).toBeTruthy();
+      expect(document.querySelector('#component-name')?.textContent).toBe('Button');
       expect(fetchSpy).not.toHaveBeenCalled();
 
       unmount();
@@ -231,7 +255,7 @@ describe('component-page single-scroll layout', () => {
   test('renders the hero, spec card, and section anchors from a fixture', async () => {
     const { unmount } = render(ComponentPage);
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Button' })).toBeTruthy();
+    expect(await findHeroHeading('Button')).toBeTruthy();
     expect(screen.getByText('Fixture purpose for a documentation page.')).toBeTruthy();
     // Import line built from exportName + importSpecifier.
     expect(screen.getByText("import { Button } from '@lostgradient/cinder/button';")).toBeTruthy();
@@ -251,7 +275,7 @@ describe('component-page single-scroll layout', () => {
 
   test('renders the When to use / Avoid cards with the alternative link', async () => {
     const { unmount } = render(ComponentPage);
-    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await findHeroHeading('Button');
 
     expect(screen.getByText('Triggering a fixture action.')).toBeTruthy();
     expect(screen.getByText('Selecting from a fixed set.')).toBeTruthy();
@@ -284,7 +308,7 @@ describe('component-page single-scroll layout', () => {
     // (`aria-hidden`) — if it carried `aria-label={status}` it would speak the
     // same word the Badge already announces (the audible duplication).
     const { unmount } = render(ComponentPage);
-    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await findHeroHeading('Button');
 
     const dot = document.querySelector('.dx-spec__val [role="img"]');
     expect(dot).not.toBeNull();
@@ -298,7 +322,7 @@ describe('component-page single-scroll layout', () => {
 
   test('builds a TOC from the sections that have data', async () => {
     const { unmount } = render(ComponentPage);
-    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await findHeroHeading('Button');
 
     const nav = screen.getByRole('navigation', { name: 'On this page' });
     const labels = Array.from(nav.querySelectorAll('a')).map((a) => a.textContent?.trim() ?? '');
@@ -315,7 +339,7 @@ describe('component-page single-scroll layout', () => {
 
   test('omits the Accessibility section when the payload has no a11y data', async () => {
     const { unmount } = render(ComponentPage);
-    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await findHeroHeading('Button');
     expect(document.getElementById('accessibility')).toBeNull();
     unmount();
     await tick();
@@ -340,7 +364,7 @@ describe('component-page single-scroll layout', () => {
     installDocumentationDataIsland(withA11y);
 
     const { unmount } = render(ComponentPage);
-    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await findHeroHeading('Button');
 
     expect(document.getElementById('accessibility')).toBeTruthy();
     expect(screen.getByText(/Implements the WAI-ARIA Button pattern/)).toBeTruthy();
@@ -384,7 +408,7 @@ describe('component-page single-scroll layout', () => {
     installDocumentationDataIsland(fixture);
 
     const { unmount } = render(ComponentPage);
-    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await findHeroHeading('Button');
 
     const union = document.querySelector('.props-type--union');
     expect(union).not.toBeNull();
@@ -414,7 +438,7 @@ describe('component-page single-scroll layout', () => {
     installDocumentationDataIsland(noRelated);
 
     const { unmount } = render(ComponentPage);
-    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await findHeroHeading('Button');
     expect(document.getElementById('related')).toBeNull();
     unmount();
     await tick();
@@ -427,7 +451,7 @@ describe('component-page single-scroll layout', () => {
     installDocumentationDataIsland(noGuidance);
 
     const { unmount } = render(ComponentPage);
-    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await findHeroHeading('Button');
     expect(document.getElementById('guidance')).toBeNull();
 
     const nav = screen.getByRole('navigation', { name: 'On this page' });
@@ -440,7 +464,7 @@ describe('component-page single-scroll layout', () => {
 
   test('defaults to the documentation view and switches to the playground on demand', async () => {
     const { unmount } = render(ComponentPage);
-    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await findHeroHeading('Button');
 
     // Documentation is the default: the prose column gets the full width, which
     // is the whole point of the split.
@@ -474,7 +498,7 @@ describe('component-page single-scroll layout', () => {
         },
       },
     });
-    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await findHeroHeading('Button');
     await tick();
 
     expect(loadCount).toBe(0);
@@ -490,7 +514,7 @@ describe('component-page single-scroll layout', () => {
 
   test('makes the active view linkable through the URL', async () => {
     const { unmount } = render(ComponentPage);
-    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await findHeroHeading('Button');
 
     await showPlayground();
     expect(window.location.search).toContain('view=playground');
@@ -507,7 +531,7 @@ describe('component-page single-scroll layout', () => {
 
   test('shows the Playground with a control derived from a select prop', async () => {
     const { unmount } = render(ComponentPage);
-    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await findHeroHeading('Button');
 
     // The documentation view does NOT carry the playground — that is the point
     // of the split.
@@ -543,7 +567,7 @@ describe('component-page single-scroll layout', () => {
     installDocumentationDataIsland(required);
 
     const { unmount } = render(ComponentPage);
-    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await findHeroHeading('Button');
 
     await showPlayground();
     const play = document.querySelector('.dx-playground');
@@ -572,7 +596,7 @@ describe('component-page single-scroll layout', () => {
     installDocumentationDataIsland(bare);
 
     const { unmount } = render(ComponentPage);
-    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await findHeroHeading('Button');
 
     await showPlayground();
     const note = document.querySelector('.dx-play__note');
@@ -618,7 +642,7 @@ describe('component-page single-scroll layout', () => {
     installDocumentationDataIsland(exampleOnly);
 
     const { unmount } = render(ComponentPage);
-    await screen.findByRole('heading', { level: 1, name: 'Autocomplete' });
+    await findHeroHeading('Autocomplete');
 
     await showPlayground();
     const play = document.querySelector('.dx-playground');
@@ -653,7 +677,7 @@ describe('component-page single-scroll layout', () => {
     installDocumentationDataIsland(exampleOnly);
 
     const { unmount } = render(ComponentPage);
-    await screen.findByRole('heading', { level: 1, name: 'Button group' });
+    await findHeroHeading('Button group');
 
     await showPlayground();
     const noteText = document.querySelector('.dx-play__note')?.textContent ?? '';
@@ -677,7 +701,7 @@ describe('component-page single-scroll layout', () => {
     installDocumentationDataIsland(required);
 
     const { unmount } = render(ComponentPage);
-    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await findHeroHeading('Button');
 
     await showPlayground();
     const play = document.querySelector('.dx-playground');
@@ -711,7 +735,7 @@ describe('component-page single-scroll layout', () => {
 
   test('lazily renders raw-artifact code blocks only after the collapsible opens', async () => {
     const { unmount } = render(ComponentPage);
-    await screen.findByRole('heading', { level: 1, name: 'Button' });
+    await findHeroHeading('Button');
 
     // Before opening, the raw-artifact panels are not rendered.
     expect(document.querySelectorAll('.dx-raw__panel').length).toBe(0);
