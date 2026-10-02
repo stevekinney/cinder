@@ -150,6 +150,12 @@ function findTextEnd(doc: ProseMirrorNode, text: string): number {
 }
 
 describe('createEditor: Tab-escape latch vs. the commonmark list keymap (cinder#1302)', () => {
+  // happy-dom dispatches a synthetic keydown on `view.dom` and cannot model a
+  // real browser's Tab keydown, nor the mount timing that once dropped every
+  // custom binding from a page's first editor while this test still passed.
+  // The authority is the browser test "plain Tab indents a non-first list
+  // item in a real browser" in
+  // scripts/browser-fixtures/tests/markdown-editor-keyboard.playwright.ts.
   test('plain Tab in a non-first list item still indents (the legitimate affordance is preserved)', async () => {
     editorState = await mountListEditor();
     const { view } = editorState;
@@ -282,6 +288,12 @@ describe('createEditor: Tab-escape latch vs. the commonmark list keymap (cinder#
  * default 50), so it would have won the merge even more decisively.
  */
 describe('createEditor: Tab-escape latch vs. the GFM table keymap (cinder#1302, same trap one node type over)', () => {
+  // happy-dom dispatches a synthetic keydown on `view.dom` and cannot model a
+  // real browser's Tab keydown, nor the mount timing that once dropped every
+  // custom binding from a page's first editor while this test still passed.
+  // The authority is the browser test "plain Tab moves to the next table cell
+  // in a real browser" in
+  // scripts/browser-fixtures/tests/markdown-editor-keyboard.playwright.ts.
   test('plain Tab in a non-last table cell still moves to the next cell (the legitimate affordance is preserved)', async () => {
     editorState = await mountTableEditor();
     const { view } = editorState;

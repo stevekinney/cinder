@@ -5,7 +5,12 @@
  */
 
 import { beforeEach, describe, expect, it } from 'bun:test';
-import { clearRenderCache, renderMarkdown } from './render.js';
+import {
+  clearRenderCache,
+  renderCacheHasEntryForTests,
+  renderMarkdown,
+  renderMarkdownUncached,
+} from './render.js';
 
 describe('renderMarkdown', () => {
   beforeEach(() => {
@@ -325,6 +330,71 @@ describe('renderMarkdown', () => {
       const result2 = renderMarkdown(input, { allowDataImages: true });
 
       expect(result1).not.toBe(result2);
+    });
+
+    it('reports cache membership through the test accessor', () => {
+      const input = '# Cached sentinel';
+      clearRenderCache();
+      expect(renderCacheHasEntryForTests(input)).toBe(false);
+
+      renderMarkdown(input);
+      expect(renderCacheHasEntryForTests(input)).toBe(true);
+
+      clearRenderCache();
+      expect(renderCacheHasEntryForTests(input)).toBe(false);
+    });
+
+    it('reports an entry only for the options it was rendered with', () => {
+      const input = '![img](data:image/png;base64,abc)';
+      clearRenderCache();
+
+      renderMarkdown(input, { allowDataImages: true });
+      expect(renderCacheHasEntryForTests(input, { allowDataImages: true })).toBe(true);
+      expect(renderCacheHasEntryForTests(input)).toBe(false);
+
+      clearRenderCache();
+      renderMarkdown(input);
+      expect(renderCacheHasEntryForTests(input)).toBe(true);
+      expect(renderCacheHasEntryForTests(input, { allowDataImages: true })).toBe(false);
+    });
+
+    it('renderMarkdownUncached matches renderMarkdown without touching the cache', () => {
+      clearRenderCache();
+
+      // @ts-expect-error - testing runtime behavior
+      expect(renderMarkdownUncached(undefined)).toEqual(renderMarkdown(undefined));
+      expect(renderMarkdownUncached('')).toEqual(renderMarkdown(''));
+
+      const code = '```js\nconst x = 1;\n```';
+      const codeResult = renderMarkdownUncached(code);
+      expect(codeResult.codeBlocks.length).toBeGreaterThan(0);
+      expect(codeResult).toEqual(renderMarkdown(code));
+
+      const unsafe = '<script>alert("xss")</script>';
+      const unsafeResult = renderMarkdownUncached(unsafe);
+      expect(unsafeResult.hadUnsafeContent).toBe(true);
+      expect(unsafeResult).toEqual(renderMarkdown(unsafe));
+
+      clearRenderCache();
+      const fresh = '# Uncached fresh input';
+      const first = renderMarkdownUncached(fresh);
+      expect(renderCacheHasEntryForTests(fresh)).toBe(false);
+      expect(renderMarkdownUncached(fresh)).not.toBe(first);
+      expect(renderCacheHasEntryForTests(fresh)).toBe(false);
+    });
+
+    it('keeps the uncached renderer and cache accessor out of the public entry points', async () => {
+      const entryPoints = [
+        await import('../index.js'),
+        await import('./index.js'),
+        await import('../templates/index.js'),
+      ];
+
+      for (const entryPoint of entryPoints) {
+        const names = Object.keys(entryPoint);
+        expect(names).not.toContain('renderMarkdownUncached');
+        expect(names).not.toContain('renderCacheHasEntryForTests');
+      }
     });
   });
 });

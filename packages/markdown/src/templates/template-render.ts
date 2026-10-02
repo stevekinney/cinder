@@ -8,7 +8,7 @@
  * @module
  */
 
-import { renderMarkdown } from '../rendering/index.js';
+import { renderMarkdownUncached } from '../rendering/render.js';
 import { resolveTemplatePlaceholders } from './template-placeholders.js';
 import type { JsonObject, PlaceholderResolutionOptions } from './types.js';
 
@@ -47,7 +47,7 @@ export function renderTemplate(
   const { text } = resolveTemplatePlaceholders(template, values, options);
 
   // Render markdown to sanitized HTML using the existing secure pipeline
-  const result = renderMarkdown(text);
+  const result = renderMarkdownUncached(text);
 
   return result.html;
 }
