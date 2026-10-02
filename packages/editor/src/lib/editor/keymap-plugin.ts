@@ -2,8 +2,18 @@ import * as utilities from '@milkdown/kit/utils';
 /**
  * Keyboard shortcuts plugin for the Milkdown editor.
  *
- * IMPORTANT: Uses $shortcut + callCommand (NOT raw ProseMirror keymap).
+ * IMPORTANT: Uses $shortcutAsync + callCommand (NOT raw ProseMirror keymap).
  * This ensures bindings are registered after editor init and respect Milkdown contexts.
+ *
+ * It must be the async variant, not `$shortcut` wrapped in an async plugin.
+ * Milkdown's editor-state plugin builds the ProseMirror keymap
+ * exactly once, after every timer in `editorStateTimerCtx` resolves, and never
+ * rebuilds it. The commands below load lazily, so a `$shortcut` registered
+ * only after that load is awaited could reach the keymap manager after the
+ * build had already run: on a page's first editor mount every binding here —
+ * plain Tab included — was silently absent, while later mounts, which found
+ * the runtime cached, won the race. `$shortcutAsync` adds its own timer to
+ * `editorStateTimerCtx`, so the build waits for these bindings.
  */
 
 import type { MilkdownPlugin } from '@milkdown/ctx';
@@ -11,7 +21,6 @@ import type { Command, EditorState } from '@milkdown/kit/prose/state';
 import type { EditorView } from '@milkdown/kit/prose/view';
 
 export type ShortcutRuntime = {
-  $shortcut: typeof import('@milkdown/kit/utils').$shortcut;
   callCommand: typeof import('@milkdown/kit/utils').callCommand;
   toggleStrongCommand: typeof import('@milkdown/kit/preset/commonmark').toggleStrongCommand;
   toggleEmphasisCommand: typeof import('@milkdown/kit/preset/commonmark').toggleEmphasisCommand;
@@ -36,7 +45,7 @@ export type ShortcutRuntime = {
   redoCommand: typeof import('@milkdown/kit/plugin/history').redoCommand;
 };
 type KeymapCommandRuntime = {
-  [Key in Exclude<keyof ShortcutRuntime, '$shortcut' | 'callCommand'>]: {
+  [Key in Exclude<keyof ShortcutRuntime, 'callCommand'>]: {
     key: string | ShortcutRuntime[Key]['key'];
   };
 };
@@ -55,7 +64,6 @@ async function resolveShortcutRuntime(): Promise<ShortcutRuntime> {
     ]);
 
     return {
-      $shortcut: utilities.$shortcut,
       callCommand: utilities.callCommand,
       toggleStrongCommand: commonmark.toggleStrongCommand,
       toggleEmphasisCommand: commonmark.toggleEmphasisCommand,
@@ -289,22 +297,16 @@ export function createKeymapBindings(
  * Note: Mod = Cmd on Mac, Ctrl on Windows/Linux
  */
 export function createEditorKeymap(options: EditorKeymapOptions = {}): MilkdownPlugin {
-  const keymapPlugin: MilkdownPlugin = (ctx) => async () => {
+  return utilities.$shortcutAsync(async (shortcutContext) => {
     const runtime = await resolveShortcutRuntime();
-    const shortcutPlugin = runtime.$shortcut((shortcutContext) =>
-      // Built per editor instance so the Tab-escape latch is not shared between
-      // two editors on the same page.
-      createKeymapBindings(
-        runtime,
-        (key, payload) => runtime.callCommand(key, payload)(shortcutContext),
-        options,
-      ),
+    // Built per editor instance so the Tab-escape latch is not shared between
+    // two editors on the same page.
+    return createKeymapBindings(
+      runtime,
+      (key, payload) => runtime.callCommand(key, payload)(shortcutContext),
+      options,
     );
-
-    await shortcutPlugin(ctx)();
-  };
-
-  return keymapPlugin;
+  });
 }
 
 /**

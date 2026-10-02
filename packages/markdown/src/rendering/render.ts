@@ -338,6 +338,39 @@ function renderFromMdast(
  * @returns Render result with HTML, code blocks, and safety flags
  */
 export function renderMarkdown(markdown: string, options: RenderOptions = {}): RenderResult {
+  return renderMarkdownBody(markdown, options, true);
+}
+
+/**
+ * Render markdown without reading or writing the shared render cache.
+ *
+ * Use this when the input embeds caller-supplied values that must not outlive
+ * the call, such as a filled template. Returns a fresh result on every call.
+ *
+ * Internal: imported directly by sibling modules; it is not a public package export.
+ */
+export function renderMarkdownUncached(
+  markdown: string,
+  options: RenderOptions = {},
+): RenderResult {
+  return renderMarkdownBody(markdown, options, false);
+}
+
+/** Parse markdown to mdast (no math) and render it. */
+function parseAndRender(markdown: string, options: RenderOptions): RenderResult {
+  return renderFromMdast(markdown, options, parseMarkdown(getBaseProcessor(), markdown), null);
+}
+
+/**
+ * Shared body of `renderMarkdown` and `renderMarkdownUncached`.
+ *
+ * When `useCache` is false the cache is never read, written, reordered, or evicted.
+ */
+function renderMarkdownBody(
+  markdown: string,
+  options: RenderOptions,
+  useCache: boolean,
+): RenderResult {
   // Handle empty/null input
   if (!markdown || typeof markdown !== 'string') {
     return {
@@ -347,6 +380,8 @@ export function renderMarkdown(markdown: string, options: RenderOptions = {}): R
       hadUnsafeContent: false,
     };
   }
+
+  if (!useCache) return parseAndRender(markdown, options);
 
   // Check cache (include highlighter state to prevent caching unhighlighted results)
   const hasHighlighter = getHighlighterSync() !== null;
@@ -360,9 +395,7 @@ export function renderMarkdown(markdown: string, options: RenderOptions = {}): R
     return cloneResult(cached);
   }
 
-  // Parse markdown to mdast (no math).
-  const mdast = parseMarkdown(getBaseProcessor(), markdown);
-  const result = renderFromMdast(markdown, options, mdast, null);
+  const result = parseAndRender(markdown, options);
 
   // Add to cache (with LRU eviction)
   if (cache.size >= CACHE_SIZE) {
@@ -455,4 +488,20 @@ export async function renderMarkdownWithMath(
  */
 export function clearRenderCache(): void {
   cache.clear();
+}
+
+/**
+ * Report whether the render cache holds an entry for this input and options,
+ * under either highlighter state. Does not mutate the cache or its LRU order.
+ *
+ * Test-only. Internal tests import this module directly; it is not a public package export.
+ */
+export function renderCacheHasEntryForTests(
+  markdown: string,
+  options: RenderOptions = {},
+): boolean {
+  return (
+    cache.has(getCacheKey(markdown, options, true)) ||
+    cache.has(getCacheKey(markdown, options, false))
+  );
 }

@@ -146,7 +146,7 @@ In source mode the textarea's Markdown is scanned with `parseMarkdownPlaceholder
 
 - ArrowDown and ArrowUp move the active option and stop at the ends.
 - Enter inserts the active option, never during IME composition.
-- Tab dismisses without inserting and is not consumed, so the editor's own Tab handling runs next: in source mode that moves focus, and in the rich editor the editor's Tab binding is meant to indent a list item or move to the next table cell, and otherwise focus moves. Whatever Tab changes does not reopen the list; the dismissal lasts until your next edit. Known defect: in Chromium, plain Tab in a rich-editor list item currently moves focus instead of indenting it (Mod-] indents), with or without placeholders; tracked in COR-1324.
+- Tab dismisses without inserting and is not consumed, so the editor's own Tab handling runs next: in source mode that moves focus, and in the rich editor the editor's Tab binding indents a list item or moves to the next table cell, and otherwise focus moves (after Escape, the next Tab always moves focus). Whatever Tab changes does not reopen the list; the dismissal lasts until your next edit.
 - Escape dismisses and is consumed only while the list is open; a second Escape reaches enclosing handlers. A dismissal lasts until the next edit.
 - Clicking or tapping an option inserts it without moving focus out of the editor. A pointer or touch gesture that scrolls the list or is cancelled inserts nothing, and a click from assistive technology with no pointer gesture inserts the option. A pointerdown outside dismisses.
 

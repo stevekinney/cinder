@@ -689,4 +689,28 @@ describe('DEP-625: XSS prevention via renderTemplate', () => {
       expect(html).toBe('');
     });
   });
+
+  describe('render cache isolation (COR-1323)', () => {
+    it('keeps filled template values out of the shared render cache', async () => {
+      const { renderTemplate } = await import('./template-render.js');
+      const { resolveTemplatePlaceholders } = await import('./template-placeholders.js');
+      const { clearRenderCache, renderMarkdown } = await import('../rendering/index.js');
+      const { renderCacheHasEntryForTests } = await import('../rendering/render.js');
+
+      const template = 'Hello {{value}}';
+      const values = { value: 'cor1323-sentinel-7f3a9c' };
+      const options = declare('value');
+      const filledText = resolveTemplatePlaceholders(template, values, options).text;
+
+      clearRenderCache();
+      renderTemplate(template, values, options);
+      expect(renderCacheHasEntryForTests(filledText)).toBe(false);
+
+      renderMarkdown(filledText);
+      expect(renderCacheHasEntryForTests(filledText)).toBe(true);
+
+      clearRenderCache();
+      expect(renderCacheHasEntryForTests(filledText)).toBe(false);
+    });
+  });
 });
