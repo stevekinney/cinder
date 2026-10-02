@@ -147,6 +147,10 @@ export interface PopupPointerSelection {
   destroy(): void;
 }
 
+function preventMouseDownDefault(event: MouseEvent): void {
+  event.preventDefault();
+}
+
 /**
  * Commit an option on click. Pointerdown is prevented so the editor keeps its
  * selection and focus. When a pointer or touch gesture was recorded, it
@@ -158,10 +162,6 @@ export interface PopupPointerSelection {
  * is open, a pointerup or pointercancel anywhere outside it forgets the
  * gesture, and a cancel inside it is forgotten once the current task ends.
  */
-function preventMouseDownDefault(event: MouseEvent): void {
-  event.preventDefault();
-}
-
 export function bindPopupPointerSelection(
   popup: HTMLElement,
   onSelect: (index: number) => void,
