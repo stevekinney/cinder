@@ -77,7 +77,7 @@
   /* Template placeholder invalid token decoration (DEP-583). The wavy line is
      the non-color cue; the diagnostics summary carries the text. */
   .markdown-editor .template-placeholder-invalid {
-    text-decoration: wavy underline var(--cinder-status-warning-solid, #e5a200);
+    text-decoration: wavy underline var(--cinder-status-warning-solid);
     text-decoration-skip-ink: none;
     text-underline-offset: 2px;
   }
@@ -85,10 +85,10 @@
   /* Template completion popup (DEP-583, COR-526). The editor sets an exact
      eight-row max-height at runtime; this is the fallback. */
   .markdown-editor .template-completion-popup {
-    background: var(--cinder-surface-raised, #fff);
-    border: 1px solid var(--cinder-border, #d0d5dd);
+    background: var(--cinder-surface-raised);
+    border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md, 6px);
-    box-shadow: var(--cinder-shadow-md, 0 4px 6px -1px rgb(0 0 0 / 0.1));
+    box-shadow: var(--cinder-shadow-md);
     max-height: 20rem;
     overflow-y: auto;
     min-width: 200px;
@@ -133,12 +133,12 @@
   :is(.markdown-editor, .markdown-editor-source-completion) .template-completion-item-path {
     font-family: var(--cinder-font-mono);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text-default, #1a1a1a);
+    color: var(--cinder-text-default);
   }
 
   :is(.markdown-editor, .markdown-editor-source-completion) .template-completion-item-types,
   :is(.markdown-editor, .markdown-editor-source-completion) .template-completion-item-description {
     font-size: var(--cinder-text-xs, 0.75rem);
-    color: var(--cinder-text-muted, #6b7280);
+    color: var(--cinder-text-muted);
   }
 }

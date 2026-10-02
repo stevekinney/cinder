@@ -2662,14 +2662,14 @@
     gap: var(--cinder-space-2, 0.5rem);
     padding: var(--cinder-space-3, 0.75rem);
     margin-block-start: var(--cinder-space-2, 0.5rem);
-    border: 1px solid var(--cinder-border, #ccc);
+    border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md, 6px);
   }
 
   .review-editor-diff-composer-location {
     margin: 0;
     font-size: var(--cinder-text-xs, 0.75rem);
-    color: var(--cinder-text-muted, #666);
+    color: var(--cinder-text-muted);
   }
 
   .review-editor-diff-composer-actions {
@@ -2680,7 +2680,7 @@
   .review-editor-diff-composer-readonly-note {
     margin: 0;
     font-size: var(--cinder-text-xs, 0.75rem);
-    color: var(--cinder-text-muted, #666);
+    color: var(--cinder-text-muted);
   }
 
   /*
