@@ -128,13 +128,22 @@ describe('Editor package ownership boundary', () => {
     );
   });
 
-  test('keeps component tests serial without isolating the Svelte preload plugin', () => {
-    for (const scriptName of ['test', 'test:coverage']) {
-      const script = editorManifest.scripts?.[scriptName];
-      expect(script, `${scriptName} must be defined`).toBeDefined();
-      expect(script).toContain('--max-concurrency=1');
-      expect(script).not.toContain('--parallel');
-    }
+  test('keeps standard component tests serial', () => {
+    const script = editorManifest.scripts?.['test'];
+    expect(script).toBeDefined();
+    expect(script).toContain('--max-concurrency=1');
+    expect(script).not.toContain('--parallel');
+  });
+
+  test('pins the isolated coverage runner and unchanged ratchet', () => {
+    const script = editorManifest.scripts?.['test:coverage'];
+    expect(script).toBeDefined();
+    expect(script).toContain('bunx --package bun@1.4.2-canary.20261001.1 bun test');
+    expect(script).toContain('--max-concurrency=1 --parallel=1 src/lib scripts');
+    expect(script).toContain('--coverage --coverage-reporter=lcov');
+    expect(script).toContain(
+      '&& bun ../components/scripts/check-coverage-ratchet.ts --package-root .',
+    );
   });
 
   test('keeps Editor component exports out of Cinder', () => {

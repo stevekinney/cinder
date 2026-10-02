@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
 const packageRoot = resolve(import.meta.dir, '../..');
+const workspaceRoot = resolve(packageRoot, '../..');
 
 // Compile the complete public source graph in a separate server process before
 // the timed assertion. The import assertion below still runs in a fresh process
@@ -73,7 +74,7 @@ async function runServerProbe(
   return { status, output, errors };
 }
 
-const preparedDirectory = await mkdtemp(join(packageRoot, 'node_modules/.corvidae-ssr-'));
+const preparedDirectory = await mkdtemp(join(workspaceRoot, 'node_modules/.corvidae-ssr-'));
 const preparedEntryPath = join(preparedDirectory, 'editor.ts');
 try {
   const compilation = await runServerProbe(serverCompileProbe, undefined);

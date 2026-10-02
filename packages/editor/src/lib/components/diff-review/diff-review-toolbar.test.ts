@@ -106,3 +106,84 @@ describe('DiffReview component toolbar: filter', () => {
     expect(seen).toBe('foo');
   });
 });
+
+describe('DiffReview component toolbar: download', () => {
+  test('downloads JSON with the default scope and exact file content', async () => {
+    const requests: Array<[string, string]> = [];
+    const { getByText } = render(DiffReviewToolbar, {
+      filterQuery: '',
+      onfilterchange: () => {},
+      gate: { blocked: false, pendingCount: 0 },
+      ongetcontent: (format, scope) => {
+        requests.push([format, scope]);
+        return { ok: true, value: '{"schemaVersion":1}\n' };
+      },
+      onopendrafts: () => {},
+    });
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+    const originalClick = HTMLAnchorElement.prototype.click;
+    let capturedBlob: Blob | undefined;
+    let downloadedFilename: string | undefined;
+    let revokedUrl: string | undefined;
+    URL.createObjectURL = (blob: Blob) => {
+      capturedBlob = blob;
+      return 'blob:diff-review-json-test';
+    };
+    URL.revokeObjectURL = (url: string) => {
+      revokedUrl = url;
+    };
+    HTMLAnchorElement.prototype.click = function () {
+      downloadedFilename = this.download;
+    };
+    try {
+      await fireEvent.click(getByText('Download JSON'));
+    } finally {
+      URL.createObjectURL = originalCreateObjectURL;
+      URL.revokeObjectURL = originalRevokeObjectURL;
+      HTMLAnchorElement.prototype.click = originalClick;
+    }
+    expect(requests).toEqual([['json', 'all']]);
+    expect(downloadedFilename).toBe('review.json');
+    expect(capturedBlob?.type).toBe('application/json;charset=utf-8');
+    expect(await capturedBlob?.text()).toBe('{"schemaVersion":1}\n');
+    expect(revokedUrl).toBe('blob:diff-review-json-test');
+  });
+
+  test('shows an export rejection without starting a download', async () => {
+    const { getByText, getByRole } = render(DiffReviewToolbar, {
+      filterQuery: '',
+      onfilterchange: () => {},
+      gate: { blocked: false, pendingCount: 0 },
+      ongetcontent: () => ({
+        ok: false,
+        error: {
+          code: 'drafts-pending',
+          path: '/drafts',
+          message: 'Save or discard drafts before export.',
+        },
+      }),
+      onopendrafts: () => {},
+    });
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalClick = HTMLAnchorElement.prototype.click;
+    let objectUrlsCreated = 0;
+    let anchorsClicked = 0;
+    URL.createObjectURL = () => {
+      objectUrlsCreated += 1;
+      return 'blob:unexpected-download';
+    };
+    HTMLAnchorElement.prototype.click = function () {
+      anchorsClicked += 1;
+    };
+    try {
+      await fireEvent.click(getByText('Download JSON'));
+    } finally {
+      URL.createObjectURL = originalCreateObjectURL;
+      HTMLAnchorElement.prototype.click = originalClick;
+    }
+    expect(getByRole('alert').textContent).toBe('Save or discard drafts before export.');
+    expect(objectUrlsCreated).toBe(0);
+    expect(anchorsClicked).toBe(0);
+  });
+});
