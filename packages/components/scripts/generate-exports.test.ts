@@ -473,6 +473,8 @@ describe('computeFiles', () => {
       'dist/components/button/button-test.svelte.d.ts',
       'dist/components/button/button.fixture.svelte.d.ts',
       'dist/components/button/button-keyboard-harness.svelte.d.ts',
+      'dist/components/data-grid/_internal/selection-model-test-support.svelte.d.ts',
+      'dist/utilities/__test-helpers__/announcer-wrapper.svelte.d.ts',
     ]) {
       expect(isExcluded(path)).toBe(true);
     }
