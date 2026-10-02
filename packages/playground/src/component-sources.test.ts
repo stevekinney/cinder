@@ -31,6 +31,26 @@ describe('EDITOR_COMPONENT_SOURCE.componentStylesheetUrl', () => {
   });
 });
 
+describe('EDITOR_COMPONENT_SOURCE.importPath', () => {
+  it('resolves the published diff-review components', async () => {
+    const manifest = await Bun.file(new URL('../../editor/package.json', import.meta.url)).json();
+    expect(Object.hasOwn(manifest.exports, './diff-review')).toBe(true);
+    expect(Object.hasOwn(manifest.exports, './diff-review-comments')).toBe(true);
+    expect(EDITOR_COMPONENT_SOURCE.importPath('diff-review')).toBe(
+      '@lostgradient/editor/diff-review',
+    );
+    expect(EDITOR_COMPONENT_SOURCE.importPath('diff-review-comments')).toBe(
+      '@lostgradient/editor/diff-review-comments',
+    );
+  });
+
+  it('fails closed for a component with no public import path', () => {
+    expect(() => EDITOR_COMPONENT_SOURCE.importPath('not-exported')).toThrow(
+      '[playground] not-exported was discovered in @lostgradient/editor but has no public import path',
+    );
+  });
+});
+
 describe('resolveEditorStylesheetUrl', () => {
   it('recognizes any component present in the export-key set, not just review-editor', () => {
     const fixtureKeys = new Set(['./review-editor/styles', './diagram-editor/styles']);
