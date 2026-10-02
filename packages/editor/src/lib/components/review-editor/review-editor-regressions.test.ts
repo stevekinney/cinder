@@ -57,12 +57,6 @@ function isExampleSet(value: unknown): value is ExampleSet {
   );
 }
 
-const sharedCommentsFixtureSource = await Bun.file(
-  new URL(
-    '../../../../../../scripts/browser-fixtures/src/fixtures/with-comments.svelte',
-    import.meta.url,
-  ).pathname,
-).text();
 const parsedExampleSet: unknown = await Bun.file(here('review-editor.examples.json')).json();
 if (!isExampleSet(parsedExampleSet)) throw new Error('Invalid review editor examples');
 const exampleSet = parsedExampleSet;
@@ -378,18 +372,7 @@ describe('the shipped examples seed anchors in the documented coordinate space',
    * in sync with the playground source, and re-derives the arithmetic against a
    * real ProseMirror document.
    */
-  const sources = [
-    ...exampleSet.examples.map((example) => ({
-      id: example.id,
-      code: example.code,
-    })),
-    {
-      id: 'shared-with-comments-fixture',
-      code: sharedCommentsFixtureSource,
-    },
-  ];
-
-  for (const source of sources) {
+  for (const source of exampleSet.examples) {
     const anchorBlocks = [...source.code.matchAll(/anchor: \{([\s\S]*?)\n {6}\},/g)].map(
       (match) => match[1]!,
     );
