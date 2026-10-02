@@ -6,6 +6,7 @@
 
 <script lang="ts">
   import { Chat, appendMessages, appendUserMessage, createConversation } from '@lostgradient/chat';
+  import type { ApprovalResolution } from '@lostgradient/cinder';
 
   let conversation = $state(
     appendMessages(
@@ -47,18 +48,22 @@
     ),
   );
 
-  function handleApprove(toolCallId: string) {
-    conversation = appendMessages(conversation, {
-      role: 'assistant',
-      content: `Approved. Deploying version 2.4.1 to production now. Tool call ID: ${toolCallId}`,
-    });
-  }
-
-  function handleDeny(toolCallId: string) {
-    conversation = appendMessages(conversation, {
-      role: 'assistant',
-      content: `Deployment cancelled. The production environment was not modified. Tool call ID: ${toolCallId}`,
-    });
+  function handleApprovalResolve(toolCallId: string, resolution: ApprovalResolution) {
+    let content: string;
+    switch (resolution.decision) {
+      case 'approve':
+        content = `Approved. Deploying version 2.4.1 to production now. Tool call ID: ${toolCallId}`;
+        break;
+      case 'approve_with_edits':
+        throw new Error('This example does not offer edited approval');
+      case 'deny':
+        content = `Deployment cancelled. The production environment was not modified. Tool call ID: ${toolCallId}`;
+        break;
+      case 'cancel':
+        content = `Approval dismissed. The production environment was not modified. Tool call ID: ${toolCallId}`;
+        break;
+    }
+    conversation = appendMessages(conversation, { role: 'assistant', content });
   }
 </script>
 
@@ -67,7 +72,6 @@
     id="playground-tool-approval-chat"
     {conversation}
     capabilities={{ attachments: false }}
-    onapprove={handleApprove}
-    ondeny={handleDeny}
+    onApprovalResolve={handleApprovalResolve}
   />
 </div>
