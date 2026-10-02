@@ -458,6 +458,58 @@ describe('rootLevelExportTargets', () => {
 });
 
 describe('computeFiles', () => {
+  it('excludes Svelte test sources and declarations without excluding components', () => {
+    const exclusions = STATIC_FILES_GLOBS.filter((pattern) => pattern.startsWith('!')).map(
+      (pattern) => new Bun.Glob(pattern.slice(1)),
+    );
+    const isExcluded = (path: string) => exclusions.some((pattern) => pattern.match(path));
+
+    for (const path of [
+      'src/components/button/button.test.svelte',
+      'src/components/button/button.spec.svelte',
+      'src/components/button/button-test.svelte',
+      'dist/components/button/button.test.svelte.d.ts',
+      'dist/components/button/button.spec.svelte.d.ts',
+      'dist/components/button/button-test.svelte.d.ts',
+      'dist/components/button/button.fixture.svelte.d.ts',
+      'dist/components/button/button-keyboard-harness.svelte.d.ts',
+    ]) {
+      expect(isExcluded(path)).toBe(true);
+    }
+    expect(isExcluded('src/components/button/button.svelte')).toBe(false);
+    expect(isExcluded('dist/components/button/button.svelte.d.ts')).toBe(false);
+
+    const svelteFilesIndex = STATIC_FILES_GLOBS.indexOf('src/components/**/*.svelte');
+    for (const exclusion of [
+      '!src/components/**/*.type-test.svelte',
+      '!src/components/**/*.test.svelte',
+      '!src/components/**/*.spec.svelte',
+      '!src/components/**/*-test.svelte',
+      '!src/components/**/*fixture*.svelte',
+      '!src/components/**/_*-test-harness.svelte',
+      '!src/components/**/*harness*.svelte',
+    ]) {
+      expect(STATIC_FILES_GLOBS.indexOf(exclusion)).toBeGreaterThan(svelteFilesIndex);
+    }
+  });
+
+  it('keeps test and fixture Svelte files out of generated export targets', async () => {
+    const manifest = (await Bun.file(join(import.meta.dir, '..', 'package.json')).json()) as {
+      exports: Record<string, unknown>;
+    };
+    const targets = (value: unknown): string[] =>
+      typeof value === 'string'
+        ? [value]
+        : value !== null && typeof value === 'object'
+          ? Object.values(value).flatMap(targets)
+          : [];
+    expect(
+      targets(manifest.exports).filter((path) =>
+        /(?:\.test|\.spec|\.type-test|-test|fixture|harness).*\.svelte(?:\.d\.ts)?$/.test(path),
+      ),
+    ).toEqual([]);
+  });
+
   const exportsWithManifest = {
     './manifest': { import: './components.json', default: './components.json' },
     './package.json': './package.json',
