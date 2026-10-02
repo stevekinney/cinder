@@ -38,7 +38,7 @@ const skeletonSource = await Bun.file(new URL('./editor-skeleton.svelte', import
 // rather than redeclaring it, so this reaches across the package boundary into
 // cinder's own utilities stylesheet.
 const utilitiesCss = await Bun.file(
-  new URL('../../../../../cinder/src/styles/utilities.css', import.meta.url),
+  new URL('../../../../../components/src/styles/utilities.css', import.meta.url),
 ).text();
 
 const scopedStyles = skeletonSource.match(/<style[^>]*>([\s\S]*?)<\/style>/)?.[1] ?? '';
