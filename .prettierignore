@@ -8,6 +8,12 @@ packages/components/fixtures/examples-consumer/src/generated/
 packages/components/fixtures/examples-consumer/src/routes/+page.svelte
 packages/components/fixtures/typescript-consumer/src/generated/
 
+# Byte-exact JSON.stringify output checked by Editor export golden tests
+packages/editor/src/lib/export/__fixtures__/diff-review/two-source-targets.json
+packages/editor/src/lib/export/__fixtures__/diff-review/empty-and-trailing-newline.json
+packages/editor/src/lib/export/__fixtures__/diff-review/with-document-threads.json
+packages/editor/src/lib/export/__fixtures__/diff-review/interpolating-source-line-map.json
+
 # Package management
 node_modules/
 .npm/

@@ -7,7 +7,10 @@ const toolbarDropdownPath = new URL('./editor-toolbar/toolbar-dropdown.svelte', 
 // Cinder owns `.cinder-markdown-content`'s prose and task-list styling —
 // `MarkdownEditor` composes it rather than redeclaring it, so this reaches
 // across the package boundary into cinder's own utilities stylesheet.
-const utilitiesCssPath = new URL('../../../../../cinder/src/styles/utilities.css', import.meta.url);
+const utilitiesCssPath = new URL(
+  '../../../../../components/src/styles/utilities.css',
+  import.meta.url,
+);
 
 function stripCssComments(source: string): string {
   return source.replace(/\/\*[\s\S]*?\*\//g, '');

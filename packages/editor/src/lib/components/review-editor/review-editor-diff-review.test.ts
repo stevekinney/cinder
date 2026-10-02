@@ -162,9 +162,9 @@ test('ReviewEditor schema artifacts include the public diff-review props', async
   expect(documentedProps.has('diffReviewState')).toBe(true);
   expect(documentedProps.has('onDiffReviewStateChange')).toBe(true);
   const readme = await Bun.file(new URL('./README.md', import.meta.url)).text();
-  const documentedOpaqueProps = [...readme.matchAll(/^\| `([^`]+)` \| `\(opaque\)` \|/gm)].map(
-    ([, name]) => name,
-  );
+  const documentedOpaqueProps = [
+    ...readme.matchAll(/^\| `([^`]+)`[ \t]*\|[ \t]*`\(opaque\)`[ \t]*\|/gm),
+  ].map(([, name]) => name);
   expect(documentedOpaqueProps).toEqual(
     reviewEditorSchema.metadata?.unsupportedProps?.map(({ name }) => name) ?? [],
   );
