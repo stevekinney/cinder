@@ -37,8 +37,14 @@ const skeletonSource = await Bun.file(new URL('./editor-skeleton.svelte', import
 // Cinder owns the `.cinder-sr-only` utility; the editor package composes it
 // rather than redeclaring it, so this reaches across the package boundary into
 // cinder's own utilities stylesheet.
+const editorPackageManifest: { private?: boolean } = await Bun.file(
+  new URL('../../../../package.json', import.meta.url),
+).json();
 const utilitiesCss = await Bun.file(
-  new URL('../../../../../components/src/styles/utilities.css', import.meta.url),
+  new URL(
+    `../../../../../${editorPackageManifest.private === true ? 'cinder' : 'components'}/src/styles/utilities.css`,
+    import.meta.url,
+  ),
 ).text();
 
 const scopedStyles = skeletonSource.match(/<style[^>]*>([\s\S]*?)<\/style>/)?.[1] ?? '';
