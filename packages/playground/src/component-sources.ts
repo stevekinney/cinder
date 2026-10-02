@@ -52,6 +52,8 @@ const EDITOR_IMPORT_PATHS: Readonly<Record<string, string>> = {
   'markdown-editor': '@lostgradient/editor/markdown-editor',
   'review-editor': '@lostgradient/editor/review-editor',
   'diff-viewer': '@lostgradient/editor/diff-viewer',
+  'diff-review': '@lostgradient/editor/diff-review',
+  'diff-review-comments': '@lostgradient/editor/diff-review-comments',
 };
 export const EDITOR_COMPONENT_NAMES = Object.keys(EDITOR_IMPORT_PATHS).toSorted();
 

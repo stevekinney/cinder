@@ -840,12 +840,15 @@ function isNeverProperty(prop: PropertySignature): boolean {
 }
 
 /**
- * True when a resolved type is Svelte's `Snippet` (or `Snippet<[…]>`). Checked
- * via the ALIAS symbol because `Snippet` resolves to a call signature — without
- * this it would classify as an opaque function type.
+ * True when a resolved type is Svelte's `Snippet` (or `Snippet<[…]>`).
+ * Through mapped unions such as `PadUnion`, TypeScript keeps `Snippet` as
+ * the symbol but drops its alias symbol. Both forms resolve to a call signature,
+ * which would otherwise be classified as an opaque function type.
  */
 function isSnippetType(type: Type): boolean {
-  return type.getAliasSymbol()?.getName() === 'Snippet';
+  return (
+    type.getAliasSymbol()?.getName() === 'Snippet' || type.getSymbol()?.getName() === 'Snippet'
+  );
 }
 
 /**
@@ -900,6 +903,12 @@ function descriptionFromSymbol(symbol: TsSymbol): string | undefined {
  */
 function controlKindFromResolvedSymbol(symbol: TsSymbol, at: Node): ControlKind {
   const typeNode = propertySignatureOf(symbol)?.getTypeNode();
+  if (typeNode?.getKind() === SyntaxKind.ImportType) {
+    // A mapped union can expose `Snippet` as `import('svelte').Snippet`
+    // rather than a TypeReference. Resolve only this rare node through the
+    // checker; instantiating every HTML attribute here is prohibitively costly.
+    return controlKindFromResolvedPropertyType(symbol.getTypeAtLocation(at));
+  }
   if (typeNode !== undefined) {
     return inferControlKindFromTypeNode(
       typeNode,

@@ -513,6 +513,42 @@ describe('analyzeComponent — bare <script module> block', () => {
     return filePath;
   }
 
+  it('keeps a shared Snippet control through an imported padded union', async () => {
+    await Bun.write(
+      join(fixtureDir, 'padded-card-types.ts'),
+      `type Snippet = () => unknown;
+type AllKeys<U> = U extends unknown ? keyof U : never;
+type PadUnion<U, All extends PropertyKey = AllKeys<U>> = U extends unknown
+  ? U & { [K in Exclude<All, keyof U>]?: never }
+  : never;
+export type FixtureCardProps = PadUnion<
+  (
+    | { children: Snippet; mode: 'plain'; title?: never }
+    | { children: Snippet; mode: 'heading'; title: string }
+  ) & (
+    | { href?: never; onclick?: never }
+    | { href: string; onclick?: never }
+    | { href?: never; onclick: () => void }
+  )
+> & { class?: string };
+`,
+    );
+    const filePath = await writeFixture(
+      'padded-card',
+      `<script lang="ts" module>
+  import type { FixtureCardProps } from './padded-card-types.ts';
+  export type PaddedCardProps = FixtureCardProps;
+</script>
+<script lang="ts">
+  let { children, mode }: PaddedCardProps = $props();
+</script>
+<div data-mode={mode}>{@render children()}</div>`,
+    );
+
+    const manifest = await analyzeComponent(filePath);
+    expect(manifest.props.find((prop) => prop.name === 'children')?.control.kind).toBe('snippet');
+  });
+
   it('reads the Props type from a bare <script module> (no leading attribute)', async () => {
     const source = `<script module>
   export type WidgetProps = {

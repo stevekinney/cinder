@@ -233,6 +233,8 @@ const SIDEBAR_BASELINE = [
   'date-picker',
   'date-range-field',
   'description-list',
+  'diff-review',
+  'diff-review-comments',
   'diff-statistics',
   'diff-viewer',
   'divider',
