@@ -318,7 +318,7 @@
     "@lasercat/homogenaize": "^1.2.41",
     "@libsql/client": "^0.17.2",
     "@lostgradient/environmentalist": "0.1.0",
-    "@lostgradient/operative": "^0.15.2",
+    "@lostgradient/operative": "^0.15.3",
     "@lostgradient/weft": "^0.27.11",
     "@milkdown/ctx": "^7.17.3",
     "@milkdown/kit": "^7.17.3",
@@ -615,7 +615,7 @@
 
     "@lostgradient/markdown": ["@lostgradient/markdown@workspace:packages/markdown"],
 
-    "@lostgradient/operative": ["@lostgradient/operative@0.15.2", "", { "dependencies": { "@lostgradient/cryptography": "0.0.1", "@lostgradient/embeddings": "0.0.1", "@lostgradient/environmentalist": "0.1.0", "@lostgradient/lifecycle": "0.0.2", "@lostgradient/tool-protocol": "0.0.2", "@lostgradient/weft": "^0.27.11", "armorer": "2.4.3", "conversationalist": "2.1.2" }, "peerDependencies": { "@anthropic-ai/sdk": ">=0.50.0", "@google/genai": ">=2.19.0", "@opentelemetry/api": "^1.9.1", "openai": ">=4.0.0", "zod": "^4.4.3" }, "optionalPeers": ["@anthropic-ai/sdk", "@google/genai", "@opentelemetry/api", "openai"] }, "sha512-Zd8jdn7fmGUBmFNnX2A7TTN0DXzq+B/imkeGMl6WBQg7NLXh9wa9PVYA24AEUl9dzyfHxhk7cEHlcf3fVFatWA=="],
+    "@lostgradient/operative": ["@lostgradient/operative@0.15.3", "", { "dependencies": { "@lostgradient/cryptography": "0.0.1", "@lostgradient/embeddings": "0.0.1", "@lostgradient/environmentalist": "0.1.0", "@lostgradient/lifecycle": "0.0.2", "@lostgradient/tool-protocol": "0.0.2", "@lostgradient/weft": "^0.27.11", "armorer": "2.4.3", "conversationalist": "2.1.2" }, "peerDependencies": { "@anthropic-ai/sdk": ">=0.50.0", "@google/genai": ">=2.19.0", "@opentelemetry/api": "^1.9.1", "openai": ">=4.0.0", "zod": "^4.4.3" }, "optionalPeers": ["@anthropic-ai/sdk", "@google/genai", "@opentelemetry/api", "openai"] }, "sha512-EOjXl/hVWFz4BISUQoZVY4sqRycRL/H7Jb4ddFHz17OrLkcmh9HjnNw5gd7XcnGRzGb+KlFlGOrYpwgv92ERAw=="],
 
     "@lostgradient/testing": ["@lostgradient/testing@workspace:packages/testing"],
 
