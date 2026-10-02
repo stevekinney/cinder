@@ -177,7 +177,7 @@
     align-items: center;
     gap: var(--cinder-space-2, 0.5rem);
     font-size: var(--cinder-text-xs, 0.75rem);
-    color: var(--cinder-text-muted, #666);
+    color: var(--cinder-text-muted);
   }
 
   .diff-review-comment-item-goto {
@@ -187,7 +187,7 @@
   .diff-review-comment-item-captured-detail {
     margin: 0;
     font-size: var(--cinder-text-xs, 0.75rem);
-    color: var(--cinder-text-muted, #666);
+    color: var(--cinder-text-muted);
   }
 
   .diff-review-comment-item-badge {
@@ -196,13 +196,13 @@
   }
 
   .diff-review-comment-item-badge-resolved {
-    background: var(--cinder-status-success-subtle, #e6f4ea);
-    color: var(--cinder-status-success-solid, #1a7f37);
+    background: var(--cinder-status-success-subtle);
+    color: var(--cinder-status-success-solid);
   }
 
   .diff-review-comment-item-badge-outdated {
-    background: var(--cinder-status-warning-subtle, #fff4e5);
-    color: var(--cinder-status-warning-solid, #9a6700);
+    background: var(--cinder-status-warning-subtle);
+    color: var(--cinder-status-warning-solid);
   }
 
   .diff-review-comment-item-body {

@@ -695,7 +695,7 @@
   .diff-comment-kind-badge {
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text-muted, #666);
+    color: var(--cinder-text-muted);
   }
 
   .diff-comment-status-badge {
@@ -705,19 +705,19 @@
   }
 
   .diff-comment-status-resolved {
-    background: var(--cinder-status-success-subtle, #e6f4ea);
-    color: var(--cinder-status-success-solid, #1a7f37);
+    background: var(--cinder-status-success-subtle);
+    color: var(--cinder-status-success-solid);
   }
 
   .diff-comment-status-outdated {
-    background: var(--cinder-status-warning-subtle, #fff4e5);
-    color: var(--cinder-status-warning-solid, #9a6700);
+    background: var(--cinder-status-warning-subtle);
+    color: var(--cinder-status-warning-solid);
   }
 
   .diff-comment-captured-detail {
     margin: 0 var(--cinder-space-3, 0.75rem) var(--cinder-space-2, 0.5rem);
     font-size: var(--cinder-text-xs);
-    color: var(--cinder-text-muted, #666);
+    color: var(--cinder-text-muted);
   }
 
   .diff-comment-row-actions {
