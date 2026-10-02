@@ -36,6 +36,7 @@ describe('MarkdownEditor raw mode composes Textarea variant="code"', () => {
           label: 'Code variant editor',
           mode: 'source',
           toolbarEnabled: false,
+          modeToggleVisible: true,
           value: '# Heading',
         },
       });
@@ -47,6 +48,7 @@ describe('MarkdownEditor raw mode composes Textarea variant="code"', () => {
       expect(textarea.classList.contains('cinder-textarea')).toBe(true);
       expect(textarea.getAttribute('data-cinder-variant')).toBe('code');
       expect(textarea.value).toBe('# Heading');
+      expect(container.querySelector('.markdown-editor-mode-bar')).not.toBeNull();
     } finally {
       cleanup();
     }
