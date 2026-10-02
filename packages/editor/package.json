@@ -348,6 +348,7 @@
     "!dist/**/*-fixture.*",
     "!dist/**/*-fixtures.*",
     "!dist/**/*-test-*",
+    "!dist/**/*-harness.svelte.d.ts",
     "!dist/session/fixtures.*",
     "!dist/**/__fixtures__/**",
     "!dist/**/test/**",
