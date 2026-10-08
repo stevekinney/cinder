@@ -214,16 +214,16 @@ const schema = {
           'Called when an adapter command fails — either a rejected promise or a synchronous throw from the method.',
       },
       {
-        name: 'onArtifactOpen',
-        reason: 'function-or-snippet',
-        description:
-          "Overrides Chat's built-in artifact panel. When supplied, Chat calls this\nonce with the resolved artifact and does not open its local panel.",
-      },
-      {
         name: 'onApprovalResolve',
         reason: 'function-or-snippet',
         description:
           'Called when the user resolves an action-required approval. The complete\nresolution payload is forwarded unchanged. When an adapter is also wired,\nChat calls `adapter.resolveToolApproval(toolCallId, resolution)` first and\nuses this callback only when the adapter does not implement that method.',
+      },
+      {
+        name: 'onArtifactOpen',
+        reason: 'function-or-snippet',
+        description:
+          "Overrides Chat's built-in artifact panel. When supplied, Chat calls this\nonce with the resolved artifact and does not open its local panel.",
       },
       {
         name: 'onAttachmentAdd',
@@ -261,7 +261,6 @@ const schema = {
         description:
           'Called after pointer or selection activity may have moved the composer\ncaret without changing text. Overlay primitives can resync their active\ntoken from the textarea selection.',
       },
-
       {
         name: 'onEdit',
         reason: 'function-or-snippet',

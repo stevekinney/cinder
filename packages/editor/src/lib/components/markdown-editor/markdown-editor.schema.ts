@@ -47,11 +47,6 @@ const schema = {
       type: 'string',
       description: 'Additional CSS classes',
     },
-    placeholderValueMode: {
-      enum: ['text', 'markdown'],
-      description:
-        "How preview inserts string placeholder values: `'text'` (the default)\nrenders them as literal text, `'markdown'` lets them contribute Markdown\nformatting. Other values render as literal JSON either way. An invalid\nstring reports `invalid_option` at `placeholderValueMode` and disables fill.",
-    },
     snapshotMode: {
       type: 'boolean',
       description:
@@ -116,6 +111,12 @@ const schema = {
         reason: 'unknown-shape',
         description:
           'Allowed placeholders, as a JSON Schema or explicit candidates. Drives\ncompletion, invalid-token decoration and diagnostics from one catalog.\nReplacing the object updates the live editor without recreating it.',
+      },
+      {
+        name: 'placeholderValueMode',
+        reason: 'unknown-shape',
+        description:
+          "How preview inserts string placeholder values: `'text'` (the default)\nrenders them as literal text, `'markdown'` lets them contribute Markdown\nformatting. Other values render as literal JSON either way. An invalid\nstring reports `invalid_option` at `placeholderValueMode` and disables fill.",
       },
       {
         name: 'placeholderValues',

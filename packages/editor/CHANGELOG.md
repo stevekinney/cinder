@@ -1,5 +1,11 @@
 # @lostgradient/editor
 
+## 0.15.1
+
+### Patch Changes
+
+- [#1599](https://github.com/stevekinney/cinder/pull/1599) [`4aa8129`](https://github.com/stevekinney/cinder/commit/4aa8129526b84c67da50f629557dd12174f036bc) Thanks [@stevekinney](https://github.com/stevekinney)! - Import ProseMirror state primitives directly so server bundles that combine the root entry and /review-editor initialize correctly.
+
 ## 0.15.0
 
 ### Minor Changes

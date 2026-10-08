@@ -42,10 +42,6 @@
       "type": "string",
       "description": "Additional CSS classes"
     },
-    "placeholderValueMode": {
-      "enum": ["text", "markdown"],
-      "description": "How preview inserts string placeholder values: `'text'` (the default)\nrenders them as literal text, `'markdown'` lets them contribute Markdown\nformatting. Other values render as literal JSON either way. An invalid\nstring reports `invalid_option` at `placeholderValueMode` and disables fill."
-    },
     "snapshotMode": {
       "type": "boolean",
       "description": "Snapshot mode for visual regression testing.\n\nWhen `true`:\n- Applies `caret-color: transparent` and `user-select: none` to the editor\n  root via a `data-snapshot-mode` attribute, producing a stable visual\n  state (no blinking cursor, no selection highlights).\n- Blurs any focused element inside the component on mount so the initial\n  screenshot does not capture a focused ring or active caret.\n\nThis is a purely visual / CSS concern. It does NOT affect editability,\nProseMirror state, or any prop controlled by `readonly` / `mode`."
@@ -104,6 +100,11 @@
         "name": "placeholderDefinitions",
         "reason": "unknown-shape",
         "description": "Allowed placeholders, as a JSON Schema or explicit candidates. Drives\ncompletion, invalid-token decoration and diagnostics from one catalog.\nReplacing the object updates the live editor without recreating it."
+      },
+      {
+        "name": "placeholderValueMode",
+        "reason": "unknown-shape",
+        "description": "How preview inserts string placeholder values: `'text'` (the default)\nrenders them as literal text, `'markdown'` lets them contribute Markdown\nformatting. Other values render as literal JSON either way. An invalid\nstring reports `invalid_option` at `placeholderValueMode` and disables fill."
       },
       {
         "name": "placeholderValues",
