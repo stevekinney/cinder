@@ -126,7 +126,7 @@
     },
     "packages/editor": {
       "name": "@lostgradient/editor",
-      "version": "0.15.0",
+      "version": "0.15.1",
       "dependencies": {
         "@floating-ui/dom": "1.7.6",
         "@lostgradient/cinder": "workspace:*",
