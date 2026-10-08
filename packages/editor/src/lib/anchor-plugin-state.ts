@@ -5,8 +5,13 @@
  */
 
 import type { Node as ProseMirrorNode } from '@milkdown/kit/prose/model';
-import type { EditorState, Transaction } from '@milkdown/kit/prose/state';
-import { PluginKey } from '@milkdown/kit/prose/state';
+// `PluginKey` is constructed at module scope below, so it comes straight from
+// `prosemirror-state`, the module that declares it. Reaching it through
+// `@milkdown/kit/prose/state` goes through two chained `export *` modules, and
+// when a server bundle also reaches `prosemirror-state` from a dynamic
+// `import('@milkdown/kit/core')`, Bun lazily wraps it and drops the initializer
+// call for that chain, so `new PluginKey` runs before `keys` exists.
+import { PluginKey, type EditorState, type Transaction } from 'prosemirror-state';
 import type { AnchorPluginMeta, AnchorPluginState, AnchorState } from './anchor-plugin-types.js';
 import { proseMirrorPositionToTextOffset } from './editor/bridge.js';
 import { devWarn } from './utilities/dev-warn.js';

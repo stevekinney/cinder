@@ -8,16 +8,15 @@ const workspaceRoot = resolve(packageRoot, '../..');
 // Compile the complete public source graph in a separate server process before
 // the timed assertion. The import assertion below still runs in a fresh process
 // so it cannot inherit browser conditions, DOM globals, or cached modules.
-const serverCompileProbe = `
-import { sveltePlugin } from '@lostgradient/testing';
-import { dirname } from 'node:path';
-if (typeof document !== 'undefined' || typeof window !== 'undefined') {
-  throw new Error('The SSR compilation process unexpectedly has DOM globals.');
-}
-const result = await Bun.build({
-  entrypoints: ['./src/index.ts'],
-  target: 'bun',
-  plugins: [sveltePlugin({ generate: 'server' }), {
+//
+// There are two shapes of compilation, because they catch different defects. The
+// first leaves every third-party dependency external, so it proves the workspace
+// source graph itself is importable. The second inlines the dependencies, the way
+// an application server bundle does: Bun then decides module initialization order
+// for ProseMirror and Milkdown itself, and a module-scope `new PluginKey(...)`
+// that reaches `prosemirror-state` through Milkdown's chained `export *` can run
+// before `prosemirror-state` has initialized (`keys is not an Object`).
+const dependencyOwnershipPlugin = `{
     name: 'preserve-source-dependency-ownership',
     setup(builder) {
       builder.onResolve({ filter: /^[^./]/ }, (arguments_) => {
@@ -27,13 +26,35 @@ const result = await Bun.build({
         return { path: Bun.resolveSync(arguments_.path, directory), external: true };
       });
     },
-  }],
+  }`;
+
+function createServerCompileProbe({
+  externalizeDependencies,
+}: {
+  externalizeDependencies: boolean;
+}): string {
+  return `
+import { sveltePlugin } from '@lostgradient/testing';
+import { dirname } from 'node:path';
+if (typeof document !== 'undefined' || typeof window !== 'undefined') {
+  throw new Error('The SSR compilation process unexpectedly has DOM globals.');
+}
+const result = await Bun.build({
+  entrypoints: ['./src/index.ts'],
+  target: 'bun',
+  plugins: [sveltePlugin({ generate: 'server' })${externalizeDependencies ? `, ${dependencyOwnershipPlugin}` : ''}],
 });
 if (!result.success) throw new AggregateError(result.logs, 'Public editor SSR compilation failed');
 const output = result.outputs.find((artifact) => artifact.kind === 'entry-point');
 if (!output) throw new Error('SSR compilation emitted no entry point');
 process.stdout.write(JSON.stringify(await output.text()));
 `;
+}
+
+const serverCompileProbe = createServerCompileProbe({ externalizeDependencies: true });
+const serverBundledDependenciesCompileProbe = createServerCompileProbe({
+  externalizeDependencies: false,
+});
 
 // A fresh server process must load the prepared public surface without
 // inheriting browser export conditions, DOM globals, or cached modules.
@@ -76,14 +97,23 @@ async function runServerProbe(
 
 const preparedDirectory = await mkdtemp(join(workspaceRoot, 'node_modules/.corvidae-ssr-'));
 const preparedEntryPath = join(preparedDirectory, 'editor.ts');
-try {
-  const compilation = await runServerProbe(serverCompileProbe, undefined);
+const preparedBundledEntryPath = join(preparedDirectory, 'editor-bundled.ts');
+
+async function prepareServerEntry(probe: string, entryPath: string): Promise<void> {
+  const compilation = await runServerProbe(probe, undefined);
   if (compilation.status !== 0 || compilation.errors !== '') {
     throw new Error(
       `Server compilation failed (${compilation.status}): ${compilation.errors || compilation.output}`,
     );
   }
-  await Bun.write(preparedEntryPath, JSON.parse(compilation.output));
+  await Bun.write(entryPath, JSON.parse(compilation.output));
+}
+
+try {
+  await Promise.all([
+    prepareServerEntry(serverCompileProbe, preparedEntryPath),
+    prepareServerEntry(serverBundledDependenciesCompileProbe, preparedBundledEntryPath),
+  ]);
 } catch (error) {
   await rm(preparedDirectory, { recursive: true });
   throw error;
@@ -95,6 +125,13 @@ afterAll(async () => {
 describe('@lostgradient/editor public source entry point', () => {
   it('imports on a fresh server with the real server export conditions and no DOM', async () => {
     const result = await runServerProbe(serverImportProbe, { entryPath: preparedEntryPath });
+    expect(result.status, result.errors).toBe(0);
+    expect(result.errors).toBe('');
+    expect(JSON.parse(result.output)).toContain('ReviewEditor');
+  });
+
+  it('imports on a fresh server when ProseMirror and Milkdown are bundled into the same graph', async () => {
+    const result = await runServerProbe(serverImportProbe, { entryPath: preparedBundledEntryPath });
     expect(result.status, result.errors).toBe(0);
     expect(result.errors).toBe('');
     expect(JSON.parse(result.output)).toContain('ReviewEditor');

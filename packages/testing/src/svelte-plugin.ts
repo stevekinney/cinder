@@ -153,9 +153,11 @@ export function compileSvelteComponentForBun(
   hooks: SvelteCompilerPluginHooks,
   development?: boolean,
 ): { contents: string; loader: 'js'; resolveDir: string } {
+  // Parsing a component to look for a `<style>` block costs about half of compiling it, so
+  // only do it when a policy hook exists to consult.
   if (
-    hasAuthoredStyleBlock(source) &&
     hooks.allowStyleBlock !== undefined &&
+    hasAuthoredStyleBlock(source) &&
     !hooks.allowStyleBlock(path)
   ) {
     throw new Error(
