@@ -50,10 +50,14 @@ const filled = renderTemplate(
 
 ## Template placeholders
 
-Placeholders are `{{path}}` tokens in a Markdown template. Every placeholder function requires
-**definitions**, which are the only allowlist of paths that may be completed or filled. Pass
-exactly one of `schema` (a JSON Schema object, the recommended path) or `candidates` (explicit
-`{ path, types?, title?, description? }` entries).
+Placeholders are `{{path}}` tokens in a Markdown template. Resolving, rendering, completing and
+filling placeholders requires **definitions**, which are the only allowlist of paths that may be
+completed or filled. Pass exactly one of `schema` (a JSON Schema object, the recommended path) or
+`candidates` (explicit `{ path, types?, title?, description? }` entries).
+
+The lower-level utilities take their own inputs instead of definitions: `parsePlaceholderTokens`
+and `parseMarkdownPlaceholderTokens` take only source text, `validatePlaceholderTokens` takes
+tokens and candidates, and `buildPlaceholderCandidatesFromJsonSchema` takes a schema.
 
 ```ts
 import {

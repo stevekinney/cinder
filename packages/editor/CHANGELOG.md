@@ -23,7 +23,7 @@
 
 - [#1560](https://github.com/stevekinney/cinder/pull/1560) [`5871bbd`](https://github.com/stevekinney/cinder/commit/5871bbd68c91fc2e74799a9087926be2b5625fef) Thanks [@stevekinney](https://github.com/stevekinney)! - Publish the DiffReview component and its comments and state APIs, including their package subpaths and generated declarations.
 
-- Add template placeholders, preview mode and source-mode history to `MarkdownEditor` (added to this entry after release). These require `@lostgradient/markdown` 0.6.0 or later, which is now the peer floor (`^0.6.0`). See the package README's "MarkdownEditor template placeholders and preview" and "Breaking changes in 0.15.0" sections.
+- Add template placeholders, preview mode and source-mode history to `MarkdownEditor` (added to this entry after release). These require `@lostgradient/markdown` 0.6.x, which is now the peer range (`^0.6.0`). See the package README's "MarkdownEditor template placeholders and preview" and "Breaking changes in 0.15.0" sections.
 
   **Breaking changes**
 

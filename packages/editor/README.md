@@ -52,7 +52,7 @@ Each component subpath also exposes `/schema`, `/variables`, and `/examples`. On
 ### MarkdownEditor template placeholders and preview
 
 `MarkdownEditor` completes, validates, and previews `{{path}}` template placeholders. This needs
-`@lostgradient/markdown` 0.6.0 or later, which is the floor of this package's peer range; the
+`@lostgradient/markdown` 0.6.x, which is this package's peer range (`^0.6.0`); the
 placeholder definitions, values, and diagnostics types come from the root of
 `@lostgradient/markdown`, and its README documents the headless resolver, diagnostic codes, and
 security boundary.
