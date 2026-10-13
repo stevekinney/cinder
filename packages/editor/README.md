@@ -49,6 +49,74 @@ by Svelte — there is no separate `/styles` subpath for those two.
 Each component subpath also exposes `/schema`, `/variables`, and `/examples`. Only
 `review-editor` additionally exposes `/styles` (see above).
 
+### MarkdownEditor template placeholders and preview
+
+`MarkdownEditor` completes, validates, and previews `{{path}}` template placeholders. This needs
+`@lostgradient/markdown` 0.6.0 or later, which is the floor of this package's peer range; the
+placeholder definitions, values, and diagnostics types come from the root of
+`@lostgradient/markdown`, and its README documents the headless resolver, diagnostic codes, and
+security boundary.
+
+```svelte
+<script lang="ts">
+  import type { PlaceholderDiagnostic } from '@lostgradient/markdown';
+  import MarkdownEditor, { type MarkdownEditorProps } from '@lostgradient/editor/markdown-editor';
+
+  const definitions: MarkdownEditorProps['placeholderDefinitions'] = {
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Display name' },
+        count: { type: 'integer' },
+      },
+    },
+  };
+  const values: MarkdownEditorProps['placeholderValues'] = { name: 'Alice', count: 42 };
+
+  let value = $state('Hello {{name}}, you have {{count}} messages.');
+  let diagnostics = $state<readonly PlaceholderDiagnostic[]>([]);
+</script>
+
+<MarkdownEditor
+  id="welcome-template"
+  label="Welcome template"
+  bind:value
+  modeToggleVisible
+  placeholderDefinitions={definitions}
+  placeholderValues={values}
+  onPlaceholderDiagnosticsChange={(next) => (diagnostics = next)}
+/>
+<p>{diagnostics.length} placeholder problems</p>
+```
+
+- **`placeholderDefinitions`** (`{ schema }` or `{ candidates }`) is the one allowlist used for
+  completion, invalid-token decoration, diagnostics, and preview fill. Replacing the object
+  updates the live editor without recreating it or touching its document, undo history, or
+  selection.
+- **Completion.** Typing `{{` opens a listbox in both the rich editor and raw Markdown (source)
+  mode. Filtering is a case-insensitive path prefix; each row shows the path, its declared types,
+  and its description, never a value. ArrowUp and ArrowDown stop at the ends, Enter or a click
+  inserts, Tab and Escape dismiss. Code, inline code, link targets, and readonly editors never
+  open completion.
+- **Preview.** `mode` accepts `'wysiwyg'`, `'source'`, or `'preview'`, and `modeToggleVisible`
+  shows a Rich / Raw / Preview toggle. Preview renders the current value with
+  `placeholderValues` filled in, encoded as literal text unless `placeholderValueMode` is
+  `'markdown'`.
+- **Diagnostics.** `onPlaceholderDiagnosticsChange` receives the current ordered
+  `PlaceholderDiagnostic` list (for example `unknown_placeholder` or `malformed_token`) whenever
+  it changes.
+- **Low-level alternative.** `placeholderCompletion` and `placeholderDecoration` remain available
+  for async lookup and custom decoration, and are reactive. They cannot be combined with
+  `placeholderDefinitions`: the prop types reject the mix, and at runtime the editor reports
+  `conflicting_configuration`, turns placeholder completion and decoration off, keeps editing, and
+  resumes when the conflict is removed.
+- The `placeholder` prop is unrelated: it is the hint text an empty editor shows and is never
+  scanned or filled.
+
+The component's own README, shipped in the package at
+`dist/components/markdown-editor/README.md`, covers completion, source-mode history, and preview
+in full.
+
 ### DiffViewer toolbar override
 
 `DiffViewer`'s `toolbar` snippet prop is **total replacement**, not inversion of control: supplying
@@ -71,6 +139,76 @@ toolbar _without_ replacing it — is only rendered from inside the _built-in_ t
 both `toolbar` and `toolbarActions` silently drops `toolbarActions`, since the override branch
 never renders it. If you need both custom chrome and the extra action, put the action's markup
 directly inside your `toolbar` snippet instead of relying on `toolbarActions`.
+
+## Breaking changes in 0.15.0
+
+Version 0.15.0 shipped template placeholders, preview mode, and source-mode history for
+`MarkdownEditor`, and raised the `@lostgradient/markdown` peer floor to `^0.6.0` (whose own
+placeholder API changed; see its README).
+
+### MarkdownEditor template placeholders
+
+- **Low-level props are reactive**: `placeholderCompletion` and `placeholderDecoration` used to be
+  read once at mount. Replacing either object now updates the live editor. They can no longer be
+  combined with `placeholderDefinitions`.
+- **Popup rows**: rows used to show the path above one `types — description` line, and only the
+  first eight matches existed. Rows now have separate path, types (`|`-joined, or `unknown`) and
+  description elements; every match is listed and scrolls with eight visible rows. Matches sort by
+  code-unit path order instead of `localeCompare`.
+- **Keyboard and pointer**: arrow keys used to wrap; they now stop at the first and last option.
+  Tab used to accept; it now dismisses without inserting and is not consumed. Escape is consumed
+  only while the list is visible. A `mousedown` on an option used to insert it; a click or tap now
+  inserts it, and a scrolling or cancelled pointer gesture inserts nothing.
+- **Undo after accepting**: an acceptance used to join the surrounding typing in one undo step; it
+  is now its own undo step.
+- **Replacement range**: accepting inside a closed token used to replace everything up to the next
+  `}}`. When the text between the caret and that `}}` is not a path, only the opener and the path
+  characters after the caret are replaced.
+- **No matches**: completion used to close silently; it now stays hidden while the status region
+  announces "No matching placeholders".
+- **Token scanning**: completion and decoration now scan each run of identically formatted text,
+  so tokens in inline code or code blocks are never decorated and a token cannot cross a
+  formatting boundary. `data-placeholder-validation-reason` can now be `blocked_path`.
+- **Editing element attributes**: the ProseMirror element always has `aria-multiline="true"`, and
+  a caller's `aria-describedby` is merged with the placeholder instructions and diagnostics IDs.
+- **Editor API**: `EditorConfig.placeholderCompletion` and `EditorConfig.placeholderDecoration`
+  are replaced by `EditorConfig.placeholders` (`{ definitions?, completion?, decoration?,
+valuesStatus? }`), with `placeholderListboxId`, `onPlaceholderStatusChange`, and
+  `EditorState.setPlaceholderConfiguration()`. `EditorAttachmentOptions.getPlaceholderCompletion`
+  and `getPlaceholderDecoration` are replaced by `getPlaceholderConfiguration`.
+  `createTemplateCompletionPlugin(getConfiguration)` is now
+  `createTemplateCompletionPlugin({ listboxId?, onStatusChange? })`, and
+  `createTemplateInvalidDecorationPlugin(getCandidates, getInvalidClassName?)` is now
+  `createTemplateInvalidDecorationPlugin(initialConfiguration)`; both read their configuration from
+  `createTemplatePlaceholderConfigurationPlugin()`, which must be installed with them.
+- **Styles**: the completion popup and invalid-token styles moved from the component's scoped
+  styles into `prosemirror.css`, inside the `cinder.components` layer.
+
+### MarkdownEditor modes and preview
+
+- **`EditorMode` is wider**: `'wysiwyg' | 'source'` is now `'wysiwyg' | 'source' | 'preview'`.
+  Exhaustive switches, and code that assumes a non-rich mode is source, must handle `'preview'`.
+- **Mode toggle placement**: with `modeToggleVisible`, the toggle used to render only inside the
+  default toolbar row. It now renders whenever `modeToggleVisible` is true, in its own row above
+  the editing surface when the default toolbar does not render, and gained a Preview option.
+- **`onModeChange` timing**: switching between rich and source now calls `onModeChange` after
+  publishing the flushed rich-editor content through `onValueChange`, not before.
+- **`ToolbarContext`** adds `mode`, `canEdit` and `onModeChange(nextMode)`. Outside the rich
+  editor its formatting fields are inactive (`editorContext` is `null`, `canUndo` and `canRedo`
+  are `false`, handlers do nothing).
+- **Editing surface markup**: the rich editor and the source textarea now sit inside a
+  `.markdown-editor-surface` wrapper (`display: contents`), hidden and `inert` during preview.
+- **Editor API**: `EditorState` adds `flushPendingChange()` and `resetDocument(content)`; objects
+  implementing `EditorState` must provide both.
+
+### MarkdownEditor source-mode history
+
+- **Undo and redo in source mode**: the raw Markdown textarea used to rely on the browser's native
+  undo stack, which component-written values could reset or skip. Source mode now keeps its own
+  history: Mod-Z undoes; Mod-Shift-Z, and Ctrl-Y on Windows, redo; the browser's Undo and Redo
+  commands replay the same history. Each input event, IME composition, or placeholder acceptance
+  is one step. An external `value` change or `setMarkdown()` clears the history, and each undo or
+  redo calls `onValueChange` once.
 
 ## Why a separate package
 

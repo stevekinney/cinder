@@ -23,6 +23,14 @@
 
 - [#1560](https://github.com/stevekinney/cinder/pull/1560) [`5871bbd`](https://github.com/stevekinney/cinder/commit/5871bbd68c91fc2e74799a9087926be2b5625fef) Thanks [@stevekinney](https://github.com/stevekinney)! - Publish the DiffReview component and its comments and state APIs, including their package subpaths and generated declarations.
 
+- Add template placeholders, preview mode and source-mode history to `MarkdownEditor` (added to this entry after release). These require `@lostgradient/markdown` 0.6.0 or later, which is now the peer floor (`^0.6.0`). See the package README's "MarkdownEditor template placeholders and preview" and "Breaking changes in 0.15.0" sections.
+
+  **Breaking changes**
+
+  - Placeholders: `placeholderCompletion` and `placeholderDecoration` are reactive and cannot be combined with the new `placeholderDefinitions`. The completion popup lists every match in code-unit order with separate path, types and description elements; arrow keys stop at the ends; Tab and Escape dismiss without inserting; a click (not `mousedown`) inserts; an acceptance is its own undo step; the replacement range no longer swallows prose up to a later `}}`; "No matching placeholders" is announced; tokens are scanned per formatting run and never in code; the editing element always has `aria-multiline="true"` and merges `aria-describedby`; `EditorConfig.placeholderCompletion`/`placeholderDecoration` are replaced by `EditorConfig.placeholders`, `getPlaceholderCompletion`/`getPlaceholderDecoration` by `getPlaceholderConfiguration`, and `createTemplateCompletionPlugin`/`createTemplateInvalidDecorationPlugin` take new arguments and require `createTemplatePlaceholderConfigurationPlugin()`; popup styles moved into `prosemirror.css`.
+  - Modes and preview: `EditorMode` adds `'preview'`; the `modeToggleVisible` toggle renders outside the default toolbar too and gains a Preview option; `onModeChange` fires after the flushed `onValueChange`; `ToolbarContext` adds `mode`, `canEdit` and `onModeChange`; the editing surface sits in a `.markdown-editor-surface` wrapper; `EditorState` implementations must add `flushPendingChange()` and `resetDocument(content)`.
+  - Source mode keeps its own undo and redo history instead of the textarea's native stack.
+
 ### Patch Changes
 
 - Updated dependencies [[`7a5689b`](https://github.com/stevekinney/cinder/commit/7a5689bfa243f327c662c67b6b54900e38f52a6d), [`5871bbd`](https://github.com/stevekinney/cinder/commit/5871bbd68c91fc2e74799a9087926be2b5625fef)]:

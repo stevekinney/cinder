@@ -6,6 +6,20 @@
 
 - [#1560](https://github.com/stevekinney/cinder/pull/1560) [`5871bbd`](https://github.com/stevekinney/cinder/commit/5871bbd68c91fc2e74799a9087926be2b5625fef) Thanks [@stevekinney](https://github.com/stevekinney)! - Publish the expanded Markdown rendering and template APIs with the current source and package contracts.
 
+  **Breaking changes** (added after release; the placeholder API was replaced). See the package README's "Breaking changes in 0.6.0" and "Template placeholders" sections for migration detail.
+
+  - `buildPlaceholderCandidatesFromJsonSchema(schema)` returns `{ candidates, issues }` instead of `PlaceholderCandidate[]`, and reports unsupported keywords, unaddressable or reserved names, malformed types and cycles instead of skipping them.
+  - `PlaceholderCandidate` is now `{ path; types?; title?; description? }`. `PlaceholderValueKind` and `valueKind` are removed; `integer` is no longer collapsed into `number`.
+  - `resolveTemplatePlaceholders(template, values, candidatePaths?)` is now `resolveTemplatePlaceholders(template, values, options)` with required `options.definitions` and optional `valueMode` and `unresolved`; it fills only declared paths and returns `PlaceholderDiagnostic` issues.
+  - Arrays become compact JSON instead of comma-joined text, `null` becomes `null`, missing values stay as visible tokens with a `missing_value` issue, and unsupported values are `invalid_value` issues instead of empty strings.
+  - Replacements are encoded as literal text by default; pass `valueMode: 'markdown'` to insert string values as Markdown.
+  - `renderTemplate(template, values)` is now `renderTemplate(template, values, options)` and throws `PlaceholderTemplateError` in `'error'` mode. Called without definitions it fills nothing.
+  - `PlaceholderToken.closed` is replaced by `kind: 'placeholder' | 'malformed'`, with stricter token boundaries; `parseMarkdownPlaceholderTokens` is the new Markdown-aware scanner.
+  - `validatePlaceholderTokens` returns `readonly PlaceholderDiagnostic[]`; `PlaceholderValidationIssue` and `PlaceholderValidationResult` are removed.
+  - `isBlockedSegment` moved from `./templates/template-placeholders` to `./templates/placeholder-security` (still exported from the root).
+
+  **The package root is not lean.** `.` re-exports rendering, worker rendering and templates, so it reaches Shiki, `@shikijs/*`, `remark-math` and `rehype-katex`. `remark-math@6` reaches `micromark-extension-math`, which statically imports `katex`; unbundled runtimes evaluate it even from `./templates/template-placeholders`. For lean placeholder imports use `./templates/types`, `./templates/placeholder-security` and `./templates/sanitize-html`; `./templates/template-render` reaches Shiki.
+
 ## 0.5.0
 
 ### Minor Changes
