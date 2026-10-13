@@ -131,10 +131,9 @@ jobs:
 
       # Runs on EVERY push, independent of the artifact-validation decision
       # below. The ignored-package changeset check must not wait for the publish
-      # path: an illegal changeset for an ignored package (e.g.
-      # @cinder/playground) would otherwise sit unconsumed while
-      # `changesets/action` keeps re-opening the Version Packages PR, instead
-      # of failing here with the actionable error.
+      # path: an illegal changeset for an ignored package would otherwise sit
+      # unconsumed while `changesets/action` keeps re-opening the Version
+      # Packages PR, instead of failing here with the actionable error.
       - name: Guard against ignored-package changesets
         if: github.event_name == 'push'
         run: bun run --filter=@lostgradient/cinder validate:release-workflow
@@ -187,25 +186,6 @@ jobs:
           title: 'chore: version packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Pull request events created by GITHUB_TOKEN require manual approval.
-      # Explicit workflow dispatches are the supported exception, so trigger
-      # a playground preview against the generated branch instead of
-      # requiring a human to push an empty commit to the Version Packages
-      # pull request. deploy-playground.yaml is unaffected by COR-1196's
-      # workflow retirements, so this dispatch survives unchanged; the
-      # unit-tests.yaml/browser-tests.yaml/changeset-guard.yaml dispatches
-      # this step used to make alongside it are gone with those workflows.
-      - name: Dispatch Version Packages pull request preview deploy
-        if: steps.changesets.outputs.pullRequestNumber != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_PULL_REQUEST_NUMBER: ${{ steps.changesets.outputs.pullRequestNumber }}
-        run: |
-          set -euo pipefail
-          release_branch="$(gh pr view "$RELEASE_PULL_REQUEST_NUMBER" --json headRefName --jq '.headRefName')"
-
-          gh workflow run deploy-playground.yaml --ref "$release_branch" -f environment=preview
 
       - name: Check validated Markdown package artifact budget
         if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'

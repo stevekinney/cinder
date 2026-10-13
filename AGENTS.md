@@ -67,8 +67,6 @@ pull-request discussion alone is not the record.
 
 ```bash
 bun install              # Install workspace dependencies
-bun run dev              # Start the playground dev server
-bun run playground       # Alias for the playground dev server
 bun run build            # Build @lostgradient/cinder, @lostgradient/cinder-mcp, @lostgradient/editor, then @lostgradient/chat
 ```
 
@@ -122,7 +120,6 @@ Run `components:generate` after changing component source metadata, examples, co
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `packages/components` | Published `@lostgradient/cinder` package.                                                                              |
 | `packages/chat`       | Published `@lostgradient/chat` domain package.                                                                         |
-| `packages/playground` | Private component playground and static export.                                                                        |
 | `packages/testing`    | Private Playwright, axe, and visual-regression harness.                                                                |
 | `packages/markdown`   | Published `@lostgradient/markdown` package (headless Markdown pipeline, rendering, diffing, templating).               |
 | `packages/mcp`        | Published `@lostgradient/cinder-mcp` package (Node-only Model Context Protocol server for Cinder component discovery). |

@@ -9,10 +9,7 @@
  *   - The file .github/workflows/release.yaml is present.
  *   - The file has `id-token: write` (the OIDC permission required for Trusted
  *     Publishing) somewhere in its permissions declarations.
- *   - Release waits for the generated mirror verifier and dispatches the
- *     Playground preview for a Changesets-created pull request.
- *   - Manual playground dispatches default to preview, so release validation
- *     cannot accidentally deploy a version branch to production.
+ *   - Release waits for the generated mirror verifier.
  *   - Workflow actions use Node 24-compatible majors instead of deprecated
  *     Node 20 action runtimes.
  *   - Every public package (markdown, cinder, editor, chat, then the cinder-mcp
@@ -61,10 +58,6 @@ const workspaceRoot = resolve(packageRoot, '../..');
 const workflowsDirectoryPath = join(workspaceRoot, '.github/workflows');
 const releaseWorkflowPath = join(workspaceRoot, '.github/workflows/release.yaml');
 const releaseManualWorkflowPath = join(workspaceRoot, '.github/workflows/release-manual.yaml');
-const deployPlaygroundWorkflowPath = join(
-  workspaceRoot,
-  '.github/workflows/deploy-playground.yaml',
-);
 const changesetsConfigurationPath = join(workspaceRoot, '.changeset/config.json');
 const changesetDirectoryPath = join(workspaceRoot, '.changeset');
 /**
@@ -488,26 +481,6 @@ export function rootValidationSeparatesSourceAndConsumerGates(manifest: unknown)
   return consumerIndices !== undefined && isStrictlyIncreasing(consumerIndices);
 }
 
-export function findMissingWorkflowDispatches(
-  workflow: unknown,
-  requiredWorkflows: readonly string[],
-): string[] {
-  const runScripts = workflowRunScripts(workflow);
-  return requiredWorkflows.filter(
-    (requiredWorkflow) =>
-      !runScripts.some((script) =>
-        script.split('\n').some((line) => {
-          const command = line.trim();
-          return (
-            !command.startsWith('#') &&
-            command.startsWith(`gh workflow run ${requiredWorkflow} `) &&
-            command.includes('--ref')
-          );
-        }),
-      ),
-  );
-}
-
 export function releaseUsesMirrorVerification(
   releaseWorkflow: unknown,
   mirrorWorkflow: unknown,
@@ -551,19 +524,6 @@ export function findOutdatedWorkflowActions(
   );
 }
 
-export function workflowDispatchInputHasDefault(
-  workflow: unknown,
-  inputName: string,
-  expectedDefault: string,
-): boolean {
-  if (!isObjectRecord(workflow) || !isObjectRecord(workflow['on'])) return false;
-  const workflowDispatch = workflow['on']['workflow_dispatch'];
-  if (!isObjectRecord(workflowDispatch) || !isObjectRecord(workflowDispatch['inputs']))
-    return false;
-  const input = workflowDispatch['inputs'][inputName];
-  return isObjectRecord(input) && input['default'] === expectedDefault;
-}
-
 function runValidation(): void {
   const workflowContent = (() => {
     try {
@@ -590,13 +550,6 @@ function runValidation(): void {
   }
   pass('id-token: write is present');
 
-  if (!workflowDeclaresPermission(parsedWorkflow, 'actions', 'write')) {
-    fail(
-      'release.yaml is missing `actions: write`. The version path dispatches the Playground preview.',
-    );
-  }
-  pass('actions: write is present');
-
   let parsedMirrorWorkflow: unknown;
   try {
     parsedMirrorWorkflow = loadYaml(
@@ -609,49 +562,6 @@ function runValidation(): void {
     fail('release.yaml must wait for the generated mirror-verify workflow on every release run.');
   }
   pass('Release waits for generated mirror verification');
-
-  const requiredVersionPullRequestWorkflows = ['deploy-playground.yaml'];
-  const missingWorkflowDispatches = findMissingWorkflowDispatches(
-    parsedWorkflow,
-    requiredVersionPullRequestWorkflows,
-  );
-  if (missingWorkflowDispatches.length > 0) {
-    fail(
-      'release.yaml does not dispatch all validation workflows for the Changesets-created ' +
-        `pull request: ${missingWorkflowDispatches.join(', ')}. GITHUB_TOKEN-created pull request ` +
-        'events require approval, so these explicit dispatches keep release validation automatic.',
-    );
-  }
-  if (!workflowContent.includes('steps.changesets.outputs.pullRequestNumber')) {
-    fail('release.yaml must gate version pull request validation on `pullRequestNumber`.');
-  }
-  pass('Version pull requests explicitly dispatch all validation workflows');
-
-  let deployPlaygroundWorkflowContent: string;
-  try {
-    deployPlaygroundWorkflowContent = readFileSync(deployPlaygroundWorkflowPath, 'utf8');
-  } catch {
-    fail(`playground deploy workflow not found at ${deployPlaygroundWorkflowPath}`);
-  }
-  let parsedDeployPlaygroundWorkflow: unknown;
-  try {
-    parsedDeployPlaygroundWorkflow = loadYaml(deployPlaygroundWorkflowContent);
-  } catch (error) {
-    fail(`deploy-playground.yaml is not valid YAML: ${errorMessageFrom(error)}`);
-  }
-  if (
-    !workflowDispatchInputHasDefault(parsedDeployPlaygroundWorkflow, 'environment', 'preview') ||
-    !workflowRunScriptsContainActiveLine(
-      parsedDeployPlaygroundWorkflow,
-      "inputs.environment == 'production'",
-    )
-  ) {
-    fail(
-      'deploy-playground.yaml must default manual dispatches to preview and require an explicit ' +
-        '`environment=production` input for production deploys.',
-    );
-  }
-  pass('Manual playground deploys default to preview');
 
   const workflowContents = Object.fromEntries(
     readdirSync(workflowsDirectoryPath)

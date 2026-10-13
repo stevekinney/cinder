@@ -9,7 +9,6 @@ import getReleasePlan from '@changesets/get-release-plan';
 import {
   findIgnoredPackageChangesets,
   findMissingPublicPackageReleaseCommands,
-  findMissingWorkflowDispatches,
   findOutdatedWorkflowActions,
   manualChatBootstrapHasPeerRegistryPreflight,
   manualCinderBootstrapHasMarkdownRegistryPreflight,
@@ -21,7 +20,6 @@ import {
   rootPublishScriptUsesStagedPackers,
   rootValidationSeparatesSourceAndConsumerGates,
   workflowDeclaresPermission,
-  workflowDispatchInputHasDefault,
   workflowExpressionContextRoots,
   workflowExpressionFunctionNames,
   workflowLevelEnvironmentLines,
@@ -655,31 +653,6 @@ Extract Chat into its own package.
     ).toBe(false);
   });
 
-  test('finds generated pull request workflows that are not explicitly dispatched', () => {
-    const workflow = {
-      jobs: {
-        release: {
-          steps: [
-            {
-              run: [
-                '# gh workflow run unit-tests.yaml --ref "$release_branch"',
-                'gh workflow run browser-tests.yaml --ref "$release_branch"',
-              ].join('\n'),
-            },
-          ],
-        },
-      },
-    };
-
-    expect(
-      findMissingWorkflowDispatches(workflow, [
-        'unit-tests.yaml',
-        'browser-tests.yaml',
-        'changeset-guard.yaml',
-      ]),
-    ).toEqual(['unit-tests.yaml', 'changeset-guard.yaml']);
-  });
-
   test('finds workflow actions that still target deprecated Node 20 majors', () => {
     expect(
       findOutdatedWorkflowActions({
@@ -695,41 +668,6 @@ Extract Chat into its own package.
       'unit-tests.yaml: actions/upload-artifact@v5',
       'unit-tests.yaml: marocchino/sticky-pull-request-comment@v2',
     ]);
-  });
-
-  test('requires manual deploys to default to preview', () => {
-    expect(
-      workflowDispatchInputHasDefault(
-        {
-          on: {
-            workflow_dispatch: {
-              inputs: {
-                environment: { default: 'preview' },
-              },
-            },
-          },
-        },
-        'environment',
-        'preview',
-      ),
-    ).toBe(true);
-
-    expect(
-      workflowDispatchInputHasDefault(
-        { on: { workflow_dispatch: { inputs: { environment: { default: 'production' } } } } },
-        'environment',
-        'preview',
-      ),
-    ).toBe(false);
-
-    expect(
-      workflowRunScriptsContainActiveLine(
-        {
-          jobs: { deploy: { steps: [{ run: "echo safe # inputs.environment == 'production'" }] } },
-        },
-        "inputs.environment == 'production'",
-      ),
-    ).toBe(false);
   });
 
   test('requires the production dispatch expression on an active run line', () => {
@@ -764,18 +702,18 @@ Extract Chat into its own package.
     expect(
       parseChangesetPackageNames(`---
 '@lostgradient/cinder': minor
-'@cinder/playground': patch
+'@cinder/ignored-example': patch
 ---
 
 Release notes.
 `),
-    ).toEqual(['@lostgradient/cinder', '@cinder/playground']);
+    ).toEqual(['@lostgradient/cinder', '@cinder/ignored-example']);
   });
 
   test('reports malformed changeset front matter with a targeted error', () => {
     expect(() =>
       parseChangesetPackageNames(`---
-'@cinder/playground': [
+'@cinder/ignored-example': [
 ---
 
 Broken release note.
@@ -800,23 +738,23 @@ Public package release note.
 `,
       );
       writeFileSync(
-        join(changesetDirectory, 'playground-only.md'),
+        join(changesetDirectory, 'ignored-only.md'),
         `---
-'@cinder/playground': patch
+'@cinder/ignored-example': patch
 ---
 
-Private playground note.
+Private note.
 `,
       );
 
       expect(
-        findIgnoredPackageChangesets(changesetDirectory, ['@cinder/playground']).map(
+        findIgnoredPackageChangesets(changesetDirectory, ['@cinder/ignored-example']).map(
           (changeset) => ({
             fileName: basename(changeset.filePath),
             packages: changeset.packages,
           }),
         ),
-      ).toEqual([{ fileName: 'playground-only.md', packages: ['@cinder/playground'] }]);
+      ).toEqual([{ fileName: 'ignored-only.md', packages: ['@cinder/ignored-example'] }]);
     } finally {
       rmSync(temporaryDirectory, { recursive: true, force: true });
     }
@@ -838,7 +776,9 @@ Public package release note.
 `,
       );
 
-      expect(findIgnoredPackageChangesets(changesetDirectory, ['@cinder/playground'])).toEqual([]);
+      expect(findIgnoredPackageChangesets(changesetDirectory, ['@cinder/ignored-example'])).toEqual(
+        [],
+      );
     } finally {
       rmSync(temporaryDirectory, { recursive: true, force: true });
     }
