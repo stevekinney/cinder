@@ -4,7 +4,6 @@
 
 ```bash
 bun install
-bun run dev          # start the playground
 bun run typecheck
 bun run --filter=@lostgradient/cinder test  # focused component tests
 ```
@@ -66,63 +65,9 @@ Corvidae's complete source validation enforces component coverage before mirrori
 
 The generated `.github/workflows/mirror-verify.yaml` is the public pull request gate. It installs the target with the release workflow's Bun settings, builds and packs each published package, checks declarations and package entry points, and runs isolated consumer checks. The release workflow calls the same verifier before publication.
 
-## Deploying the playground to Vercel
+## Playground
 
-The playground (`@cinder/playground`) is a `Bun.serve` dev server that compiles Svelte component bundles on the fly with `Bun.build` + `svelte/compiler` + `ts-morph` — no SvelteKit, no Vite. That on-the-fly-build toolchain runs fine at **build** time but cannot run inside a deployed serverless function (the bundled Lambda can't resolve the dev-toolchain module graph — every route 500s with `FUNCTION_INVOCATION_FAILED` / a Bun `ResolveMessage`). So we don't deploy the server. We **pre-render every route to static files at build time** and Vercel serves those — a pure static site, zero cold-start, no toolchain in production.
-
-The moving parts:
-
-- `packages/playground/src/playground-server.ts`: the `Bun.serve` dev server. Its `handleRequest` (a `(Request) => Promise<Response>`) is the whole router, reused verbatim by the pre-render. It is **deliberately not** named `server`/`index`/`app`/`main`: those are Vercel's Bun backend-entrypoint magic names, and matching one would make Vercel auto-detect a root function and try to _run_ it — re-introducing the runtime failure the static export avoids. The `import.meta.main` block is the local dev/CLI path (it binds a port + file watcher) and never runs in the build.
-- `packages/playground/scripts/static-export.ts` (the `vercel-build` npm script): drives `handleRequest` at build time and writes every route's response into `public/` — `/c/<name>` and `/page/<name>` HTML, `/shell-bundle/*` + `/page-bundle/*` JS (following each bundle's hashed-chunk imports), `/styles/*` + `/components/*` + `/package-components/*` CSS, `/api/manifest/<name>` JSON, `/example-src/*` source, and a `/ping` (so the deploy smoke-test has a static `pong`). HTML pages are written as `index.html` directories (clean URLs); data routes are written as literal extensionless files.
-- `packages/playground/vercel.json`: `framework: null`, the `vercel-build` build command, `outputDirectory: "public"`, `cleanUrls: true`, and a single rewrite of `/` to the pre-rendered redirect `index.html`. No `functions`, no `bunVersion` runtime — nothing executes at request time.
-- `.github/workflows/deploy-playground.yaml`: deploys on push to `main` (production) and on pull requests (preview). It uses the Vercel CLI (`vercel pull` → `vercel build` → `vercel deploy --prebuilt`) and finishes with a `/ping` smoke-test.
-
-### The tradeoff (read this)
-
-The full site is rendered at build time, so deploys are slower than a function deploy but every request is served instantly from static assets with no runtime compilation. Because the export is a point-in-time snapshot, the deployed playground reflects the components as of the build — re-deploy to pick up component changes (the GitHub workflow does this automatically on push to `main`). For an internal component playground this is the right tradeoff; the live, watch-mode dev server (`bun run dev`) remains the authoring experience.
-
-### One-time setup (a human must do this — it is not automated)
-
-Nothing below is performed by this repository or its workflows. A maintainer with Vercel access must do it once:
-
-1. **Create the Vercel project.** In the Vercel dashboard, import this Git repository as a new project (or run `bunx vercel link` locally from the repo root and follow the prompts).
-2. **Set the Root Directory to `packages/playground`.** This is a Vercel **project setting** (Settings → General → Root Directory), not a `vercel.json` key — `rootDirectory` is intentionally absent from `vercel.json` because Vercel does not read it there. With the root set, Vercel reads `packages/playground/vercel.json` and runs the configured `installCommand` (which installs the whole Bun workspace from the repo root because `@lostgradient/cinder` and `@lostgradient/chat` are workspace dependencies). **Also enable "Include files outside of the root directory in the Build Step"** (the toggle directly under Root Directory) — the static-export build reads component sources from `../components` and `../chat` at build time, and that toggle must be on for those files to be available during the build.
-3. **Capture the three deploy secrets** and add them to the repository's GitHub Actions secrets (Settings → Secrets and variables → Actions):
-
-   | Secret              | Where it comes from                                                                                |
-   | ------------------- | -------------------------------------------------------------------------------------------------- |
-   | `VERCEL_TOKEN`      | Vercel → Account Settings → Tokens → Create Token (scope it to the team that owns the project).    |
-   | `VERCEL_ORG_ID`     | `.vercel/project.json` after `bunx vercel link`, or Team Settings → General → Team ID.             |
-   | `VERCEL_PROJECT_ID` | `.vercel/project.json` after `bunx vercel link`, or the project's Settings → General → Project ID. |
-
-   The workflow reads `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` from `env` and passes `VERCEL_TOKEN` to each CLI invocation. Fork pull requests can't read these secrets, so the deploy job skips itself on fork PRs rather than failing.
-
-### Verifying a live deploy (the smoke-test)
-
-Once the project and secrets exist, a push to `main` triggers `deploy-playground`. To check the result by hand (or after a `bunx vercel deploy` from your machine), hit the two health endpoints on the deployment URL:
-
-```bash
-# 1. Liveness — must return the literal text "pong".
-curl https://<your-deployment>.vercel.app/ping
-# → pong
-
-# 2. A real component page renders (returns 200 with the shell HTML).
-curl -i https://<your-deployment>.vercel.app/c/button | head -n 1
-# → HTTP/2 200
-```
-
-The workflow's `Smoke-test the deployment` step runs the `/ping` check automatically and writes the result to the job summary. If your Vercel plan has Deployment Protection enabled, the raw deployment URL may return `401` until you visit it authenticated — that is a gating response, not a deploy failure; verify through the dashboard's preview link instead.
-
-### Running the build locally
-
-The build step is runtime-safe to run on any machine with Bun:
-
-```bash
-cd packages/playground
-bun run vercel-build   # pre-renders every route into public/
-```
-
-It does not contact Vercel or deploy anything — it just produces the static `public/` directory locally so you can inspect or serve it.
+The component playground and the cinder.website deployment now live in the private Corvidae workspace (`applications/playground`), and the Vercel project builds from there, so this repository no longer has a playground.
 
 ## Commits and pull requests
 
@@ -149,7 +94,7 @@ Each npm artifact has one staged-pack source of truth: `packages/components/scri
 
 Before a release, Corvidae validates the source revision and the public mirror checks the target artifact in its generated workflow. The release workflow validates every artifact before publishing any of them: each package's `validate:consumer` command installs staged tarballs into consumer fixtures, and each `package:weight:check -- --existing-tarball` command applies a package-specific budget. `cinder-mcp`'s `validate:consumer` installs BOTH its own and Cinder's staged tarballs via npm (never the workspace source, and never a registry-resolved Cinder — an `overrides` entry forces resolution to the staged tarball), then runs a full MCP handshake through `npx --no-install cinder-mcp` under plain Node with Bun made unresolvable in the child environment. Publish order follows the dependency DAG — markdown → cinder → cinder-mcp → editor → chat — and every publisher skips idempotently when the exact registry version already exists.
 
-Changes confined to `@cinder/playground` or `@lostgradient/testing` do not need a changeset — those workspaces are private and never publish. Changes to other private workspaces bundled by Cinder generally require a Cinder changeset because their output ships in its artifact.
+Changes confined to `@lostgradient/testing` do not need a changeset — those workspaces are private and never publish. Changes to other private workspaces bundled by Cinder generally require a Cinder changeset because their output ships in its artifact.
 
 ### Publishing to npm
 

@@ -21,7 +21,7 @@
     // expansion by hand. Most overrides then turn out to be identical to the base task and are gone.
     //
     // `packages/components/scripts/**` is an input to tasks in EVERY package, not just cinder's:
-    // chat, editor, and playground import `svelte-plugin.ts`, `check-coverage-ratchet.ts`, the
+    // chat and editor import `svelte-plugin.ts`, `check-coverage-ratchet.ts`, the
     // component-artifact generators, and `lib/visual-fixtures/**` across the package boundary. Those
     // files never land in cinder's `dist/**`, so the `^build` edge does not cover them. They used to
     // be listed one-by-one in `globalDependencies`, which was both incomplete (only two of them were
@@ -110,21 +110,6 @@
       ],
       "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
     },
-    "@cinder/playground#test": {
-      "dependsOn": ["^build"],
-      "outputs": [],
-      "inputs": [
-        "$TURBO_DEFAULT$",
-        "$TURBO_ROOT$/packages/testing/scripts/source-fingerprint.ts",
-        "$TURBO_ROOT$/README.md"
-      ],
-      "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
-    },
-    "@cinder/playground#typecheck": {
-      "dependsOn": ["^build"],
-      "outputs": [],
-      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/packages/testing/scripts/source-fingerprint.ts"]
-    },
     "@lostgradient/markdown#test": {
       "dependsOn": ["^build"],
       "outputs": [],
@@ -144,11 +129,6 @@
       "outputs": [],
       "inputs": ["$TURBO_DEFAULT$"]
     },
-    // `@lostgradient/testing` reaches the other way across the boundary: `scripts/changed-components.ts`
-    // imports `packages/playground/src/component-sources.ts`, and testing does not depend on
-    // playground, so `^build` cannot fold that hash in. Scoped to testing's own tasks rather than
-    // added to the base inputs — playground/src is the most-edited tree in the repo, and hashing it
-    // into every package's tasks would gut the cache for changes that cannot possibly affect them.
     "@lostgradient/testing#test": {
       "dependsOn": ["^build"],
       "outputs": [],
@@ -156,7 +136,6 @@
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/packages/components/scripts/**",
         "$TURBO_ROOT$/packages/testing/scripts/**",
-        "$TURBO_ROOT$/packages/playground/src/**",
         "$TURBO_ROOT$/.github/workflows/**",
         "$TURBO_ROOT$/docs/**",
         "$TURBO_ROOT$/.changeset/**",
@@ -170,8 +149,7 @@
       "inputs": [
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/packages/components/scripts/**",
-        "$TURBO_ROOT$/packages/testing/scripts/**",
-        "$TURBO_ROOT$/packages/playground/src/**"
+        "$TURBO_ROOT$/packages/testing/scripts/**"
       ]
     },
     // Cinder's lint reaches editor types, which is an edge `^build`
