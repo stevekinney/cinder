@@ -1,5 +1,16 @@
 # @lostgradient/chat
 
+## 0.16.0
+
+### Minor Changes
+
+- [#1330](https://github.com/stevekinney/cinder/pull/1330) [`b86a1c9`](https://github.com/stevekinney/cinder/commit/b86a1c97d384b4657aefb85705038696bd3ee314) Thanks [@stevekinney](https://github.com/stevekinney)! - Widen internal peer ranges to follow the coordinated release.
+
+### Patch Changes
+
+- Updated dependencies [[`038d741`](https://github.com/stevekinney/cinder/commit/038d741afb0331c0645ab7328c98d78fd8351d3a)]:
+  - @lostgradient/cinder@0.27.0
+
 ## 0.15.0
 
 ### Minor Changes

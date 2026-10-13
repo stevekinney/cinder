@@ -1,5 +1,11 @@
 # @lostgradient/cinder
 
+## 0.27.0
+
+### Minor Changes
+
+- [#1604](https://github.com/stevekinney/cinder/pull/1604) [`038d741`](https://github.com/stevekinney/cinder/commit/038d741afb0331c0645ab7328c98d78fd8351d3a) Thanks [@stevekinney](https://github.com/stevekinney)! - Add a configurable `headingLevel` to PageHeader, from `1` to `6`, defaulting to `1`, so a page header nested inside a page that already has an `<h1>` keeps a correct document outline. Out-of-range values are clamped. The `PageHeaderHeadingLevel` type is exported from the package root.
+
 ## 0.26.3
 
 ### Patch Changes

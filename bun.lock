@@ -24,7 +24,7 @@
     },
     "packages/chat": {
       "name": "@lostgradient/chat",
-      "version": "0.15.0",
+      "version": "0.16.0",
       "dependencies": {
         "@lostgradient/cinder": "workspace:*",
         "@lostgradient/markdown": "workspace:*",
@@ -52,14 +52,14 @@
         "typescript": "6.0.3",
       },
       "peerDependencies": {
-        "@lostgradient/cinder": "^0.26.0",
+        "@lostgradient/cinder": "^0.27.0",
         "@lostgradient/markdown": "^0.6.0",
         "svelte": ">=5.56.0 <6",
       },
     },
     "packages/components": {
       "name": "@lostgradient/cinder",
-      "version": "0.26.3",
+      "version": "0.27.0",
       "bin": {
         "cinder": "./dist/cli/index.js",
       },
@@ -126,7 +126,7 @@
     },
     "packages/editor": {
       "name": "@lostgradient/editor",
-      "version": "0.15.1",
+      "version": "0.16.0",
       "dependencies": {
         "@floating-ui/dom": "1.7.6",
         "@lostgradient/cinder": "workspace:*",
@@ -160,7 +160,7 @@
         "typescript": "6.0.3",
       },
       "peerDependencies": {
-        "@lostgradient/cinder": "^0.26.0",
+        "@lostgradient/cinder": "^0.27.0",
         "@lostgradient/markdown": "^0.6.0",
         "@milkdown/ctx": "^7.17.3",
         "@milkdown/kit": "^7.17.3",
@@ -211,7 +211,7 @@
     },
     "packages/mcp": {
       "name": "@lostgradient/cinder-mcp",
-      "version": "0.1.19",
+      "version": "0.1.20",
       "bin": {
         "cinder-mcp": "./dist/bin.js",
       },
@@ -255,7 +255,7 @@
     },
     "packages/weft-ui": {
       "name": "@lostgradient/weft-ui",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "dependencies": {
         "@lostgradient/cinder": "workspace:*",
         "@lostgradient/markdown": "workspace:*",
