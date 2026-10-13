@@ -88,7 +88,10 @@ export async function syncLockfilePeerRanges(
       }
       const previousRange = parsed;
       if (previousRange === nextRange) continue;
-      section = section.replace(line, `$1${JSON.stringify(nextRange)}`);
+      section = section.replace(
+        line,
+        (_whole, prefix: string) => `${prefix}${JSON.stringify(nextRange)}`,
+      );
       updates.push({ workspace, dependencyName, previousRange, nextRange });
     }
     lockfile = lockfile.slice(0, block.start) + section + lockfile.slice(block.end);
