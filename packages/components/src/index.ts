@@ -617,7 +617,7 @@ export { default as Pagination } from './components/pagination/index.ts';
 export type { PaginationProps } from './components/pagination/index.ts';
 
 export { default as PageHeader } from './components/page-header/index.ts';
-export type { PageHeaderProps } from './components/page-header/index.ts';
+export type { PageHeaderHeadingLevel, PageHeaderProps } from './components/page-header/index.ts';
 
 export { default as PayloadInspector } from './components/payload-inspector/index.ts';
 export type { PayloadInspectorProps } from './components/payload-inspector/index.ts';
