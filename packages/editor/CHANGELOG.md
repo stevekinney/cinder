@@ -1,5 +1,17 @@
 # @lostgradient/editor
 
+## 0.16.1
+
+### Patch Changes
+
+- [#1607](https://github.com/stevekinney/cinder/pull/1607) [`0aa942c`](https://github.com/stevekinney/cinder/commit/0aa942c042892f5e9cb4a1cee582952bf4494595) Thanks [@stevekinney](https://github.com/stevekinney)! - Document `MarkdownEditor`'s template placeholders and preview on the npm README: `placeholderDefinitions`, completion, `placeholderValues` and `placeholderValueMode` in preview, `modeToggleVisible`, `onPlaceholderDiagnosticsChange`, and the conflict with the low-level `placeholderCompletion` and `placeholderDecoration` props. These need `@lostgradient/markdown` 0.6.x (the `^0.6.0` peer range).
+
+  Restating the 0.15.0 breaking changes, which its release notes omitted: props and callbacks were renamed (`MarkdownEditorProps` `showModeToggle` → `modeToggleVisible`, `showToolbar` → `toolbarEnabled`, `onchange` → `onValueChange`, `onready` → `onReady`, `onmodechange` → `onModeChange`, `onselectionchange` → `onSelectionChange`, `oncommentshortcut` → `onCommentShortcut`, `ontoolbarcontextchange` → `onToolbarContextChange`; `ReviewEditorProps` `onchange` → `onValueChange` and, with `ThreadManagerOptions`, `onthreadcreate`/`onthreaddelete`/`oncommentcreate`/`oncommentupdate`/`oncommentdelete` → `onThreadCreate`/`onThreadDelete`/`onCommentCreate`/`onCommentUpdate`/`onCommentDelete`, plus `SelectionPopoverOptions.onthreadcreate` → `onThreadCreate`; `DiffViewerProps` `onrevertall` → `onRevertAll`, `onreverthunk` → `onRevertHunk`; `EditorConfig`, `EditorAttachmentOptions` and `EditorKeymapOptions` `oncommentshortcut` → `onCommentShortcut`); `EditorHandle` left `./markdown-editor` (still on `./editor` and `./editor/component-runtime`); `./editor` dropped its re-exports of `PlaceholderCandidate`, `PlaceholderToken`, `PlaceholderValidationIssue`, `PlaceholderValidationResult`, `PlaceholderValueKind`, `PlaceholderResolutionResult`, `PlaceholderCompletionConfiguration`, `PlaceholderDecorationConfiguration`, `RESERVED_SEGMENTS`, `buildPlaceholderCandidatesFromJsonSchema`, `isBlockedSegment`, `parsePlaceholderTokens`, `resolveTemplatePlaceholders` and `validatePlaceholderTokens` (import from `@lostgradient/markdown`); `./anchor-decorations` dropped `AnchorState`, `AnchorPluginState`, `AnchorPluginOptions`, `anchorPluginKey` and `createAnchorPlugin` (still on the package root); `destroyEditor` returns `Promise<void>`; `placeholderCompletion` and `placeholderDecoration` are reactive and cannot be combined with `placeholderDefinitions`; the completion popup's rows, ordering, keyboard and pointer handling, undo step, replacement range and token scanning changed; `EditorConfig.placeholders` replaces `placeholderCompletion`/`placeholderDecoration` and the template plugins take new arguments; popup styles moved into `prosemirror.css`; `EditorMode` adds `'preview'`, the mode toggle renders outside the default toolbar and `onModeChange` fires after the flushed value; `ToolbarContext` adds `mode`, `canEdit` and `onModeChange`; `EditorState` implementations must add `flushPendingChange()`, `resetDocument(content)` and `setPlaceholderConfiguration(configuration)`; and source mode keeps its own undo history.
+
+- Updated dependencies [[`0aa942c`](https://github.com/stevekinney/cinder/commit/0aa942c042892f5e9cb4a1cee582952bf4494595)]:
+  - @lostgradient/markdown@0.6.1
+  - @lostgradient/cinder@0.27.1
+
 ## 0.16.0
 
 ### Minor Changes
