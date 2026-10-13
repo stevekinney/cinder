@@ -103,6 +103,42 @@ describe('syncLockfilePeerRanges', () => {
     expect(await Bun.file(join(root, 'bun.lock')).text()).toBe(staleLockfile);
   });
 
+  test('widens peers in several workspace blocks in one call, as a coordinated release does', async () => {
+    const root = await makeWorkspace({
+      '@lostgradient/cinder': '^0.27.0',
+      svelte: '>=5.56.0 <6',
+    });
+    const editorBlock =
+      '    "packages/editor": {\n      "name": "@lostgradient/editor",\n      "version": "0.16.0",\n      "peerDependencies": {\n        "@lostgradient/cinder": "^0.26.0",\n        "svelte": ">=5.56.0 <6",\n      },\n    },\n';
+    const lockfile = staleLockfile.replace(
+      '  },\n  "packages": {',
+      `${editorBlock}  },\n  "packages": {`,
+    );
+    expect(lockfile).not.toBe(staleLockfile);
+    await Bun.write(join(root, 'bun.lock'), lockfile);
+    await mkdir(join(root, 'packages', 'editor'), { recursive: true });
+    await Bun.write(
+      join(root, 'packages', 'editor', 'package.json'),
+      JSON.stringify({
+        name: '@lostgradient/editor',
+        peerDependencies: { '@lostgradient/cinder': '^0.27.0', svelte: '>=5.56.0 <6' },
+      }),
+    );
+
+    const result = await syncLockfilePeerRanges(root);
+
+    expect(result.updates.map(({ workspace, nextRange }) => [workspace, nextRange])).toEqual([
+      ['packages/chat', '^0.27.0'],
+      ['packages/editor', '^0.27.0'],
+    ]);
+    expect(await Bun.file(join(root, 'bun.lock')).text()).toBe(
+      lockfile.replaceAll(
+        '"@lostgradient/cinder": "^0.26.0",',
+        '"@lostgradient/cinder": "^0.27.0",',
+      ),
+    );
+  });
+
   test('writes a range containing replacement-pattern characters literally', async () => {
     const root = await makeWorkspace({
       '@lostgradient/cinder': "^0.27.0 || $& $'",
