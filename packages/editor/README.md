@@ -27,7 +27,7 @@ import MarkdownEditor from '@lostgradient/editor/markdown-editor';
 ```
 
 ```svelte
-<MarkdownEditor id="post-body" value={source} onchange={(next) => (source = next)} />
+<MarkdownEditor id="post-body" value={source} onValueChange={(next) => (source = next)} />
 ```
 
 `id` is required — `MarkdownEditorProps` has no default and the component uses it for the
@@ -142,9 +142,57 @@ directly inside your `toolbar` snippet instead of relying on `toolbarActions`.
 
 ## Breaking changes in 0.15.0
 
-Version 0.15.0 shipped template placeholders, preview mode, and source-mode history for
-`MarkdownEditor`, and raised the `@lostgradient/markdown` peer floor to `^0.6.0` (whose own
-placeholder API changed; see its README).
+Version 0.15.0 renamed component props and callbacks to camelCase, removed some re-exports,
+shipped template placeholders, preview mode, and source-mode history for `MarkdownEditor`, and
+raised the `@lostgradient/markdown` peer floor to `^0.6.0` (whose own placeholder API changed; see
+its README).
+
+### Renamed props and callbacks
+
+The old names are no longer in the prop types. Rename them as follows:
+
+| Where                                                                                   | 0.14 name                | 0.15 name                |
+| --------------------------------------------------------------------------------------- | ------------------------ | ------------------------ |
+| `MarkdownEditorProps`                                                                   | `showModeToggle`         | `modeToggleVisible`      |
+| `MarkdownEditorProps`                                                                   | `showToolbar`            | `toolbarEnabled`         |
+| `MarkdownEditorProps`, `ReviewEditorProps`                                              | `onchange`               | `onValueChange`          |
+| `MarkdownEditorProps`                                                                   | `onready`                | `onReady`                |
+| `MarkdownEditorProps`                                                                   | `onmodechange`           | `onModeChange`           |
+| `MarkdownEditorProps`                                                                   | `onselectionchange`      | `onSelectionChange`      |
+| `MarkdownEditorProps`                                                                   | `ontoolbarcontextchange` | `onToolbarContextChange` |
+| `MarkdownEditorProps`, `EditorConfig`, `EditorAttachmentOptions`, `EditorKeymapOptions` | `oncommentshortcut`      | `onCommentShortcut`      |
+| `ReviewEditorProps`, `ThreadManagerOptions`, `SelectionPopoverOptions`                  | `onthreadcreate`         | `onThreadCreate`         |
+| `ReviewEditorProps`, `ThreadManagerOptions`                                             | `onthreaddelete`         | `onThreadDelete`         |
+| `ReviewEditorProps`, `ThreadManagerOptions`                                             | `oncommentcreate`        | `onCommentCreate`        |
+| `ReviewEditorProps`, `ThreadManagerOptions`                                             | `oncommentupdate`        | `onCommentUpdate`        |
+| `ReviewEditorProps`, `ThreadManagerOptions`                                             | `oncommentdelete`        | `onCommentDelete`        |
+| `DiffViewerProps`                                                                       | `onrevertall`            | `onRevertAll`            |
+| `DiffViewerProps`                                                                       | `onreverthunk`           | `onRevertHunk`           |
+
+`EditorConfig`, `EditorAttachmentOptions`, and `EditorKeymapOptions` (from `./editor`) renamed
+only `oncommentshortcut`; their other callbacks (`onchange`, `onselectionchange`,
+`onlinkshortcut`, and `EditorAttachmentOptions.onready`) keep their names.
+
+### Removed and moved exports
+
+- **`EditorHandle`** is no longer exported from `@lostgradient/editor/markdown-editor`. Import it
+  from `@lostgradient/editor/editor` or `@lostgradient/editor/editor/component-runtime`, which
+  still export it unchanged.
+- **Placeholder re-exports**: `@lostgradient/editor/editor` no longer re-exports
+  `PlaceholderCandidate`, `PlaceholderToken`, `PlaceholderValidationIssue`,
+  `PlaceholderValidationResult`, `PlaceholderValueKind`, `PlaceholderResolutionResult`,
+  `PlaceholderCompletionConfiguration`, `PlaceholderDecorationConfiguration`, `RESERVED_SEGMENTS`,
+  `buildPlaceholderCandidatesFromJsonSchema`, `isBlockedSegment`, `parsePlaceholderTokens`,
+  `resolveTemplatePlaceholders`, or `validatePlaceholderTokens`. Import the ones that still exist
+  from `@lostgradient/markdown` (its 0.6.0 removed `PlaceholderValueKind`,
+  `PlaceholderValidationIssue`, and `PlaceholderValidationResult`, and changed the others).
+  `PlaceholderCompletionConfiguration` and `PlaceholderDecorationConfiguration` are also still
+  exported from `@lostgradient/editor/editor/component-runtime`.
+- **Anchor plugin**: `@lostgradient/editor/anchor-decorations` no longer exports `AnchorState`,
+  `AnchorPluginState`, `AnchorPluginOptions`, `anchorPluginKey`, or `createAnchorPlugin`. Import
+  them from the package root, `@lostgradient/editor`.
+- **`destroyEditor`** returns `Promise<void>` instead of `void`; await it if code depends on
+  teardown having finished.
 
 ### MarkdownEditor template placeholders
 
@@ -198,8 +246,9 @@ valuesStatus? }`), with `placeholderListboxId`, `onPlaceholderStatusChange`, and
   are `false`, handlers do nothing).
 - **Editing surface markup**: the rich editor and the source textarea now sit inside a
   `.markdown-editor-surface` wrapper (`display: contents`), hidden and `inert` during preview.
-- **Editor API**: `EditorState` adds `flushPendingChange()` and `resetDocument(content)`; objects
-  implementing `EditorState` must provide both.
+- **Editor API**: `EditorState` adds `flushPendingChange()`, `resetDocument(content)`, and
+  `setPlaceholderConfiguration(configuration)`; objects implementing `EditorState` must provide
+  all three.
 
 ### MarkdownEditor source-mode history
 

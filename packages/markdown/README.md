@@ -38,7 +38,10 @@ const filled = renderTemplate(
 
 ## Subpaths
 
-- `.` / `./pipeline` — parse, serialize, and AST utilities.
+- `.` — everything below as flat named exports: diffing, the pipeline, rendering (including
+  `renderMarkdownAsync`), templates, and the utilities. It is not lean; see
+  [The package root is not lean](#the-package-root-is-not-lean).
+- `./pipeline` — parse, serialize, and AST utilities.
 - `./diff`, `./diff/line-diff`, `./diff/types` — word- and line-level diffing.
 - `./rendering`, `./rendering/types`, `./rendering/highlighter`, `./rendering/mermaid-cache` —
   Markdown-to-sanitized-HTML rendering, syntax highlighting, and Mermaid diagram caching.
@@ -153,7 +156,22 @@ warning.
 
 ## Breaking changes in 0.6.0
 
-Version 0.6.0 replaced the placeholder API. Update callers as follows:
+Version 0.6.0 replaced the placeholder API and changed the package root. Update callers as
+follows:
+
+- The package root used to export only two namespaces, `diff` and `pipeline`
+  (`export * as diff`, `export * as pipeline`). It now re-exports the diff, pipeline, rendering,
+  templates, and utility modules as flat named exports, and the `diff` and `pipeline` namespace
+  exports are gone, so `import { pipeline } from '@lostgradient/markdown'` and
+  `import { diff } from '@lostgradient/markdown'` no longer resolve. Import the functions by name
+  (`import { parse } from '@lostgradient/markdown'`), from their subpaths
+  (`import { parse } from '@lostgradient/markdown/pipeline'`), or recreate the namespace with
+  `import * as pipeline from '@lostgradient/markdown/pipeline'` (likewise `./diff`). The root now
+  also reaches the full rendering pipeline; see
+  [The package root is not lean](#the-package-root-is-not-lean).
+- `./rendering/mermaid-cache` renamed `getCacheKey` to `getMermaidCacheKey`, `getCachedSvg` to
+  `getMermaidCachedSvg`, and `setCachedSvg` to `setMermaidCachedSvg`. `./rendering` already
+  exported these under the new names and still does.
 
 - `buildPlaceholderCandidatesFromJsonSchema(schema)` returned `PlaceholderCandidate[]`, silently
   skipping unsupported keywords and unaddressable property names. It now returns
@@ -168,7 +186,8 @@ Version 0.6.0 replaced the placeholder API. Update callers as follows:
   and reported `unknown_placeholder` only when `candidatePaths` was given. It is now
   `resolveTemplatePlaceholders(template, values, options)` with required `options.definitions`
   and optional `valueMode` and `unresolved`, returns
-  `{ text, issues: readonly PlaceholderDiagnostic[] }`, and fills only declared paths.
+  `{ text, issues: readonly PlaceholderDiagnostic[] }`, and fills only declared paths. `values`
+  is typed `JsonObject` instead of `Record<string, unknown>`, for `renderTemplate` too.
 - Array, null and missing values changed. Arrays were comma-joined (`['a', 'b', 3]` became
   `a, b, 3`), `null`, `undefined` and missing or unknown paths became `''`. Now arrays are compact
   JSON in order (`[1,"x"]`), `null` becomes `null`, a missing own property is a `missing_value`
@@ -182,6 +201,9 @@ Version 0.6.0 replaced the placeholder API. Update callers as follows:
 - `renderTemplate(template, values)` is now `renderTemplate(template, values, options)` with the
   same required options, and throws `PlaceholderTemplateError` in `'error'` mode. Calling it
   without definitions leaves every token unfilled.
+- `renderTemplate` is no longer exported from `./templates/template-placeholders`. In 0.5 it was
+  exported from both that subpath and `./templates/template-render`; import it from
+  `@lostgradient/markdown/templates/template-render` (or the package root) instead.
 - `PlaceholderToken.closed: boolean` is replaced by `kind: 'placeholder' | 'malformed'`. Triple
   braces and nested openers are one malformed token, unclosed tokens stop at the line end,
   backslash-escaped openers are literal, and no token spans a line ending.
@@ -191,7 +213,7 @@ Version 0.6.0 replaced the placeholder API. Update callers as follows:
   `location` (`{ kind: 'token', startOffset, endOffset }`) replaces `token`; it also reports
   `blocked_path`. `PlaceholderValidationIssue` and `PlaceholderValidationResult` are removed.
 - `isBlockedSegment` moved from `./templates/template-placeholders` to
-  `./templates/placeholder-security`. The package root still exports it.
+  `./templates/placeholder-security`. The package root also exports it.
 
 ## Provenance
 
