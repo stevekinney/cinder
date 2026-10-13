@@ -167,6 +167,9 @@ test('root exports retain the component contract types formerly exposed through 
   expectTypeOf<import('./index.ts').SliderRangeProps>().toEqualTypeOf<
     import('./components/slider/index.ts').SliderRangeProps
   >();
+  expectTypeOf<import('./index.ts').PageHeaderHeadingLevel>().toEqualTypeOf<
+    import('./components/page-header/index.ts').PageHeaderHeadingLevel
+  >();
   expectTypeOf<import('./index.ts').SliderSingleProps>().toEqualTypeOf<
     import('./components/slider/index.ts').SliderSingleProps
   >();

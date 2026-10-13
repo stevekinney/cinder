@@ -27,6 +27,7 @@ describe('PageHeader', () => {
     expect(pageHeaderSchema.properties).toMatchObject({
       title: { type: 'string' },
       description: { type: 'string' },
+      headingLevel: { enum: [1, 2, 3, 4, 5, 6], default: 1 },
     });
     expect(pageHeaderSchema.metadata?.unsupportedProps?.map((prop) => prop.name)).toEqual([
       'actions',
@@ -34,9 +35,32 @@ describe('PageHeader', () => {
     ]);
     expect(validate({ title: 'Approvals', description: 'Review pending requests.' })).toBe(true);
     expect(validate({})).toBe(false);
+    expect(validate({ title: 'Approvals', headingLevel: 2 })).toBe(true);
+    expect(validate({ title: 'Approvals', headingLevel: 7 })).toBe(false);
   });
 
-  test('renders the required title as h1', () => {
+  test.each([1, 2, 3, 4, 5, 6] as const)(
+    'renders headingLevel %i as its heading element',
+    (level) => {
+      const { container } = render(PageHeader, {
+        props: { title: 'Approvals', headingLevel: level },
+      });
+      expect(container.querySelector('.cinder-page-header__title')?.tagName).toBe(`H${level}`);
+    },
+  );
+
+  test.each([
+    [0, 'H1'],
+    [9, 'H6'],
+    [Number.NaN, 'H1'],
+  ])('clamps an out-of-range headingLevel %p from untyped callers to %s', (level, tag) => {
+    const { container } = render(PageHeader, {
+      props: { title: 'Approvals', headingLevel: level as never },
+    });
+    expect(container.querySelector('.cinder-page-header__title')?.tagName).toBe(tag);
+  });
+
+  test('renders the required title as h1 by default', () => {
     const { container } = render(PageHeader, { props: { title: 'Approvals' } });
     const titleEl = container.querySelector('.cinder-page-header__title');
     expect(titleEl).not.toBeNull();
