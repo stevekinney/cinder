@@ -1,5 +1,12 @@
 # @lostgradient/cinder
 
+## 0.27.1
+
+### Patch Changes
+
+- Updated dependencies [[`0aa942c`](https://github.com/stevekinney/cinder/commit/0aa942c042892f5e9cb4a1cee582952bf4494595)]:
+  - @lostgradient/markdown@0.6.1
+
 ## 0.27.0
 
 ### Minor Changes

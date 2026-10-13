@@ -1,5 +1,17 @@
 # @lostgradient/markdown
 
+## 0.6.1
+
+### Patch Changes
+
+- [#1607](https://github.com/stevekinney/cinder/pull/1607) [`0aa942c`](https://github.com/stevekinney/cinder/commit/0aa942c042892f5e9cb4a1cee582952bf4494595) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep filled template values out of the render cache: `renderTemplate` now renders through an uncached path, so placeholder values no longer stay in `renderMarkdown`'s module-level result cache after a call returns.
+
+  Document the placeholder API that shipped in 0.6.0 on the npm README: definitions, `resolveTemplatePlaceholders` options (`valueMode`, `unresolved`), diagnostics, the literal-text default and the security boundary. The README's `renderTemplate` example now passes the required `{ definitions }`; without them, 0.6.0 and later fill nothing.
+
+  Restating the 0.6.0 breaking changes, which its release notes omitted: the root's `diff` and `pipeline` namespace exports are replaced by flat named exports, so `import { pipeline } from '@lostgradient/markdown'` fails (import names directly, from `./pipeline` or `./diff`, or with `import * as pipeline from '@lostgradient/markdown/pipeline'`); `./rendering/mermaid-cache` renamed `getCacheKey`, `getCachedSvg` and `setCachedSvg` to `getMermaidCacheKey`, `getMermaidCachedSvg` and `setMermaidCachedSvg`; `buildPlaceholderCandidatesFromJsonSchema` returns `{ candidates, issues }`; `PlaceholderCandidate` drops `valueKind` (and `PlaceholderValueKind` is removed) for `types`, `title` and `description`; `resolveTemplatePlaceholders(template, values, options)` and `renderTemplate(template, values, options)` require `options.definitions`, type `values` as `JsonObject` instead of `Record<string, unknown>`, and fill only declared paths; `renderTemplate` is no longer exported from `./templates/template-placeholders` (use `./templates/template-render` or the root); arrays become compact JSON, `null` is written as `null`, and missing values stay visible with a `missing_value` issue; replacements are literal text unless `valueMode: 'markdown'`; `PlaceholderToken.closed` is replaced by `kind`; `validatePlaceholderTokens` returns `PlaceholderDiagnostic[]` and `PlaceholderValidationIssue`/`PlaceholderValidationResult` are removed; `isBlockedSegment` moved to `./templates/placeholder-security`.
+
+  The package root is not lean: it reaches Shiki, `@shikijs/*`, `remark-math` and `rehype-katex`, and `remark-math`'s `micromark-extension-math` statically imports `katex`, which unbundled runtimes evaluate even from `./templates/template-placeholders`. For lean placeholder imports use `./templates/types`, `./templates/placeholder-security` and `./templates/sanitize-html`.
+
 ## 0.6.0
 
 ### Minor Changes
