@@ -7,8 +7,6 @@
  *
  *   - The rendered `.svelte` `@cinder` block must pass `extractFromSource`
  *     (the metadata extractor) with all required tags present.
- *   - The rendered playground example must pass `extractExampleFile`
- *     (the examples extractor) as a publishable `example`.
  *   - The rendered `<Pascal>Props` stub must be the type name the schema
  *     generator resolves.
  */
@@ -27,7 +25,6 @@ import {
   createOne,
   planFiles,
   renderAccessibilityReview,
-  renderExample,
   renderIndex,
   renderReadme,
   renderSvelte,
@@ -35,7 +32,6 @@ import {
   renderTypes,
   type CreationContext,
 } from './create-component.ts';
-import { extractExampleFile } from './generate-component-examples.ts';
 import { extractFromSource } from './generate-component-metadata.ts';
 
 const REPOSITORY_ROOT = join(import.meta.dir, '..', '..', '..');
@@ -276,45 +272,6 @@ describe('renderAccessibilityReview', () => {
   });
 });
 
-describe('renderExample', () => {
-  it('produces a file the examples extractor publishes', () => {
-    const context = buildContext('my-widget');
-    const source = renderExample(context);
-    const result = extractExampleFile({
-      componentId: 'my-widget',
-      filePath: 'playground/src/examples/my-widget/basic.example.svelte',
-      source,
-      validCinderSubpaths: new Set(['my-widget']),
-    });
-
-    expect(result.kind).toBe('example');
-    if (result.kind !== 'example') throw new Error(`expected example, got ${result.kind}`);
-    expect(result.example.id).toBe('basic');
-    expect(result.example.title).toBe('MyWidget');
-    expect(result.example.description.length).toBeGreaterThan(0);
-    expect(result.example.code).toContain(
-      "import { MyWidget } from '@lostgradient/cinder/my-widget';",
-    );
-  });
-
-  it('imports experimental components via the experimental subpath', () => {
-    const context = buildContext('experimental/json-viewer');
-    const source = renderExample(context);
-    const result = extractExampleFile({
-      componentId: 'json-viewer',
-      filePath: 'playground/src/examples/json-viewer/basic.example.svelte',
-      source,
-      validCinderSubpaths: new Set(['experimental/json-viewer']),
-    });
-
-    expect(result.kind).toBe('example');
-    if (result.kind !== 'example') throw new Error(`expected example, got ${result.kind}`);
-    expect(result.example.code).toContain(
-      "import { JsonViewer } from '@lostgradient/cinder/experimental/json-viewer';",
-    );
-  });
-});
-
 describe('renderTest', () => {
   it('produces a test the convention check #9 predicate accepts as substantive', async () => {
     const source = renderTest(buildContext('my-widget'));
@@ -352,13 +309,9 @@ describe('renderTest', () => {
 });
 
 describe('planFiles', () => {
-  it('includes the playground example among the destinations so it is collision-checked', () => {
+  it('plans every component-directory file and no playground example', () => {
     const paths = planFiles(buildContext('my-widget')).map((file) => file.path);
-    // The playground example lives outside the component directory; if it is not
-    // in the planned set, the up-front precondition check would miss it and the
-    // partial-scaffold bug returns.
-    expect(paths.some((path) => path.endsWith('basic.example.svelte'))).toBe(true);
-    // And every component-directory file is planned too.
+    expect(paths.some((path) => path.endsWith('.example.svelte'))).toBe(false);
     for (const suffix of [
       'my-widget.svelte',
       'my-widget.types.ts',
@@ -374,16 +327,15 @@ describe('planFiles', () => {
 
 describe('createOne', () => {
   /**
-   * Build a CreationContext whose directory and examplesDirectory point into a
-   * throwaway temp tree, so createOne can be exercised against the real
-   * filesystem without touching the repository's src/ or playground/.
+   * Build a CreationContext whose directory points into a throwaway temp tree,
+   * so createOne can be exercised against the real filesystem without touching
+   * the repository's src/.
    */
   function temporaryContext(root: string, inputName: string): CreationContext {
     const base = buildContext(inputName);
     return {
       ...base,
       directory: join(root, 'components', base.relativeDirectory),
-      examplesDirectory: join(root, 'examples', base.name),
     };
   }
 
@@ -400,29 +352,19 @@ describe('createOne', () => {
     }
   });
 
-  it('aborts BEFORE writing any component file when the playground example already exists', async () => {
+  it('aborts without writing anything when the component directory already exists', async () => {
     const root = await mkdtemp(join(tmpdir(), 'create-component-create-'));
     try {
       const context = temporaryContext(root, 'my-widget');
-      // Pre-create only the playground example — the regression scenario where
-      // the old code wrote the whole component tree first and only then threw.
-      await mkdir(context.examplesDirectory, { recursive: true });
-      await writeFile(join(context.examplesDirectory, 'basic.example.svelte'), '<!-- existing -->');
+      await mkdir(context.directory, { recursive: true });
+      await writeFile(join(context.directory, 'README.md'), '<!-- existing -->');
 
-      await expect(createOne(context)).rejects.toThrow(
-        /refusing to overwrite existing file.*basic\.example\.svelte/,
-      );
+      await expect(createOne(context)).rejects.toThrow(/component directory already exists/);
 
-      // The component directory and its files must NOT exist: a clean abort with
-      // no half-created scaffold to clean up by hand.
-      expect(existsSync(context.directory)).toBe(false);
       expect(existsSync(join(context.directory, 'my-widget.svelte'))).toBe(false);
-      // The pre-existing example is left untouched.
-      const exampleContent = await readFile(
-        join(context.examplesDirectory, 'basic.example.svelte'),
-        'utf8',
+      expect(await readFile(join(context.directory, 'README.md'), 'utf8')).toBe(
+        '<!-- existing -->',
       );
-      expect(exampleContent).toBe('<!-- existing -->');
     } finally {
       await rm(root, { recursive: true, force: true });
     }

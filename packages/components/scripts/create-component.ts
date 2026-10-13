@@ -24,9 +24,6 @@
  *      the README renderer expects.
  *   6. `src/components/<name>/<name>.a11y.md` — the required design-review
  *      record and the conditional novel-interaction accessibility review.
- *   7. `packages/playground/src/examples/<name>/basic.example.svelte` — a
- *      playground example with the `<script lang="ts" module>` `title`/
- *      `description` metadata the examples generator requires.
  *
  * The placeholder values are intentionally generic — the contributor edits them
  * in place. They are chosen so that, immediately after creation, running
@@ -55,9 +52,7 @@ import { join } from 'node:path';
 import { collectPropConventionViolations } from './check-prop-conventions.ts';
 
 const PACKAGE_ROOT = join(import.meta.dir, '..');
-const PACKAGES_ROOT = join(PACKAGE_ROOT, '..');
 const COMPONENTS_DIR = join(PACKAGE_ROOT, 'src', 'components');
-const PLAYGROUND_EXAMPLES_DIR = join(PACKAGES_ROOT, 'playground', 'src', 'examples');
 
 const EXPERIMENTAL_PREFIX = 'experimental/';
 
@@ -82,8 +77,6 @@ export interface CreationContext {
    * matches where the files were actually written.
    */
   relativeDirectory: string;
-  /** Absolute path to the playground examples directory for this component. */
-  examplesDirectory: string;
   /** Import subpath consumers use: `@lostgradient/cinder/<name>` or `@lostgradient/cinder/experimental/<name>`. */
   importPath: string;
 }
@@ -113,7 +106,6 @@ export function buildContext(inputName: string): CreationContext {
   const directory = isExperimental
     ? join(COMPONENTS_DIR, 'experimental', name)
     : join(COMPONENTS_DIR, name);
-  const examplesDirectory = join(PLAYGROUND_EXAMPLES_DIR, name);
   const importPath = isExperimental
     ? `@lostgradient/cinder/experimental/${name}`
     : `@lostgradient/cinder/${name}`;
@@ -125,7 +117,6 @@ export function buildContext(inputName: string): CreationContext {
     isExperimental,
     directory,
     relativeDirectory,
-    examplesDirectory,
     importPath,
   };
 }
@@ -322,26 +313,6 @@ screen-reader/browser combinations reviewed._
 }
 
 /**
- * Render the playground `basic.example.svelte`. The module block exports the
- * `title`/`description` string literals the examples generator requires; the
- * instance imports the component via its public `@lostgradient/cinder/<name>` subpath.
- */
-export function renderExample(context: CreationContext): string {
-  const { name, pascalName, importPath } = context;
-  return `<script lang="ts" module>
-  export const title = '${pascalName}';
-  export const description = 'TODO: describe what this ${name} example demonstrates.';
-</script>
-
-<script lang="ts">
-  import { ${pascalName} } from '${importPath}';
-</script>
-
-<${pascalName}>Content</${pascalName}>
-`;
-}
-
-/**
  * Render `<name>.test.ts` — a substantive sibling test that mounts the component
  * and asserts it renders, with a second case covering the `class` passthrough.
  *
@@ -414,12 +385,11 @@ export interface PlannedFile {
 }
 
 /**
- * Resolve every file `createOne` will write — across both the component
- * directory and the playground examples directory — so that all destinations
- * can be collision-checked up front, before anything touches the disk.
+ * Resolve every file `createOne` will write so that all destinations can be
+ * collision-checked up front, before anything touches the disk.
  */
 export function planFiles(context: CreationContext): PlannedFile[] {
-  const { name, directory, examplesDirectory } = context;
+  const { name, directory } = context;
   assertScaffoldPropConventions(context);
   return [
     { path: join(directory, `${name}.svelte`), content: renderSvelte(context) },
@@ -431,18 +401,16 @@ export function planFiles(context: CreationContext): PlannedFile[] {
       content: renderAccessibilityReview(context),
     },
     { path: join(directory, 'README.md'), content: renderReadme(context) },
-    { path: join(examplesDirectory, 'basic.example.svelte'), content: renderExample(context) },
   ];
 }
 
 /**
  * Scaffold a single component's full skeleton atomically: every destination —
- * the component directory itself and all of its files plus the playground
- * example — is checked for an existing path BEFORE anything is written, so a
+ * the component directory itself and all of its files — is checked for an existing path BEFORE anything is written, so a
  * collision aborts cleanly with no half-created scaffold left on disk.
  */
 export async function createOne(context: CreationContext): Promise<void> {
-  const { directory, examplesDirectory } = context;
+  const { directory } = context;
 
   if (existsSync(directory)) {
     throw new Error(`component directory already exists: ${directory}`);
@@ -456,7 +424,6 @@ export async function createOne(context: CreationContext): Promise<void> {
   }
 
   await mkdir(directory, { recursive: true });
-  await mkdir(examplesDirectory, { recursive: true });
   for (const { path, content } of plannedFiles) {
     await Bun.write(path, content);
   }

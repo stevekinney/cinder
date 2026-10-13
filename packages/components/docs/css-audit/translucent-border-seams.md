@@ -234,7 +234,7 @@ This list is no longer prose that has to be re-derived.
 `src/styles/border-tier-non-border-uses.test.ts` enumerates every use of a
 structural tier outside a `border`/`outline` declaration — in `.css` and in
 `.svelte` `<style>` blocks, across `packages/components`, `packages/chat`,
-`packages/editor`, and `packages/playground` — requires each to be classified as
+and `packages/editor` — requires each to be classified as
 a hairline, area, mix, occlusion, or alias, and requires every `area` to be named
 in this document. An unclassified site fails the suite.
 
@@ -636,8 +636,8 @@ design and still reads as one. Left as authored.
 
 ### Playground placeholder hatching — intentional
 
-Ten `packages/playground/src/examples/card/*.example.svelte` files and
-`examples/aspect-ratio/embedded-media.example.svelte` build a diagonal
+Ten playground card example files and the aspect-ratio `embedded-media` example
+(the playground now lives in the private Corvidae workspace) build a diagonal
 placeholder hatch out of `color-mix(in oklch, var(--cinder-border-muted),
 transparent 70%)`. Double dilution makes the hatch fainter than before
 (19% × 30% ≈ 6% alpha).

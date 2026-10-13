@@ -190,8 +190,6 @@
     "build": "bun run scripts/build.ts",
     "clean": "rm -rf dist coverage node_modules/.cache lostgradient-chat-*.tgz",
     "colors:audit": "bun ../components/scripts/check-component-css-raw-colors.ts --source-root src/lib --baseline scripts/raw-color-baseline.json --strict",
-    "components:check": "bun run scripts/generate-component-artifacts.ts --check",
-    "components:generate": "bun run scripts/generate-component-artifacts.ts",
     "dev": "svelte-package --watch",
     "lint": "oxlint --type-aware --tsconfig tsconfig.json $(find src scripts -type f \\( -name '*.ts' -o -name '*.svelte' \\))",
     "lint:fix": "oxlint --fix --type-aware --tsconfig tsconfig.json $(find src scripts -type f \\( -name '*.ts' -o -name '*.svelte' \\))",
@@ -204,7 +202,7 @@
     "test:prepare": "bun run --filter=@lostgradient/cinder build",
     "tokens:audit": "bun ../components/scripts/check-component-css-token-usage.ts --source-root src/lib --baseline scripts/token-usage-baseline.json --strict",
     "typecheck": "bun run --filter='@lostgradient/markdown' build && bun run --filter='@lostgradient/cinder' build && svelte-check --workspace . --tsconfig ./tsconfig.browser.json --fail-on-warnings && svelte-check --workspace . --tsconfig ./tsconfig.json --fail-on-warnings",
-    "validate": "bun run lint && bun run typecheck && bun run test:coverage && bun run platform:audit && bun run colors:audit && bun run tokens:audit && bun run visually-hidden:audit && bun run components:check && bun run build",
+    "validate": "bun run lint && bun run typecheck && bun run test:coverage && bun run platform:audit && bun run colors:audit && bun run tokens:audit && bun run visually-hidden:audit && bun run build",
     "validate:consumer": "bun run scripts/validate-consumer.ts",
     "visually-hidden:audit": "bun run scripts/check-visually-hidden-classes.ts"
   },

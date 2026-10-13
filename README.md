@@ -207,7 +207,6 @@ bun run --filter=@lostgradient/cinder components:generate
 bun run --filter=@lostgradient/cinder exports:check
 bun run --filter=@lostgradient/cinder validate:consumer
 bun run --filter=@lostgradient/chat build
-bun run --filter=@lostgradient/chat components:check
 bun run --filter=@lostgradient/chat validate:consumer
 ```
 
@@ -219,7 +218,7 @@ bun run --filter=@lostgradient/cinder components:generate
 
 That regenerates schemas, variables, examples, constraints, the manifest, generated README sections, package exports, and related artifacts.
 
-For the Chat family, update `packages/chat/src/lib/components/<component-id>/` and run the matching `@lostgradient/chat` `components:generate` command.
+Chat and Editor component artifacts are emitted by Corvidae's mirror sync; do not generate them here.
 
 ## Release
 
