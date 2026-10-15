@@ -136,5 +136,5 @@ If the Changesets/OIDC path fails and a release is urgent, `.github/workflows/re
 Token hygiene for the break-glass secret:
 
 - Rotate `NPM_TOKEN` at least every 90 days.
-- Use a Granular Access Token scoped only to the five public `@lostgradient/*` packages — never a full-access automation token.
+- Use a Granular Access Token scoped only to the four public `@lostgradient/*` packages — never a full-access automation token.
 - After a break-glass publish, investigate and restore the primary OIDC path before the next release.

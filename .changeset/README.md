@@ -1,6 +1,6 @@
 # Changesets
 
-This directory tracks pending releases for the five public packages. Run `bun x changeset` to add a new changeset describing your change. The release workflow (`.github/workflows/release.yaml`) consumes accumulated changesets to open a "Version Packages" pull request and publishes the changed public packages to npm through Trusted Publishing when that pull request is merged.
+This directory tracks pending releases for the four public packages. Run `bun x changeset` to add a new changeset describing your change. The release workflow (`.github/workflows/release.yaml`) consumes accumulated changesets to open a "Version Packages" pull request and publishes the changed public packages to npm through Trusted Publishing when that pull request is merged.
 
 The public packages are `@lostgradient/markdown` (`packages/markdown/`), `@lostgradient/cinder` (`packages/components/`), `@lostgradient/editor` (`packages/editor/`), and `@lostgradient/cinder-mcp` (`packages/mcp/`). `@lostgradient/chat` stopped publishing on 2026-10-14; do not add changesets for it. The other workspaces remain private. Because public packages declare some of them as `workspace:*` development dependencies and bundle their output, Changesets cannot ignore those connected workspaces. Instead, `privatePackages.version: true` lets Changesets update their internal versions without publishing them.
 

@@ -142,30 +142,35 @@ export async function reconcileInternalPeers(
   return { updates };
 }
 
+const workspaceRoot = join(import.meta.dir, '..', '..', '..');
+
+/**
+ * The real manifests `changeset:version` reconciles. Exported so a test can hold every path to a
+ * file that exists: this script runs inside every Changesets versioning pass, and a manifest
+ * removed from the repository (as `packages/chat` was when `@lostgradient/chat` stopped
+ * publishing) must fail that test rather than the next release.
+ */
+export const releaseInternalPeers: ReconcileInternalPeersOptions = {
+  dependencies: [
+    {
+      label: 'Cinder',
+      manifestPath: join(workspaceRoot, 'packages', 'components', 'package.json'),
+    },
+    {
+      label: 'Markdown',
+      manifestPath: join(workspaceRoot, 'packages', 'markdown', 'package.json'),
+    },
+  ],
+  dependents: [
+    {
+      label: 'Editor',
+      manifestPath: join(workspaceRoot, 'packages', 'editor', 'package.json'),
+    },
+  ],
+};
+
 async function main(): Promise<void> {
-  const workspaceRoot = join(import.meta.dir, '..', '..', '..');
-  const result = await reconcileInternalPeers({
-    dependencies: [
-      {
-        label: 'Cinder',
-        manifestPath: join(workspaceRoot, 'packages', 'components', 'package.json'),
-      },
-      {
-        label: 'Markdown',
-        manifestPath: join(workspaceRoot, 'packages', 'markdown', 'package.json'),
-      },
-    ],
-    dependents: [
-      {
-        label: 'Chat',
-        manifestPath: join(workspaceRoot, 'packages', 'chat', 'package.json'),
-      },
-      {
-        label: 'Editor',
-        manifestPath: join(workspaceRoot, 'packages', 'editor', 'package.json'),
-      },
-    ],
-  });
+  const result = await reconcileInternalPeers(releaseInternalPeers);
 
   if (result.updates.length > 0) {
     for (const update of result.updates) {

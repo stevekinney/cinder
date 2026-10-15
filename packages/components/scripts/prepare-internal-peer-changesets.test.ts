@@ -5,6 +5,7 @@ import { join } from 'node:path';
 
 import {
   prepareInternalPeerChangesets,
+  releaseInternalPeerDependents,
   SYNTHETIC_CHANGESET_FILENAME,
   syntheticChangesetContent,
   type PrepareInternalPeerChangesetsOptions,
@@ -132,5 +133,19 @@ describe('prepareInternalPeerChangesets', () => {
 
     expect(firstResult.writtenReleases).toHaveLength(2);
     expect(secondResult.writtenReleases).toEqual([]);
+  });
+});
+
+describe('the dependents changeset:version prepares', () => {
+  // `changeset:version` runs this script on every versioning pass; a dependent manifest that no
+  // longer exists blocks the next Version Packages pull request.
+  test('every dependent manifest it names exists', async () => {
+    expect(releaseInternalPeerDependents.length).toBeGreaterThan(0);
+    for (const { name, manifestPath } of releaseInternalPeerDependents) {
+      expect({ name, exists: await Bun.file(manifestPath).exists() }).toEqual({
+        name,
+        exists: true,
+      });
+    }
   });
 });

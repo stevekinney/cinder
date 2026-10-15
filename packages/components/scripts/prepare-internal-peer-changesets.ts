@@ -118,16 +118,24 @@ export async function prepareInternalPeerChangesets(
   return { writtenReleases: missingReleases.map(({ name }) => name) };
 }
 
+const workspaceRoot = join(import.meta.dir, '..', '..', '..');
+
+/**
+ * The real dependents `changeset:version` prepares changesets for. Exported so a test can hold
+ * every manifest path to a file that exists, for the reason `releaseInternalPeers` in
+ * `reconcile-internal-peers.ts` gives.
+ */
+export const releaseInternalPeerDependents: InternalPeerDependent[] = [
+  {
+    name: '@lostgradient/editor',
+    manifestPath: join(workspaceRoot, 'packages', 'editor', 'package.json'),
+  },
+];
+
 async function main(): Promise<void> {
-  const workspaceRoot = join(import.meta.dir, '..', '..', '..');
   const result = await prepareInternalPeerChangesets({
     changesetDirectory: join(workspaceRoot, '.changeset'),
-    dependents: [
-      {
-        name: '@lostgradient/editor',
-        manifestPath: join(workspaceRoot, 'packages', 'editor', 'package.json'),
-      },
-    ],
+    dependents: releaseInternalPeerDependents,
   });
 
   if (result.writtenReleases.length > 0) {
