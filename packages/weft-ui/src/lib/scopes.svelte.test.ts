@@ -150,6 +150,20 @@ describe('resolvePrincipal', () => {
     });
   });
 
+  test('a package-registered scope is left out of the console vocabulary', async () => {
+    // A server can register package scopes (`bureau.tasks:read`) through
+    // `serve({ additionalScopes })`. The console gates only on Weft's own
+    // scopes, so it keeps those and ignores the rest.
+    const principal = await resolvePrincipal(
+      principalClient(async () => ({
+        method: 'jwt',
+        subject: 'operator',
+        scopes: ['bureau.tasks:read', 'system:read'],
+      })),
+    );
+    expect(principal).toEqual({ scopes: ['system:read'], unauthenticatedAccess: null });
+  });
+
   test('the reported scope set is copied, not aliased to the response array', async () => {
     // `Principal.scopes` outlives the response object; `denyScope()` rebuilds
     // it by filtering, so a shared reference would be a latent aliasing bug

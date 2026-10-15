@@ -56,7 +56,7 @@
     MoreHorizontal,
   } from '@lostgradient/cinder';
 
-  import { getShortcutDisplay } from '../../../editor/index.ts';
+  import { getShortcutDisplay } from '../../../editor/component-runtime.ts';
 
   import ToolbarButton from './toolbar-button.svelte';
   import ToolbarSeparator from './toolbar-separator.svelte';

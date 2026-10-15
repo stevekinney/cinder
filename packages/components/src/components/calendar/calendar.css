@@ -109,6 +109,20 @@
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
+  /* Range ends are solid accent fills: gap, then ring (COR-1498). */
+  .cinder-calendar__day[data-range-start]:focus-visible,
+  .cinder-calendar__day[data-range-end]:focus-visible {
+    box-shadow: var(--_cinder-focus-ring-filled-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-calendar__day[data-range-start]:focus-visible,
+    .cinder-calendar__day[data-range-end]:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 1px;
+    }
+  }
+
   @media (forced-colors: active) {
     .cinder-calendar__day:focus-visible {
       outline: var(--cinder-ring-width) solid ButtonText;

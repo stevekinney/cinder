@@ -46,7 +46,7 @@
 
   /* Sticky-hover suppression on touch. */
   @media (hover: hover) {
-    .cinder-combobox__input:hover:not(:disabled) {
+    .cinder-combobox__input:hover:not(:disabled):not(:focus-visible) {
       border-color: var(--cinder-border-strong);
     }
   }
@@ -61,6 +61,14 @@
 
   .cinder-combobox__input[aria-invalid='true'] {
     border-color: var(--cinder-status-danger-solid);
+  }
+
+  /* COR-1498: the tight ring sits directly on the control edge, so a visible
+     border inside it would read as one heavier 3px shape (the COR-1072
+     problem). Keep the border transparent while focused, in every state,
+     and keep hover from repainting it. */
+  .cinder-combobox__input[aria-invalid='true']:focus-visible {
+    border-color: transparent;
   }
 
   .cinder-combobox__input:disabled {

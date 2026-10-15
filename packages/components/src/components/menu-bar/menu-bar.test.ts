@@ -36,6 +36,11 @@ const { pushEscapeHandler, resetEscapeStack } = await import('../../_internal/ov
 const MENU_BAR_SOURCE = `${import.meta.dir}/_menu-bar-ssr-test.svelte`;
 
 await prepareSvelteServerSource(MENU_BAR_SOURCE);
+// Server rendering spawns a Bun process, so it runs once at module scope, off bun's per-test clock.
+const [menuBarServerHtml, providerDirectionMenuBarServerHtml] = await Promise.all([
+  renderSvelteOnServer(MENU_BAR_SOURCE),
+  renderSvelteOnServer(MENU_BAR_SOURCE, { providerDirection: 'rtl' }),
+]);
 
 /**
  * Runs `run` with Bun's fake timers installed so the submenu's internal
@@ -246,22 +251,20 @@ describe('MenuBar', () => {
     expect(getByRole('menubar').getAttribute('dir')).toBe('auto');
   });
 
-  test('server rendering omits provider fallback direction until local DOM can be checked', async () => {
-    const html = await renderSvelteOnServer(MENU_BAR_SOURCE);
+  test('server rendering omits provider fallback direction until local DOM can be checked', () => {
+    const html = menuBarServerHtml;
     const menuBarTag = html.match(/<div[^>]*class="[^"]*cinder-menu-bar[^"]*"[^>]*>/)?.[0] ?? '';
 
     expect(menuBarTag).not.toBe('');
     expect(menuBarTag).not.toContain('dir=');
   });
 
-  test('server rendering uses provider direction before local DOM can be checked', async () => {
-    const html = await renderSvelteOnServer(MENU_BAR_SOURCE, {
-      providerDirection: 'rtl',
-    });
+  test('server rendering uses provider direction before local DOM can be checked', () => {
+    const html = providerDirectionMenuBarServerHtml;
     const menuBarTag = html.match(/<div[^>]*class="[^"]*cinder-menu-bar[^"]*"[^>]*>/)?.[0] ?? '';
 
     expect(menuBarTag).toContain('dir="rtl"');
-  }, 30_000);
+  });
 
   test('uses the computed menubar root direction for dir auto keyboard behavior', async () => {
     const originalWindowGetComputedStyle = window.getComputedStyle;

@@ -21,13 +21,14 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, test } from 'bun:test';
 
-import {
-  checkBuildFlagHydrationSafety,
-  prepareBuildFlagHydrationSafety,
-} from '../../test/hydration-safety.ts';
+import { checkBuildFlagHydrationSafety } from '../../test/hydration-safety.ts';
 
 const shareCardPath = new URL('./share-card.svelte', import.meta.url).pathname;
-await prepareBuildFlagHydrationSafety(shareCardPath);
+// The build-flag check runs Bun.build passes and server renders in child processes, so it runs
+// once at module scope, off bun's per-test clock.
+const shareCardResult = await checkBuildFlagHydrationSafety(shareCardPath, {
+  value: 'https://example.com/share/abc',
+});
 
 describe('ShareCard build-flag hydration safety', () => {
   test('native-share capability stays behind the post-hydration gate', () => {
@@ -42,10 +43,8 @@ describe('ShareCard build-flag hydration safety', () => {
     expect(source).toMatch(/{#if !actions && canNativeShare}\s*{@render shareButton/s);
   });
 
-  test('real ShareCard SSR output stays invariant and omits the native-share affordance', async () => {
-    const result = await checkBuildFlagHydrationSafety(shareCardPath, {
-      value: 'https://example.com/share/abc',
-    });
+  test('real ShareCard SSR output stays invariant and omits the native-share affordance', () => {
+    const result = shareCardResult;
 
     expect(result.buildFlagInvariant).toBe(true);
     expect(result.serverHtml).toBe(result.clientHtml);

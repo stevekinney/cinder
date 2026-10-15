@@ -29,7 +29,8 @@
     "typescript": "6.0.3"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./coverage-ratchet": "./src/coverage-ratchet/index.ts"
   },
   "version": "0.0.0"
 }

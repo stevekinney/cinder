@@ -316,4 +316,42 @@ describe('VirtualList — coalescing a held ArrowDown under smoothScroll (COR-37
     // destination the settled write leaves behind steps to row 10.
     expect(calls).toEqual([2 * 20 - 20, 10 * 20 - 20]);
   });
+  test('case 6: a write the browser took back is re-issued instead of letting the destination expire short of it', async () => {
+    // Measured against real Chromium (COR-1518): a retargeted smooth scroll can
+    // land on its destination and then be rolled back to the position the press
+    // started from by the previous animation finishing late. The position
+    // settles exactly where it began, the destination expired there, and the
+    // next press stepped from the lagging row, so a held key lost one row.
+    //
+    // `scrollTo` is stubbed to record the target and never apply it, which is
+    // the same observable outcome: the position never leaves where it started.
+    const container = renderStickySmoothList();
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = requiredInstance(container.querySelector('.cinder-virtual-list'), HTMLElement);
+    const calls: number[] = [];
+    Object.defineProperty(list, 'scrollTo', {
+      configurable: true,
+      value: (options: ScrollToOptions) => {
+        calls.push(options?.top ?? 0);
+      },
+    });
+
+    arrowDown(list);
+    expect(calls).toEqual([2 * 20 - 20]);
+
+    // Enough real frames for every bounded settle pass to run out.
+    for (let frame = 0; frame < 40; frame += 1) await nextAnimationFrame();
+
+    // The destination was written again, a bounded number of times.
+    expect(calls.length).toBeGreaterThan(1);
+    expect(calls.length).toBeLessThanOrEqual(3);
+    expect(new Set(calls)).toEqual(new Set([2 * 20 - 20]));
+
+    // And it still expires afterwards: the next press resolves from the live
+    // position (still the first row) rather than a destination that never
+    // arrived.
+    const before = calls.length;
+    arrowDown(list);
+    expect(calls.slice(before)).toEqual([2 * 20 - 20]);
+  });
 });

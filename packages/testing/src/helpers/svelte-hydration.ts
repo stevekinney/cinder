@@ -18,6 +18,18 @@ export async function renderThenHydrate<Props extends Record<string, unknown>>(
   serverProps: Record<string, unknown> = props,
 ): Promise<HydrateResult> {
   const ssrHtml = await renderSvelteOnServer(sourcePath, serverProps);
+  return hydrateServerHtml(component, ssrHtml, props);
+}
+
+/**
+ * Hydrate already-rendered server HTML with the real client runtime. Separate from
+ * `renderThenHydrate` so a test can render once at module scope, off the per-test clock.
+ */
+export function hydrateServerHtml<Props extends Record<string, unknown>>(
+  component: Component<Props>,
+  ssrHtml: string,
+  props: Props,
+): HydrateResult {
   setupHappyDom();
   const container = document.createElement('div');
   container.innerHTML = ssrHtml;

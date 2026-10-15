@@ -10,6 +10,61 @@ import { assertPrettierResolvesToRoot } from './lib/prettier-resolution.ts';
 const repositoryRoot = resolve(import.meta.dirname, '../../..');
 const packageRoot = resolve(import.meta.dirname, '..');
 
+// Plain Bun (no `--conditions browser`) is the behavior under test here, so the probe process runs
+// once at module scope, off bun's per-test clock; the test below only asserts on the settled result.
+async function runPrettierOverridesProbe(): Promise<{
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+}> {
+  const temporaryDirectory = mkdtempSync(join(tmpdir(), 'cinder-format-generated-'));
+  const scriptPath = join(temporaryDirectory, 'probe.ts');
+  const operationsPath = join(packageRoot, 'scripts/component-artifact-operations.ts');
+  const componentDirectory = join(packageRoot, 'src/components/run-step-timeline');
+  const markdownInput =
+    '| Name | Description |\n' +
+    '| --- | --- |\n' +
+    '| `RunStepDetail` | A detail with enough prose to make Prettier want to wrap the table cell when proseWrap is not never. |\n';
+
+  writeFileSync(
+    scriptPath,
+    [
+      "import * as prettier from 'prettier';",
+      `import { formatGenerated } from ${JSON.stringify(operationsPath)};`,
+      `const componentDirectory = ${JSON.stringify(componentDirectory)};`,
+      `const markdownInput = ${JSON.stringify(markdownInput)};`,
+      'const jsonPath = `${componentDirectory}/run-step-timeline.schema.json`;',
+      'const markdownPath = `${componentDirectory}/README.md`;',
+      'await formatGenerated(\'{"b":2,"a":1}\', jsonPath);',
+      'const formattedMarkdown = await formatGenerated(markdownInput, markdownPath);',
+      'const markdownOptions = await prettier.resolveConfig(markdownPath);',
+      'const freshMarkdown = await prettier.format(markdownInput, { ...markdownOptions, filepath: markdownPath });',
+      'console.log(JSON.stringify({ formattedMarkdown, freshMarkdown, proseWrap: markdownOptions?.proseWrap }));',
+    ].join('\n'),
+  );
+
+  try {
+    const subprocess = Bun.spawn({
+      timeout: 120_000,
+      cmd: [process.execPath, scriptPath],
+      cwd: repositoryRoot,
+      stdout: 'pipe',
+      stderr: 'pipe',
+      env: process.env,
+    });
+    const [stdout, stderr, exitCode] = await Promise.all([
+      new Response(subprocess.stdout).text(),
+      new Response(subprocess.stderr).text(),
+      subprocess.exited,
+    ]);
+    return { stdout, stderr, exitCode };
+  } finally {
+    rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
+}
+
+const prettierOverridesProbe = await runPrettierOverridesProbe();
+
 /**
  * The happy path -- `formatGenerated` producing correctly formatted artifacts --
  * is deliberately NOT asserted here. This suite runs under
@@ -91,63 +146,21 @@ describe('formatGenerated prettier resolution', () => {
     expect(result).toBeUndefined();
   });
 
-  test('resolves prettier overrides per generated file in one component directory', async () => {
-    const temporaryDirectory = mkdtempSync(join(tmpdir(), 'cinder-format-generated-'));
-    const scriptPath = join(temporaryDirectory, 'probe.ts');
-    const operationsPath = join(packageRoot, 'scripts/component-artifact-operations.ts');
-    const componentDirectory = join(packageRoot, 'src/components/run-step-timeline');
-    const markdownInput =
-      '| Name | Description |\n' +
-      '| --- | --- |\n' +
-      '| `RunStepDetail` | A detail with enough prose to make Prettier want to wrap the table cell when proseWrap is not never. |\n';
-
-    writeFileSync(
-      scriptPath,
-      [
-        "import * as prettier from 'prettier';",
-        `import { formatGenerated } from ${JSON.stringify(operationsPath)};`,
-        `const componentDirectory = ${JSON.stringify(componentDirectory)};`,
-        `const markdownInput = ${JSON.stringify(markdownInput)};`,
-        'const jsonPath = `${componentDirectory}/run-step-timeline.schema.json`;',
-        'const markdownPath = `${componentDirectory}/README.md`;',
-        'await formatGenerated(\'{"b":2,"a":1}\', jsonPath);',
-        'const formattedMarkdown = await formatGenerated(markdownInput, markdownPath);',
-        'const markdownOptions = await prettier.resolveConfig(markdownPath);',
-        'const freshMarkdown = await prettier.format(markdownInput, { ...markdownOptions, filepath: markdownPath });',
-        'console.log(JSON.stringify({ formattedMarkdown, freshMarkdown, proseWrap: markdownOptions?.proseWrap }));',
-      ].join('\n'),
-    );
-
-    try {
-      const subprocess = Bun.spawn({
-        cmd: [process.execPath, scriptPath],
-        cwd: repositoryRoot,
-        stdout: 'pipe',
-        stderr: 'pipe',
-        env: process.env,
-      });
-      const [stdout, stderr, exitCode] = await Promise.all([
-        new Response(subprocess.stdout).text(),
-        new Response(subprocess.stderr).text(),
-        subprocess.exited,
-      ]);
-
-      expect(stderr).toBe('');
-      expect(exitCode).toBe(0);
-      const parsed = JSON.parse(stdout) as {
-        formattedMarkdown: string;
-        freshMarkdown: string;
-        proseWrap?: string;
-      };
-      expect(parsed.formattedMarkdown).toBe(parsed.freshMarkdown);
-      expect(parsed.formattedMarkdown).toMatch(/\|\s*`RunStepDetail`\s*\|/);
-      if (parsed.proseWrap === 'never') {
-        expect(parsed.formattedMarkdown).toContain('| Name | Description |');
-      } else {
-        expect(parsed.formattedMarkdown).toContain('| Name            | Description');
-      }
-    } finally {
-      rmSync(temporaryDirectory, { recursive: true, force: true });
+  test('resolves prettier overrides per generated file in one component directory', () => {
+    const { stdout, stderr, exitCode } = prettierOverridesProbe;
+    expect(stderr).toBe('');
+    expect(exitCode).toBe(0);
+    const parsed = JSON.parse(stdout) as {
+      formattedMarkdown: string;
+      freshMarkdown: string;
+      proseWrap?: string;
+    };
+    expect(parsed.formattedMarkdown).toBe(parsed.freshMarkdown);
+    expect(parsed.formattedMarkdown).toMatch(/\|\s*`RunStepDetail`\s*\|/);
+    if (parsed.proseWrap === 'never') {
+      expect(parsed.formattedMarkdown).toContain('| Name | Description |');
+    } else {
+      expect(parsed.formattedMarkdown).toContain('| Name            | Description');
     }
   });
 });

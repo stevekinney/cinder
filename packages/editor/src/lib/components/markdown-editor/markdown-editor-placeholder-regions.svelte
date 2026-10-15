@@ -6,11 +6,13 @@
   let {
     id,
     instructionsVisible,
+    statusVisible,
     statusMessage,
     diagnostics,
   }: {
     id: string;
     instructionsVisible: boolean;
+    statusVisible: boolean;
     statusMessage: string;
     diagnostics: readonly PlaceholderDiagnostic[];
   } = $props();
@@ -25,12 +27,19 @@
     >{PLACEHOLDER_INSTRUCTIONS}</VisuallyHidden
   >
 {/if}
+<!--
+  The element is always present so its id stays addressable and assistive
+  technology can register it early. It is only a live region while completion
+  is configured: with no placeholder configuration it is an inert, empty
+  element, so a host's own announcer (ReviewEditor's comment navigation) is
+  not joined by a second, empty polite status region.
+-->
 <VisuallyHidden
   as="div"
   id={`${id}-placeholder-status`}
-  role="status"
-  aria-live="polite"
-  aria-atomic="true">{statusMessage}</VisuallyHidden
+  role={statusVisible ? 'status' : undefined}
+  aria-live={statusVisible ? 'polite' : undefined}
+  aria-atomic={statusVisible ? 'true' : undefined}>{statusMessage}</VisuallyHidden
 >
 {#if diagnostics.length > 0}
   <Callout

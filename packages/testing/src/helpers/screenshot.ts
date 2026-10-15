@@ -206,13 +206,15 @@ export function blockBaselineGuard(
     `  ${baselinePath}`,
     '',
     'Block mode compares against committed baselines, but none exists for this case.',
-    'To author missing or changed baselines, run:',
+    'Baselines are authored only in the renderer image. Commit, then run:',
     '',
-    '  bun run test:browser:update',
+    '  bun run test:browser:update:docker',
     '',
-    'Then rerun the root visual regression command:',
+    'Then verify the commit with the root visual regression command:',
     '',
-    '  bun run test:browser:visual',
+    '  bun run test:browser:visual:docker',
+    '',
+    'See scripts/browser-fixtures/visual-baselines.md.',
   ].join('\n');
 
   return { ok: false, message };

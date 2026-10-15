@@ -222,6 +222,20 @@
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
+  /* Pressed accent, danger, success, warning and info chips are solid fills, so
+   * the ring gets a page-coloured gap (COR-1498). Neutral pressed is a surface
+   * shift, not a fill, and keeps the tight ring. */
+  button.cinder-chip[aria-pressed='true']:not([data-cinder-variant='neutral']):focus-visible {
+    box-shadow: var(--_cinder-focus-ring-filled-shadow);
+  }
+
+  @media (forced-colors: active) {
+    button.cinder-chip[aria-pressed='true']:not([data-cinder-variant='neutral']):focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
+  }
+
   @media (forced-colors: active) {
     button.cinder-chip:focus-visible,
     .cinder-chip__remove:focus-visible {

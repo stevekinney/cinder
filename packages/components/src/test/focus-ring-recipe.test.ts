@@ -85,6 +85,7 @@ const treeCss = loadCss('../components/tree/tree.css');
 
 const TRANSPARENT_OUTLINE = 'var(--cinder-ring-width) solid transparent';
 const SHARED_BOX_SHADOW = 'var(--_cinder-focus-ring-shadow)';
+const FILLED_BOX_SHADOW = 'var(--_cinder-focus-ring-filled-shadow)';
 const GROUPED_DROPDOWN_TRIGGER_SELECTOR = [
   '.cinder-button-group',
   '> .cinder-dropdown[data-cinder-button-group-item]',
@@ -169,6 +170,10 @@ const recipes: Array<{
   // --cinder-ring-offset-color resolves to --cinder-surface-raised, which is also the
   // palette's own background, so the offset band is invisible instead of drawing a halo.
   // The recipe pin now lives in command-palette.test.ts.
+  //
+  // COR-1498 reversed it again: with the tight ring there is no offset band to hide,
+  // and the owner chose no ring on the palette search at all (the row is the field and
+  // the caret shows focus). command-palette.test.ts pins that exception.
   {
     name: 'slider thumb',
     css: sliderCss,
@@ -359,7 +364,9 @@ describe('tab button — inset focus ring inside the scrollable tab list', () =>
 });
 
 describe('selection-popover floating-button focus-visible', () => {
-  test('uses the transparent placeholder and includes the shared focus ring in its box-shadow', () => {
+  // Updated for COR-1498: the button is a solid accent fill, so it uses the filled
+  // formula (a page-coloured gap, then the ring) instead of the tight shared ring.
+  test('uses the transparent placeholder and includes the filled focus ring in its box-shadow', () => {
     const root = parse(selectionPopoverCss);
     const rules = findRules(root, '.cinder-selection-popover__button:focus-visible').filter(
       (rule) => !isUnderForcedColors(rule),
@@ -369,7 +376,8 @@ describe('selection-popover floating-button focus-visible', () => {
     expect(declValue(rule, 'outline')).toBe(TRANSPARENT_OUTLINE);
     const boxShadow = declValue(rule, 'box-shadow');
     expect(boxShadow).toBeDefined();
-    expect(boxShadow).toContain(SHARED_BOX_SHADOW);
+    expect(boxShadow).toContain(FILLED_BOX_SHADOW);
+    expect(boxShadow).toContain('var(--cinder-shadow-md)');
   });
 });
 
@@ -947,4 +955,130 @@ describe('forced-colors fallbacks — issue #460', () => {
       assertForcedColorsFallback(css, selector, expectedOffset);
     });
   }
+});
+
+// COR-1498: the default ring is tight, but a focused element whose own background is
+// a solid accent, danger or status fill paints a --cinder-ring-offset-color gap and
+// then the standard ring, so the ring sits on the page instead of a same-hue fill.
+// Each case pins the filled focus rule to the shared filled formula, or, where a
+// per-state hook colour must survive (an invalid checked Checkbox), to the inline
+// two stops built on the private gap constant.
+describe('filled controls paint a gap before the ring (COR-1498)', () => {
+  const css = (relativePath: string) => loadCss(relativePath);
+  const gapRecipe = (colour: string) =>
+    '0 0 0 var(--_cinder-focus-ring-filled-gap) var(--cinder-ring-offset-color), ' +
+    `0 0 0 calc(var(--_cinder-focus-ring-filled-gap) + var(--cinder-ring-width)) ${colour}`;
+  const cases: Array<{ name: string; source: string; selector: string; expected: string }> = [
+    {
+      name: 'Button primary',
+      source: css('../components/button/button.css'),
+      selector:
+        ".cinder-button[data-cinder-variant='primary']:focus-visible:not(:disabled):not( [aria-disabled='true']:not([data-cinder-loading]) )",
+      expected: FILLED_BOX_SHADOW,
+    },
+    {
+      name: 'Button danger',
+      source: css('../components/button/button.css'),
+      selector:
+        ".cinder-button[data-cinder-variant='danger']:focus-visible:not(:disabled):not( [aria-disabled='true']:not([data-cinder-loading]) )",
+      expected: FILLED_BOX_SHADOW,
+    },
+    {
+      name: 'Checkbox checked',
+      source: css('../components/checkbox/checkbox.css'),
+      selector: '.cinder-checkbox:checked:focus-visible',
+      expected: gapRecipe('var(--_cinder-checkbox-ring, var(--cinder-ring-color))'),
+    },
+    {
+      name: 'Checkbox indeterminate',
+      source: css('../components/checkbox/checkbox.css'),
+      selector: '.cinder-checkbox:indeterminate:focus-visible',
+      expected: gapRecipe('var(--_cinder-checkbox-ring, var(--cinder-ring-color))'),
+    },
+    {
+      name: 'Radio checked',
+      source: css('../components/radio-group/radio-group.css'),
+      selector: '.cinder-radio:checked:focus-visible',
+      expected: gapRecipe('var(--_cinder-radio-ring, var(--cinder-ring-color))'),
+    },
+    {
+      name: 'Switch on',
+      source: css('../components/toggle/toggle.css'),
+      selector: '.cinder-toggle[data-cinder-checked]:focus-visible',
+      expected: gapRecipe('var(--cinder-toggle-ring, var(--cinder-ring-color))'),
+    },
+    {
+      name: 'SegmentedControl selected',
+      source: css('../components/segmented-control/segmented-control.css'),
+      selector:
+        ".cinder-segmented-control:not([data-cinder-variant='tablist']) .cinder-segmented-control-option[data-cinder-selected]:focus-visible",
+      expected: FILLED_BOX_SHADOW,
+    },
+    {
+      name: 'Chip pressed (non-neutral)',
+      source: css('../components/chip/chip.css'),
+      selector:
+        "button.cinder-chip[aria-pressed='true']:not([data-cinder-variant='neutral']):focus-visible",
+      expected: FILLED_BOX_SHADOW,
+    },
+    {
+      name: 'Pagination current page',
+      source: css('../components/pagination/pagination.css'),
+      selector: '.cinder-pagination__page[data-cinder-current]:focus-visible',
+      expected: FILLED_BOX_SHADOW,
+    },
+    {
+      name: 'Calendar range start',
+      source: css('../components/calendar/calendar.css'),
+      selector: '.cinder-calendar__day[data-range-start]:focus-visible',
+      expected: FILLED_BOX_SHADOW,
+    },
+    {
+      name: 'SelectionPopover submit',
+      source: selectionPopoverCss,
+      selector: '.cinder-selection-popover__submit:focus-visible',
+      expected: FILLED_BOX_SHADOW,
+    },
+    {
+      name: 'SchemaForm submit',
+      source: css('../components/schema-form/schema-form.css'),
+      selector: '.cinder-schema-form__submit:focus-visible',
+      expected: FILLED_BOX_SHADOW,
+    },
+    {
+      name: 'FileUpload browse button',
+      source: css('../components/file-upload/file-upload.css'),
+      selector: '.cinder-file-upload__button:focus-visible',
+      expected: FILLED_BOX_SHADOW,
+    },
+    {
+      name: 'CapabilityGate primary action',
+      source: capabilityGateCss,
+      selector: '.cinder-capability-gate__primary:focus-visible',
+      expected: FILLED_BOX_SHADOW,
+    },
+  ];
+
+  for (const { name, source, selector, expected } of cases) {
+    test(`${name}: the focused fill paints a gap and then the ring`, () => {
+      const root = parse(source);
+      const boxShadows = findRulesByNormalizedSelector(root, selector)
+        .filter((rule) => !isUnderForcedColors(rule))
+        .map((rule) => declValue(rule, 'box-shadow'))
+        .filter((value): value is string => value !== undefined)
+        .map(normalizeCssValue);
+      expect(
+        boxShadows.some((value) => value.includes(expected)),
+        selector,
+      ).toBe(true);
+    });
+  }
+
+  test('the filled formula and its private gap live in foundation.css', () => {
+    const foundation = normalizeCssValue(css('../styles/foundation.css'));
+    expect(foundation).toContain('--_cinder-focus-ring-filled-gap: 2px;');
+    expect(foundation).toContain(
+      `--_cinder-focus-ring-filled-shadow: ${gapRecipe('var(--cinder-ring-color)')};`,
+    );
+  });
 });

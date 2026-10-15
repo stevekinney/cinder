@@ -18,7 +18,8 @@ import type { JsonSchemaEditorChangeEvent, JsonSchemaValue } from './json-schema
 
 setupHappyDom();
 
-const { cleanup, fireEvent, render, screen, within } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, screen, waitFor, within } =
+  await import('@testing-library/svelte');
 const { default: JsonSchemaEditorImplementation } =
   await import('./json-schema-editor-impl.svelte');
 
@@ -446,6 +447,30 @@ describe('JsonSchemaEditor — controlled and uncontrolled schema inputs', () =>
     expect(requiredInstance(textarea, HTMLTextAreaElement).value).toBe('{\n  "type": "string"\n}');
     expect(document.activeElement).toBe(textarea);
   });
+
+  test('highlights the read-only JSON with its own json highlighter and no context provider', async () => {
+    render(JsonSchemaEditorImplementation, {
+      props: {
+        id: 'jse-json-highlighting',
+        defaultSchema: { type: 'string' },
+        view: 'json' as const,
+      },
+    });
+    await flushEffects();
+
+    const region = screen.getByRole('region', { name: 'JSON Schema editor' });
+    // Real Shiki: the WebAssembly engine and the json grammar load on first use.
+    await waitFor(
+      () => {
+        expect(region.querySelector('.cinder-code-block__highlighted pre.shiki')).not.toBeNull();
+      },
+      { timeout: 30_000 },
+    );
+    const highlighted = region.querySelector('.cinder-code-block__highlighted pre.shiki');
+    expect(highlighted?.textContent).toBe('{\n  "type": "string"\n}');
+    // Grammar tokens carry the light/dark theme colors, so the JSON really highlighted.
+    expect(highlighted?.querySelectorAll('span[style*="--shiki-dark"]').length).toBeGreaterThan(0);
+  }, 60_000);
 
   test('keeps the textarea focused after discarding a malformed source draft', async () => {
     render(JsonSchemaEditorImplementation, {

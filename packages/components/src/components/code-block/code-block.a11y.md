@@ -4,7 +4,7 @@
 
 CodeBlock presents structured data. Preserve the component's semantic roles, row or item labels, and ordering so assistive technology can announce the same relationships that are visible on screen.
 
-Purpose: Block container for multi-line source code with automatic syntax highlighting and a copy-to-clipboard control.
+Purpose: Block container for multi-line source code with optional syntax highlighting and a copy-to-clipboard control.
 
 ## Use when
 

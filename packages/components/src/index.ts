@@ -1127,7 +1127,12 @@ export * from './exports/metadata-schemas.ts';
 export * from './exports/metadata-variables.ts';
 export * from './exports/utilities.ts';
 
+export { setCodeHighlighterContext } from './_internal/code-highlighter-context.ts';
 export * from './highlighters/shiki/index.ts';
+// The full-registry adapter keeps its own module so that only a consumer that
+// imports `fullShikiHighlighter` bundles Shiki's complete grammar and theme
+// registries. Nothing else in cinder imports `default.ts`.
+export { shikiHighlighter as fullShikiHighlighter } from './highlighters/shiki/default.ts';
 
 export { default as tokenResolver } from './tokens/cinder.resolver.json' with { type: 'json' };
 export { default as tokenIndex } from './tokens/index.json' with { type: 'json' };

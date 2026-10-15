@@ -14,6 +14,14 @@ export type TerminalFrameProps = Omit<HTMLAttributes<HTMLDivElement>, 'class' | 
   /** Connection status shown in the frame chrome. Defaults to `'connecting'`. @default 'connecting' */
   status?: TerminalFrameStatus;
   /**
+   * Whether the status chip is a polite live region (`role="status"`), so a change of `status`
+   * is announced. Set `false` when the consumer announces state itself through a more detailed
+   * live region and a second announcement would be noise; the chip keeps its visible text.
+   * Defaults to `true`.
+   * @default true
+   */
+  announceStatus?: boolean;
+  /**
    * Recovery error message. The recovery UI is gated on `error` being a
    * non-empty string (`{#if error}`), not on `status`—`error=""` shows
    * nothing, the same as `undefined`, even though the prop is set. If

@@ -1075,7 +1075,7 @@
       "exportName": "CodeBlock",
       "category": "data-display",
       "status": "stable",
-      "purpose": "Block container for multi-line source code with automatic syntax highlighting and a copy-to-clipboard control.",
+      "purpose": "Block container for multi-line source code with optional syntax highlighting and a copy-to-clipboard control.",
       "tags": ["code", "snippet"],
       "useWhen": [
         "Displaying a multi-line code sample or terminal transcript inside documentation or chat.",

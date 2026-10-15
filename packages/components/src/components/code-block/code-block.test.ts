@@ -3,28 +3,14 @@ import { afterEach, beforeEach, describe, expect, mock, spyOn, test } from 'bun:
 
 import { setupHappyDom } from '@lostgradient/testing';
 import type { Highlighter } from '../../utilities/highlighter.ts';
+import type { CodeBlockProps } from './code-block.types.ts';
 
 setupHappyDom();
 
-// The default-highlighter seam is the single module CodeBlock imports to reach
-// Shiki. Mocking THIS exact specifier (never the public `@lostgradient/cinder`
-// subpath, which CodeBlock does not import directly) is what makes the
-// "default loader is NOT invoked when an explicit highlighter is provided"
-// assertion real instead of false-confidence.
-//
-// `defaultHighlighterImpl` is swapped per-test; `loadDefaultHighlighter` is a
-// spy so tests can assert whether the default path fired at all.
-let defaultHighlighterImpl: Highlighter = (code) =>
-  `<pre class="shiki shiki-default"><code>${code}</code></pre>`;
-
-const loadDefaultHighlighter = mock(async (): Promise<Highlighter> => defaultHighlighterImpl);
-
-mock.module('./code-block-default-highlighter.ts', () => ({
-  loadDefaultHighlighter,
-}));
-
 const { cleanup, render, waitFor } = await import('@testing-library/svelte');
 const { default: CodeBlock } = await import('./code-block.svelte');
+const { default: CodeHighlighterContextFixture } =
+  await import('../../test/fixtures/code-highlighter-context-fixture.svelte');
 
 // CodeBlock emits a dev warning when a highlighter throws / fails to load (it
 // then falls back to escaped plain code). Several tests exercise that path on
@@ -34,8 +20,6 @@ const KNOWN_CODE_BLOCK_WARNING = '[cinder/CodeBlock] highlight failed';
 let warnSpy: ReturnType<typeof spyOn<typeof console, 'warn'>>;
 
 beforeEach(() => {
-  loadDefaultHighlighter.mockClear();
-  defaultHighlighterImpl = (code) => `<pre class="shiki shiki-default"><code>${code}</code></pre>`;
   warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
 });
 
@@ -63,6 +47,20 @@ function customHighlighter(code: string, _lang: string): string {
   return `<pre class="shiki"><code><span class="custom-token">${code}</span></code></pre>`;
 }
 
+/** A context highlighter that tags its output differently from the prop one. */
+function contextHighlighter(code: string, _lang: string): string {
+  return `<pre class="shiki shiki-context"><code>${code}</code></pre>`;
+}
+
+/** Render `CodeBlock` with `props` beneath a published context highlighter. */
+function renderWithContext(highlighter: Highlighter, props: CodeBlockProps) {
+  return render(CodeHighlighterContextFixture, {
+    highlighter,
+    component: CodeBlock,
+    childProps: props,
+  });
+}
+
 describe('CodeBlock — static structure', () => {
   test('keeps copy chrome unselectable while code detail remains selectable', async () => {
     const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
@@ -70,13 +68,15 @@ describe('CodeBlock — static structure', () => {
     expect(css).toMatch(/\.cinder-code-block\s*\{[^}]*user-select:\s*none/s);
     expect(css).toMatch(/\.cinder-code-block__viewport\s*\{[^}]*user-select:\s*text/s);
   });
-  test('renders code in a <pre><code> pair (no language → no highlight)', () => {
-    const { container } = render(CodeBlock, { code: 'const x = 1;' });
+  test('renders code in a <pre><code> pair (no language → no highlight)', async () => {
+    const highlighter = mock(contextHighlighter);
+    const { container } = renderWithContext(highlighter, { code: 'const x = 1;' });
     const pre = container.querySelector('pre');
     expect(pre).not.toBeNull();
     expect(pre?.querySelector('code')?.textContent).toBe('const x = 1;');
-    // With no language, the default highlighter must never load.
-    expect(loadDefaultHighlighter).not.toHaveBeenCalled();
+    // With no language, even a published highlighter must never run.
+    await Promise.resolve();
+    expect(highlighter).not.toHaveBeenCalled();
   });
 
   test('stable viewport has tabindex="0" for keyboard scroll access', () => {
@@ -260,21 +260,54 @@ describe('CodeBlock — static structure', () => {
   });
 });
 
-describe('CodeBlock — automatic highlighting (bundled default)', () => {
-  test('language set + no highlighter → loads the bundled default and highlights', async () => {
-    const { container } = render(CodeBlock, { code: 'const x = 1;', language: 'js' });
+describe('CodeBlock — highlighter resolution (prop, then context, then none)', () => {
+  test('a context-provided highlighter highlights a block with no highlighter prop', async () => {
+    const highlighter = mock(contextHighlighter);
+    const { container } = renderWithContext(highlighter, { code: 'const x = 1;', language: 'js' });
     await waitFor(() => {
-      const block = container.querySelector('.shiki-default');
+      const block = container.querySelector('.cinder-code-block__highlighted .shiki-context');
       expect(block).not.toBeNull();
       expect(block?.textContent).toBe('const x = 1;');
     });
-    expect(loadDefaultHighlighter).toHaveBeenCalledTimes(1);
-    // The default highlighter output replaces the plain fallback.
+    expect(highlighter).toHaveBeenCalledTimes(1);
+    expect(highlighter).toHaveBeenCalledWith('const x = 1;', 'js');
+    // The context highlighter output replaces the plain fallback.
     expect(container.querySelector('.cinder-code-block__pre')).toBeNull();
   });
 
-  test('highlighted state keeps the stable viewport as the keyboard scroll target', async () => {
+  test('an explicit highlighter prop wins over the context highlighter', async () => {
+    const fromContext = mock(contextHighlighter);
+    const { container } = renderWithContext(fromContext, {
+      code: 'const x = 1;',
+      language: 'js',
+      highlighter: customHighlighter,
+    });
+    await waitFor(() => {
+      expect(container.querySelector('.custom-token')?.textContent).toBe('const x = 1;');
+    });
+    expect(container.querySelector('.shiki-context')).toBeNull();
+    // Prove the context highlighter never ran — not just that its output is absent.
+    expect(fromContext).not.toHaveBeenCalled();
+  });
+
+  test('with neither a prop nor a context highlighter the block renders unhighlighted', async () => {
     const { container } = render(CodeBlock, { code: 'const x = 1;', language: 'js' });
+    // Let any (mistaken) async highlight path settle before asserting.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(container.querySelector('.cinder-code-block__highlighted')).toBeNull();
+    expect(container.querySelector('pre.cinder-code-block__pre')).not.toBeNull();
+    expect(container.querySelector('.cinder-code-block__code')?.textContent).toBe('const x = 1;');
+    // The language label still renders: only the colorization is absent.
+    expect(container.querySelector('.cinder-code-block__language')?.textContent?.trim()).toBe('js');
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  test('highlighted state keeps the stable viewport as the keyboard scroll target', async () => {
+    const { container } = renderWithContext(contextHighlighter, {
+      code: 'const x = 1;',
+      language: 'js',
+    });
     const viewportBefore = container.querySelector('.cinder-code-block__viewport');
     expect(viewportBefore).not.toBeNull();
     await waitFor(() => {
@@ -288,12 +321,15 @@ describe('CodeBlock — automatic highlighting (bundled default)', () => {
 
   test('the same viewport remains mounted when highlighting resolves', async () => {
     let resolveHighlight: ((html: string) => void) | undefined;
-    defaultHighlighterImpl = () =>
+    const pendingHighlighter: Highlighter = () =>
       new Promise<string>((resolve) => {
         resolveHighlight = resolve;
       });
 
-    const { container } = render(CodeBlock, { code: 'const x = 1;', language: 'js' });
+    const { container } = renderWithContext(pendingHighlighter, {
+      code: 'const x = 1;',
+      language: 'js',
+    });
 
     await waitFor(() => {
       expect(resolveHighlight).toBeDefined();
@@ -302,30 +338,32 @@ describe('CodeBlock — automatic highlighting (bundled default)', () => {
 
     const viewportBefore = container.querySelector('.cinder-code-block__viewport');
     expect(viewportBefore).not.toBeNull();
-    resolveHighlight?.('<pre class="shiki shiki-default"><code>const x = 1;</code></pre>');
+    resolveHighlight?.('<pre class="shiki shiki-context"><code>const x = 1;</code></pre>');
 
     await waitFor(() => {
       expect(
-        container.querySelector('.cinder-code-block__highlighted .shiki-default'),
+        container.querySelector('.cinder-code-block__highlighted .shiki-context'),
       ).not.toBeNull();
     });
 
     expect(container.querySelector('.cinder-code-block__viewport')).toBe(viewportBefore);
   });
 
-  test('default-load failure falls back to escaped plain code (warn names language, never code)', async () => {
-    loadDefaultHighlighter.mockImplementationOnce(async () => {
-      throw new Error('chunk load failed');
-    });
-    const { container } = render(CodeBlock, { code: 'const secret = "p@ss";', language: 'js' });
+  test('a failing context highlighter falls back to escaped plain code (warn names language, never code)', async () => {
+    const { container } = renderWithContext(
+      async () => {
+        throw new Error('chunk load failed');
+      },
+      { code: 'const secret = "p@ss";', language: 'js' },
+    );
     await waitFor(() => {
-      expect(container.querySelector('.cinder-code-block__code')?.textContent).toBe(
-        'const secret = "p@ss";',
-      );
+      expect(warnSpy).toHaveBeenCalled();
     });
+    expect(container.querySelector('.cinder-code-block__code')?.textContent).toBe(
+      'const secret = "p@ss";',
+    );
     // Dev warning fired, mentions the language, but NEVER the code content
     // (code blocks may contain secrets). Read from the module-level spy.
-    expect(warnSpy).toHaveBeenCalled();
     const flattened = warnSpy.mock.calls.flat().map(String).join(' ');
     expect(flattened).toContain('language "js"');
     expect(flattened).not.toContain('p@ss');
@@ -347,19 +385,6 @@ describe('CodeBlock — explicit highlighter prop', () => {
       expect(token?.textContent).toBe('const x = 1;');
       expect(container.querySelector('.cinder-code-block__pre')?.outerHTML ?? null).toBeNull();
     });
-  });
-
-  test('explicit highlighter bypasses the default — default loader is NEVER invoked', async () => {
-    const { container } = render(CodeBlock, {
-      code: 'const x = 1;',
-      language: 'js',
-      highlighter: customHighlighter,
-    });
-    await waitFor(() => {
-      expect(container.querySelector('.custom-token')).not.toBeNull();
-    });
-    // Prove the side effect did not fire — not just output equality.
-    expect(loadDefaultHighlighter).not.toHaveBeenCalled();
   });
 
   test('synchronous highlighter exception falls back to plain code', async () => {
@@ -403,8 +428,9 @@ describe('CodeBlock — explicit highlighter prop', () => {
 });
 
 describe('CodeBlock — highlight={false} absolute off switch', () => {
-  test('highlight={false} keeps language label, escapes plain code, no Shiki import', async () => {
-    const { container } = render(CodeBlock, {
+  test('highlight={false} keeps language label and escapes plain code with a context highlighter', async () => {
+    const fromContext = mock(contextHighlighter);
+    const { container } = renderWithContext(fromContext, {
       code: 'const x = 1;',
       language: 'ts',
       highlight: false,
@@ -413,21 +439,22 @@ describe('CodeBlock — highlight={false} absolute off switch', () => {
     expect(container.querySelector('pre.cinder-code-block__pre')).not.toBeNull();
     // Give any (mistaken) async path a tick to fire, then assert it never did.
     await Promise.resolve();
-    expect(loadDefaultHighlighter).not.toHaveBeenCalled();
+    expect(fromContext).not.toHaveBeenCalled();
   });
 
   test('highlight={false} + explicit highlighter → highlighter is NOT called, output escaped', async () => {
     const highlighterSpy = mock(customHighlighter);
-    const { container } = render(CodeBlock, {
+    const fromContext = mock(contextHighlighter);
+    const { container } = renderWithContext(fromContext, {
       code: '<img src=x onError=alert(1)>',
       language: 'html',
       highlight: false,
       highlighter: highlighterSpy,
     });
     await Promise.resolve();
-    // The off switch overrides even an explicit highlighter.
+    // The off switch overrides even an explicit highlighter, and the context one.
     expect(highlighterSpy).not.toHaveBeenCalled();
-    expect(loadDefaultHighlighter).not.toHaveBeenCalled();
+    expect(fromContext).not.toHaveBeenCalled();
     // Code is escaped via Svelte text interpolation, NOT {@html}.
     const code = container.querySelector('.cinder-code-block__code');
     expect(code?.textContent).toBe('<img src=x onError=alert(1)>');
@@ -436,7 +463,7 @@ describe('CodeBlock — highlight={false} absolute off switch', () => {
 });
 
 describe('CodeBlock — safe-path escaping (no {@html} on the plain paths)', () => {
-  // The dangerous {@html} path is ONLY the successful custom/default highlight.
+  // The dangerous {@html} path is ONLY a successful prop or context highlight.
   // Every plain-fallback path must escape via Svelte interpolation.
   const malicious = '<img src=x onError=alert(1)><svg onLoad=alert(2)></svg>';
 
@@ -447,14 +474,17 @@ describe('CodeBlock — safe-path escaping (no {@html} on the plain paths)', () 
     expect(container.querySelector('svg')).toBeNull();
   });
 
-  test('failed default load → escaped, no injected nodes', async () => {
-    loadDefaultHighlighter.mockImplementationOnce(async () => {
-      throw new Error('load failed');
-    });
-    const { container } = render(CodeBlock, { code: malicious, language: 'html' });
+  test('failed context highlight → escaped, no injected nodes', async () => {
+    const { container } = renderWithContext(
+      async () => {
+        throw new Error('load failed');
+      },
+      { code: malicious, language: 'html' },
+    );
     await waitFor(() => {
-      expect(container.querySelector('.cinder-code-block__code')?.textContent).toBe(malicious);
+      expect(warnSpy).toHaveBeenCalled();
     });
+    expect(container.querySelector('.cinder-code-block__code')?.textContent).toBe(malicious);
     expect(container.querySelector('img')).toBeNull();
     expect(container.querySelector('svg')).toBeNull();
   });

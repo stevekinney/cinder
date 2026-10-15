@@ -15,6 +15,28 @@ afterEach(cleanup);
 const children = createRawSnippet(() => ({ render: () => '<div data-testid="pty"></div>' }));
 
 describe('TerminalFrame', () => {
+  test('announces its status chip as a live region by default', () => {
+    const { container } = render(TerminalFrame, { props: { title: 'Shell', children } });
+    const chip = container.querySelector('.cinder-terminal-frame__status')!;
+    expect(chip.getAttribute('role')).toBe('status');
+    expect(chip.getAttribute('aria-atomic')).toBe('true');
+  });
+
+  test('keeps the status text but drops the live region when announceStatus is false', async () => {
+    const { container, rerender } = render(TerminalFrame, {
+      props: { title: 'Shell', status: 'connected', announceStatus: false, children },
+    });
+    const chip = container.querySelector('.cinder-terminal-frame__status')!;
+    expect(chip.textContent).toBe('connected');
+    expect(chip.hasAttribute('role')).toBe(false);
+    expect(chip.hasAttribute('aria-atomic')).toBe(false);
+    expect(container.querySelector('[role="status"]')).toBeNull();
+    await rerender({ announceStatus: true });
+    expect(container.querySelector('.cinder-terminal-frame__status')!.getAttribute('role')).toBe(
+      'status',
+    );
+  });
+
   test('renders chrome, status, consumer terminal content, and reload recovery', async () => {
     let reloads = 0;
     const { container, getByRole } = render(TerminalFrame, {

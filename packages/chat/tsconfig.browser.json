@@ -1,4 +1,0 @@
-{
-  "extends": "@lostgradient/typescript/browser.json",
-  "include": ["src"]
-}

@@ -28,6 +28,7 @@
   let {
     title,
     status = 'connecting',
+    announceStatus = true,
     error,
     onReloadRequest,
     onDimensionsChange,
@@ -90,7 +91,11 @@
       <span></span><span></span><span></span>
     </span>
     <h2 id={titleId} class="cinder-terminal-frame__title">{title}</h2>
-    <span class="cinder-terminal-frame__status" role="status" aria-atomic="true">{status}</span>
+    <span
+      class="cinder-terminal-frame__status"
+      role={announceStatus ? 'status' : undefined}
+      aria-atomic={announceStatus ? 'true' : undefined}>{status}</span
+    >
   </Grid>
 
   {#if error}

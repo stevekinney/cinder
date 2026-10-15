@@ -1643,21 +1643,21 @@
   },
   "ring.offset": {
     "$type": "dimension",
-    "$value": { "value": 2, "unit": "px" },
-    "$description": "Focus ring offset from the control edge.",
+    "$value": { "value": 0, "unit": "px" },
+    "$description": "Focus ring offset from the control edge. Zero: the ring sits directly on the control edge with no offset band, so focus reads as one tight 2px line rather than a 4px double band (COR-1498). Filled controls add a private 2px gap instead; see `ring.offset-color`. Emitted as `0px`, not a bare `0`, because the ring recipes add it to `--cinder-ring-width` inside `calc()`, where a unitless zero is a number and invalidates the sum.",
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-ring-offset",
         "public": true,
         "category": "size",
-        "cssRecipe": null
+        "cssRecipe": "0px"
       }
     }
   },
   "ring.offset-color": {
     "$type": "color",
     "$value": { "colorSpace": "oklch", "components": [1, 0, 255] },
-    "$description": "Focus ring offset band color. The ring is a two-stop box-shadow and box-shadow cannot paint a transparent gap, so the offset band has to be some real color. Pinned to `surface.raised` (the top of the ramp) so the band disappears into raised surfaces, where controls overwhelmingly live, and reads as a light halo on recessed tiers.",
+    "$description": "Color of the gap band between a focus ring and the control. Filled controls (a solid accent, danger or status fill on the focused element) paint a 2px gap in this color before the ring, so the accent-hued ring sits on the page instead of on a same-hue fill. Unfilled controls use `ring.offset`, which is zero, so they paint no gap. box-shadow cannot paint a transparent gap, so the band needs a real color; it is pinned to `surface.raised`, where controls overwhelmingly live.",
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-ring-offset-color",
@@ -1682,7 +1682,7 @@
   "ring.on-accent": {
     "$type": "color",
     "$value": { "colorSpace": "oklch", "components": [0.15, 0.035, 245] },
-    "$description": "Ring color tuned for use on solid accent/fill surfaces (FloatingAction primary variant). Light arm is a near-black that contrasts both the accent fill and the page background; dark arm is a near-white that contrasts the bright dark-mode accent and the dark page background.",
+    "$description": "Ring color used by the FloatingAction primary variant, whose ring sits directly on its accent fill. Light arm is a near-black and dark arm a near-white, both strongly contrasting the page background. Against the fill itself it measures about 3:1 in light mode and about 2.5:1 in dark mode, so other filled controls use a `ring.offset-color` gap and the standard ring instead (focus-ring-policy.md).",
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-ring-on-accent",

@@ -40,7 +40,6 @@ export {
   type ActiveMarks,
 } from './commands-state.ts';
 export { setEditorReadonly } from './editor.ts';
-export { getShortcutDisplay } from './keymap-plugin.ts';
 export { DEFAULT_DEBOUNCE_MS } from './types.ts';
 
 export { createEditor, destroyEditor } from './editor.ts';
@@ -57,20 +56,19 @@ export {
 } from './bridge.ts';
 
 // Keymap plugin configuration
+export { createEditorKeymap, editorKeymap, type EditorKeymapOptions } from './keymap-plugin.ts';
 export {
-  createEditorKeymap,
-  editorKeymap,
   getShortcutDefinitions,
-  type EditorKeymapOptions,
+  getShortcutDisplay,
   type ShortcutDefinition,
-} from './keymap-plugin.ts';
+} from './keymap-shortcuts.ts';
 
 // Template placeholder plugins (DEP-583, COR-526)
 export {
   createTemplateCompletionPlugin,
   type TemplateCompletionPluginOptions,
 } from './template-completion-plugin.ts';
-export { templateCompletionPluginKey } from './template-completion-state.ts';
+export { templateCompletionPluginKey } from './template-completion-transaction.ts';
 export {
   createPlaceholderConfigurationTransaction,
   createTemplatePlaceholderConfigurationPlugin,

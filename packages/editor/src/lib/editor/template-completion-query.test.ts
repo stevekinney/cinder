@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'bun:test';
 import {
-  detectTokenQuery,
   filterAndSortCandidates,
   MAXIMUM_VISIBLE_SUGGESTIONS,
   mergeCandidates,
@@ -11,6 +10,7 @@ import {
   makeCandidate,
   makeCandidates,
 } from './template-completion-test-utilities.js';
+import { detectTokenQuery } from './template-completion-transaction.js';
 
 // ---------------------------------------------------------------------------
 // filterAndSortCandidates

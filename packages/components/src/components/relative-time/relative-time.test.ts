@@ -2,11 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
-import {
-  prepareSvelteServerSource,
-  renderSvelteOnServer,
-  setupHappyDom,
-} from '@lostgradient/testing';
+import { renderSvelteOnServer, setupHappyDom } from '@lostgradient/testing';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
 // reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
@@ -21,7 +17,12 @@ const { default: RelativeTime } = await import('./relative-time.svelte');
 // non-browser environment, making `mount()` throw "not available on the server".
 const { createRawSnippet } = await import('svelte');
 const relativeTimeSource = new URL('./relative-time.svelte', import.meta.url).pathname;
-await prepareSvelteServerSource(relativeTimeSource);
+// Server rendering spawns a Bun process, so it runs once at module scope, off bun's per-test clock.
+const relativeTimeServerHtml = await renderSvelteOnServer(relativeTimeSource, {
+  date: Date.UTC(2026, 0, 1, 12),
+  locale: 'en',
+  tick: false,
+});
 
 afterEach(cleanup);
 
@@ -81,21 +82,11 @@ describe('RelativeTime', () => {
     expect(source).toContain("{hasMounted ? relative : ''}");
   });
 
-  test('server-renders a stable semantic time before the relative label mounts', async () => {
-    const realNow = Date.now;
-    Date.now = () => Date.UTC(2026, 0, 2, 12);
-    try {
-      const html = await renderSvelteOnServer(relativeTimeSource, {
-        date: Date.UTC(2026, 0, 1, 12),
-        locale: 'en',
-        tick: false,
-      });
-      expect(html).toContain('datetime="2026-01-01T12:00:00.000Z"');
-      expect(html).not.toContain('>yesterday');
-      expect(html).not.toContain('>now');
-    } finally {
-      Date.now = realNow;
-    }
+  test('server-renders a stable semantic time before the relative label mounts', () => {
+    const html = relativeTimeServerHtml;
+    expect(html).toContain('datetime="2026-01-01T12:00:00.000Z"');
+    expect(html).not.toContain('>yesterday');
+    expect(html).not.toContain('>now');
   });
 
   test.each([new Date('invalid'), 'not-a-date'])('renders invalid dates safely: %s', (date) => {

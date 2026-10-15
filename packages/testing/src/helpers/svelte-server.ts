@@ -96,6 +96,8 @@ async function runServerProgram(
     stdin: new TextEncoder().encode(serializeServerInput(payload)),
     stdout: 'pipe',
     stderr: 'pipe',
+    // A hang detector for a child that never exits, never a performance bound.
+    timeout: 120_000,
   });
   const [status, output, errors] = await Promise.all([
     child.exited,

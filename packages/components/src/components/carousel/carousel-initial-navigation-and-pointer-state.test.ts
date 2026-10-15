@@ -3,18 +3,19 @@ import { join } from 'node:path';
 
 import { afterEach, describe, expect, jest, test } from 'bun:test';
 
-import {
-  prepareSvelteServerSource,
-  renderSvelteOnServer,
-  requiredInstance,
-  setupHappyDom,
-} from '@lostgradient/testing';
+import { renderSvelteOnServer, requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import { requiredChildren } from './carousel-test-helpers.ts';
 
 setupHappyDom();
 
 const CAROUSEL_SOURCE = join(import.meta.dir, 'carousel.svelte');
-await prepareSvelteServerSource(CAROUSEL_SOURCE);
+const slides = [
+  { id: 'one', label: 'Slide one', title: 'One', description: 'First' },
+  { id: 'two', label: 'Slide two', title: 'Two', description: 'Second' },
+  { id: 'three', label: 'Slide three', title: 'Three', description: 'Third' },
+];
+// Server rendering spawns a Bun process, so it runs once at module scope, off bun's per-test clock.
+const carouselServerHtml = await renderSvelteOnServer(CAROUSEL_SOURCE, { slides, activeIndex: 2 });
 
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { tick } = await import('svelte');
@@ -24,11 +25,6 @@ afterEach(() => {
   jest.useRealTimers();
   cleanup();
 });
-const slides = [
-  { id: 'one', label: 'Slide one', title: 'One', description: 'First' },
-  { id: 'two', label: 'Slide two', title: 'Two', description: 'Second' },
-  { id: 'three', label: 'Slide three', title: 'Three', description: 'Third' },
-];
 
 function expectActiveSlide(container: HTMLElement, index: number): void {
   const articles = [...container.querySelectorAll('article.cinder-carousel__slide')];
@@ -44,8 +40,8 @@ function flushAnimationFrame(): Promise<void> {
 }
 
 describe('Carousel', () => {
-  test('server-renders a nonzero active slide at the initial scroll position', async () => {
-    const html = await renderSvelteOnServer(CAROUSEL_SOURCE, { slides, activeIndex: 2 });
+  test('server-renders a nonzero active slide at the initial scroll position', () => {
+    const html = carouselServerHtml;
     const document = new DOMParser().parseFromString(html, 'text/html');
     const articles = [...document.querySelectorAll<HTMLElement>('article.cinder-carousel__slide')];
 

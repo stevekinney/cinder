@@ -23,6 +23,47 @@ const SVELTE_SERVER_ENTRY = new URL(
   import.meta.resolve('svelte/package.json'),
 ).href;
 
+// The real server process is the behavior under test (SSR without DOM globals), so it runs once at
+// module scope, off bun's per-test clock; the test below only asserts on the settled result.
+function renderServerRegion(): { exitCode: number; stderr: string; ssrHtml: string } {
+  const script = `
+      import { rm, writeFile } from 'node:fs/promises';
+      import { dirname, join } from 'node:path';
+      import { pathToFileURL } from 'node:url';
+      import { compile } from 'svelte/compiler';
+      const sourcePath = ${JSON.stringify(TOAST_REGION_SOURCE)};
+      const source = await Bun.file(sourcePath).text();
+      const compiled = compile(source, { filename: sourcePath, generate: 'server', css: 'external', dev: false });
+      const serverSvelteEntry = ${JSON.stringify(SVELTE_SERVER_ENTRY)};
+      const serverCode = compiled.js.code.replaceAll("from 'svelte';", \`from \${JSON.stringify(serverSvelteEntry)};\`);
+      const file = join(dirname(sourcePath), \`.cinder-ssr-test-\${process.pid}-\${Date.now()}.mjs\`);
+      await writeFile(file, serverCode, 'utf-8');
+      try {
+        const { createRawSnippet } = await import('svelte');
+        const { render } = await import('svelte/server');
+        const module = await import(pathToFileURL(file).href);
+        const children = createRawSnippet(() => ({
+          render: () => '<span data-ssr-child>SSR child</span>',
+        }));
+        process.stdout.write(render(module.default, { props: { children } }).body);
+      } finally {
+        await rm(file, { force: true });
+      }
+    `;
+  const result = Bun.spawnSync({
+    timeout: 120_000,
+    cmd: ['bun', '-e', script],
+    cwd: REPOSITORY_ROOT,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  const stderr = new TextDecoder().decode(result.stderr);
+  const ssrHtml = new TextDecoder().decode(result.stdout);
+  return { exitCode: result.exitCode, stderr, ssrHtml };
+}
+
+const serverRender = renderServerRegion();
+
 let mockedPerformanceNow = 0;
 
 function useDeterministicTimers(now = 0): void {
@@ -64,40 +105,8 @@ afterEach(() => {
 
 describe('ToastRegion structure', () => {
   test('omits live-region DOM on the server', () => {
-    const script = `
-      import { rm, writeFile } from 'node:fs/promises';
-      import { dirname, join } from 'node:path';
-      import { pathToFileURL } from 'node:url';
-      import { compile } from 'svelte/compiler';
-      const sourcePath = ${JSON.stringify(TOAST_REGION_SOURCE)};
-      const source = await Bun.file(sourcePath).text();
-      const compiled = compile(source, { filename: sourcePath, generate: 'server', css: 'external', dev: false });
-      const serverSvelteEntry = ${JSON.stringify(SVELTE_SERVER_ENTRY)};
-      const serverCode = compiled.js.code.replaceAll("from 'svelte';", \`from \${JSON.stringify(serverSvelteEntry)};\`);
-      const file = join(dirname(sourcePath), \`.cinder-ssr-test-\${process.pid}-\${Date.now()}.mjs\`);
-      await writeFile(file, serverCode, 'utf-8');
-      try {
-        const { createRawSnippet } = await import('svelte');
-        const { render } = await import('svelte/server');
-        const module = await import(pathToFileURL(file).href);
-        const children = createRawSnippet(() => ({
-          render: () => '<span data-ssr-child>SSR child</span>',
-        }));
-        process.stdout.write(render(module.default, { props: { children } }).body);
-      } finally {
-        await rm(file, { force: true });
-      }
-    `;
-    const result = Bun.spawnSync({
-      cmd: ['bun', '-e', script],
-      cwd: REPOSITORY_ROOT,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    });
-    const stderr = new TextDecoder().decode(result.stderr);
-    const ssrHtml = new TextDecoder().decode(result.stdout);
-
-    expect(result.exitCode, stderr).toBe(0);
+    const { exitCode, stderr, ssrHtml } = serverRender;
+    expect(exitCode, stderr).toBe(0);
     expect(ssrHtml).toContain('data-ssr-child');
     expect(ssrHtml).toContain('SSR child');
     expect(ssrHtml).not.toContain('role="status"');

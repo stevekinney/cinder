@@ -116,6 +116,11 @@
       0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
   }
 
+  /* The primary action is a solid accent fill: gap, then ring (COR-1498). */
+  .cinder-capability-gate__primary:focus-visible {
+    box-shadow: var(--_cinder-focus-ring-filled-shadow);
+  }
+
   @media (forced-colors: active) {
     .cinder-capability-gate__primary:focus-visible,
     .cinder-capability-gate__fallback:focus-visible,

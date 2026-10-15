@@ -142,45 +142,24 @@ describe('loadSession', () => {
     expect(bundle.success, JSON.stringify(bundle.logs)).toBe(true);
     const output = requiredValue(bundle.outputs[0]);
     const moduleUrl = `data:text/javascript;base64,${Buffer.from(await output.text()).toString('base64')}`;
-    const child = Bun.spawn(
-      [
-        process.execPath,
-        '--eval',
-        `process.stdin.setEncoding('utf8');
-let moduleUrl = '';
-for await (const chunk of process.stdin) moduleUrl += chunk;
-globalThis.window = globalThis;
-globalThis.sessionStorage = {
-  getItem: () => 'not-json',
-  removeItem: () => {},
-};
-const warnings = [];
-console.warn = (...args) => warnings.push({
-  message: args[0],
-  syntaxError: args[1] instanceof SyntaxError,
-});
-const { loadSession } = await import(moduleUrl);
-const result = loadSession('doc-123');
-process.stdout.write(JSON.stringify({ result, warnings }));`,
-      ],
-      {
-        stdin: new TextEncoder().encode(moduleUrl),
-        stdout: 'pipe',
-        stderr: 'pipe',
-      },
-    );
-    const [status, stdout, stderr] = await Promise.all([
-      child.exited,
-      new Response(child.stdout).text(),
-      new Response(child.stderr).text(),
-    ]);
-    expect(status, stderr).toBe(0);
-    expect(stderr).toBe('');
-    const observation: unknown = JSON.parse(stdout);
-    expect(observation).toEqual({
-      result: null,
-      warnings: [{ message: 'Failed to load review session:', syntaxError: true }],
-    });
+    // The bundle is self-contained and reads `sessionStorage` and `console` when it is called,
+    // so it runs in this process against the storage fixture; no child process is needed.
+    const { loadSession: bundledLoadSession } = (await import(moduleUrl)) as {
+      loadSession: typeof loadSession;
+    };
+    const diagnostic = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      fixture.storage.getItem.mockReturnValueOnce('not-json');
+
+      const result = bundledLoadSession('doc-123');
+
+      expect(result).toBeNull();
+      expect(diagnostic.mock.calls).toEqual([
+        ['Failed to load review session:', expect.any(SyntaxError)],
+      ]);
+    } finally {
+      diagnostic.mockRestore();
+    }
   });
 
   test('returns null and clears invalid schema', () => {

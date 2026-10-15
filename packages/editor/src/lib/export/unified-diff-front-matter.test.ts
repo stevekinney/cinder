@@ -3,6 +3,7 @@
  */
 
 import { computeLineDiff, groupIntoHunks } from '@lostgradient/markdown';
+import { outcomeOf, rethrow } from '@lostgradient/testing';
 import { describe, expect, test } from 'bun:test';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -26,10 +27,15 @@ function createState(original: string, current: string): ReviewState {
 function gitApplyCheck(originalDocument: string, diff: string): { ok: boolean; error: string } {
   const directory = mkdtempSync(join(tmpdir(), 'unified-diff-'));
   try {
-    execFileSync('git', ['init', '--quiet'], { cwd: directory });
+    // `timeout` is a hang detector for a child that never exits, never a performance bound.
+    execFileSync('git', ['init', '--quiet'], { cwd: directory, timeout: 120_000 });
     writeFileSync(join(directory, 'document.md'), originalDocument);
     writeFileSync(join(directory, 'patch.diff'), diff);
-    execFileSync('git', ['apply', '--check', 'patch.diff'], { cwd: directory, stdio: 'pipe' });
+    execFileSync('git', ['apply', '--check', 'patch.diff'], {
+      cwd: directory,
+      stdio: 'pipe',
+      timeout: 120_000,
+    });
     return { ok: true, error: '' };
   } catch (error) {
     const stderr =
@@ -40,6 +46,111 @@ function gitApplyCheck(originalDocument: string, diff: string): { ok: boolean; e
     rmSync(directory, { recursive: true, force: true });
   }
 }
+
+const frontMatterOriginal = [
+  '---',
+  'title: Release Plan',
+  'draft: true',
+  'tags:',
+  '  - launch',
+  '  - q3',
+  '---',
+  '',
+  '# Release Plan',
+  '',
+  '- Ship the thing',
+  '- Tell people about it',
+  '',
+].join('\n');
+const frontMatterCurrent = frontMatterOriginal.replace('draft: true', 'draft: false');
+
+// Each scenario runs a real `git apply --check`, so it runs here at module scope, off Bun's
+// five-second per-test clock; its test rethrows whatever the scenario threw.
+const frontMatterPatchApplies = await outcomeOf(() => {
+  const { diff } = generateUnifiedDiff(createState(frontMatterOriginal, frontMatterCurrent));
+
+  const applied = gitApplyCheck(frontMatterOriginal, diff);
+  expect(applied.error).toBe('');
+  expect(applied.ok).toBe(true);
+});
+
+const frontMatterBodyEditApplies = await outcomeOf(() => {
+  const edited = frontMatterOriginal.replace('- Ship the thing', '- Ship the thing on time');
+  const { diff } = generateUnifiedDiff(createState(frontMatterOriginal, edited));
+
+  const applied = gitApplyCheck(frontMatterOriginal, diff);
+  expect(applied.error).toBe('');
+  expect(applied.ok).toBe(true);
+  // Line 8 is the blank line after the closing fence: the seven front-matter
+  // lines are counted, not swallowed or re-expanded.
+  expect(diff).toContain('@@ -8,5 +8,5 @@');
+});
+
+const collapsedBlankRunApplies = await outcomeOf(() => {
+  // normalizeDocument() collapses the run of 3 blank lines to 1, so the
+  // normalized document is 2 lines shorter than the source above the edit.
+  // With no context lines to obscure it, the header must point at line 5
+  // (where "Original text" actually is in `original`), not line 3 (where
+  // it landed after normalization).
+  const original = 'Alpha\n\n\n\nOriginal text\n';
+  const current = 'Alpha\n\n\n\nChanged text\n';
+
+  const { diff } = generateUnifiedDiff(createState(original, current), { contextLines: 0 });
+
+  expect(diff).toContain('@@ -5,1 +5,1 @@');
+  const applied = gitApplyCheck(original, diff);
+  expect(applied.error).toBe('');
+  expect(applied.ok).toBe(true);
+});
+
+const collapsedRunDefaultContextApplies = await outcomeOf(() => {
+  const original = [
+    'Intro',
+    '',
+    '',
+    '',
+    'Middle paragraph one.',
+    '',
+    'Middle paragraph two.',
+    '',
+    'Original text',
+    '',
+  ].join('\n');
+  const current = original.replace('Original text', 'Changed text');
+
+  const { diff } = generateUnifiedDiff(createState(original, current));
+
+  // Source line 6 is the blank line before "Middle paragraph two." -- three
+  // lines earlier than normalized-space would report, since normalization
+  // collapsed the 3-blank-line run after "Intro" down to one.
+  expect(diff).toContain('@@ -6,4 +6,4 @@');
+  const applied = gitApplyCheck(original, diff);
+  expect(applied.error).toBe('');
+  expect(applied.ok).toBe(true);
+});
+
+const falsePositiveFrontMatterApplies = await outcomeOf(() => {
+  // Before cinder#1325, this `---`-opening span (invalid YAML: an
+  // unclosed bracket) would have been classified as front matter and
+  // preserved byte-for-byte by normalizeDocument -- no blank-line
+  // collapsing would ever reach it. After cinder#1325, it is ordinary
+  // body content, so the blank-run collapse a few lines down interacts
+  // with it: this only passes if both fixes are built against each
+  // other, which is why they ship in one PR.
+  const original = ['---', 'owner: [', '---', '', '', '', 'Original text', ''].join('\n');
+  const current = original.replace('Original text', 'Changed text');
+
+  const { diff } = generateUnifiedDiff(createState(original, current), { contextLines: 0 });
+
+  // Source line 7 is "Original text" -- the 3-blank-line run at lines 4-6
+  // collapses to 1 in the normalized document, same as the plain
+  // blank-line case, now that the `---` span itself is ordinary body
+  // content the normalizer actually reaches.
+  expect(diff).toContain('@@ -7,1 +7,1 @@');
+  const applied = gitApplyCheck(original, diff);
+  expect(applied.error).toBe('');
+  expect(applied.ok).toBe(true);
+});
 
 describe('front matter', () => {
   const original = [
@@ -59,13 +170,8 @@ describe('front matter', () => {
   ].join('\n');
   const current = original.replace('draft: true', 'draft: false');
 
-  test('produces a patch git can actually apply to the original document', () => {
-    const { diff } = generateUnifiedDiff(createState(original, current));
-
-    const applied = gitApplyCheck(original, diff);
-    expect(applied.error).toBe('');
-    expect(applied.ok).toBe(true);
-  });
+  test('produces a patch git can actually apply to the original document', () =>
+    rethrow(frontMatterPatchApplies));
 
   test('keeps the front matter block verbatim instead of re-reading it as Markdown', () => {
     const { diff } = generateUnifiedDiff(createState(original, current));
@@ -91,17 +197,8 @@ describe('front matter', () => {
     expect(generateUnifiedDiff(createState(original, starred)).diff).toBe('');
   });
 
-  test('reports body edits at line numbers that count the front matter', () => {
-    const edited = original.replace('- Ship the thing', '- Ship the thing on time');
-    const { diff } = generateUnifiedDiff(createState(original, edited));
-
-    const applied = gitApplyCheck(original, diff);
-    expect(applied.error).toBe('');
-    expect(applied.ok).toBe(true);
-    // Line 8 is the blank line after the closing fence: the seven front-matter
-    // lines are counted, not swallowed or re-expanded.
-    expect(diff).toContain('@@ -8,5 +8,5 @@');
-  });
+  test('reports body edits at line numbers that count the front matter', () =>
+    rethrow(frontMatterBodyEditApplies));
 
   test('includeFrontMatter does not duplicate a fence that already exists but is not valid front matter (review finding)', () => {
     // `includeFrontMatter` exists to restore a front-matter block onto
@@ -154,48 +251,11 @@ describe('front matter', () => {
 });
 
 describe('hunk header line numbers reference source, not normalized text (cinder#1324)', () => {
-  test('the exact cinder#1324 repro: an edit past collapsed blank lines', () => {
-    // normalizeDocument() collapses the run of 3 blank lines to 1, so the
-    // normalized document is 2 lines shorter than the source above the edit.
-    // With no context lines to obscure it, the header must point at line 5
-    // (where "Original text" actually is in `original`), not line 3 (where
-    // it landed after normalization).
-    const original = 'Alpha\n\n\n\nOriginal text\n';
-    const current = 'Alpha\n\n\n\nChanged text\n';
+  test('the exact cinder#1324 repro: an edit past collapsed blank lines', () =>
+    rethrow(collapsedBlankRunApplies));
 
-    const { diff } = generateUnifiedDiff(createState(original, current), { contextLines: 0 });
-
-    expect(diff).toContain('@@ -5,1 +5,1 @@');
-    const applied = gitApplyCheck(original, diff);
-    expect(applied.error).toBe('');
-    expect(applied.ok).toBe(true);
-  });
-
-  test('maps the hunk start through a collapsed run even with default context, when the edit is far enough away that context never re-enters the collapsed lines', () => {
-    const original = [
-      'Intro',
-      '',
-      '',
-      '',
-      'Middle paragraph one.',
-      '',
-      'Middle paragraph two.',
-      '',
-      'Original text',
-      '',
-    ].join('\n');
-    const current = original.replace('Original text', 'Changed text');
-
-    const { diff } = generateUnifiedDiff(createState(original, current));
-
-    // Source line 6 is the blank line before "Middle paragraph two." -- three
-    // lines earlier than normalized-space would report, since normalization
-    // collapsed the 3-blank-line run after "Intro" down to one.
-    expect(diff).toContain('@@ -6,4 +6,4 @@');
-    const applied = gitApplyCheck(original, diff);
-    expect(applied.error).toBe('');
-    expect(applied.ok).toBe(true);
-  });
+  test('maps the hunk start through a collapsed run even with default context, when the edit is far enough away that context never re-enters the collapsed lines', () =>
+    rethrow(collapsedRunDefaultContextApplies));
 
   test('still reports normalized-space numbers when normalizeInputs is off (identity map)', () => {
     const original = 'Alpha\n\n\n\nOriginal text\n';
@@ -211,28 +271,8 @@ describe('hunk header line numbers reference source, not normalized text (cinder
     expect(diff).toContain('@@ -5,1 +5,1 @@');
   });
 
-  test('interaction with cinder#1325: a false-positive front-matter block is now body, and its line numbers are still source-accurate', () => {
-    // Before cinder#1325, this `---`-opening span (invalid YAML: an
-    // unclosed bracket) would have been classified as front matter and
-    // preserved byte-for-byte by normalizeDocument -- no blank-line
-    // collapsing would ever reach it. After cinder#1325, it is ordinary
-    // body content, so the blank-run collapse a few lines down interacts
-    // with it: this only passes if both fixes are built against each
-    // other, which is why they ship in one PR.
-    const original = ['---', 'owner: [', '---', '', '', '', 'Original text', ''].join('\n');
-    const current = original.replace('Original text', 'Changed text');
-
-    const { diff } = generateUnifiedDiff(createState(original, current), { contextLines: 0 });
-
-    // Source line 7 is "Original text" -- the 3-blank-line run at lines 4-6
-    // collapses to 1 in the normalized document, same as the plain
-    // blank-line case, now that the `---` span itself is ordinary body
-    // content the normalizer actually reaches.
-    expect(diff).toContain('@@ -7,1 +7,1 @@');
-    const applied = gitApplyCheck(original, diff);
-    expect(applied.error).toBe('');
-    expect(applied.ok).toBe(true);
-  });
+  test('interaction with cinder#1325: a false-positive front-matter block is now body, and its line numbers are still source-accurate', () =>
+    rethrow(falsePositiveFrontMatterApplies));
 
   test('a pure trailing addition reports the "insert after EOF" position, not the last real line', () => {
     // Behavioral pin, not a direct exercise of mapNormalizedLineNumber's

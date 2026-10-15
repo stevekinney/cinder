@@ -22,7 +22,19 @@ function getDefaultModuleLoader(): () => Promise<ShikiModule> {
   return sharedDefaultModuleLoader;
 }
 
-/** The bundled adapter with the complete Shiki language and theme registries. */
+/**
+ * The Shiki adapter with the complete Shiki language and theme registries,
+ * exported from the package root as `fullShikiHighlighter`.
+ *
+ * Every grammar and theme Shiki ships is reachable from here through the
+ * `shiki/langs` and `shiki/themes` lookup tables, so a bundler that sees this
+ * module emits all of them as lazy chunks. Nothing else in cinder imports it,
+ * and `<CodeBlock>` never falls back to it: only an application that chooses
+ * automatic highlighting of arbitrary languages pays for the registries. Pass
+ * an instance to `setCodeHighlighterContext` (or to a block's `highlighter`
+ * prop). An application that knows its languages should prefer
+ * `shikiHighlighter` with explicit `languageLoaders` and `themeLoaders`.
+ */
 export function shikiHighlighter(
   options: ShikiHighlighterOptions = {},
   moduleLoader?: Parameters<typeof createShikiHighlighter>[1],

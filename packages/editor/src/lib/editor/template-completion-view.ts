@@ -22,10 +22,10 @@ import {
 } from './template-completion-popup.js';
 import {
   INACTIVE_STATE,
-  templateCompletionPluginKey,
   type CompletionMeta,
   type CompletionState,
 } from './template-completion-state.js';
+import { templateCompletionPluginKey } from './template-completion-transaction.js';
 import { readPlaceholderConfiguration } from './template-placeholder-configuration-plugin.js';
 import type { ResolvedPlaceholderConfiguration } from './template-placeholder-configuration.js';
 

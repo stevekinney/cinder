@@ -8,8 +8,8 @@ import { TextSelection } from '@milkdown/kit/prose/state';
 import { afterEach, describe, expect, it } from 'bun:test';
 import { setEditorReadonly } from './editor.js';
 import { handleCompletionKeyDown } from './template-completion-keyboard.js';
-import { templateCompletionPluginKey } from './template-completion-state.js';
 import { mountEditor, type MountedEditor } from './template-completion-test-utilities.js';
+import { templateCompletionPluginKey } from './template-completion-transaction.js';
 import { templateInvalidDecorationPluginKey } from './template-invalid-decoration-plugin.js';
 
 const LISTBOX_ID = 'notes-placeholder-listbox-wysiwyg';

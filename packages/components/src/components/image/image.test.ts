@@ -14,6 +14,15 @@ setupHappyDom();
 
 const IMAGE_SOURCE = join(import.meta.dir, 'image.svelte');
 await prepareSvelteServerSource(IMAGE_SOURCE);
+// Server rendering spawns a Bun process, so it runs once at module scope, off bun's per-test clock.
+const [imageServerHtml, placeholderImageServerHtml] = await Promise.all([
+  renderSvelteOnServer(IMAGE_SOURCE, { src: '/a.jpg', alt: 'A photo' }),
+  renderSvelteOnServer(IMAGE_SOURCE, {
+    src: '/a.jpg',
+    alt: 'A photo',
+    placeholder: 'data:image/png;base64,iVBORw0KGgo=',
+  }),
+]);
 
 const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
 const { default: Image } = await import('./image.svelte');
@@ -338,20 +347,16 @@ describe('Image', () => {
 // only the client can set — otherwise SSR would assert a load state that
 // hasn't happened yet and hydration would mismatch.
 describe('Image SSR contract', () => {
-  test('emits the wrapper and <img> server-side', async () => {
-    const html = await renderSvelteOnServer(IMAGE_SOURCE, { src: '/a.jpg', alt: 'A photo' });
+  test('emits the wrapper and <img> server-side', () => {
+    const html = imageServerHtml;
     expect(html).toContain('cinder-image');
     expect(html).toContain('cinder-image__img');
     expect(html).toContain('src="/a.jpg"');
     expect(html).toContain('alt="A photo"');
   });
 
-  test('omits client-only load/error state markers server-side', async () => {
-    const html = await renderSvelteOnServer(IMAGE_SOURCE, {
-      src: '/a.jpg',
-      alt: 'A photo',
-      placeholder: 'data:image/png;base64,iVBORw0KGgo=',
-    });
+  test('omits client-only load/error state markers server-side', () => {
+    const html = placeholderImageServerHtml;
     expect(html).not.toContain('data-cinder-loaded');
     expect(html).not.toContain('data-cinder-errored');
     expect(html).not.toContain('data-cinder-fallback');

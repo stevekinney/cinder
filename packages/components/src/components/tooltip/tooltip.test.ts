@@ -5,7 +5,6 @@ import { createRawSnippet, flushSync, tick } from 'svelte';
 
 import {
   expectNoLeakedTimers,
-  prepareSvelteServerSource,
   renderSvelteOnServer,
   requiredInstance,
   setupHappyDom,
@@ -15,7 +14,10 @@ import {
 setupHappyDom();
 
 const TOOLTIP_SOURCE = join(import.meta.dir, 'tooltip.svelte');
-await prepareSvelteServerSource(TOOLTIP_SOURCE);
+// Server rendering spawns a Bun process, so it runs once at module scope, off bun's per-test clock.
+const tooltipServerHtml = await renderSvelteOnServer(TOOLTIP_SOURCE, {
+  text: 'Server tooltip text',
+});
 
 type Resolver = (value: unknown) => void;
 
@@ -220,7 +222,7 @@ describe('Tooltip', () => {
     expect(queryTooltip()?.parentElement).toBe(document.body);
   });
 
-  test('server output omits the tooltip panel (OVERLAY-POLICY SSR hard constraint)', async () => {
+  test('server output omits the tooltip panel (OVERLAY-POLICY SSR hard constraint)', () => {
     // The policy's SSR rule is a HARD CONSTRAINT, not a preference. Tooltip did
     // not satisfy it — the panel was unconditionally in the template — and an
     // earlier revision of this branch wrote itself an "exception" in the a11y
@@ -229,7 +231,7 @@ describe('Tooltip', () => {
     // Complying is safe: `aria-describedby` is wired from an attachment
     // (wrapping) and an `$effect` (detached), both client-only, so the server
     // emits neither the reference nor its target and nothing dangles.
-    const html = await renderSvelteOnServer(TOOLTIP_SOURCE, { text: 'Server tooltip text' });
+    const html = tooltipServerHtml;
 
     expect(html).not.toContain('role="tooltip"');
     expect(html).not.toContain('Server tooltip text');

@@ -13,7 +13,11 @@
 
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { prepareSvelteServerSource, renderThenHydrate } from '@lostgradient/testing';
+import {
+  hydrateServerHtml,
+  prepareSvelteServerSource,
+  renderSvelteOnServer,
+} from '@lostgradient/testing';
 import { flushSync, tick } from 'svelte';
 import MarkdownEditor from './markdown-editor.svelte';
 import type { MarkdownEditorProps } from './markdown-editor.types.ts';
@@ -26,6 +30,28 @@ const { createReactiveProps } = await import('./markdown-editor-reactive-props-h
 // first server compilation can exceed Bun's per-test timeout when the complete
 // package suite is cold; the test should measure render and hydrate behavior.
 await prepareSvelteServerSource(sourcePath);
+
+// Server rendering needs a real DOM-free process, so each render happens once here at module scope
+// off the per-test clock; the tests hydrate the recorded HTML and assert.
+const defaultServerProps = {
+  id: 'hydration-editor',
+  label: 'Hydration editor',
+  toolbarEnabled: false,
+  value: '# Hydration',
+};
+const previewProps = {
+  id: 'preview-hydration',
+  label: 'Template',
+  mode: 'preview',
+  value: 'Hello {{name}}',
+  placeholderDefinitions: { candidates: [{ path: 'name', types: ['string'] }] },
+  placeholderValues: { name: 'Ada' },
+} as const;
+const [defaultServerHtml, previewServerHtml] = await Promise.all([
+  renderSvelteOnServer(sourcePath, { ...defaultServerProps }),
+  renderSvelteOnServer(sourcePath, { ...previewProps }),
+]);
+
 describe('MarkdownEditor SSR contract', () => {
   test('renders EditorSkeleton in the {:else} branch of {#if browser}', () => {
     // The component has: {#if browser} ... {:else} <EditorSkeleton .../> {/if}
@@ -93,24 +119,12 @@ describe('MarkdownEditor hydration status', () => {
     const ready = new Promise<void>((resolve) => {
       resolveReady = resolve;
     });
-    const result = await renderThenHydrate(
-      MarkdownEditor,
-      sourcePath,
-      {
-        id: 'hydration-editor',
-        label: 'Hydration editor',
-        toolbarEnabled: false,
-        value: '# Hydration',
-        onReady: () => resolveReady?.(),
-      },
-      {
-        id: 'hydration-editor',
-        label: 'Hydration editor',
-        toolbarEnabled: false,
-        value: '# Hydration',
-      },
-    );
+    const result = hydrateServerHtml(MarkdownEditor, defaultServerHtml, {
+      ...defaultServerProps,
+      onReady: () => resolveReady?.(),
+    });
     cleanup = result.cleanup;
+    await tick();
 
     expect(result.ssrHtml).toContain('editor-skeleton');
     await ready;
@@ -121,14 +135,6 @@ describe('MarkdownEditor hydration status', () => {
 });
 
 describe('MarkdownEditor preview hydration (COR-525)', () => {
-  const previewProps = {
-    id: 'preview-hydration',
-    label: 'Template',
-    mode: 'preview',
-    value: 'Hello {{name}}',
-    placeholderDefinitions: { candidates: [{ path: 'name', types: ['string'] }] },
-    placeholderValues: { name: 'Ada' },
-  } as const;
   let cleanup: (() => Promise<void>) | undefined;
 
   afterEach(async () => {
@@ -145,8 +151,9 @@ describe('MarkdownEditor preview hydration (COR-525)', () => {
   }
 
   test('server output and the first hydration pass render the same inert loading region', async () => {
-    const result = await renderThenHydrate(MarkdownEditor, sourcePath, { ...previewProps });
+    const result = hydrateServerHtml(MarkdownEditor, previewServerHtml, { ...previewProps });
     cleanup = result.cleanup;
+    await tick();
 
     const server = document.createElement('div');
     server.innerHTML = result.ssrHtml;
@@ -168,13 +175,13 @@ describe('MarkdownEditor preview hydration (COR-525)', () => {
 
   test('rapid mode changes right after hydration settle on the latest mode', async () => {
     const reactive = createReactiveProps({ ...previewProps });
-    const result = await renderThenHydrate(
+    const result = hydrateServerHtml(
       MarkdownEditor,
-      sourcePath,
+      previewServerHtml,
       reactive.props as unknown as MarkdownEditorProps,
-      { ...previewProps },
     );
     cleanup = result.cleanup;
+    await tick();
 
     for (const mode of ['source', 'preview', 'source', 'preview']) {
       reactive.set('mode', mode);

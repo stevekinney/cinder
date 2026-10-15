@@ -4,18 +4,17 @@ import type {
 } from '@lostgradient/markdown';
 import { describe, expect, it } from 'bun:test';
 import { filterAndSortCandidates } from './template-completion-query.js';
-import {
-  computeCompletionState,
-  INACTIVE_STATE,
-  templateCompletionPluginKey,
-  type CompletionState,
-} from './template-completion-state.js';
+import { INACTIVE_STATE, type CompletionState } from './template-completion-state.js';
 import {
   completionSource,
   createStateWithText,
   makeCandidate,
   makeCandidates,
 } from './template-completion-test-utilities.js';
+import {
+  computeCompletionState,
+  templateCompletionPluginKey,
+} from './template-completion-transaction.js';
 
 // ---------------------------------------------------------------------------
 // computeCompletionState

@@ -49,6 +49,19 @@ async function flushMicrotasks(): Promise<void> {
 }
 
 /**
+ * The attachment loads the editor runtime with a dynamic import before it
+ * calls `createEditor` (COR-1322), so creation starts a few ticks after
+ * attaching rather than synchronously.
+ */
+async function untilEditorCreationStarts(): Promise<void> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (createEditorMock.mock.calls.length > 0) return;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  throw new Error('createEditor was never called');
+}
+
+/**
  * The `Attachment` type allows a `void | (() => void)` return, but
  * `createEditorAttachment` always returns a cleanup function. Narrow it once
  * here instead of asserting at every call site.
@@ -81,6 +94,7 @@ describe('createEditorAttachment', () => {
     const onready = mock((_state: EditorState) => {});
     const attachment = createEditorAttachment(createAttachmentOptions({ onready }));
     const detach = expectDetachFunction(attachment(createEditorElement()));
+    await untilEditorCreationStarts();
 
     detach();
 
@@ -101,6 +115,7 @@ describe('createEditorAttachment', () => {
     try {
       const attachment = createEditorAttachment(createAttachmentOptions());
       const detach = expectDetachFunction(attachment(createEditorElement()));
+      await untilEditorCreationStarts();
 
       detach();
       rejectCreatedEditor?.(new Error('late Milkdown initialization failure'));
@@ -124,6 +139,7 @@ describe('createEditorAttachment', () => {
     try {
       const attachment = createEditorAttachment(createAttachmentOptions());
       const detach = expectDetachFunction(attachment(createEditorElement()));
+      await untilEditorCreationStarts();
       const state = createEditorState();
       resolveCreatedEditor?.(state);
       await flushMicrotasks();
@@ -137,6 +153,20 @@ describe('createEditorAttachment', () => {
     } finally {
       globalThis.reportError = originalReportError;
     }
+  });
+
+  test('builds no editor when detached before the editor runtime loads', async () => {
+    const onready = mock((_state: EditorState) => {});
+    const attachment = createEditorAttachment(createAttachmentOptions({ onready }));
+    const detach = expectDetachFunction(attachment(createEditorElement()));
+
+    detach();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await flushMicrotasks();
+
+    expect(createEditorMock).not.toHaveBeenCalled();
+    expect(destroyEditorMock).not.toHaveBeenCalled();
+    expect(onready).not.toHaveBeenCalled();
   });
 
   test('installs placeholder configuration changes during initialization and after mount', async () => {
@@ -155,6 +185,7 @@ describe('createEditorAttachment', () => {
         (candidate) => candidate.path,
       );
 
+    await untilEditorCreationStarts();
     expect(createEditorMock.mock.calls[0]?.[1]?.placeholders).toBe(first);
 
     // Replaced while Milkdown is still initializing.

@@ -6,13 +6,13 @@ Rich Markdown editing surface bundling a Milkdown-powered ProseMirror editor, to
 
 ```svelte
 <script lang="ts">
-  import { MarkdownEditor } from '@lostgradient/editor';
+  import { MarkdownEditor } from '@lostgradient/editor/markdown-editor';
 </script>
 ```
 
-## Workspace dependencies
+## Dependencies
 
-Declare `"@lostgradient/editor": "workspace:*"` in the consuming workspace and run `bun install --frozen-lockfile` from the Corvidae root. The Editor workspace owns its Milkdown, ProseMirror, Markdown pipeline, and Cinder dependencies. Consumers import `MarkdownEditor` through `@lostgradient/editor`; they do not install the internal packages from a registry or duplicate the editor's dependency list.
+Add `@lostgradient/editor` as a dependency. The Editor package owns its Milkdown, ProseMirror, Markdown pipeline, and Cinder dependencies, so a consumer imports `MarkdownEditor` as the Usage example shows and does not install those packages separately or duplicate the editor's dependency list.
 
 ## Guidance
 
@@ -97,12 +97,12 @@ The `placeholder` prop is unrelated: it is the hint text an empty editor shows, 
 
 ### Example
 
-`placeholderDefinitions`, `placeholderValues` and `placeholderValueMode` are ordinary props; replacing any of them updates the mounted editor. `@lostgradient/editor` exports `MarkdownEditor`, `EditorMode` and `MarkdownEditorProps`; the placeholder data types (`PlaceholderDefinitions`, `PlaceholderDiagnostic`, `JsonObject` and the rest) come from the root of `@lostgradient/markdown`, so declare `"@lostgradient/markdown": "workspace:*"` as well to import them by name, or type through `MarkdownEditorProps` as below. The headless utilities, diagnostic codes and security boundary are documented in `packages/markdown/README.md`. The `markdown-editor.examples.json` entry `template-placeholders` is this example in full, and the `markdown-editor-template-placeholders` browser-fixture route (`bun run dev:browser-fixtures`) is its interactive version.
+`placeholderDefinitions`, `placeholderValues` and `placeholderValueMode` are ordinary props; replacing any of them updates the mounted editor. The Editor package exports `MarkdownEditor`, `EditorMode` and `MarkdownEditorProps` from the entry point the Usage example imports; the placeholder data types (`PlaceholderDefinitions`, `PlaceholderDiagnostic`, `JsonObject` and the rest) come from the root of `@lostgradient/markdown`, so add `@lostgradient/markdown` as a dependency as well to import them by name, or type through `MarkdownEditorProps` as below. The headless utilities, diagnostic codes and security boundary are documented in the `@lostgradient/markdown` README. The `markdown-editor.examples.json` entry `template-placeholders` is this example in full.
 
 ```svelte
 <script lang="ts">
   import type { PlaceholderDiagnostic } from '@lostgradient/markdown';
-  import { MarkdownEditor, type MarkdownEditorProps } from '@lostgradient/editor';
+  import { MarkdownEditor, type MarkdownEditorProps } from '@lostgradient/editor/markdown-editor';
 
   const definitions: MarkdownEditorProps['placeholderDefinitions'] = {
     schema: {
@@ -169,7 +169,7 @@ The ProseMirror element keeps `role="textbox"` with `aria-multiline="true"`; the
 | Diagnostics summary                             | `${id}-placeholder-diagnostics`                 |
 | Instructions (visually hidden)                  | `${id}-placeholder-instructions`                |
 
-The status region is always rendered and announces "N placeholders available", "1 placeholder available", "No matching placeholders", or the active option as "path, types, i of N". The instructions read "Type two opening braces to insert a placeholder. Use arrow keys and Enter to choose; Escape or Tab dismisses." The editor adds the instructions and diagnostics IDs to `aria-describedby` after any IDs you pass.
+The status region element is always rendered but is a live region (`role="status"`) only while completion is configured, and announces "N placeholders available", "1 placeholder available", "No matching placeholders", or the active option as "path, types, i of N". The instructions read "Type two opening braces to insert a placeholder. Use arrow keys and Enter to choose; Escape or Tab dismisses." The editor adds the instructions and diagnostics IDs to `aria-describedby` after any IDs you pass.
 
 ### Diagnostics
 

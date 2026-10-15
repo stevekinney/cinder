@@ -13,9 +13,10 @@
 import { untrack } from 'svelte';
 import type { Attachment } from 'svelte/attachments';
 import { watchReactiveValue } from './attach-reactive-watch.svelte.ts';
-import { createEditor, destroyEditor } from './editor.js';
 import type { EditorAttachmentOptions, EditorConfig, EditorState } from './types.js';
 import { DEFAULT_DEBOUNCE_MS } from './types.js';
+
+type EditorRuntime = typeof import('./editor.js');
 
 /**
  * Create an attachment function for the {@attach} directive.
@@ -53,6 +54,7 @@ export function createEditorAttachment(options: EditorAttachmentOptions): Attach
 
   return (element: HTMLElement) => {
     let editorState: EditorState | null = null;
+    let editorRuntime: EditorRuntime | null = null;
     let destroyed = false;
 
     // Untrack getter calls to prevent the attachment effect from re-running
@@ -90,9 +92,18 @@ export function createEditorAttachment(options: EditorAttachmentOptions): Attach
         })
       : () => {};
 
-    // Initialize editor asynchronously
+    // Initialize editor asynchronously. The editor runtime, and Milkdown and
+    // ProseMirror with it, loads here on first mount rather than when this
+    // module is imported, so a source- or preview-only MarkdownEditor never
+    // evaluates them (COR-1322).
     void (async () => {
       try {
+        const runtime = await import('./editor.js');
+        // Detached while the runtime loaded: there is no editor to tear down,
+        // so do not build one for an element that has already left.
+        if (destroyed) return;
+        editorRuntime = runtime;
+        const { createEditor, destroyEditor } = runtime;
         const state = await createEditor(element, editorConfiguration);
 
         // Guard against race condition if destroyed before init completes
@@ -113,8 +124,10 @@ export function createEditorAttachment(options: EditorAttachmentOptions): Attach
     return () => {
       destroyed = true;
       stopWatchingPlaceholders();
-      if (editorState) {
-        void destroyEditor(editorState).catch((error) => {
+      // An editor state exists only after the runtime loaded, so the runtime
+      // that created it is the one that destroys it.
+      if (editorState && editorRuntime) {
+        void editorRuntime.destroyEditor(editorState).catch((error) => {
           if (typeof globalThis.reportError === 'function') globalThis.reportError(error);
           else throw error;
         });

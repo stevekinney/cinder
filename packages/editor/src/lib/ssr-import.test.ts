@@ -86,6 +86,8 @@ async function runServerProbe(
     stdin: input ? new TextEncoder().encode(JSON.stringify(input)) : undefined,
     stdout: 'pipe',
     stderr: 'pipe',
+    // A hang detector for a child that never exits, never a performance bound.
+    timeout: 120_000,
   });
   const [status, output, errors] = await Promise.all([
     child.exited,
@@ -122,18 +124,23 @@ afterAll(async () => {
   await rm(preparedDirectory, { recursive: true });
 });
 
+// Each import is the behavior under test (a fresh server process), so both run here at module
+// scope, off the per-test clock, and the tests only assert on what they printed.
+const [externalImport, bundledImport] = await Promise.all([
+  runServerProbe(serverImportProbe, { entryPath: preparedEntryPath }),
+  runServerProbe(serverImportProbe, { entryPath: preparedBundledEntryPath }),
+]);
+
 describe('@lostgradient/editor public source entry point', () => {
-  it('imports on a fresh server with the real server export conditions and no DOM', async () => {
-    const result = await runServerProbe(serverImportProbe, { entryPath: preparedEntryPath });
-    expect(result.status, result.errors).toBe(0);
-    expect(result.errors).toBe('');
-    expect(JSON.parse(result.output)).toContain('ReviewEditor');
+  it('imports on a fresh server with the real server export conditions and no DOM', () => {
+    expect(externalImport.status, externalImport.errors).toBe(0);
+    expect(externalImport.errors).toBe('');
+    expect(JSON.parse(externalImport.output)).toContain('ReviewEditor');
   });
 
-  it('imports on a fresh server when ProseMirror and Milkdown are bundled into the same graph', async () => {
-    const result = await runServerProbe(serverImportProbe, { entryPath: preparedBundledEntryPath });
-    expect(result.status, result.errors).toBe(0);
-    expect(result.errors).toBe('');
-    expect(JSON.parse(result.output)).toContain('ReviewEditor');
+  it('imports on a fresh server when ProseMirror and Milkdown are bundled into the same graph', () => {
+    expect(bundledImport.status, bundledImport.errors).toBe(0);
+    expect(bundledImport.errors).toBe('');
+    expect(JSON.parse(bundledImport.output)).toContain('ReviewEditor');
   });
 });

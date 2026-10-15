@@ -3,11 +3,8 @@ import { closeHistory } from '@milkdown/kit/prose/history';
 import { TextSelection } from 'prosemirror-state';
 import type { EditorView } from 'prosemirror-view';
 
-import {
-  templateCompletionPluginKey,
-  type CompletionMeta,
-  type CompletionState,
-} from './template-completion-state.js';
+import { type CompletionMeta, type CompletionState } from './template-completion-state.js';
+import { templateCompletionPluginKey } from './template-completion-transaction.js';
 
 /**
  * Replace the whole in-progress token with one canonical `{{path}}`.

@@ -4,12 +4,11 @@ import { Plugin } from 'prosemirror-state';
 
 import { createLazyProsePlugin, type LazyProsePlugin } from './milkdown-plugin-runtime.js';
 import { handleCompletionKeyDown } from './template-completion-keyboard.js';
+import { INACTIVE_STATE, type CompletionState } from './template-completion-state.js';
 import {
   computeCompletionState,
-  INACTIVE_STATE,
   templateCompletionPluginKey,
-  type CompletionState,
-} from './template-completion-state.js';
+} from './template-completion-transaction.js';
 import {
   createCompletionView,
   type TemplateCompletionViewOptions,

@@ -2,10 +2,7 @@
 import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import { afterEach, describe, expect, test } from 'bun:test';
 import { flushSync } from 'svelte';
-import {
-  checkBuildFlagHydrationSafety,
-  prepareBuildFlagHydrationSafety,
-} from '../../test/hydration-safety.ts';
+import { checkBuildFlagHydrationSafety } from '../../test/hydration-safety.ts';
 import {
   flushTreeFilterStatus,
   treeItem,
@@ -20,7 +17,11 @@ const treeFilterHydrationSource = new URL(
   '../../test/fixtures/tree-filter-hydration-fixture.svelte',
   import.meta.url,
 ).pathname;
-await prepareBuildFlagHydrationSafety(treeFilterHydrationSource);
+// The build-flag check runs Bun.build passes and server renders in child processes, so it runs
+// once at module scope, off bun's per-test clock.
+const treeFilterHydrationResult = await checkBuildFlagHydrationSafety(treeFilterHydrationSource, {
+  filterValue: 'apollo',
+});
 afterEach(() => cleanup());
 
 describe('Tree — filter/search', () => {
@@ -103,10 +104,8 @@ describe('Tree — filter/search', () => {
     });
   });
 
-  test('filtered SSR markup is invariant for the client build', async () => {
-    const result = await checkBuildFlagHydrationSafety(treeFilterHydrationSource, {
-      filterValue: 'apollo',
-    });
+  test('filtered SSR markup is invariant for the client build', () => {
+    const result = treeFilterHydrationResult;
 
     const serverContainer = document.createElement('div');
     serverContainer.innerHTML = result.serverHtml;

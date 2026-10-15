@@ -1,9 +1,5 @@
 /// <reference lib="dom" />
-import {
-  prepareSvelteServerSource,
-  renderSvelteOnServer,
-  setupHappyDom,
-} from '@lostgradient/testing';
+import { renderSvelteOnServer, setupHappyDom } from '@lostgradient/testing';
 import { afterAll, afterEach, describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 import { resetEscapeStack, resetScrollLock } from '../../_internal/overlay.ts';
@@ -14,7 +10,11 @@ installDrawerDialogStubs();
 const restoreDrawerStyles = installDrawerStyleProbe();
 const { cleanup } = await import('@testing-library/svelte');
 const DRAWER_SOURCE = join(import.meta.dir, 'drawer.svelte');
-await prepareSvelteServerSource(DRAWER_SOURCE);
+// Server rendering spawns a Bun process, so it runs once at module scope, off bun's per-test clock.
+const openDrawerServerHtml = await renderSvelteOnServer(DRAWER_SOURCE, {
+  open: true,
+  title: 'Server Drawer',
+});
 
 afterAll(() => {
   restoreDrawerStyles();
@@ -35,8 +35,8 @@ describe('Drawer SSR contract', () => {
     expect(hydratedGateIndex).toBeGreaterThan(-1);
     expect(dialogIndex).toBeGreaterThan(hydratedGateIndex);
   });
-  test('server output omits the dialog before hydration even when open', async () => {
-    const html = await renderSvelteOnServer(DRAWER_SOURCE, { open: true, title: 'Server Drawer' });
+  test('server output omits the dialog before hydration even when open', () => {
+    const html = openDrawerServerHtml;
 
     expect(html).not.toContain('<dialog');
     expect(html).not.toContain('Server Drawer');

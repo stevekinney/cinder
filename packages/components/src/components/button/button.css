@@ -477,6 +477,31 @@
     border-color: transparent;
   }
 
+  /* Filled faces (primary, danger) get a page-coloured gap between the fill and
+   * the ring, so the accent-hued ring sits on the page instead of on a same-hue
+   * fill (COR-1498, focus-ring-policy.md). An aria-disabled button that is not
+   * loading has no fill and keeps the tight ring. */
+  .cinder-button[data-cinder-variant='primary']:focus-visible:not(:disabled):not(
+      [aria-disabled='true']:not([data-cinder-loading])
+    ),
+  .cinder-button[data-cinder-variant='danger']:focus-visible:not(:disabled):not(
+      [aria-disabled='true']:not([data-cinder-loading])
+    ) {
+    box-shadow: var(--_cinder-focus-ring-filled-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-button[data-cinder-variant='primary']:focus-visible:not(:disabled):not(
+        [aria-disabled='true']:not([data-cinder-loading])
+      ),
+    .cinder-button[data-cinder-variant='danger']:focus-visible:not(:disabled):not(
+        [aria-disabled='true']:not([data-cinder-loading])
+      ) {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
+  }
+
   @media (forced-colors: active) {
     .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost'] {
       background: ButtonFace;

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+import ts from 'typescript';
 import {
   childNodes,
   isNode,
@@ -227,12 +228,11 @@ describe('import-boundary matcher fixtures (fail-closed regression coverage)', (
 // ---------------------------------------------------------------------------
 // COR-525: preview and mode modules
 //
-// Preview must not initialize Milkdown on a preview-only mount. The component
-// graph already reaches Milkdown statically through `../../editor/index.ts`
-// (a pre-existing fact outside COR-525's scope), so this guards what COR-525
-// can: the new modules add no static Milkdown or ProseMirror import anywhere
-// in their own local graph, and the component's history import waits for a
-// rich editor to exist.
+// Preview must not initialize Milkdown on a preview-only mount. This guards
+// what COR-525 could: the new modules add no static Milkdown or ProseMirror
+// import anywhere in their own local graph, and the component's history import
+// waits for a rich editor to exist. The component's whole graph, which COR-525
+// left out of scope, is walked by the COR-1322 section below.
 // ---------------------------------------------------------------------------
 
 const COR_525_MODULES = [
@@ -392,5 +392,275 @@ describe('MarkdownEditor import boundary for preview and mode modules (COR-525)'
   it('matcher: a static Milkdown import in a local dependency is found', async () => {
     const reached = await reachablePackages(['../../editor/editor.ts']);
     expect([...reached.keys()].some(isProtected)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// COR-1322: the component's whole static import graph
+//
+// Importing `MarkdownEditor` must evaluate no Milkdown or ProseMirror module.
+// This walk starts at `markdown-editor.svelte` and follows every static
+// runtime import and re-export (`import … from`, `export … from`,
+// `export * from`) through local `.ts`, `.svelte` and `.svelte.ts` files to
+// their leaves, including the `editor/index.ts` and `attach.ts` edges that
+// COR-525 left out of scope. `import type`, `export type` and all-`type`
+// specifier lists are erased and skipped. Dynamic `import()` expressions are
+// leaves the walk does not follow; the guard rules above check them.
+// ---------------------------------------------------------------------------
+
+function isTypeOnlyDeclaration(statement: AstNode): boolean {
+  const kindField = statement.type === 'ImportDeclaration' ? 'importKind' : 'exportKind';
+  if (nodeField(statement, kindField) === 'type') return true;
+  const named = nodeField(statement, 'specifiers');
+  const list = Array.isArray(named) ? named.filter(isNode) : [];
+  return list.length > 0 && list.every((node) => nodeField(node, kindField) === 'type');
+}
+
+const MODULE_EDGE_TYPES = new Set([
+  'ImportDeclaration',
+  'ExportNamedDeclaration',
+  'ExportAllDeclaration',
+]);
+
+/** Specifiers of static imports and re-exports that load code at runtime. */
+function staticRuntimeSpecifiers(statements: readonly AstNode[]): string[] {
+  const specifiers: string[] = [];
+  for (const statement of statements) {
+    if (!MODULE_EDGE_TYPES.has(statement.type) || isTypeOnlyDeclaration(statement)) continue;
+    const source = nodeField(statement, 'source');
+    const value = isNode(source) ? nodeField(source, 'value') : undefined;
+    if (typeof value === 'string') specifiers.push(value);
+  }
+  return specifiers;
+}
+
+function typeScriptDeclarationIsTypeOnly(
+  statement: ts.ImportDeclaration | ts.ExportDeclaration,
+): boolean {
+  if (ts.isExportDeclaration(statement)) {
+    if (statement.isTypeOnly) return true;
+    const clause = statement.exportClause;
+    if (clause === undefined || !ts.isNamedExports(clause)) return false;
+    return clause.elements.length > 0 && clause.elements.every((element) => element.isTypeOnly);
+  }
+  const clause = statement.importClause;
+  if (clause === undefined) return false;
+  if (clause.isTypeOnly) return true;
+  if (clause.name !== undefined) return false;
+  const bindings = clause.namedBindings;
+  if (bindings === undefined || !ts.isNamedImports(bindings)) return false;
+  return bindings.elements.length > 0 && bindings.elements.every((element) => element.isTypeOnly);
+}
+
+/**
+ * Static runtime specifiers of a TypeScript module. Module-level imports and
+ * re-exports are always top-level statements, so a parse of the file's
+ * statements is complete; the TypeScript parser handles any source text,
+ * including JSDoc that a Svelte script wrapper would misread.
+ */
+function typeScriptRuntimeSpecifiers(path: string, text: string): string[] {
+  const file = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS);
+  const specifiers: string[] = [];
+  for (const statement of file.statements) {
+    if (!ts.isImportDeclaration(statement) && !ts.isExportDeclaration(statement)) continue;
+    const source = statement.moduleSpecifier;
+    if (source === undefined || !ts.isStringLiteral(source)) continue;
+    if (!typeScriptDeclarationIsTypeOnly(statement)) specifiers.push(source.text);
+  }
+  return specifiers;
+}
+
+/** Static runtime specifiers of a module: `.svelte` through the Svelte AST, anything else as TypeScript. */
+function moduleRuntimeSpecifiers(path: string, text: string): string[] {
+  if (!path.endsWith('.svelte')) return typeScriptRuntimeSpecifiers(path, text);
+  const root = parseSvelte(text, path);
+  return staticRuntimeSpecifiers([
+    ...scriptStatements(root, 'module'),
+    ...scriptStatements(root, 'instance'),
+  ]);
+}
+
+/** Reads a module's source, or returns `null` when no such module exists. */
+type ModuleReader = (path: string) => Promise<string | null>;
+
+const readFromDisk: ModuleReader = async (path) => {
+  const file = Bun.file(path);
+  return (await file.exists()) ? file.text() : null;
+};
+
+/** Resolve a relative specifier to a readable local module, mapping `.js` to `.ts`. */
+async function resolveLocal(
+  from: string,
+  specifier: string,
+  read: ModuleReader,
+): Promise<string | null> {
+  const path = new URL(specifier, `file://${from}`).pathname;
+  if (path.endsWith('.css')) return null;
+  const candidates = path.endsWith('.js') ? [path, `${path.slice(0, -3)}.ts`] : [path];
+  for (const candidate of candidates) {
+    if ((await read(candidate)) !== null) return candidate;
+  }
+  throw new Error(`[import-boundary] Cannot resolve ${specifier} from ${from} — failing hard`);
+}
+
+/** Every protected package statically reachable from `entry`, with the chain of modules that reaches it. */
+async function protectedChainsFrom(
+  entry: string,
+  read: ModuleReader = readFromDisk,
+): Promise<string[][]> {
+  const parents = new Map<string, string | null>([[entry, null]]);
+  const chainTo = (path: string): string[] => {
+    const chain: string[] = [];
+    for (let at: string | null = path; at !== null; at = parents.get(at) ?? null) chain.unshift(at);
+    return chain;
+  };
+  const queue = [entry];
+  const chains: string[][] = [];
+  while (queue.length > 0) {
+    const path = queue.shift()!;
+    const text = await read(path);
+    if (text === null) throw new Error(`[import-boundary] Cannot read ${path} — failing hard`);
+    for (const specifier of moduleRuntimeSpecifiers(path, text)) {
+      if (isProtected(specifier)) chains.push([...chainTo(path), specifier]);
+      if (!specifier.startsWith('.')) continue;
+      const resolved = await resolveLocal(path, specifier, read);
+      if (resolved === null || parents.has(resolved)) continue;
+      parents.set(resolved, path);
+      queue.push(resolved);
+    }
+  }
+  return chains;
+}
+
+const LIBRARY_ROOT = new URL('../../', import.meta.url).pathname;
+
+function describeChain(chain: readonly string[]): string {
+  return chain.map((link) => link.replace(LIBRARY_ROOT, '')).join(' -> ');
+}
+
+/** Follows every static local edge reachable from `entry`, returning each module visited. */
+async function reachableLocalModules(entry: string): Promise<Set<string>> {
+  const seen = new Set<string>([entry]);
+  const queue = [entry];
+  while (queue.length > 0) {
+    const path = queue.shift()!;
+    const text = await readFromDisk(path);
+    if (text === null) throw new Error(`[import-boundary] Cannot read ${path} — failing hard`);
+    for (const specifier of moduleRuntimeSpecifiers(path, text)) {
+      if (!specifier.startsWith('.')) continue;
+      const resolved = await resolveLocal(path, specifier, readFromDisk);
+      if (resolved === null || seen.has(resolved)) continue;
+      seen.add(resolved);
+      queue.push(resolved);
+    }
+  }
+  return seen;
+}
+
+describe('MarkdownEditor transitive import boundary (COR-1322)', () => {
+  it('reaches no @milkdown/ or prosemirror- package through any static runtime import', async () => {
+    const chains = await protectedChainsFrom(SOURCE_PATH);
+    expect(chains.map(describeChain)).toEqual([]);
+  });
+
+  it('really walks into the editor attachment and the toolbar', async () => {
+    // Guards against the walk going vacuous: the attachment shell and the
+    // toolbar commands are reached, and the Milkdown-bound editor runtime is
+    // not — it is behind attach.ts's dynamic import.
+    const modules = [...(await reachableLocalModules(SOURCE_PATH))].map((path) =>
+      path.replace(LIBRARY_ROOT, ''),
+    );
+    expect(modules).toContain('editor/attach.ts');
+    expect(modules).toContain('editor/component-runtime.ts');
+    expect(modules).toContain(
+      'components/markdown-editor/editor-toolbar/toolbar-commands.svelte.ts',
+    );
+    expect(modules).not.toContain('editor/editor.ts');
+    expect(modules).not.toContain('editor/index.ts');
+  });
+
+  it('defers the editor runtime to a dynamic import inside the asynchronous initialization', async () => {
+    const attachPath = new URL('../../editor/attach.ts', import.meta.url).pathname;
+    const text = await Bun.file(attachPath).text();
+    expect(typeScriptRuntimeSpecifiers(attachPath, text)).not.toContain('./editor.js');
+    expect(text).toContain("await import('./editor.js')");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Permanent synthetic fixtures for the transitive walk — prove it is
+// fail-closed across files. In-memory modules stand in for the file system.
+// ---------------------------------------------------------------------------
+
+function fixtureReader(modules: Record<string, string>): ModuleReader {
+  return async (path) => modules[path] ?? null;
+}
+
+describe('transitive import-boundary walk fixtures (fail-closed regression coverage)', () => {
+  const component = '/fixture/component.svelte';
+
+  it('FAILS: a runtime protected import two local files deep', async () => {
+    const chains = await protectedChainsFrom(
+      component,
+      fixtureReader({
+        [component]: `<script lang="ts">import { a } from './a.ts';</script><div></div>`,
+        '/fixture/a.ts': `import { b } from './b.js';\nexport const a = b;`,
+        '/fixture/b.ts': `import { Editor } from '@milkdown/kit/core';\nexport const b = Editor;`,
+      }),
+    );
+    expect(chains).toEqual([[component, '/fixture/a.ts', '/fixture/b.ts', '@milkdown/kit/core']]);
+  });
+
+  it('PASSES: the deepest import is `import type`', async () => {
+    const chains = await protectedChainsFrom(
+      component,
+      fixtureReader({
+        [component]: `<script lang="ts">import { a } from './a.ts';</script><div></div>`,
+        '/fixture/a.ts': `import { b } from './b.ts';\nexport const a = b;`,
+        '/fixture/b.ts': `import type { Editor } from '@milkdown/kit/core';\nexport const b: Editor | null = null;`,
+      }),
+    );
+    expect(chains).toEqual([]);
+  });
+
+  it('FAILS: a protected package reached through barrel re-exports', async () => {
+    const chains = await protectedChainsFrom(
+      component,
+      fixtureReader({
+        [component]: `<script lang="ts">import { a } from './index.ts';</script><div></div>`,
+        '/fixture/index.ts': `export { a } from './a.ts';\nexport * from './b.ts';`,
+        '/fixture/a.ts': `export const a = 1;`,
+        '/fixture/b.ts': `export { Plugin } from 'prosemirror-state';`,
+      }),
+    );
+    expect(chains).toEqual([
+      [component, '/fixture/index.ts', '/fixture/b.ts', 'prosemirror-state'],
+    ]);
+  });
+
+  it('PASSES: type-only re-exports and dynamic imports are not followed', async () => {
+    const chains = await protectedChainsFrom(
+      component,
+      fixtureReader({
+        [component]: `<script lang="ts">import { a } from './a.ts';</script><div></div>`,
+        '/fixture/a.ts': `export type { Editor } from '@milkdown/kit/core';\nexport { type Plugin } from 'prosemirror-state';\nexport const a = () => import('./b.ts');`,
+        '/fixture/b.ts': `import { Editor } from '@milkdown/kit/core';\nexport const b = Editor;`,
+      }),
+    );
+    expect(chains).toEqual([]);
+  });
+
+  it('FAILS: an unresolvable local import fails the walk instead of passing silently', async () => {
+    const failure = await protectedChainsFrom(
+      component,
+      fixtureReader({
+        [component]: `<script lang="ts">import { a } from './missing.ts';</script><div></div>`,
+      }),
+    ).then(
+      () => null,
+      (error: unknown) => error,
+    );
+    expect(failure).toBeInstanceOf(Error);
+    expect(String(failure)).toContain('Cannot resolve ./missing.ts');
   });
 });

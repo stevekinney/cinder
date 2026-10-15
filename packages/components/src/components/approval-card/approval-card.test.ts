@@ -20,10 +20,12 @@ import type { ApprovalCardProps } from './approval-card.types.ts';
 
 setupHappyDom();
 
-const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { tick } = await import('svelte');
 const { default: ApprovalCard } = await import('./approval-card.svelte');
 const { default: approvalCardSchema } = await import('./approval-card.schema.ts');
+const { default: CodeHighlighterContextFixture } =
+  await import('../../test/fixtures/code-highlighter-context-fixture.svelte');
 
 afterEach(() => {
   cleanup();
@@ -928,6 +930,52 @@ describe('ApprovalCard', () => {
     expect(codeBlock?.querySelector('.cinder-code-block__language')).toBeNull();
     expect(container.textContent).toContain('diff --git a/src/approval.ts b/src/approval.ts');
     expect(container.textContent).toContain('export const approved = true;');
+  });
+
+  test('renders the command unhighlighted when no ancestor publishes a highlighter', async () => {
+    const { container } = render(ApprovalCard, { ...approvalCardProps() });
+    await tick();
+    await Promise.resolve();
+
+    expect(container.querySelector('.cinder-code-block__highlighted')).toBeNull();
+    expect(container.querySelector('.cinder-code-block__code')?.textContent).toBe(
+      'bun run --filter=@lostgradient/cinder test',
+    );
+  });
+
+  test('highlights the command as shell and the patch as diff through the context highlighter', async () => {
+    const highlighter = mock(
+      (code: string, language: string) =>
+        `<pre class="shiki context-highlighted" data-language="${language}"><code>${code}</code></pre>`,
+    );
+
+    const command = render(CodeHighlighterContextFixture, {
+      highlighter,
+      component: ApprovalCard,
+      childProps: approvalCardProps(),
+    });
+    await waitFor(() => {
+      expect(
+        command.container.querySelector('.cinder-code-block__highlighted .context-highlighted'),
+      ).not.toBeNull();
+    });
+    expect(highlighter).toHaveBeenCalledWith('bun run --filter=@lostgradient/cinder test', 'shell');
+    command.unmount();
+
+    const diff = 'diff --git a/src/approval.ts b/src/approval.ts\n+export const approved = true;';
+    const patch = render(CodeHighlighterContextFixture, {
+      highlighter,
+      component: ApprovalCard,
+      childProps: approvalCardProps({
+        operation: { kind: 'patch', filesTouched: ['src/approval.ts'], diff, argsPreview: {} },
+      }),
+    });
+    await waitFor(() => {
+      expect(
+        patch.container.querySelector('.cinder-code-block__highlighted [data-language="diff"]'),
+      ).not.toBeNull();
+    });
+    expect(highlighter).toHaveBeenCalledWith(diff, 'diff');
   });
 
   test('collapses sandbox, environment, and request metadata into one Details disclosure', async () => {
