@@ -475,6 +475,20 @@ function tokenExports(packageRoot: string): Record<string, ExportEntry | JsonExp
     }
   }
 
+  // The pure token kernel (corvidae COR-491). Like the registry it ships source for the
+  // `browser`, `svelte` and `import` conditions; its generated validators, base digest and
+  // catalogue sit beside it under `src/tokens/runtime/`, which `STATIC_FILES_GLOBS` publishes.
+  if (existsSync(join(tokensDirectory, 'runtime', 'index.ts'))) {
+    out['./tokens/runtime'] = orderedExportEntry({
+      types: './dist/tokens/runtime/index.d.ts',
+      browser: './src/tokens/runtime/index.ts',
+      node: './dist/server/tokens/runtime/index.js',
+      svelte: './src/tokens/runtime/index.ts',
+      import: './src/tokens/runtime/index.ts',
+      default: './dist/tokens/runtime/index.js',
+    });
+  }
+
   if (existsSync(join(tokensDirectory, 'registry.generated.ts'))) {
     out['./tokens/registry'] = orderedExportEntry({
       types: './dist/tokens/registry.generated.d.ts',
@@ -730,6 +744,10 @@ export const STATIC_FILES_GLOBS: readonly string[] = [
   // `files` excludes resolves in-repo while 404ing from the registry.
   'src/tokens/**/*.json',
   'src/tokens/registry.generated.ts',
+  'src/tokens/runtime/**/*.ts',
+  'src/tokens/runtime/**/*.js',
+  '!src/tokens/runtime/**/*.test.ts',
+  '!src/tokens/runtime/**/*.test-support.ts',
   'src/components/icons/index.ts',
   'src/utilities/**/*.ts',
   '!src/utilities/**/*.test.ts',
