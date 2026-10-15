@@ -26,9 +26,14 @@
  * prove.
  */
 import { describe, expect, test } from 'bun:test';
-import { createRawSnippet } from 'svelte';
+import { createRawSnippet, tick } from 'svelte';
 
-import { prepareSvelteServerSource, renderThenHydrate, setupHappyDom } from '@lostgradient/testing';
+import {
+  hydrateServerHtml,
+  prepareSvelteServerSource,
+  renderSvelteOnServer,
+  setupHappyDom,
+} from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -74,6 +79,11 @@ const { default: CommandPaletteHydrationFixture } =
   await import('./_command-palette-hydration-test.svelte');
 const sourcePath = new URL('./_command-palette-hydration-test.svelte', import.meta.url).pathname;
 await prepareSvelteServerSource(sourcePath);
+// Server rendering spawns a Bun process, so it runs once at module scope, off bun's per-test clock.
+const [closedHtml, openHtml] = await Promise.all([
+  renderSvelteOnServer(sourcePath, { open: false }),
+  renderSvelteOnServer(sourcePath, { open: true }),
+]);
 
 const emptyItems = createRawSnippet(() => ({
   render: () => `<span></span>`,
@@ -82,9 +92,9 @@ const emptyItems = createRawSnippet(() => ({
 
 describe('CommandPalette hydration', () => {
   test('a closed palette SSRs to empty markup and mounts without hydration warnings', async () => {
-    const result = await renderThenHydrate(CommandPaletteHydrationFixture, sourcePath, {
-      open: false,
-    });
+    const result = hydrateServerHtml(CommandPaletteHydrationFixture, closedHtml, { open: false });
+    // Hydration effects flush in a microtask; yield once so assertions see the settled DOM.
+    await tick();
 
     try {
       expect(result.ssrHtml).not.toContain('<dialog');
@@ -99,9 +109,9 @@ describe('CommandPalette hydration', () => {
   });
 
   test('an initially-open palette still SSRs to empty markup (the CIN-426 regression), then mounts the real dialog on the client', async () => {
-    const result = await renderThenHydrate(CommandPaletteHydrationFixture, sourcePath, {
-      open: true,
-    });
+    const result = hydrateServerHtml(CommandPaletteHydrationFixture, openHtml, { open: true });
+    // Hydration effects flush in a microtask; yield once so assertions see the settled DOM.
+    await tick();
 
     try {
       // The literal assertion this ticket exists to add: open={true} during

@@ -717,12 +717,19 @@ describe('Input group (leading/trailing addons)', () => {
       /\.cinder-input-host\[data-disabled\]\s*\{[^}]*border-color:\s*var\(--cinder-border-muted\);/,
     );
     // Hover too: an addon can appear while the pointer is over the input, and
-    // the host is hovered whenever its input is.
+    // the host is hovered whenever its input is. Updated for COR-1498: hover
+    // excludes the focused state, where the border is transparent under the
+    // tight ring, so the selectors gain `:not(:focus-within)`.
     expect(css).toMatch(
-      /\.cinder-input-host:hover:not\(\[data-disabled\]\)\s*\{[^}]*border-color:\s*var\(--cinder-border-strong\);/,
+      /\.cinder-input-host:hover:not\(\[data-disabled\]\):not\(:focus-within\)\s*\{[^}]*border-color:\s*var\(--cinder-border-strong\);/,
     );
     expect(css).toMatch(
-      /\.cinder-input-host\[data-invalid\]:hover:not\(\[data-disabled\]\)\s*\{[^}]*border-color:\s*var\(--_cinder-input-invalid-border-hover\);/,
+      /\.cinder-input-host\[data-invalid\]:hover:not\(\[data-disabled\]\):not\(:focus-within\)\s*\{[^}]*border-color:\s*var\(--_cinder-input-invalid-border-hover\);/,
+    );
+    // COR-1498: the ring replaces the border while focused, on the bare input,
+    // the host that mirrors the group, and the group.
+    expect(css).toMatch(
+      /\.cinder-input:focus-visible,\s*\.cinder-input-host:focus-within,\s*\.cinder-input-group:focus-within\s*\{\s*border-color:\s*transparent;\s*\}/,
     );
     // The three surfaces that can paint that edge share one declaration of it,
     // so they cannot drift apart: the bare input, the host that takes over when

@@ -18,7 +18,7 @@
     {
       "id": "with-language",
       "title": "With language label and copy",
-      "description": "Header shows the language and a copy-to-clipboard button. Setting a language is all it takes — CodeBlock lazy-loads the bundled Shiki highlighter on the client and highlights automatically, no extra wiring.",
+      "description": "Header shows the language and a copy-to-clipboard button. The block highlights with the highlighter an ancestor publishes through setCodeHighlighterContext — here, the playground publishes one — and renders plain code when none is published.",
       "code": "<script lang=\"ts\">\n  import { CodeBlock } from '@lostgradient/cinder';\n\n  const code = `SELECT id, name, created_at\nFROM users\nWHERE active = true\nORDER BY created_at DESC\nLIMIT 10;`;\n</script>\n\n<CodeBlock {code} language=\"sql\" copyable />\n"
     }
   ]

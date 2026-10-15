@@ -4,12 +4,12 @@
  */
 
 import { describe, expect, it } from 'bun:test';
-import { detectTokenQuery } from './template-completion-query.js';
 import {
   createStateWithInline,
   createStateWithText,
   schema,
 } from './template-completion-test-utilities.js';
+import { detectTokenQuery } from './template-completion-transaction.js';
 
 const strong = schema.mark('strong');
 const inlineCode = schema.mark('inlineCode');

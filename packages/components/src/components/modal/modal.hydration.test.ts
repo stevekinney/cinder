@@ -15,9 +15,9 @@
  *
  */
 import { describe, expect, test } from 'bun:test';
-import { createRawSnippet } from 'svelte';
+import { createRawSnippet, tick } from 'svelte';
 
-import { prepareSvelteServerSource, renderThenHydrate, setupHappyDom } from '@lostgradient/testing';
+import { hydrateServerHtml, renderSvelteOnServer, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -25,7 +25,8 @@ const { render } = await import('@testing-library/svelte');
 const { default: Modal } = await import('./modal.svelte');
 const { default: ModalHydrationFixture } = await import('./_modal-hydration-test.svelte');
 const sourcePath = new URL('./_modal-hydration-test.svelte', import.meta.url).pathname;
-await prepareSvelteServerSource(sourcePath);
+// Server rendering spawns a Bun process, so it runs once at module scope, off bun's per-test clock.
+const closedModalHtml = await renderSvelteOnServer(sourcePath, { open: false, title: 'Confirm' });
 
 const bodyContent = createRawSnippet(() => ({
   render: () => `<p id="modal-body-copy">Are you sure?</p>`,
@@ -33,10 +34,12 @@ const bodyContent = createRawSnippet(() => ({
 
 describe('Modal hydration', () => {
   test('a closed modal SSRs to empty markup and mounts without hydration warnings', async () => {
-    const result = await renderThenHydrate(ModalHydrationFixture, sourcePath, {
+    const result = hydrateServerHtml(ModalHydrationFixture, closedModalHtml, {
       open: false,
       title: 'Confirm',
     });
+    // Hydration effects flush in a microtask; yield once so assertions see the settled DOM.
+    await tick();
 
     try {
       // Closed modal emits no dialog on the server (only empty {#if} markers).

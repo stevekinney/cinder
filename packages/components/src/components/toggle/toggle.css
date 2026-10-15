@@ -91,6 +91,22 @@
         var(--cinder-toggle-ring, var(--cinder-ring-color));
   }
 
+  /* The on track is a solid accent fill, so the ring gets a page-coloured gap
+   * (COR-1498). Inline so a consumer's --cinder-toggle-ring still applies. */
+  .cinder-toggle[data-cinder-checked]:focus-visible {
+    box-shadow:
+      0 0 0 var(--_cinder-focus-ring-filled-gap) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--_cinder-focus-ring-filled-gap) + var(--cinder-ring-width))
+        var(--cinder-toggle-ring, var(--cinder-ring-color));
+  }
+
+  @media (forced-colors: active) {
+    .cinder-toggle[data-cinder-checked]:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
+  }
+
   /* Forced Colors Mode: box-shadow is suppressed by Windows High Contrast Mode, so
  * we switch to a solid outline. ButtonText is guaranteed to contrast the button surface.
  */

@@ -13,6 +13,12 @@ const schema = {
       description: "Connection status shown in the frame chrome. Defaults to `'connecting'`.",
       default: 'connecting',
     },
+    announceStatus: {
+      type: 'boolean',
+      description:
+        'Whether the status chip is a polite live region (`role="status"`), so a change of `status`\nis announced. Set `false` when the consumer announces state itself through a more detailed\nlive region and a second announcement would be noise; the chip keeps its visible text.\nDefaults to `true`.',
+      default: true,
+    },
     error: {
       type: 'string',
       description:

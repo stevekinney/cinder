@@ -278,7 +278,8 @@ describe('documentation/tokens.md drift', () => {
   describe('focused guide token references', () => {
     const values = new Map([
       ['--cinder-ring-width', '2px'],
-      ['--cinder-ring-offset', '2px'],
+      // Updated for COR-1498: the shipped default offset is 0px (the tight ring).
+      ['--cinder-ring-offset', '0px'],
       ['--cinder-ring-offset-color', 'var(--cinder-surface-raised)'],
     ]);
     const compact = [...values]

@@ -970,7 +970,7 @@ describe('CommandPalette — attachment registration', () => {
 // ── Visual contract ───────────────────────────────────────────────────────
 
 describe('CommandPalette — visual contract', () => {
-  test('keyboard focus is indicated by the standard library ring on the input, via :focus-visible', async () => {
+  test('the search input paints no ring; forced colors keep a Highlight outline (COR-1498)', async () => {
     const css = await Bun.file(new URL('./command-palette.css', import.meta.url)).text();
 
     // The bespoke bottom-border-recolor idiom is gone; the search row no longer
@@ -978,14 +978,18 @@ describe('CommandPalette — visual contract', () => {
     expect(css).not.toMatch(/\.cinder-command-palette__search\s*\{[\s\S]*?border-block-end/);
     expect(css).not.toMatch(/\.cinder-command-palette__search:focus-within/);
 
-    // The input now carries the library's standard ring recipe — transparent
-    // outline + the shared two-stop box-shadow formula — gated on :focus-visible
-    // (not :focus) so a mouse click does not show the ring.
+    // The input keeps the transparent outline placeholder, gated on
+    // :focus-visible (not :focus), so forced colors have a channel to repaint.
     expect(css).toMatch(
       /\.cinder-command-palette__input:focus-visible\s*\{[\s\S]*?outline:\s*var\(--cinder-ring-width\) solid transparent;/,
     );
+    // Updated for COR-1498: the palette search is a documented no-ring
+    // exception (the row is the field and the caret shows focus), so the box-shadow is none.
     expect(css).toMatch(
-      /\.cinder-command-palette__input:focus-visible\s*\{[\s\S]*?box-shadow:\s*var\(--_cinder-focus-ring-shadow\);/,
+      /\.cinder-command-palette__input:focus-visible\s*\{[^}]*?box-shadow:\s*none;/,
+    );
+    expect(css).not.toMatch(
+      /\.cinder-command-palette__input:focus-visible\s*\{[^}]*?--_cinder-focus-ring-shadow/,
     );
     expect(css).not.toMatch(/\.cinder-command-palette__input:focus\s*\{/);
 

@@ -12,10 +12,11 @@
    */
   import type { HttpClient } from '@lostgradient/weft';
 
-  import { Skeleton } from '@lostgradient/cinder';
+  import { Skeleton, setCodeHighlighterContext } from '@lostgradient/cinder';
   import { QueryClientProvider } from '@tanstack/svelte-query';
 
   import { createClient, setApiKey } from '../lib/client.ts';
+  import { codeHighlighter } from '../lib/code-highlighter.ts';
   import { readRuntimeConfig, type WeftUiRuntimeConfig } from '../lib/config.ts';
   import { createQueryClient } from '../lib/query.ts';
   import { resolvePrincipal, type Principal } from '../lib/scopes.svelte.ts';
@@ -25,6 +26,12 @@
 
   const queryClient = createQueryClient();
   const config: WeftUiRuntimeConfig = readRuntimeConfig();
+
+  // Every highlighted CodeBlock in the UI renders JSON or TypeScript, so the
+  // whole tree shares the curated highlighter over exactly those grammars.
+  // CodeBlock imports no highlighter of its own, which keeps Shiki's other
+  // grammars and themes out of the bundle.
+  setCodeHighlighterContext(codeHighlighter);
 
   type BootPhase =
     | { readonly status: 'resolving' }

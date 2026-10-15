@@ -8,12 +8,9 @@
  *      chunk-load failure, etc.) would lock the cached rejection in forever
  *      and every subsequent call would replay the failure.
  *
- * Used by the bundled Shiki adapter (to wrap `import('shiki')`) and by
- * `<CodeBlock>`'s default-highlighter seam (to wrap the dynamic import of the
- * Shiki adapter module). Lives in `utilities/` so the default-highlighter seam
- * can reuse it WITHOUT a static import edge to the Shiki adapter — keeping the
- * adapter out of CodeBlock's static import graph (see
- * `code-block.bundle-boundary.test.ts`).
+ * Used by the Shiki adapter (to wrap its lazy Shiki imports) and by the JSON
+ * Schema interpreter. Lives in `utilities/` so a module can reuse it without
+ * an import edge to the Shiki adapter.
  */
 export function createRetryingLoaderCache<T>(loader: () => Promise<T>): () => Promise<T> {
   let cached: Promise<T> | undefined;

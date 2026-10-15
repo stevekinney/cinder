@@ -149,7 +149,6 @@ const SCAN_ROOTS = [
   ['components/cinder/src/styles', 'components/cinder/src/styles'],
   ['components/chat/src', 'components/chat/src'],
   ['components/editor/src', 'components/editor/src'],
-  ['applications/desktop/src', 'applications/desktop/src'],
   ['packages/components/src/components', 'components/cinder/src/components'],
   ['packages/components/src/styles', 'components/cinder/src/styles'],
   ['packages/chat/src', 'components/chat/src'],

@@ -1,10 +1,7 @@
 import type { PlaceholderCandidate, PlaceholderSchemaType } from '@lostgradient/markdown';
 import type { Mark } from 'prosemirror-model';
-import type { EditorState, Transaction } from 'prosemirror-state';
-import { PluginKey } from 'prosemirror-state';
 
 import {
-  detectTokenQuery,
   filterAndSortCandidates,
   mergeCandidates,
   type DetectedTokenQuery,
@@ -58,13 +55,11 @@ export type CompletionMeta =
       source: PlaceholderCompletionSource;
     };
 
-export const templateCompletionPluginKey = new PluginKey<CompletionState>('template-completion');
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function isCompletionMeta(value: unknown): value is CompletionMeta {
+export function isCompletionMeta(value: unknown): value is CompletionMeta {
   if (!isRecord(value)) return false;
   if (value['type'] === 'close' || value['type'] === 'dismiss') return true;
   if (value['type'] === 'navigate') {
@@ -218,26 +213,4 @@ export function advanceCompletionState(
   return detected
     ? buildDetectedState(previousState, configuration, detected, step.configurationChanged === true)
     : INACTIVE_STATE;
-}
-
-/**
- * Compute the next completion state for a ProseMirror transaction; see
- * {@link advanceCompletionState}.
- */
-export function computeCompletionState(
-  previousState: CompletionState,
-  transaction: Transaction,
-  editorState: EditorState,
-  configuration: PlaceholderCompletionSource | undefined,
-  configurationChanged = false,
-  keepDismissal = false,
-): CompletionState {
-  const rawMeta: unknown = transaction.getMeta(templateCompletionPluginKey);
-  return advanceCompletionState(previousState, configuration, {
-    meta: isCompletionMeta(rawMeta) ? rawMeta : undefined,
-    documentChanged: transaction.docChanged,
-    configurationChanged,
-    keepDismissal,
-    detect: () => detectTokenQuery(editorState),
-  });
 }

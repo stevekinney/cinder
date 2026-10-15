@@ -16,6 +16,13 @@ const { default: SideNavigation } = await import('../side-navigation/side-naviga
 const { SIDEBAR_MOBILE_BREAKPOINT, SIDEBAR_MOBILE_MEDIA_QUERY } = await import('./index.ts');
 const SIDEBAR_SOURCE = new URL('./sidebar.svelte', import.meta.url).pathname;
 await prepareSvelteServerSource(SIDEBAR_SOURCE);
+// Server rendering spawns a Bun process, so it runs once at module scope, off bun's per-test clock.
+const [workspaceSidebarServerHtml, defaultSidebarServerHtml, customBreakpointSidebarServerHtml] =
+  await Promise.all([
+    renderSvelteOnServer(SIDEBAR_SOURCE, { id: 'workspace-sidebar', label: 'Workspace' }),
+    renderSvelteOnServer(SIDEBAR_SOURCE, { label: 'Workspace' }),
+    renderSvelteOnServer(SIDEBAR_SOURCE, { label: 'Workspace', mobileBreakpoint: '64rem' }),
+  ]);
 
 function assertNever(value: never): never {
   throw new Error(`Unexpected exhaustive value: ${String(value)}`);
@@ -332,11 +339,8 @@ describe('Sidebar SSR responsive fallback', () => {
     }
   });
 
-  test('server output marks the desktop aside for mobile first-paint hiding', async () => {
-    const html = await renderSvelteOnServer(SIDEBAR_SOURCE, {
-      id: 'workspace-sidebar',
-      label: 'Workspace',
-    });
+  test('server output marks the desktop aside for mobile first-paint hiding', () => {
+    const html = workspaceSidebarServerHtml;
 
     expect(html).toContain('id="workspace-sidebar"');
     expect(html).toMatch(
@@ -345,14 +349,9 @@ describe('Sidebar SSR responsive fallback', () => {
     expect(html).toContain('data-cinder-ssr-mobile-fallback');
   });
 
-  test('server output includes custom mobile fallback CSS only when the breakpoint changes', async () => {
-    const defaultHtml = await renderSvelteOnServer(SIDEBAR_SOURCE, {
-      label: 'Workspace',
-    });
-    const customHtml = await renderSvelteOnServer(SIDEBAR_SOURCE, {
-      label: 'Workspace',
-      mobileBreakpoint: '64rem',
-    });
+  test('server output includes custom mobile fallback CSS only when the breakpoint changes', () => {
+    const defaultHtml = defaultSidebarServerHtml;
+    const customHtml = customBreakpointSidebarServerHtml;
 
     expect(defaultHtml).not.toContain('data-cinder-sidebar-breakpoint-style');
     expect(customHtml).toContain('data-cinder-sidebar-breakpoint-style');

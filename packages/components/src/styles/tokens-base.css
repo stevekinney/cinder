@@ -279,16 +279,16 @@
   --cinder-accent-border: color-mix(in oklch, var(--cinder-accent-solid), transparent 60%);
   /* Focus ring stroke width. A floor, not a preference: WCAG 2.4.13 wants an indicator at least as large as a 2px-thick perimeter of the control. */
   --cinder-ring-width: 2px;
-  /* Focus ring offset from the control edge. */
-  --cinder-ring-offset: 2px;
-  /* Focus ring offset band color. The ring is a two-stop box-shadow and box-shadow cannot paint a transparent gap, so the offset band has to be some real color. Pinned to `surface.raised` (the top of the ramp) so the band disappears into raised surfaces, where controls overwhelmingly live, and reads as a light halo on recessed tiers. */
+  /* Focus ring offset from the control edge. Zero: the ring sits directly on the control edge with no offset band, so focus reads as one tight 2px line rather than a 4px double band (COR-1498). Filled controls add a private 2px gap instead; see `ring.offset-color`. Emitted as `0px`, not a bare `0`, because the ring recipes add it to `--cinder-ring-width` inside `calc()`, where a unitless zero is a number and invalidates the sum. */
+  --cinder-ring-offset: 0px;
+  /* Color of the gap band between a focus ring and the control. Filled controls (a solid accent, danger or status fill on the focused element) paint a 2px gap in this color before the ring, so the accent-hued ring sits on the page instead of on a same-hue fill. Unfilled controls use `ring.offset`, which is zero, so they paint no gap. box-shadow cannot paint a transparent gap, so the band needs a real color; it is pinned to `surface.raised`, where controls overwhelmingly live. */
   --cinder-ring-offset-color: var(--cinder-surface-raised);
   /* Focus ring color, relative to `accent.solid` so a consumer override re-derives the ring hue. Light arm clamps L to 0.55 for 3.56:1 against the widened ramp's darkest surface; `h` tracks the accent hue. */
   --cinder-ring-color: light-dark(
     oklch(from var(--cinder-accent-solid) 0.55 0.16 h),
     oklch(from var(--cinder-accent-solid) 0.7 0.14 h)
   );
-  /* Ring color tuned for use on solid accent/fill surfaces (FloatingAction primary variant). Light arm is a near-black that contrasts both the accent fill and the page background; dark arm is a near-white that contrasts the bright dark-mode accent and the dark page background. */
+  /* Ring color used by the FloatingAction primary variant, whose ring sits directly on its accent fill. Light arm is a near-black and dark arm a near-white, both strongly contrasting the page background. Against the fill itself it measures about 3:1 in light mode and about 2.5:1 in dark mode, so other filled controls use a `ring.offset-color` gap and the standard ring instead (focus-ring-policy.md). */
   --cinder-ring-on-accent: light-dark(oklch(15% 0.035 245), oklch(100% 0 0));
   /* Scrollbar thickness. */
   --cinder-scrollbar-size: 0.625rem;

@@ -1,5 +1,6 @@
 import { sveltePlugin, throwingRejectionOf } from '@lostgradient/testing';
 import { describe, expect, test } from 'bun:test';
+import { mkdir } from 'node:fs/promises';
 
 import { allowCinderTestStyleBlock } from '../scripts/preload.ts';
 import Button from './components/button/button.svelte';
@@ -115,7 +116,7 @@ describe('svelte plugin', () => {
 
     const fixtureDirectory = `${import.meta.dir}/components/diff-viewer`;
     const fixturePath = `${fixtureDirectory}/style-allowed-fixture.svelte`;
-    await Bun.$`mkdir -p ${fixtureDirectory}`;
+    await mkdir(fixtureDirectory, { recursive: true });
     await Bun.write(
       fixturePath,
       `<p class="sample">hi</p>\n<style>\n.sample { color: tomato; }\n</style>\n`,

@@ -228,8 +228,9 @@ type PrincipalProbeClient = {
  * Three outcomes, mapping the operation's `method` onto {@link Principal}:
  *
  * - **`method` is a real credential kind** (`'jwt'`/`'api-key'`/`'mtls'`/
- *   `'stdio-local'`) — the server accepted a credential. Granted scopes
- *   verbatim, `unauthenticatedAccess: null` (no banner).
+ *   `'stdio-local'`) — the server accepted a credential. Granted built-in
+ *   scopes verbatim (package-registered scopes are left out),
+ *   `unauthenticatedAccess: null` (no banner).
  * - **`method: 'unauthenticated'`** — the server served an anonymous caller,
  *   which only happens when it has no `auth` configured: an auth-configured
  *   weft rejects credential-less requests at the transport edge before any
@@ -260,7 +261,19 @@ export async function resolvePrincipal(client: PrincipalProbeClient): Promise<Pr
     return { scopes: [], unauthenticatedAccess: 'warn' };
   }
 
-  return { scopes: [...introspected.scopes], unauthenticatedAccess: null };
+  // A server may also grant package-registered scopes (`bureau.tasks:read`,
+  // from `serve({ additionalScopes })`). The console gates only on Weft's own
+  // vocabulary, so it keeps those and leaves the rest out.
+  return {
+    scopes: introspected.scopes.filter(isConsoleScope),
+    unauthenticatedAccess: null,
+  };
+}
+
+const CONSOLE_SCOPES: ReadonlySet<string> = new Set(AUTHORIZATION_SCOPES);
+
+function isConsoleScope(scope: string): scope is AuthorizationScope {
+  return CONSOLE_SCOPES.has(scope);
 }
 
 /** Tooltip text for a missing-scope disable-with-reason (plan §6, §10). */

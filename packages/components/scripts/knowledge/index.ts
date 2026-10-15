@@ -165,19 +165,32 @@ async function runParsedCommand(parsed: ParsedCommand): Promise<CommandResult> {
   }
 }
 
-function reportCliError(error: unknown, isJson: boolean): void {
+export type CliWriters = {
+  stdout: (text: string) => void;
+  stderr: (text: string) => void;
+};
+
+const processWriters: CliWriters = {
+  stdout: (text) => process.stdout.write(text),
+  stderr: (text) => process.stderr.write(text),
+};
+
+function reportCliError(error: unknown, isJson: boolean, writers: CliWriters): void {
   const code = error instanceof CinderKnowledgeError ? error.code : 'UNEXPECTED_ERROR';
   const message = error instanceof Error ? error.message : String(error);
   const suggestions = error instanceof CinderKnowledgeError ? error.suggestions : [];
   if (isJson) {
-    process.stdout.write(`${jsonError(code, message, suggestions)}\n`);
+    writers.stdout(`${jsonError(code, message, suggestions)}\n`);
   } else {
-    process.stderr.write(`${message}\n`);
-    if (suggestions.length > 0) process.stderr.write(`Suggestions: ${suggestions.join(', ')}\n`);
+    writers.stderr(`${message}\n`);
+    if (suggestions.length > 0) writers.stderr(`Suggestions: ${suggestions.join(', ')}\n`);
   }
 }
 
-export async function runCli(argv: string[] = process.argv.slice(2)): Promise<number> {
+export async function runCli(
+  argv: string[] = process.argv.slice(2),
+  writers: CliWriters = processWriters,
+): Promise<number> {
   let parsed: ParsedCommand;
   try {
     parsed = parseCommand(argv);
@@ -193,11 +206,11 @@ export async function runCli(argv: string[] = process.argv.slice(2)): Promise<nu
         }
         output = jsonEnvelope(result.package, result.command, result.data);
       }
-      process.stdout.write(`${output}\n`);
+      writers.stdout(`${output}\n`);
     }
     return 0;
   } catch (error: unknown) {
-    reportCliError(error, argv.includes('--json'));
+    reportCliError(error, argv.includes('--json'), writers);
     return 1;
   }
 }

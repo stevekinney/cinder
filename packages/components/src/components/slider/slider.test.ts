@@ -14,6 +14,14 @@ const { default: SliderDirectionFixture } =
   await import('../../test/fixtures/slider-direction-fixture.svelte');
 const SLIDER_DIRECTION_FIXTURE_SOURCE = `${import.meta.dir}/../../test/fixtures/slider-direction-fixture.svelte`;
 await prepareSvelteServerSource(SLIDER_DIRECTION_FIXTURE_SOURCE);
+// Server rendering spawns a Bun process, so it runs once at module scope, off bun's per-test clock.
+const [providerDirectionSliderServerHtml, localDirectionSliderServerHtml] = await Promise.all([
+  renderSvelteOnServer(SLIDER_DIRECTION_FIXTURE_SOURCE, {
+    localDirection: undefined,
+    providerDirection: 'rtl',
+  }),
+  renderSvelteOnServer(SLIDER_DIRECTION_FIXTURE_SOURCE, { localDirection: 'ltr' }),
+]);
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
 afterEach(() => {
@@ -160,26 +168,21 @@ describe('Slider (single)', () => {
     }
   });
 
-  test('server rendering uses provider direction before local DOM can be checked', async () => {
-    const html = await renderSvelteOnServer(SLIDER_DIRECTION_FIXTURE_SOURCE, {
-      localDirection: undefined,
-      providerDirection: 'rtl',
-    });
+  test('server rendering uses provider direction before local DOM can be checked', () => {
+    const html = providerDirectionSliderServerHtml;
     const sliderTag = html.match(/<div[^>]*class="[^"]*cinder-slider[^"]*"[^>]*>/)?.[0] ?? '';
 
     expect(sliderTag).toContain('dir="rtl"');
   });
 
-  test('server rendering still includes local direction wrappers', async () => {
-    const html = await renderSvelteOnServer(SLIDER_DIRECTION_FIXTURE_SOURCE, {
-      localDirection: 'ltr',
-    });
+  test('server rendering still includes local direction wrappers', () => {
+    const html = localDirectionSliderServerHtml;
     const sliderTag = html.match(/<div[^>]*class="[^"]*cinder-slider[^"]*"[^>]*>/)?.[0] ?? '';
 
     expect(sliderTag).not.toBe('');
     expect(html).toContain('dir="ltr"');
     expect(sliderTag).toContain('dir="rtl"');
-  }, 30_000);
+  });
 
   test('ArrowUp / ArrowDown also adjust by step', async () => {
     const { container } = render(Slider, {

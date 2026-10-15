@@ -1,11 +1,10 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
-import { createRawSnippet } from 'svelte';
+import { createRawSnippet, tick } from 'svelte';
 
 import {
-  prepareSvelteServerSource,
+  hydrateServerHtml,
   renderSvelteOnServer,
-  renderThenHydrate,
   requiredInstance,
   requiredValue,
   setupHappyDom,
@@ -23,7 +22,10 @@ const buttonGroupButtonsFixturePath = new URL(
   '../../test/fixtures/button-group-buttons-fixture.svelte',
   import.meta.url,
 ).pathname;
-await prepareSvelteServerSource(buttonGroupButtonsFixturePath);
+// Server rendering spawns a Bun process, so it runs once at module scope, off bun's per-test clock.
+const buttonGroupButtonsServerHtml = await renderSvelteOnServer(buttonGroupButtonsFixturePath, {
+  label: 'Actions',
+});
 
 afterEach(() => cleanup());
 
@@ -314,8 +316,8 @@ describe('ButtonGroup', () => {
     expect(newButton.hasAttribute('data-cinder-button-group-item')).toBe(true);
   });
 
-  test('SSR markup carries the styling-contract attribute on Button children before {@attach} runs (COR-459)', async () => {
-    const html = await renderSvelteOnServer(buttonGroupButtonsFixturePath, { label: 'Actions' });
+  test('SSR markup carries the styling-contract attribute on Button children before {@attach} runs (COR-459)', () => {
+    const html = buttonGroupButtonsServerHtml;
     // Two <Button> children — Button renders this attribute itself, from the
     // ButtonGroup context read during its own initialization, so it is present
     // in the static markup a server produces before any client-only
@@ -325,11 +327,11 @@ describe('ButtonGroup', () => {
   });
 
   test('styling-contract attribute persists across hydration with no removal or re-add (COR-459)', async () => {
-    const result = await renderThenHydrate(
-      ButtonGroupButtonsFixture,
-      buttonGroupButtonsFixturePath,
-      { label: 'Actions' },
-    );
+    const result = hydrateServerHtml(ButtonGroupButtonsFixture, buttonGroupButtonsServerHtml, {
+      label: 'Actions',
+    });
+    // Hydration effects flush in a microtask; yield once so assertions see the settled DOM.
+    await tick();
 
     try {
       expect(result.ssrHtml).toMatch(/data-cinder-button-group-item="[^"]+"/);

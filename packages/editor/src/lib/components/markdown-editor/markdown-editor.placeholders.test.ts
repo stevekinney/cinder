@@ -181,7 +181,10 @@ describe('MarkdownEditor placeholder definitions', () => {
       expect(editor.reports).toEqual([]);
       expect(container.querySelector('#notes-placeholder-instructions')).toBeNull();
       expect(container.querySelector('#notes-placeholder-diagnostics')).toBeNull();
-      expect(container.querySelector('#notes-placeholder-status')?.textContent).toBe('');
+      const status = container.querySelector('#notes-placeholder-status');
+      expect(status?.textContent).toBe('');
+      expect(status?.hasAttribute('role')).toBe(false);
+      expect(status?.hasAttribute('aria-live')).toBe(false);
       expect(container.querySelector('[data-placeholder-validation-reason]')).toBeNull();
       expect(editingElement(container)?.hasAttribute('aria-autocomplete')).toBe(false);
       expect(editingElement(container)?.hasAttribute('aria-describedby')).toBe(false);

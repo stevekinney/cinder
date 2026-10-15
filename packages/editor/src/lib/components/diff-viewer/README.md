@@ -8,7 +8,7 @@ See the [editor/Cinder surface boundary](https://github.com/stevekinney/cinder/b
 
 ```svelte
 <script lang="ts">
-  import { DiffViewer } from '@lostgradient/editor';
+  import { DiffViewer } from '@lostgradient/editor/diff-viewer';
 </script>
 ```
 
@@ -36,7 +36,7 @@ DiffViewer exposes optional, side-aware selection and file hooks so a caller can
 
 ```svelte
 <script lang="ts">
-  import { DiffViewer, type DiffViewerAnnotationSelection } from '@lostgradient/editor';
+  import { DiffViewer, type DiffViewerAnnotationSelection } from '@lostgradient/editor/diff-viewer';
 
   const original = '# Title\n\nkeep\nold line\nkeep end';
   const current = '# Title\n\nkeep\nnew line\nkeep end';

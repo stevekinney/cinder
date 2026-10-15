@@ -174,8 +174,10 @@ describe('blockBaselineGuard — validating (updateSnapshots: none)', () => {
     expect(result.message).toContain(BASELINE);
     // Names the block-mode env var that triggered the comparison.
     expect(result.message).toContain('CINDER_VISUAL_DIFF=block');
-    expect(result.message).toContain('bun run test:browser:update');
-    expect(result.message).toContain('bun run test:browser:visual');
+    // Updated for COR-1512: baselines are authored and verified only in the Docker renderer.
+    expect(result.message).toContain('bun run test:browser:update:docker');
+    expect(result.message).toContain('bun run test:browser:visual:docker');
+    expect(result.message).toContain('visual-baselines.md');
   });
 });
 

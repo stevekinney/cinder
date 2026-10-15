@@ -27,4 +27,4 @@ The frame never moves focus. Reload uses a native button and remains in document
 
 ### Assistive-technology announcements
 
-The visible title names the frame through `aria-labelledby`, connection status remains visible text, and errors use `role="alert"`. Decorative traffic lights are hidden. Resize callbacks are programmatic and are not announced.
+The visible title names the frame through `aria-labelledby`, connection status remains visible text (a polite `role="status"` live region unless `announceStatus` is `false`), and errors use `role="alert"`. Decorative traffic lights are hidden. Resize callbacks are programmatic and are not announced.

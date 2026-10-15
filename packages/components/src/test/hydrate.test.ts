@@ -11,8 +11,14 @@
 import { join } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
+import { tick } from 'svelte';
 
-import { prepareSvelteServerSource, renderThenHydrate, setupHappyDom } from '@lostgradient/testing';
+import {
+  hydrateServerHtml,
+  prepareSvelteServerSource,
+  renderSvelteOnServer,
+  setupHappyDom,
+} from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -20,15 +26,25 @@ const { default: Input } = await import('../components/input/input.svelte');
 
 const INPUT_SOURCE = join(import.meta.dir, '..', 'components', 'input', 'input.svelte');
 
+const inputProps = { id: 'hydrate-input', value: '', label: 'Hydrate test' };
+const ariaProps = {
+  id: 'hydrate-aria',
+  value: '',
+  description: 'Helper text',
+  error: 'Validation message',
+};
 await prepareSvelteServerSource(INPUT_SOURCE);
+// Server rendering spawns a Bun process, so it runs once at module scope, off bun's per-test clock.
+const [inputHtml, ariaHtml] = await Promise.all([
+  renderSvelteOnServer(INPUT_SOURCE, inputProps),
+  renderSvelteOnServer(INPUT_SOURCE, ariaProps),
+]);
 
-describe('renderThenHydrate', () => {
+describe('hydrateServerHtml', () => {
   test('renders Input on the server and hydrates without warnings', async () => {
-    const result = await renderThenHydrate(Input, INPUT_SOURCE, {
-      id: 'hydrate-input',
-      value: '',
-      label: 'Hydrate test',
-    });
+    const result = hydrateServerHtml(Input, inputHtml, inputProps);
+    // Hydration effects flush in a microtask; yield once so assertions see the settled DOM.
+    await tick();
 
     try {
       expect(result.ssrHtml).toContain('cinder-input');
@@ -46,12 +62,9 @@ describe('renderThenHydrate', () => {
   });
 
   test('description and error elements survive hydration with their IDs', async () => {
-    const result = await renderThenHydrate(Input, INPUT_SOURCE, {
-      id: 'hydrate-aria',
-      value: '',
-      description: 'Helper text',
-      error: 'Validation message',
-    });
+    const result = hydrateServerHtml(Input, ariaHtml, ariaProps);
+    // Hydration effects flush in a microtask; yield once so assertions see the settled DOM.
+    await tick();
 
     try {
       const input = result.container.querySelector('#hydrate-aria');

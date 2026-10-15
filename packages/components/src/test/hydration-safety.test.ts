@@ -33,18 +33,23 @@ const effectGateFixture = fixture('hydration-probe-effect-gate');
 const childBrowserFlagFixture = fixture('hydration-probe-child-browser-flag');
 const childEffectGateFixture = fixture('hydration-probe-child-effect-gate');
 
-// Each check needs two Bun.build passes, whose duration tracks host load. Run
-// them while the file loads so each timed test only renders.
-await Promise.all([
-  prepareBuildFlagHydrationSafety(browserFlagFixture),
-  prepareBuildFlagHydrationSafety(effectGateFixture),
-  prepareBuildFlagHydrationSafety(childBrowserFlagFixture),
-  prepareBuildFlagHydrationSafety(childEffectGateFixture),
-]);
+await prepareBuildFlagHydrationSafety(browserFlagFixture);
+await prepareBuildFlagHydrationSafety(effectGateFixture);
+await prepareBuildFlagHydrationSafety(childBrowserFlagFixture);
+await prepareBuildFlagHydrationSafety(childEffectGateFixture);
+// Each check runs Bun.build passes and server renders in child processes, whose duration tracks
+// host load. Run them while the file loads so each test only asserts on the settled result.
+const [browserFlagResult, effectGateResult, childBrowserFlagResult, childEffectGateResult] =
+  await Promise.all([
+    checkBuildFlagHydrationSafety(browserFlagFixture),
+    checkBuildFlagHydrationSafety(effectGateFixture),
+    checkBuildFlagHydrationSafety(childBrowserFlagFixture),
+    checkBuildFlagHydrationSafety(childEffectGateFixture),
+  ]);
 
 describe('checkBuildFlagHydrationSafety', () => {
-  test('flags a {#if BROWSER}-gated component as UNSAFE', async () => {
-    const result = await checkBuildFlagHydrationSafety(browserFlagFixture);
+  test('flags a {#if BROWSER}-gated component as UNSAFE', () => {
+    const result = browserFlagResult;
     expect(result.buildFlagInvariant).toBe(false);
     // The divergence is precisely the client-only affordance: absent server-side,
     // present client-side.
@@ -52,8 +57,8 @@ describe('checkBuildFlagHydrationSafety', () => {
     expect(result.clientHtml).toContain('data-testid="client-only"');
   });
 
-  test('reports a `hydrated` $effect-gated component as SAFE', async () => {
-    const result = await checkBuildFlagHydrationSafety(effectGateFixture);
+  test('reports a `hydrated` $effect-gated component as SAFE', () => {
+    const result = effectGateResult;
     expect(result.buildFlagInvariant).toBe(true);
     // The affordance is absent under BOTH conditions — `hydrated` is false in SSR
     // regardless of BROWSER, so there is nothing to mismatch.
@@ -61,8 +66,8 @@ describe('checkBuildFlagHydrationSafety', () => {
     expect(result.clientHtml).not.toContain('data-testid="client-only"');
   });
 
-  test('flags a BROWSER-gated component as UNSAFE even with an unconditional child-effect', async () => {
-    const result = await checkBuildFlagHydrationSafety(childBrowserFlagFixture);
+  test('flags a BROWSER-gated component as UNSAFE even with an unconditional child-effect', () => {
+    const result = childBrowserFlagResult;
     expect(result.buildFlagInvariant).toBe(false);
     // The unconditionally-rendered child is present under BOTH conditions — it
     // does not mask the BROWSER-gated divergence.
@@ -72,8 +77,8 @@ describe('checkBuildFlagHydrationSafety', () => {
     expect(result.clientHtml).toContain('data-testid="client-only"');
   });
 
-  test('reports an $effect-gated component as SAFE even with an unconditional child-effect', async () => {
-    const result = await checkBuildFlagHydrationSafety(childEffectGateFixture);
+  test('reports an $effect-gated component as SAFE even with an unconditional child-effect', () => {
+    const result = childEffectGateResult;
     expect(result.buildFlagInvariant).toBe(true);
     expect(result.serverHtml).toContain('data-testid="child"');
     expect(result.clientHtml).toContain('data-testid="child"');

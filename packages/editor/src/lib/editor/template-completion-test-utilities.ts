@@ -18,7 +18,7 @@ import type { EditorView } from '@milkdown/kit/prose/view';
 import { createEditor, destroyEditor } from './editor.js';
 import type { LazyProsePlugin } from './milkdown-plugin-runtime.js';
 import { createTemplateCompletionPlugin } from './template-completion-plugin.js';
-import { templateCompletionPluginKey } from './template-completion-state.js';
+import { templateCompletionPluginKey } from './template-completion-transaction.js';
 import {
   createPlaceholderConfigurationTransaction,
   createTemplatePlaceholderConfigurationPlugin,

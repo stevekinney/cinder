@@ -180,6 +180,12 @@
    */
   const KEYBOARD_DESTINATION_STABLE_INTERVALS = 3;
   /**
+   * COR-1518: how many times the keyboard-destination watch re-issues a write
+   * that settled with no net movement before it lets the destination go. Bounded
+   * because a list already at its end legitimately never moves.
+   */
+  const KEYBOARD_DESTINATION_LOST_WRITE_RETRIES = 2;
+  /**
    * How long after the last scroll event adaptive overscan returns to its floor.
    * Comfortably past a fling's own event cadence, so it never fires mid-gesture.
    */
@@ -1910,13 +1916,26 @@
   async function watchPendingKeyboardIndex(index: number): Promise<void> {
     const element = scrollElement;
     if (!element) return;
+    const startedAt = readScrollOffset(element);
     pendingKeyboardIndex = index;
     const token = (pendingKeyboardIndexToken += 1);
-    await waitForScrollSettled(element, KEYBOARD_DESTINATION_STABLE_INTERVALS);
-    // Superseded by a newer press or an explicit retirement while this was
-    // waiting — either already holds whatever destination is now correct,
-    // so clearing it here would erase one this call does not own.
-    if (isDestroyed || pendingKeyboardIndexToken !== token) return;
+    for (let attempt = 0; ; attempt += 1) {
+      await waitForScrollSettled(element, KEYBOARD_DESTINATION_STABLE_INTERVALS);
+      // Superseded by a newer press or an explicit retirement while this was
+      // waiting — either already holds whatever destination is now correct,
+      // so clearing it here would erase one this call does not own.
+      if (isDestroyed || pendingKeyboardIndexToken !== token) return;
+      // The position settled exactly where this press began: the write made no
+      // net progress. Measured in real Chromium, a retargeted smooth scroll can
+      // reach the destination and then be rolled back to its start by the
+      // previous animation finishing late. Expiring here would leave the next
+      // press stepping from the lagging row and drop one. Any other settled
+      // position (arrived, or moved elsewhere by something this list did not
+      // issue) is not a lost write, and expires the destination below.
+      if (attempt >= KEYBOARD_DESTINATION_LOST_WRITE_RETRIES) break;
+      if (readScrollOffset(element) !== startedAt) break;
+      scrollToIndex(index, { align: 'start' });
+    }
     pendingKeyboardIndex = null;
   }
 

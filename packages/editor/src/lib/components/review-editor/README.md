@@ -6,7 +6,7 @@ Markdown editor extended with inline review threads, anchored comments, and coll
 
 ```svelte
 <script lang="ts">
-  import { ReviewEditor } from '@lostgradient/editor';
+  import { ReviewEditor } from '@lostgradient/editor/review-editor';
 </script>
 ```
 
@@ -58,8 +58,10 @@ To restore, bind `value` and `threads` from the same saved state and run the thr
 ```svelte
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { ReviewEditor, toRuntimeThreads } from '@lostgradient/editor';
-  import type { ReviewState, Thread } from '@lostgradient/editor';
+  import { ReviewEditor } from '@lostgradient/editor/review-editor';
+  import { toRuntimeThreads } from '@lostgradient/editor';
+  import type { ReviewState } from '@lostgradient/editor';
+  import type { Thread } from '@lostgradient/editor/review-editor';
 
   let value = $state('');
   let threads = $state<Thread[]>([]);
@@ -112,8 +114,9 @@ Supplying `diffReviewState` enables a second, independent comment domain inside 
 
 ```svelte
 <script lang="ts">
-  import { ReviewEditor, createDiffReviewState } from '@lostgradient/editor';
-  import type { DiffReviewState } from '@lostgradient/editor';
+  import { ReviewEditor } from '@lostgradient/editor/review-editor';
+  import { createDiffReviewState } from '@lostgradient/editor/diff-review-state';
+  import type { DiffReviewState } from '@lostgradient/editor/diff-review-state';
 
   let original = $state('# Plan\n\nShip login.');
   let value = $state('# Plan\n\nShip login and a dashboard.');

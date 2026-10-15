@@ -16,7 +16,7 @@ const schema = {
     highlight: {
       type: 'boolean',
       description:
-        'Whether to highlight. Defaults to `true` whenever `language` is set.\n\n`highlight={false}` is an absolute off switch: it disables ALL\nhighlighting — including an explicit `highlighter` prop — and triggers no\nShiki import. The block renders the escaped plain `<pre><code>` fallback\nwhile keeping the `language` header label. When highlighting is enabled,\nclient-side colorization may appear after first paint, but the block keeps\nstable layout metrics.',
+        'Whether to highlight. Defaults to `true` whenever `language` is set and a\nhighlighter resolves from the `highlighter` prop or from context.\n\n`highlight={false}` is an absolute off switch: it disables ALL\nhighlighting — including an explicit `highlighter` prop and a context\nhighlighter. The block renders the escaped plain `<pre><code>` fallback\nwhile keeping the `language` header label. When highlighting is enabled,\nclient-side colorization may appear after first paint, but the block keeps\nstable layout metrics.',
     },
     copyable: {
       type: 'boolean',
@@ -45,7 +45,7 @@ const schema = {
         name: 'highlighter',
         reason: 'function-or-snippet',
         description:
-          'Custom highlighter for this instance, used in place of the bundled Shiki\ndefault. Receives `(code, language)` and returns an HTML string (sync or\nasync). When provided, the default highlighter is never imported.',
+          'Highlighter for this instance. Receives `(code, language)` and returns an\nHTML string (sync or async). Takes precedence over a highlighter an\nancestor published through `setCodeHighlighterContext`; with neither, the\nblock renders unhighlighted.',
       },
     ],
   },

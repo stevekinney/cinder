@@ -2,11 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { flushSync, tick } from 'svelte';
 
-import {
-  prepareSvelteServerSource,
-  renderSvelteOnServer,
-  setupHappyDom,
-} from '@lostgradient/testing';
+import { renderSvelteOnServer, setupHappyDom } from '@lostgradient/testing';
 
 setupHappyDom();
 
@@ -15,7 +11,8 @@ const TREE_RENAME_FIXTURE_SOURCE = new URL(
   '../../test/fixtures/tree-rename-fixture.svelte',
   import.meta.url,
 ).pathname;
-await prepareSvelteServerSource(TREE_RENAME_FIXTURE_SOURCE);
+// Server rendering spawns a Bun process, so it runs once at module scope, off bun's per-test clock.
+const treeRenameServerHtml = await renderSvelteOnServer(TREE_RENAME_FIXTURE_SOURCE);
 const { default: TreeRenameFixture } =
   await import('../../test/fixtures/tree-rename-fixture.svelte');
 
@@ -315,8 +312,8 @@ describe('Tree — inline label rename', () => {
     expect(branchItem.getAttribute('aria-expanded')).toBe('true');
   });
 
-  test('SSR never emits a mid-rename input', async () => {
-    const html = await renderSvelteOnServer(TREE_RENAME_FIXTURE_SOURCE);
+  test('SSR never emits a mid-rename input', () => {
+    const html = treeRenameServerHtml;
 
     expect(html).not.toContain('cinder-tree-item__rename-input');
   });

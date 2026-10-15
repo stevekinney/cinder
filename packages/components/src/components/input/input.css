@@ -81,7 +81,7 @@
 
   /* Sticky-hover suppression on touch. */
   @media (hover: hover) {
-    .cinder-input:hover:not(:disabled) {
+    .cinder-input:hover:not(:disabled):not(:focus-visible) {
       border-color: var(--cinder-border-strong);
     }
   }
@@ -183,7 +183,7 @@
   }
 
   @media (hover: hover) {
-    .cinder-input[aria-invalid='true']:hover:not(:disabled) {
+    .cinder-input[aria-invalid='true']:hover:not(:disabled):not(:focus-visible) {
       border-color: var(--_cinder-input-invalid-border-hover);
     }
   }
@@ -236,7 +236,7 @@
      group's rules below: invalid beats resting, hover beats both, disabled
      beats everything. Sticky-hover suppression on touch, as for the group. */
   @media (hover: hover) {
-    .cinder-input-host:hover:not([data-disabled]) {
+    .cinder-input-host:hover:not([data-disabled]):not(:focus-within) {
       border-color: var(--cinder-border-strong);
     }
   }
@@ -245,7 +245,7 @@
     border-color: var(--cinder-status-danger-solid);
   }
   @media (hover: hover) {
-    .cinder-input-host[data-invalid]:hover:not([data-disabled]) {
+    .cinder-input-host[data-invalid]:hover:not([data-disabled]):not(:focus-within) {
       border-color: var(--_cinder-input-invalid-border-hover);
     }
   }
@@ -328,7 +328,7 @@
 
   /* Hover mirrors the standalone input. Sticky-hover suppression on touch. */
   @media (hover: hover) {
-    .cinder-input-group:hover:not(.cinder-input-group--disabled) {
+    .cinder-input-group:hover:not(.cinder-input-group--disabled):not(:focus-within) {
       border-color: var(--cinder-border-strong);
     }
   }
@@ -355,7 +355,7 @@
     border-color: var(--cinder-status-danger-solid);
   }
   @media (hover: hover) {
-    .cinder-input-group--invalid:hover:not(.cinder-input-group--disabled) {
+    .cinder-input-group--invalid:hover:not(.cinder-input-group--disabled):not(:focus-within) {
       border-color: var(--_cinder-input-invalid-border-hover);
     }
   }
@@ -365,6 +365,20 @@
     background: var(--cinder-surface-inset);
     border-color: var(--cinder-border-muted);
     cursor: not-allowed;
+  }
+
+  /* Ring replaces the border while focused rather than stacking on it, as in
+     _input-frame.css and button.css. With the tight ring (no offset band) a
+     visible border inside it would read as one heavier 3px shape, the problem
+     COR-1072 was cancelled over. A transparent border paints the control's
+     own fill, so the ring sits directly on the fill. Placed after the invalid
+     and disabled rules so it wins at equal specificity; the hover rules above
+     exclude the focused state. The host mirrors the group, as its resting
+     colours do, so an addon appearing mid-focus does not fade a border in. */
+  .cinder-input:focus-visible,
+  .cinder-input-host:focus-within,
+  .cinder-input-group:focus-within {
+    border-color: transparent;
   }
   .cinder-input-group--disabled > .cinder-input {
     background: transparent;

@@ -55,7 +55,7 @@
   }
 
   @media (hover: hover) {
-    .cinder-pin-input__segment:hover:not(:disabled) {
+    .cinder-pin-input__segment:hover:not(:disabled):not(:focus-visible) {
       border-color: var(--cinder-border-strong);
     }
   }
@@ -76,6 +76,14 @@
 
   .cinder-pin-input[aria-invalid='true'] .cinder-pin-input__segment {
     border-color: var(--cinder-status-danger-solid);
+  }
+
+  /* COR-1498: the tight ring sits directly on the control edge, so a visible
+     border inside it would read as one heavier 3px shape (the COR-1072
+     problem). Keep the border transparent while focused, in every state,
+     and keep hover from repainting it. */
+  .cinder-pin-input[aria-invalid='true'] .cinder-pin-input__segment:focus-visible {
+    border-color: transparent;
   }
 
   .cinder-pin-input__segment:disabled {

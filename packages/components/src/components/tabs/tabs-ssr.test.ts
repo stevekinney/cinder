@@ -22,13 +22,28 @@ const { default: Wrapper } = await import('../../test/fixtures/tabs-fixture.svel
 
 const TABS_FIXTURE_SOURCE = new URL('../../test/fixtures/tabs-fixture.svelte', import.meta.url)
   .pathname;
-await prepareSvelteServerSource(TABS_FIXTURE_SOURCE);
 
 const items = [
   { value: 'a', title: 'A tab', body: 'A body' },
   { value: 'b', title: 'B tab', body: 'B body' },
   { value: 'c', title: 'C tab', body: 'C body' },
 ];
+const withDisabledMiddle = [
+  { value: 'a', title: 'A tab', body: 'A body' },
+  { value: 'b', title: 'B tab', body: 'B body', disabled: true },
+  { value: 'c', title: 'C tab', body: 'C body' },
+];
+
+await prepareSvelteServerSource(TABS_FIXTURE_SOURCE);
+// Server rendering spawns a Bun process, so it runs once at module scope, off bun's per-test clock.
+const [selectedFirstHtml, selectedMiddleHtml, selectedLastHtml, selectedDisabledHtml, noMatchHtml] =
+  await Promise.all([
+    renderSvelteOnServer(TABS_FIXTURE_SOURCE, { value: 'a', items }),
+    renderSvelteOnServer(TABS_FIXTURE_SOURCE, { value: 'b', items }),
+    renderSvelteOnServer(TABS_FIXTURE_SOURCE, { value: 'c', items }),
+    renderSvelteOnServer(TABS_FIXTURE_SOURCE, { value: 'b', items: withDisabledMiddle }),
+    renderSvelteOnServer(TABS_FIXTURE_SOURCE, { value: 'does-not-exist', items }),
+  ]);
 
 function extractTabTag(html: string, value: string): string {
   const match = html.match(new RegExp(`<button[^>]*data-cinder-value="${value}"[^>]*>`));
@@ -41,18 +56,12 @@ function countTabStops(html: string): number {
 }
 
 describe('Tabs SSR contract', () => {
-  const withDisabledMiddle = [
-    { value: 'a', title: 'A tab', body: 'A body' },
-    { value: 'b', title: 'B tab', body: 'B body', disabled: true },
-    { value: 'c', title: 'C tab', body: 'C body' },
-  ];
-
   // Scoped to <button> tags only. The fixture also renders TabPanel, whose
   // active panel <div> unconditionally carries tabindex="0"
   // (tab-panel.svelte, independent of roving-tabindex) — an ungated
   // /tabindex="0"/g match would inflate every count below by exactly one.
-  test('server-rendered HTML gives the selected enabled first tab a tabindex="0" tab stop', async () => {
-    const html = await renderSvelteOnServer(TABS_FIXTURE_SOURCE, { value: 'a', items });
+  test('server-rendered HTML gives the selected enabled first tab a tabindex="0" tab stop', () => {
+    const html = selectedFirstHtml;
 
     expect(extractTabTag(html, 'a')).toContain('tabindex="0"');
     expect(extractTabTag(html, 'b')).toContain('tabindex="-1"');
@@ -60,13 +69,13 @@ describe('Tabs SSR contract', () => {
     expect(countTabStops(html)).toBe(1);
   });
 
-  test('server-rendered HTML gives the selected enabled tab a tabindex="0" tab stop when it is NOT the first tab', async () => {
+  test('server-rendered HTML gives the selected enabled tab a tabindex="0" tab stop when it is NOT the first tab', () => {
     // Regression test: before the isFocusable direct/fallback split, this
     // exact fixture rendered TWO tabindex="0" buttons for a not-first
     // selection (the stale fallback branch claimed `a`, the direct match
     // separately claimed `b`). Asserting countTabStops(html) === 1 fails
     // even if `b` happens to still be individually correct.
-    const html = await renderSvelteOnServer(TABS_FIXTURE_SOURCE, { value: 'b', items });
+    const html = selectedMiddleHtml;
 
     expect(extractTabTag(html, 'b')).toContain('tabindex="0"');
     expect(extractTabTag(html, 'a')).toContain('tabindex="-1"');
@@ -74,8 +83,8 @@ describe('Tabs SSR contract', () => {
     expect(countTabStops(html)).toBe(1);
   });
 
-  test('server-rendered HTML gives the selected enabled tab a tabindex="0" tab stop when it is the LAST tab', async () => {
-    const html = await renderSvelteOnServer(TABS_FIXTURE_SOURCE, { value: 'c', items });
+  test('server-rendered HTML gives the selected enabled tab a tabindex="0" tab stop when it is the LAST tab', () => {
+    const html = selectedLastHtml;
 
     expect(extractTabTag(html, 'c')).toContain('tabindex="0"');
     expect(extractTabTag(html, 'a')).toContain('tabindex="-1"');
@@ -83,14 +92,11 @@ describe('Tabs SSR contract', () => {
     expect(countTabStops(html)).toBe(1);
   });
 
-  test('server-rendered HTML has no tab stop when the selected tab is disabled', async () => {
+  test('server-rendered HTML has no tab stop when the selected tab is disabled', () => {
     // Documented, accepted degradation (see tabs.a11y.md): the "first
     // enabled tab" fallback needs every sibling registered before it can
     // resolve correctly, which a single top-down SSR pass cannot guarantee.
-    const html = await renderSvelteOnServer(TABS_FIXTURE_SOURCE, {
-      value: 'b',
-      items: withDisabledMiddle,
-    });
+    const html = selectedDisabledHtml;
 
     expect(extractTabTag(html, 'a')).toContain('tabindex="-1"');
     expect(extractTabTag(html, 'b')).toContain('tabindex="-1"');
@@ -109,11 +115,8 @@ describe('Tabs SSR contract', () => {
     expect(tabStops.length).toBe(1);
   });
 
-  test('server-rendered HTML has no tab stop when no tab matches the selected value', async () => {
-    const html = await renderSvelteOnServer(TABS_FIXTURE_SOURCE, {
-      value: 'does-not-exist',
-      items,
-    });
+  test('server-rendered HTML has no tab stop when no tab matches the selected value', () => {
+    const html = noMatchHtml;
 
     expect(extractTabTag(html, 'a')).toContain('tabindex="-1"');
     expect(extractTabTag(html, 'b')).toContain('tabindex="-1"');

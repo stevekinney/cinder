@@ -132,7 +132,7 @@ Typing `{{` in eligible text opens a listbox named "Placeholders" immediately, i
 
 ### Screen-reader announcements
 
-One persistent status region (`${id}-placeholder-status`, `role="status"`, `aria-live="polite"`, `aria-atomic="true"`) announces "N placeholders available" or "1 placeholder available" when the match list changes, "No matching placeholders" when nothing matches, and "path, types, i of N" when the active option moves. The visually hidden instructions (`${id}-placeholder-instructions`) read "Type two opening braces to insert a placeholder. Use arrow keys and Enter to choose; Escape or Tab dismisses." The preview region is labeled "Preview", "Unfilled template preview" or, before the renderer loads, "Loading preview".
+One status region (`${id}-placeholder-status`, `role="status"`, `aria-live="polite"`, `aria-atomic="true"`, present as a live region only while completion is configured) announces "N placeholders available" or "1 placeholder available" when the match list changes, "No matching placeholders" when nothing matches, and "path, types, i of N" when the active option moves. The visually hidden instructions (`${id}-placeholder-instructions`) read "Type two opening braces to insert a placeholder. Use arrow keys and Enter to choose; Escape or Tab dismisses." The preview region is labeled "Preview", "Unfilled template preview" or, before the renderer loads, "Loading preview".
 
 ### Human design and accessibility review
 

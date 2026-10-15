@@ -49,7 +49,7 @@ export {
   type ActiveBlockType,
   type ActiveMarks,
 } from './commands-state.ts';
-export { setEditorReadonly } from './editor.ts';
-export { getShortcutDisplay } from './keymap-plugin.ts';
+export { setEditorReadonly } from './editor-lifecycle.ts';
+export { getShortcutDisplay } from './keymap-shortcuts.ts';
 export { DEFAULT_DEBOUNCE_MS } from './types.ts';
 export type { EditorHandle, EditorSelection, EditorState } from './types.ts';

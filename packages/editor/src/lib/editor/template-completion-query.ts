@@ -1,13 +1,9 @@
 import {
-  parsePlaceholderTokens,
   unescapePlaceholderBody,
   type PlaceholderCandidate,
   type PlaceholderToken,
 } from '@lostgradient/markdown';
 import type { Mark } from 'prosemirror-model';
-import type { EditorState } from 'prosemirror-state';
-
-import { findRunBeforeCaret } from './template-placeholder-runs.js';
 
 /** Rows visible at once; further matches stay reachable by scrolling. */
 export const MAXIMUM_VISIBLE_SUGGESTIONS = 8;
@@ -114,28 +110,6 @@ export function locateTokenQuery(
     ? token.endOffset
     : caret + pathCharactersLength(text.slice(caret), options);
   return { query, from: token.startOffset, to };
-}
-
-/**
- * Find the placeholder token being typed at the caret.
- *
- * The token must lie in one eligible same-mark run (see
- * `template-placeholder-runs.ts`) and the selection must be collapsed; the
- * range follows {@link locateTokenQuery}.
- */
-export function detectTokenQuery(state: EditorState): DetectedTokenQuery | null {
-  const found = findRunBeforeCaret(state);
-  if (!found) return null;
-  const { run, offset } = found;
-  const located = locateTokenQuery(run.text, offset, parsePlaceholderTokens(run.text));
-  if (!located) return null;
-  return {
-    query: located.query,
-    tokenFrom: run.from + located.from,
-    tokenTo: run.from + located.to,
-    cursorPos: state.selection.from,
-    marks: run.marks,
-  };
 }
 
 function compareCodeUnits(left: string, right: string): number {

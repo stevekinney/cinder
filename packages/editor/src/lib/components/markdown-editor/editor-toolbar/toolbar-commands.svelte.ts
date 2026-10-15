@@ -1,7 +1,7 @@
 import { Heading1, Heading2, Heading3, Pilcrow, Quote } from '@lostgradient/cinder';
 import type { Ctx } from '@milkdown/kit/ctx';
 
-import type { ActiveBlockType } from '../../../editor/index.ts';
+import type { ActiveBlockType } from '../../../editor/component-runtime.ts';
 import {
   setHeading,
   setParagraph,
@@ -12,7 +12,7 @@ import {
   toggleItalic,
   toggleOrderedList,
   toggleStrikethrough,
-} from '../../../editor/index.ts';
+} from '../../../editor/component-runtime.ts';
 import type { BlockType, BlockTypeOption } from './toolbar-dropdown.svelte';
 
 export const blockTypeOptions: BlockTypeOption[] = [

@@ -42,7 +42,7 @@
     undo as undoCommand,
     redo as redoCommand,
     DEFAULT_DEBOUNCE_MS,
-  } from '../../editor/index.ts';
+  } from '../../editor/component-runtime.ts';
 
   import './prosemirror.css';
   import { classNames } from '../../utilities/class-names.ts';
@@ -878,6 +878,7 @@
   <MarkdownEditorPlaceholderRegions
     {id}
     instructionsVisible={placeholders.instructionsVisible}
+    statusVisible={placeholders.resolved.completion !== undefined}
     statusMessage={placeholders.statusMessage}
     diagnostics={placeholders.diagnostics}
   />

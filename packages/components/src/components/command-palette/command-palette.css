@@ -108,13 +108,15 @@
     border-radius: var(--cinder-radius-md);
   }
 
-  /* Focus ring — the library's standard "transparent outline + two-stop
-     box-shadow" recipe (see input.css `.cinder-input:focus-visible` and the
-     shared `--_cinder-focus-ring-shadow` formula in foundation.css).
-     :focus-visible so the ring does not appear on mouse/pointer click. */
+  /* No visible ring here (COR-1498, a documented exception in
+     focus-ring-policy.md). The whole search row reads as the field and the
+     caret shows focus; a ring around just the <input> left the search icon
+     outside it and competed with the active option's fill. The transparent
+     outline keeps the channel the forced-colors block below repaints with
+     Highlight, so Windows High Contrast users still get an indicator. */
   .cinder-command-palette__input:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
-    box-shadow: var(--_cinder-focus-ring-shadow);
+    box-shadow: none;
   }
 
   @media (forced-colors: active) {

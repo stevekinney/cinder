@@ -312,9 +312,9 @@
     .cinder-segmented-control-option[data-cinder-pressed]:focus-visible,
   .cinder-segmented-control:not([data-cinder-variant='tablist'])
     .cinder-segmented-control-option[data-cinder-current]:focus-visible {
-    box-shadow:
-      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+    /* These pills are solid accent fills, so the ring gets a page-coloured gap
+       (COR-1498, focus-ring-policy.md). */
+    box-shadow: var(--_cinder-focus-ring-filled-shadow);
     z-index: 1;
   }
 

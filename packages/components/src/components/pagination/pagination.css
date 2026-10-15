@@ -99,6 +99,18 @@
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
+  /* The current page is a solid accent fill: gap, then ring (COR-1498). */
+  .cinder-pagination__page[data-cinder-current]:focus-visible {
+    box-shadow: var(--_cinder-focus-ring-filled-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-pagination__page[data-cinder-current]:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
+  }
+
   @media (forced-colors: active) {
     .cinder-pagination__step:focus-visible,
     .cinder-pagination__page:focus-visible {

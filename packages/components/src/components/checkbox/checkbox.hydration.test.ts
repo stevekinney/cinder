@@ -8,21 +8,33 @@
  * and that the property lands post-hydration without warnings.
  */
 import { describe, expect, test } from 'bun:test';
+import { tick } from 'svelte';
 
-import { prepareSvelteServerSource, renderThenHydrate, setupHappyDom } from '@lostgradient/testing';
+import {
+  hydrateServerHtml,
+  prepareSvelteServerSource,
+  renderSvelteOnServer,
+  setupHappyDom,
+} from '@lostgradient/testing';
 
 setupHappyDom();
 
 const { default: Checkbox } = await import('./checkbox.svelte');
 const sourcePath = new URL('./checkbox.svelte', import.meta.url).pathname;
 await prepareSvelteServerSource(sourcePath);
+// Server rendering spawns a Bun process, so it runs once at module scope, off bun's per-test clock.
+const defaultProps = { id: 'agree', label: 'I agree' };
+const indeterminateProps = { id: 'parent', label: 'Select all', indeterminate: true };
+const [defaultHtml, indeterminateHtml] = await Promise.all([
+  renderSvelteOnServer(sourcePath, defaultProps),
+  renderSvelteOnServer(sourcePath, indeterminateProps),
+]);
 
 describe('Checkbox hydration', () => {
   test('hydrates without warnings and keeps the checkbox role/id stable', async () => {
-    const result = await renderThenHydrate(Checkbox, sourcePath, {
-      id: 'agree',
-      label: 'I agree',
-    });
+    const result = hydrateServerHtml(Checkbox, defaultHtml, defaultProps);
+    // Hydration effects flush in a microtask; yield once so assertions see the settled DOM.
+    await tick();
 
     try {
       const input = result.container.querySelector<HTMLInputElement>('#agree');
@@ -39,11 +51,9 @@ describe('Checkbox hydration', () => {
   });
 
   test('indeterminate is absent from SSR HTML but set as a DOM property after hydration', async () => {
-    const result = await renderThenHydrate(Checkbox, sourcePath, {
-      id: 'parent',
-      label: 'Select all',
-      indeterminate: true,
-    });
+    const result = hydrateServerHtml(Checkbox, indeterminateHtml, indeterminateProps);
+    // Hydration effects flush in a microtask; yield once so assertions see the settled DOM.
+    await tick();
 
     try {
       // The attribute never appears in server markup — it is a property.

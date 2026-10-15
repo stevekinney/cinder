@@ -65,6 +65,15 @@
     border-color: var(--cinder-status-danger-solid);
   }
 
+  /* COR-1498: the tight ring sits directly on the control edge, so a visible
+     border inside it would read as one heavier 3px shape (the COR-1072
+     problem). Keep the border transparent while focused, in every state,
+     and keep hover from repainting it. */
+  .cinder-multi-select__trigger[aria-invalid='true']:focus-visible,
+  .cinder-multi-select__trigger[data-cinder-invalid='true']:focus-visible {
+    border-color: transparent;
+  }
+
   .cinder-multi-select__summary {
     flex: 1 1 auto;
     min-width: 0;

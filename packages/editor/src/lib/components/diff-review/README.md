@@ -4,8 +4,9 @@ Aggregate single- and multi-target diff review (COR-509 / DR-6): a file list wit
 
 ```svelte
 <script lang="ts">
-  import { DiffReview, createDiffReviewState } from '@lostgradient/editor';
-  import type { DiffReviewTargetInput } from '@lostgradient/editor';
+  import { DiffReview } from '@lostgradient/editor/diff-review';
+  import { createDiffReviewState } from '@lostgradient/editor/diff-review-state';
+  import type { DiffReviewTargetInput } from '@lostgradient/editor/diff-review-state';
 
   const targets: DiffReviewTargetInput[] = [
     {

@@ -4,7 +4,8 @@ Reusable, resolution-aware comments panel for a `DiffReviewState` session (COR-5
 
 ```svelte
 <script lang="ts">
-  import { DiffReviewComments, createDiffReviewState } from '@lostgradient/editor';
+  import { DiffReviewComments } from '@lostgradient/editor/diff-review-comments';
+  import { createDiffReviewState } from '@lostgradient/editor/diff-review-state';
 
   const created = createDiffReviewState([
     {

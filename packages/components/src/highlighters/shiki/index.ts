@@ -1,20 +1,29 @@
 /**
  * First-party Shiki adapter for `<CodeBlock>`.
  *
- * `<CodeBlock>` already auto-loads this adapter with default options when a
- * `language` is set — you only need it directly to customize the theme or
- * preload grammars, which you then pass via the `highlighter` prop:
+ * `<CodeBlock>` imports no highlighter of its own. Build one here over the
+ * grammars and themes your application renders, then publish it for a whole
+ * subtree with `setCodeHighlighterContext` (or pass it to one block's
+ * `highlighter` prop):
  *
  * ```svelte
  * <script lang="ts">
- *   import { CodeBlock } from '@lostgradient/cinder';
- *   import { shikiHighlighter } from '@lostgradient/cinder';
+ *   import { setCodeHighlighterContext, shikiHighlighter } from '@lostgradient/cinder';
  *
- *   const highlighter = shikiHighlighter({ theme: 'github-light' });
+ *   setCodeHighlighterContext(
+ *     shikiHighlighter({
+ *       theme: 'github-light',
+ *       languageLoaders: { typescript: () => import('@shikijs/langs/typescript') },
+ *       themeLoaders: { 'github-light': () => import('@shikijs/themes/github-light') },
+ *     }),
+ *   );
  * </script>
- *
- * <CodeBlock {code} language="ts" {highlighter} />
  * ```
+ *
+ * A consumer bundle then carries exactly the grammars and themes named in
+ * those loader maps. `fullShikiHighlighter` (from `./default.ts`) registers
+ * every grammar and theme Shiki ships instead, for applications that highlight
+ * arbitrary languages.
  *
  * The factory is synchronous. Shiki itself is imported lazily on the first
  * highlight call inside the returned function — consumers that never invoke
@@ -81,10 +90,9 @@ import { createRetryingLoaderCache } from '../../utilities/retrying-loader-cache
 import { stripRootPreTabIndex } from './strip-root-pre-tab-index.ts';
 
 /**
- * Re-exported for backwards compatibility on the public
- * `@lostgradient/cinder` surface. The canonical implementation lives in
- * `utilities/retrying-loader-cache.ts` so `<CodeBlock>`'s default-highlighter
- * seam can reuse it without a static import edge to this adapter module.
+ * Re-exported on the public `@lostgradient/cinder` surface. The canonical
+ * implementation lives in `utilities/retrying-loader-cache.ts`, which other
+ * cinder modules share without importing this adapter.
  */
 export { createRetryingLoaderCache };
 

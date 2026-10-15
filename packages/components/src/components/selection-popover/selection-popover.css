@@ -79,7 +79,8 @@
   .cinder-selection-popover__button:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     outline-offset: var(--cinder-ring-offset);
-    box-shadow: var(--_cinder-focus-ring-shadow), var(--cinder-shadow-md);
+    /* The button is a solid accent fill: gap, then ring (COR-1498). */
+    box-shadow: var(--_cinder-focus-ring-filled-shadow), var(--cinder-shadow-md);
   }
 
   @media (forced-colors: active) {
@@ -196,6 +197,11 @@
     outline: var(--cinder-ring-width) solid transparent;
     outline-offset: var(--cinder-ring-offset);
     box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  /* Submit is a solid accent fill: gap, then ring (COR-1498). */
+  .cinder-selection-popover__submit:focus-visible {
+    box-shadow: var(--_cinder-focus-ring-filled-shadow);
   }
 
   @media (forced-colors: active) {

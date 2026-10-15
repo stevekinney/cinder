@@ -72,7 +72,7 @@
   }
 
   @media (hover: hover) {
-    .cinder-textarea:hover:not(:disabled) {
+    .cinder-textarea:hover:not(:disabled):not(:focus-visible) {
       border-color: var(--cinder-border-strong);
     }
   }

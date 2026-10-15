@@ -9,12 +9,12 @@ describe('stable component context keys', () => {
   test('each provider family has a distinct global key', async () => {
     const uses: Array<{ key: string; path: string }> = [];
     for await (const path of new Bun.Glob('**/*.ts').scan({ cwd: sourceRoot, absolute: true })) {
-      const source = ts.createSourceFile(
-        path,
-        await readFile(path, 'utf8'),
-        ts.ScriptTarget.Latest,
-        true,
-      );
+      const text = await readFile(path, 'utf8');
+      // The AST walk below can only match an identifier spelled `strictStableContext`, so a file
+      // whose text lacks that substring cannot contain a call it would match. Parsing the rest of
+      // the tree (over a thousand files) is what pushed this test past its budget under load.
+      if (!text.includes('strictStableContext')) continue;
+      const source = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true);
       function visit(node: ts.Node): void {
         if (
           ts.isCallExpression(node) &&

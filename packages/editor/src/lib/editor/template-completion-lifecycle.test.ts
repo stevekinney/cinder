@@ -8,7 +8,6 @@ import type { EditorView } from '@milkdown/kit/prose/view';
 import { describe, expect, it, mock } from 'bun:test';
 import { drainMount, installFakeClock } from '../test/fake-clock.ts';
 import { createEditor, destroyEditor } from './editor.js';
-import { templateCompletionPluginKey } from './template-completion-state.js';
 import {
   createCompletionHarness,
   flushMicrotasks,
@@ -16,6 +15,7 @@ import {
   makeCandidate,
   mountEditor,
 } from './template-completion-test-utilities.js';
+import { templateCompletionPluginKey } from './template-completion-transaction.js';
 import { templateInvalidDecorationPluginKey } from './template-invalid-decoration-plugin.js';
 
 describe('template completion async lookup lifecycle', () => {

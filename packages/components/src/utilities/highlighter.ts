@@ -1,11 +1,11 @@
 /**
  * The `Highlighter` contract for `<CodeBlock>`.
  *
- * `<CodeBlock>` highlights automatically when a `language` is set by
- * lazy-loading the bundled `@lostgradient/cinder` adapter on the
- * client. Consumers who want a different highlighter (a non-default theme, a
- * non-Shiki engine, a pre-configured `shikiHighlighter()` instance) implement
- * this type and pass the function to `<CodeBlock highlighter={...} />`.
+ * `<CodeBlock>` imports no highlighter of its own. A consumer supplies one —
+ * a `shikiHighlighter()` instance over the grammars it needs,
+ * `fullShikiHighlighter()` for every grammar Shiki ships, or any function of
+ * this type — either per block through `<CodeBlock highlighter={...} />` or
+ * for a whole subtree through `setCodeHighlighterContext(highlighter)`.
  *
  * This file holds the canonical type so plain `.ts` consumers and `.svelte`
  * components can both `import type` it without going through a component

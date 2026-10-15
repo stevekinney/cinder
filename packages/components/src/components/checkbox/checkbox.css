@@ -186,6 +186,25 @@
     border-color: var(--cinder-status-danger-solid);
   }
 
+  /* Checked and indeterminate boxes are solid accent fills, so the ring gets a
+     page-coloured gap (COR-1498). Written inline so an invalid box keeps its
+     danger ring through the hook. */
+  .cinder-checkbox:checked:focus-visible,
+  .cinder-checkbox:indeterminate:focus-visible {
+    box-shadow:
+      0 0 0 var(--_cinder-focus-ring-filled-gap) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--_cinder-focus-ring-filled-gap) + var(--cinder-ring-width))
+        var(--_cinder-checkbox-ring, var(--cinder-ring-color));
+  }
+
+  @media (forced-colors: active) {
+    .cinder-checkbox:checked:focus-visible,
+    .cinder-checkbox:indeterminate:focus-visible {
+      outline: var(--cinder-ring-width) solid Highlight;
+      outline-offset: 1px;
+    }
+  }
+
   /* Label */
   .cinder-checkbox-field__label,
   .cinder-checkbox-field .cinder-form-field__label {

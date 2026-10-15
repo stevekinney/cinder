@@ -11,6 +11,15 @@
  * chevron disappears in dark mode. SVG data URIs must encode shapes only;
  * coloring is the job of `mask-image` + `background-color: currentColor`, or
  * inline `<svg>` with `fill="currentColor"` / `stroke="currentColor"`.
+ *
+ * The one exception is an SVG data URI that an `<img>` loads as its `src`. An
+ * image document never inherits the host page's color, so `currentColor`
+ * inside it cannot follow the theme (CIN-61: the Image example's illustration
+ * rendered near-black on a near-black dark theme). Image content therefore
+ * carries its own explicit colors, and the scanner skips URIs it can see are
+ * bound to `src`, either written directly into `src="…"` or assigned to a
+ * `const` that the same source passes as `src={name}`. CSS `url(...)` values and
+ * every other usage stay checked.
  */
 import { Glob } from 'bun';
 import { describe, expect, test } from 'bun:test';
@@ -35,7 +44,36 @@ type SvgDataUri = {
   readonly file: string;
   readonly raw: string;
   readonly payload: string;
+  readonly isImageSource: boolean;
 };
+
+const IMAGE_SOURCE_LOOKBEHIND = 160;
+
+/** Undo the JSON string escapes that example artifacts wrap their Svelte source in. */
+function unescapeJsonQuoting(text: string): string {
+  return text.replaceAll('\\n', '\n').replaceAll('\\"', '"');
+}
+
+/**
+ * Whether the data URI starting at `start` is the `src` of an image: written
+ * directly as `src="…"` / `src={'…'}`, or assigned to a `const` whose every
+ * other reference in the same source is a `src={name}` binding. A constant that
+ * also feeds CSS or anything else stays checked.
+ */
+function isImageSourceUri(source: string, start: number): boolean {
+  const prefix = unescapeJsonQuoting(
+    source.slice(Math.max(0, start - IMAGE_SOURCE_LOOKBEHIND), start),
+  );
+  if (/\bsrc\s*=\s*\{?\s*["'`]$/.test(prefix)) return true;
+  const assignment = /\bconst\s+([A-Za-z_$][\w$]*)\s*(?::\s*string\s*)?=\s*["'`]$/.exec(prefix);
+  if (assignment === null) return false;
+  const name = assignment[1]!.replaceAll('$', '\\$');
+  const unescaped = unescapeJsonQuoting(source);
+  const references = unescaped.match(new RegExp(`(?<![\\w$])${name}(?![\\w$])`, 'g'))?.length ?? 0;
+  const imageSources =
+    unescaped.match(new RegExp(`\\bsrc\\s*=\\s*\\{\\s*${name}\\s*\\}`, 'g'))?.length ?? 0;
+  return imageSources > 0 && references === imageSources + 1;
+}
 
 function resolveScanRoots(): string[] {
   const repoRoot = resolve(import.meta.dir, '..', '..', '..', '..');
@@ -148,7 +186,12 @@ function extractSvgDataUris(file: string, source: string): SvgDataUri[] {
     const endIndex = findUriEnd(file, source, start, marker.length);
     const raw = source.slice(start, endIndex);
     cursor = endIndex + 1;
-    results.push({ file, raw, payload: decodeSvgPayload(file, raw, marker.length) });
+    results.push({
+      file,
+      raw,
+      payload: decodeSvgPayload(file, raw, marker.length),
+      isImageSource: isImageSourceUri(source, start),
+    });
   }
   return results;
 }
@@ -219,6 +262,7 @@ describe('SVG data URI color literals', () => {
     for (const root of roots) {
       const uris = await scanRoot(root);
       for (const uri of uris) {
+        if (uri.isImageSource) continue;
         const attributeOffense = findOffendingAttribute(uri.payload);
         if (attributeOffense) {
           violations.push(
@@ -243,5 +287,50 @@ describe('SVG data URI color literals', () => {
     }
 
     expect(violations).toEqual([]);
+  });
+});
+
+describe('image source detection', () => {
+  // Assembled so this file's own scan does not see a literal hardcoded-fill URI.
+  const uri = ['data:image/svg+xml', "%3Csvg%3E%3Crect fill='%23f1f5f9'/%3E%3C/svg%3E"].join(',');
+
+  test('treats a URI written directly into src as image content', () => {
+    const source = `<img src="${uri}" alt="" />`;
+    expect(isImageSourceUri(source, source.indexOf('data:'))).toBe(true);
+  });
+
+  test('treats a const passed as src as image content', () => {
+    const source = `<script>\n  const imageSource =\n    "${uri}";\n</script>\n<Image src={imageSource} />`;
+    expect(isImageSourceUri(source, source.indexOf('data:'))).toBe(true);
+  });
+
+  test('sees through the JSON escaping of a committed examples artifact', () => {
+    const code = `<script>\n  const imageSource =\n    "${uri}";\n</script>\n<Image src={imageSource} />`;
+    const source = JSON.stringify({ code });
+    expect(isImageSourceUri(source, source.indexOf('data:'))).toBe(true);
+  });
+
+  test('keeps checking a const that never reaches src', () => {
+    const source = `const chevron = "${uri}";\nconst style = \`background: url(\${chevron})\`;`;
+    expect(isImageSourceUri(source, source.indexOf('data:'))).toBe(false);
+  });
+
+  test('keeps checking a const that reaches src and also feeds CSS', () => {
+    const source = `<script>\n  const art = "${uri}";\n</script>\n<img src={art} alt="" />\n<div style="background: url({art})"></div>`;
+    expect(isImageSourceUri(source, source.indexOf('data:'))).toBe(false);
+  });
+
+  test('keeps checking CSS url() values', () => {
+    const source = `.select { background-image: url("${uri}"); }`;
+    expect(isImageSourceUri(source, source.indexOf('data:'))).toBe(false);
+  });
+
+  test('still reports a hardcoded fill in a CSS url() through the scanner', () => {
+    const [found] = extractSvgDataUris('chevron.css', `.x { background: url("${uri}"); }`);
+    expect(found?.isImageSource).toBe(false);
+    expect(found === undefined ? null : findOffendingAttribute(found.payload)).toEqual({
+      attribute: 'fill',
+      value: '#f1f5f9',
+    });
   });
 });

@@ -77,11 +77,30 @@
    ring with the standard "transparent outline + two-stop box-shadow" pattern
    reference this variable so the formula lives in exactly one place. Not part
    of the public token surface — do not document, do not export. The leading
-   `_` after `--` marks it as private/internal per the Cinder convention. */
+   `_` after `--` marks it as private/internal per the Cinder convention.
+   With `--cinder-ring-offset` at 0px the first stop has no spread and paints
+   nothing, so the ring is one tight band on the control edge.
+
+   Filled controls (a solid accent, danger or status fill on the focused
+   element itself) use `--_cinder-focus-ring-filled-shadow` instead: a
+   `--cinder-ring-offset-color` gap and then the same 2px ring. Without the gap
+   the accent-hued ring sits directly on a same-hue fill and the control reads
+   as growing rather than focused; with it, the ring sits on the page colour.
+   The gap width `--_cinder-focus-ring-filled-gap` is a private constant, not a
+   public token, because no consumer has needed to tune it (COR-1498,
+   focus-ring-policy.md). Both formulas resolve their colours here, so they are
+   re-declared under [data-theme] below. A component whose filled ring keeps a
+   per-state hook colour (an invalid checked Checkbox) writes the two stops
+   inline with the gap constant and its hook. */
 :root {
+  --_cinder-focus-ring-filled-gap: 2px;
   --_cinder-focus-ring-shadow:
     0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
     0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+  --_cinder-focus-ring-filled-shadow:
+    0 0 0 var(--_cinder-focus-ring-filled-gap) var(--cinder-ring-offset-color),
+    0 0 0 calc(var(--_cinder-focus-ring-filled-gap) + var(--cinder-ring-width))
+      var(--cinder-ring-color);
 }
 
 [data-theme='dark'],
@@ -89,6 +108,10 @@
   --_cinder-focus-ring-shadow:
     0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
     0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
+  --_cinder-focus-ring-filled-shadow:
+    0 0 0 var(--_cinder-focus-ring-filled-gap) var(--cinder-ring-offset-color),
+    0 0 0 calc(var(--_cinder-focus-ring-filled-gap) + var(--cinder-ring-width))
+      var(--cinder-ring-color);
 }
 
 [data-theme='dark']
@@ -248,6 +271,15 @@
 :where(input, button, textarea, select) {
   font: inherit;
   color: inherit;
+}
+
+/* A native select keeps the user agent's own fill, which is the dark "button
+ * face" gray (#6b6b6b) under a dark color scheme. The rule above hands it the
+ * page's light text color, and that pair measures 4.2:1, below WCAG AA. Giving
+ * the control the same raised surface the Input family uses keeps the text the
+ * page color and puts it on a token-controlled background in both themes. */
+:where(select) {
+  background-color: var(--cinder-surface-raised);
 }
 
 :where(button) {

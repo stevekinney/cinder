@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
 import { requiredInstance, setupHappyDom } from '@lostgradient/testing';
 import Ajv2020 from 'ajv/dist/2020';
@@ -15,9 +15,11 @@ import type {
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { render, cleanup, fireEvent } = await import('@testing-library/svelte');
+const { render, cleanup, fireEvent, waitFor } = await import('@testing-library/svelte');
 const { default: RunStepTimeline } = await import('./run-step-timeline.svelte');
 const { default: runStepTimelineSchema } = await import('./run-step-timeline.schema.ts');
+const { default: CodeHighlighterContextFixture } =
+  await import('../../test/fixtures/code-highlighter-context-fixture.svelte');
 
 function stepRowByPath(container: HTMLElement, pathKey: string): HTMLElement | undefined {
   return Array.from(container.querySelectorAll<HTMLElement>('[data-cinder-path]')).find(
@@ -31,6 +33,23 @@ afterEach(() => cleanup());
 // ---------------------------------------------------------------------------
 // Fixture data
 // ---------------------------------------------------------------------------
+
+/** A step whose only detail is an open JSON code panel. */
+const codeDetailStep: RunStep = {
+  id: 'code-detail-step',
+  label: 'Inspect payload',
+  status: 'succeeded',
+  details: [
+    {
+      id: 'json-payload',
+      label: 'Payload',
+      type: 'code',
+      code: '{"ok":true}',
+      language: 'json',
+      open: true,
+    },
+  ],
+};
 
 const pendingStep: RunStep = {
   id: 'step-pending',
@@ -586,6 +605,34 @@ describe('behavior', () => {
     expect(container.querySelector('.cinder-code-block')).not.toBeNull();
     expect(container.querySelector('.cinder-code-block__language')).toBeNull();
     expect(container.textContent).toContain('{"ok":true}');
+  });
+
+  test('renders a code detail unhighlighted when no ancestor publishes a highlighter', async () => {
+    const { container } = render(RunStepTimeline, { steps: [codeDetailStep] });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(container.querySelector('.cinder-code-block__highlighted')).toBeNull();
+    expect(container.querySelector('.cinder-code-block__code')?.textContent).toBe('{"ok":true}');
+  });
+
+  test('highlights a code detail in its own language through the context highlighter', async () => {
+    const highlighter = mock(
+      (code: string, language: string) =>
+        `<pre class="shiki context-highlighted" data-language="${language}"><code>${code}</code></pre>`,
+    );
+    const { container } = render(CodeHighlighterContextFixture, {
+      highlighter,
+      component: RunStepTimeline,
+      childProps: { steps: [codeDetailStep] },
+    });
+
+    await waitFor(() => {
+      expect(
+        container.querySelector('.cinder-code-block__highlighted [data-language="json"]'),
+      ).not.toBeNull();
+    });
+    expect(highlighter).toHaveBeenCalledWith('{"ok":true}', 'json');
   });
 
   test('namespaces detail disclosure ids by timeline instance and step path', async () => {

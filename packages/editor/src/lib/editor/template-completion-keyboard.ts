@@ -2,11 +2,8 @@ import type { EditorView } from 'prosemirror-view';
 
 import { acceptSuggestion } from './template-completion-acceptance.js';
 import { completionKeyAction } from './template-completion-keys.js';
-import {
-  templateCompletionPluginKey,
-  type CompletionMeta,
-  type CompletionState,
-} from './template-completion-state.js';
+import { type CompletionMeta, type CompletionState } from './template-completion-state.js';
+import { templateCompletionPluginKey } from './template-completion-transaction.js';
 
 function dispatchMeta(view: EditorView, meta: CompletionMeta): void {
   view.dispatch(view.state.tr.setMeta(templateCompletionPluginKey, meta));

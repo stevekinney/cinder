@@ -1,0 +1,636 @@
+import { readFileSync, statSync } from 'node:fs';
+import { isAbsolute, posix, relative, resolve } from 'node:path';
+
+export type CoverageThresholds = {
+  functions: number;
+  lines: number;
+};
+
+export type CoverageThresholdConfiguration = CoverageThresholds & {
+  svelte?: CoverageThresholds;
+};
+
+export type CoverageRecord = {
+  file: string;
+  functionsFound: number;
+  functionsHit: number;
+  linesFound: number;
+  linesHit: number;
+};
+
+export type CoverageAverages = {
+  files: number;
+  functions: number;
+  functionsFound: number;
+  functionsHit: number;
+  lines: number;
+  linesFound: number;
+  linesHit: number;
+};
+
+export type CoverageScope = 'runtime' | 'svelte';
+
+export function parseCoverageThresholds(source: string): CoverageThresholdConfiguration {
+  const parsed: unknown = JSON.parse(source);
+
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    !('lines' in parsed) ||
+    typeof parsed.lines !== 'number' ||
+    !('functions' in parsed) ||
+    typeof parsed.functions !== 'number'
+  ) {
+    throw new Error('coverage-ratchet.json must define numeric lines and functions thresholds.');
+  }
+
+  if (!isRatchetThreshold(parsed.lines) || !isRatchetThreshold(parsed.functions)) {
+    throw new Error('Coverage thresholds must be decimals between 0 and 1.');
+  }
+
+  const thresholds: CoverageThresholdConfiguration = {
+    lines: parsed.lines,
+    functions: parsed.functions,
+  };
+
+  if ('svelte' in parsed && parsed.svelte !== undefined) {
+    if (
+      typeof parsed.svelte !== 'object' ||
+      parsed.svelte === null ||
+      !('lines' in parsed.svelte) ||
+      typeof parsed.svelte.lines !== 'number' ||
+      !('functions' in parsed.svelte) ||
+      typeof parsed.svelte.functions !== 'number'
+    ) {
+      throw new Error(
+        'coverage-ratchet.json svelte thresholds must define numeric lines and functions thresholds.',
+      );
+    }
+
+    if (!isRatchetThreshold(parsed.svelte.lines) || !isRatchetThreshold(parsed.svelte.functions)) {
+      throw new Error('Coverage thresholds must be decimals between 0 and 1.');
+    }
+
+    thresholds.svelte = {
+      lines: parsed.svelte.lines,
+      functions: parsed.svelte.functions,
+    };
+  }
+
+  return thresholds;
+}
+
+function isRatchetThreshold(value: number): boolean {
+  return Number.isFinite(value) && value >= 0 && value <= 1;
+}
+
+export type SvelteMeasurementPlatform = {
+  platform: string;
+  architecture: string;
+};
+
+/**
+ * The `svelteMeasuredOn` block coverage-ratchet.json records beside its
+ * `svelte` threshold — the platform/architecture CI actually measured that
+ * threshold on. This is read independently of {@link parseCoverageThresholds}
+ * (which validates and returns only the numeric floors) because it is
+ * provenance metadata, not a threshold, and a missing or malformed block is
+ * not a validation error: a package with no `svelte` floor at all has no use
+ * for it, so absence is silently treated as "nothing to compare against"
+ * rather than throwing.
+ */
+export function parseSvelteMeasurementPlatform(
+  source: string,
+): SvelteMeasurementPlatform | undefined {
+  const parsed: unknown = JSON.parse(source);
+  if (typeof parsed !== 'object' || parsed === null || !('svelteMeasuredOn' in parsed)) {
+    return undefined;
+  }
+  const measuredOn = parsed.svelteMeasuredOn;
+  if (
+    typeof measuredOn !== 'object' ||
+    measuredOn === null ||
+    !('platform' in measuredOn) ||
+    !('architecture' in measuredOn)
+  ) {
+    return undefined;
+  }
+  const { platform, architecture } = measuredOn;
+  if (typeof platform !== 'string' || typeof architecture !== 'string') return undefined;
+  return { platform, architecture };
+}
+
+/**
+ * Svelte coverage is platform-dependent (see coverage-ratchet.json's
+ * `svelteMeasuredOn` note for the measured numbers on each side) — a macOS
+ * run can pass a floor CI fails, and there is no way to tell from a bare
+ * percentage alone. Returns a notice to print whenever the running
+ * platform/architecture differs from the one the floor was measured on, so a
+ * local pass (or fail) on this metric is never mistaken for what CI will do.
+ * Returns `undefined` — no notice — both when they match and when no
+ * `svelteMeasuredOn` block was recorded at all.
+ */
+export function svelteCoveragePlatformNotice(
+  recorded: SvelteMeasurementPlatform | undefined,
+  actual: SvelteMeasurementPlatform,
+): string | undefined {
+  if (
+    recorded === undefined ||
+    (recorded.platform === actual.platform && recorded.architecture === actual.architecture)
+  ) {
+    return undefined;
+  }
+  return (
+    `NOTE: the Svelte coverage floor in coverage-ratchet.json was measured on ` +
+    `${recorded.platform}/${recorded.architecture} (see its "svelteMeasuredOn" note). This run is on ` +
+    `${actual.platform}/${actual.architecture} — its Svelte number below is NOT authoritative. CI on ` +
+    `${recorded.platform}/${recorded.architecture} is the gate; do not treat this run's Svelte result, ` +
+    `pass or fail, as the real one.`
+  );
+}
+
+/**
+ * Transient SSR test modules written by component SSR and hydration helpers.
+ * They compile source into temporary `.mjs` files, import the files for one
+ * render, then delete them. Bun still instruments these modules while they are
+ * imported, so they land in the LCOV report even though they are not library
+ * source — and because they exercise only a fraction of each component's
+ * functions, they drag the aggregate below the real number. They are not
+ * shippable code and carry no coverage obligation, so exclude them from the
+ * ratchet aggregate.
+ */
+function isTransientTestArtifact(file: string, packageRoot: string): boolean {
+  // Matches the generated contract from server-render.ts / hydrate.ts:
+  // `.cinder-ssr-<pid>-<epoch-ms>-<base36 rand>.mjs`. The leading `(?:^|/)` and
+  // the trailing `$` anchor the match to the final path segment, so a real
+  // source file that merely has the prefix inside a directory name (e.g.
+  // `.cinder-ssr-…mjs/real.ts`) is never excluded.
+  if (/(?:^|\/)\.cinder-ssr-\d+-\d+-[a-z0-9]+(?:\.svelte-server)?\.mjs$/.test(file)) {
+    return true;
+  }
+
+  // SSR probes may generate named `.cinder-ssr-*-<pid>-<epoch-ms>.mjs` files
+  // next to the source. They have the same one-render temporary-module shape.
+  if (/(?:^|\/)\.cinder-ssr-[a-z0-9-]+-\d+-\d+(?:\.svelte-server)?\.mjs$/.test(file)) {
+    return true;
+  }
+
+  // hydration-safety.ts writes paired server/client bundles into the package
+  // root's `tmp/hydration-safety`, imports them once, then unlinks them.
+  const normalizedFile = file.replaceAll('\\', '/');
+  const normalizedPackageRoot = packageRoot.replaceAll('\\', '/');
+  const artifactPrefix = 'tmp/hydration-safety/';
+  const packageArtifactPrefix = `${normalizedPackageRoot}/tmp/hydration-safety/`;
+  let artifactFileName = '';
+  if (normalizedFile.startsWith(packageArtifactPrefix)) {
+    artifactFileName = normalizedFile.slice(packageArtifactPrefix.length);
+  } else if (normalizedFile.startsWith(artifactPrefix)) {
+    artifactFileName = normalizedFile.slice(artifactPrefix.length);
+  }
+
+  return /^(?:client|server)-\d+-\d+-[a-z0-9]+(?:\.svelte-server)?\.mjs$/.test(artifactFileName);
+}
+
+/**
+ * Bun follows source maps into sibling workspaces when component tests exercise
+ * sibling packages such as @lostgradient/editor and @lostgradient/markdown. Those
+ * packages have their own validation scripts; this ratchet is scoped to the
+ * @lostgradient/cinder package directory.
+ */
+function isOutsidePackageRootSourceMap(file: string, packageRoot: string): boolean {
+  const relativeFile = toPackageRootRelativePath(file, packageRoot);
+  return relativeFile === '..' || relativeFile.startsWith('../');
+}
+
+function toPackageRootRelativePath(file: string, packageRoot: string): string {
+  const absoluteFile = isAbsolute(file) ? file : resolve(packageRoot, file);
+  return relative(packageRoot, absoluteFile).replaceAll('\\', '/');
+}
+
+/**
+ * Test support modules sit beside the source they exercise and are named
+ * `<subject>-test-<role>.ts` (`drawer-test-helpers.ts`,
+ * `clipboard-test-support.ts`, `token-contrast-test-readers.ts`). The package
+ * entry never reaches them, which {@link runtimeImportsOfTestSupport} enforces,
+ * so they carry no runtime coverage obligation. The subject prefix is required:
+ * `test-result.ts` is ordinary source.
+ */
+const TEST_SUPPORT_MODULE = /[^/]-test-[a-z]+(?:-[a-z]+)*\.ts$/;
+
+function isTestSupportModule(file: string): boolean {
+  return TEST_SUPPORT_MODULE.test(file);
+}
+
+function isTestOnlySource(packageRelativeFile: string): boolean {
+  return (
+    packageRelativeFile.endsWith('.test.ts') ||
+    packageRelativeFile.endsWith('.spec.ts') ||
+    packageRelativeFile.startsWith('src/test/') ||
+    packageRelativeFile.startsWith('src/lib/test/') ||
+    isTestSupportModule(packageRelativeFile)
+  );
+}
+
+const IMPORT_SPECIFIER = /(?:\bfrom\s*|\bimport\s*\(?\s*)['"]([^'"]+)['"]/g;
+
+const WALKABLE_ENTRY = /(?<!\.d)\.[cm]?tsx?$/;
+
+/**
+ * The files a package's `exports` map points consumers at, relative to `packageRoot` and without
+ * the leading `./`: every string target under any condition except `types`, which names
+ * declarations rather than runtime code. Only TypeScript targets are returned, because the import
+ * walk follows TypeScript modules; wildcard patterns, declaration files and non-source targets such
+ * as `./package.json` are skipped. A package without a manifest or an `exports` map has the single
+ * entry `src/index.ts`.
+ */
+function packageRuntimeEntries(packageRoot: string): string[] {
+  const manifestPath = resolve(packageRoot, 'package.json');
+  if (!isFile(manifestPath)) return ['src/index.ts'];
+  const { exports } = JSON.parse(readFileSync(manifestPath, 'utf8')) as { exports?: unknown };
+  if (exports === undefined) return ['src/index.ts'];
+  const targets = new Set<string>();
+  const collect = (value: unknown): void => {
+    if (typeof value === 'string') {
+      if (value.startsWith('./') && !value.includes('*') && WALKABLE_ENTRY.test(value)) {
+        targets.add(value.slice(2));
+      }
+    } else if (Array.isArray(value)) {
+      value.forEach(collect);
+    } else if (value !== null && typeof value === 'object') {
+      for (const [condition, target] of Object.entries(value)) {
+        if (condition !== 'types') collect(target);
+      }
+    }
+  };
+  collect(exports);
+  return [...targets];
+}
+
+/**
+ * Every import of a test support module on a path reachable from any runtime entry of the
+ * package: each walkable target of its `exports` map (see {@link packageRuntimeEntries}), so a
+ * helper imported only from a subpath entry such as `./bun` is found as surely as one imported from
+ * `.`. The ratchet excludes test support modules on the promise that only tests reach them; one
+ * reachable from an entry would be uncounted shipped code, so the gate fails on any. Test fixtures
+ * that sit beside source (such as `_menu-bar-ssr-test.svelte`) may import test support freely
+ * because no entry reaches them. Package source imports its own modules only by relative
+ * specifier, so the walk follows relative imports. A module reachable from several entries is
+ * visited, and reported, once.
+ */
+export function runtimeImportsOfTestSupport(
+  packageRoot: string,
+  entries: readonly string[] = packageRuntimeEntries(packageRoot),
+): { file: string; specifier: string }[] {
+  for (const entry of entries) {
+    if (!isFile(resolve(packageRoot, entry))) {
+      throw new Error(`Package entry ${entry} does not exist under ${packageRoot}.`);
+    }
+  }
+  const imports: { file: string; specifier: string }[] = [];
+  const visited = new Set<string>();
+  const pending = [...entries];
+  while (pending.length > 0) {
+    const file = pending.pop()!;
+    if (visited.has(file)) continue;
+    visited.add(file);
+    const source = readFileSync(resolve(packageRoot, file), 'utf8');
+    for (const [, specifier] of source.matchAll(IMPORT_SPECIFIER)) {
+      if (specifier === undefined || !specifier.startsWith('.')) continue;
+      const target = resolveRelativeModule(packageRoot, file, specifier);
+      if (target === undefined) continue;
+      if (isTestSupportModule(target)) imports.push({ file, specifier });
+      else pending.push(target);
+    }
+  }
+  return imports.toSorted((left, right) => left.file.localeCompare(right.file));
+}
+
+function resolveRelativeModule(
+  packageRoot: string,
+  importer: string,
+  specifier: string,
+): string | undefined {
+  const base = posix.join(posix.dirname(importer), specifier);
+  const candidates = [base, base.replace(/\.js$/, '.ts'), `${base}.ts`, `${base}/index.ts`];
+  return candidates.find((candidate) => isFile(resolve(packageRoot, candidate)));
+}
+
+function isFile(path: string): boolean {
+  return statSync(path, { throwIfNoEntry: false })?.isFile() ?? false;
+}
+
+/**
+ * Keep the default ratchet focused on package runtime TypeScript that Bun can
+ * measure deterministically. Svelte component modules and `.svelte.ts` rune
+ * modules are checked by a separate measured gate because Bun's generated
+ * source maps report them as large mostly-unhit generated functions. Test
+ * harnesses and package scripts are validated by their own direct tests and
+ * gates, not by the public runtime-source ratchet.
+ */
+function isOutsideCoverageScope(file: string, scope: CoverageScope, packageRoot: string): boolean {
+  const normalizedFile = toPackageRootRelativePath(file, packageRoot);
+  if (normalizedFile.startsWith('scripts/')) return true;
+  if (isTestOnlySource(normalizedFile)) return true;
+  const isSvelteSource =
+    normalizedFile.endsWith('.svelte') || normalizedFile.endsWith('.svelte.ts');
+  if (scope === 'runtime') return isSvelteSource;
+  return !isSvelteSource;
+}
+
+/**
+ * The files among `candidates` (paths under `packageRoot`) that the ratchet would measure in any of
+ * `scopes` but that have no LCOV record. Bun only reports a file the tests loaded, so a source
+ * file nothing imports is silently absent from the aggregate; this names it. Declaration files
+ * carry no executable code and are never expected.
+ */
+/**
+ * Test scaffolding at any depth, matching the packages' TypeScript and boundary exclusions. Only
+ * the opt-in missing-file check uses it; the aggregate scope predicate is deliberately narrower.
+ */
+const TEST_SCAFFOLDING =
+  /\.(?:test|spec)\.[cm]?tsx?$|\.test-support\.[cm]?tsx?$|(?:^|\/)(?:__fixtures__|__tests__|__test-helpers__|tests?)\//;
+
+export function sourceFilesMissingFromLcov(
+  source: string,
+  packageRoot: string,
+  candidates: string[],
+  scopes: CoverageScope[],
+): string[] {
+  const recorded = new Set(
+    parseAllLcovRecords(source, packageRoot).map(({ file }) =>
+      toPackageRootRelativePath(file, packageRoot),
+    ),
+  );
+  return candidates
+    .map((file) => toPackageRootRelativePath(file, packageRoot))
+    .filter(
+      (file) =>
+        !/\.d\.[cm]?ts$/.test(file) &&
+        !TEST_SCAFFOLDING.test(file) &&
+        !isTransientTestArtifact(file, packageRoot) &&
+        scopes.some((scope) => !isOutsideCoverageScope(file, scope, packageRoot)) &&
+        !recorded.has(file),
+    )
+    .toSorted();
+}
+
+export function parseRuntimeLcovRecords(source: string, packageRoot: string): CoverageRecord[] {
+  return parseLcovRecords(source, 'runtime', packageRoot);
+}
+
+export function parseSvelteLcovRecords(source: string, packageRoot: string): CoverageRecord[] {
+  return parseLcovRecords(source, 'svelte', packageRoot);
+}
+
+export function parseLcovRecords(
+  source: string,
+  scope: CoverageScope,
+  packageRoot: string,
+): CoverageRecord[] {
+  return parseAllLcovRecords(source, packageRoot).filter(
+    (record) =>
+      !isTransientTestArtifact(record.file, packageRoot) &&
+      !isOutsidePackageRootSourceMap(record.file, packageRoot) &&
+      !isOutsideCoverageScope(record.file, scope, packageRoot),
+  );
+}
+
+/**
+ * A tiny number of individual lines are provably unreachable through every
+ * legitimate call path into their function — proven by tracing the calling
+ * code's own invariants (a shared cache, an upstream balance check), not
+ * merely "hard to hit," which would be a reason to write a better test
+ * instead. Deleting the dead code isn't safe here without changing the
+ * function's behavior in a way nothing asked for, so each such line carries
+ * this exact trailing marker in its OWN source file, right beside the
+ * reasoning — a source-text marker survives the file's line numbers
+ * shifting on a later, unrelated edit, unlike a hardcoded line-number
+ * allowlist would. This is scoped per-line, not per-file: every other line
+ * in a marked file still counts fully toward the ratchet.
+ *
+ * This only adjusts the *line* ratchet (LF/LH). Bun's `--coverage-reporter
+ * lcov` output carries no per-function `FN:`/`FNDA:` records, only a file's
+ * aggregate `FNF`/`FNH` totals, so there is no way to map a marked line back
+ * to "the function it's in" and adjust FNF for it. An exempted block must
+ * therefore contain no nested function or callback of its own — restructure
+ * to a plain loop/statement instead — or it silently drags down the
+ * functions ratchet with no diagnostic naming which function.
+ */
+export const UNREACHABLE_LINE_MARKER = 'cinder-coverage-unreachable:';
+
+const sourceFileLinesCache = new Map<string, string[]>();
+
+function readSourceFileLines(absoluteFilePath: string): string[] {
+  const cached = sourceFileLinesCache.get(absoluteFilePath);
+  if (cached) return cached;
+  let lines: string[];
+  try {
+    lines = readFileSync(absoluteFilePath, 'utf8').split(/\r?\n/);
+  } catch {
+    // A record naming a file that no longer exists on disk (e.g. a
+    // transient path) simply has nothing to check the marker against.
+    lines = [];
+  }
+  sourceFileLinesCache.set(absoluteFilePath, lines);
+  return lines;
+}
+
+/**
+ * How many of `record`'s zero-hit `DA` lines are marked unreachable in the
+ * actual source file on disk. Only `linesFound` (the denominator) needs to
+ * shrink by this count: every line this counts was already a zero-hit `DA`
+ * record by construction (see the `hitCountText !== '0'` guard below), so it
+ * never contributed to `linesHit` in the first place. The marked lines are
+ * removed from the ratchet's denominator entirely, not counted as covered.
+ */
+function countMarkedUnreachableUnhitLines(
+  rawRecordLines: string[],
+  file: string,
+  packageRoot: string,
+): number {
+  const absoluteFilePath = isAbsolute(file) ? file : resolve(packageRoot, file);
+  let sourceLines: string[] | undefined;
+  let count = 0;
+  for (const line of rawRecordLines) {
+    if (!line.startsWith('DA:')) continue;
+    const [lineNumberText, hitCountText] = line.slice('DA:'.length).split(',');
+    if (hitCountText !== '0' || lineNumberText === undefined) continue;
+    const lineNumber = Number(lineNumberText);
+    if (!Number.isInteger(lineNumber) || lineNumber < 1) continue;
+    sourceLines ??= readSourceFileLines(absoluteFilePath);
+    const sourceLine = sourceLines[lineNumber - 1];
+    if (sourceLine?.includes(UNREACHABLE_LINE_MARKER)) count += 1;
+  }
+  return count;
+}
+
+function parseAllLcovRecords(source: string, packageRoot: string): CoverageRecord[] {
+  return source
+    .split('end_of_record')
+    .map((record) => record.trim())
+    .filter(Boolean)
+    .map((record) => {
+      const lines = record.split(/\r?\n/);
+      const file = readStringField(lines, 'SF');
+      const linesFound = readNumberField(lines, 'LF');
+      // Every marked line this counts was, by construction, a zero-hit `DA`
+      // record (see countMarkedUnreachableUnhitLines) — it never
+      // contributed to LH, so only the denominator (LF) shrinks.
+      const markedUnreachable = countMarkedUnreachableUnhitLines(lines, file, packageRoot);
+      return {
+        file,
+        functionsFound: readNumberField(lines, 'FNF'),
+        functionsHit: readNumberField(lines, 'FNH'),
+        linesFound: linesFound - markedUnreachable,
+        linesHit: readNumberField(lines, 'LH'),
+      };
+    });
+}
+
+function readStringField(lines: string[], key: string): string {
+  const prefix = `${key}:`;
+  const value = lines.find((line) => line.startsWith(prefix))?.slice(prefix.length);
+  if (!value) throw new Error(`LCOV record is missing ${key}.`);
+  return value;
+}
+
+function readNumberField(lines: string[], key: string): number {
+  const value = readStringField(lines, key);
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) throw new Error(`LCOV field ${key} must be numeric.`);
+  return parsed;
+}
+
+export function computeCoverageAverages(records: CoverageRecord[]): CoverageAverages {
+  if (records.length === 0) throw new Error('LCOV report did not contain any records.');
+
+  let functionsFound = 0;
+  let functionsHit = 0;
+  let linesFound = 0;
+  let linesHit = 0;
+
+  for (const record of records) {
+    functionsFound += record.functionsFound;
+    functionsHit += record.functionsHit;
+    linesFound += record.linesFound;
+    linesHit += record.linesHit;
+  }
+
+  return {
+    files: records.length,
+    functions: percentage(functionsHit, functionsFound),
+    functionsFound,
+    functionsHit,
+    lines: percentage(linesHit, linesFound),
+    linesFound,
+    linesHit,
+  };
+}
+
+function percentage(hit: number, found: number): number {
+  return found === 0 ? 100 : (hit / found) * 100;
+}
+
+export function coverageFailures(
+  averages: CoverageAverages,
+  thresholds: CoverageThresholds,
+): string[] {
+  const failures: string[] = [];
+  if (averages.functions / 100 < thresholds.functions) {
+    failures.push(
+      `functions ${formatPercentage(averages.functions)} < ${formatThreshold(thresholds.functions)}`,
+    );
+  }
+  if (averages.lines / 100 < thresholds.lines) {
+    failures.push(
+      `lines ${formatPercentage(averages.lines)} < ${formatThreshold(thresholds.lines)}`,
+    );
+  }
+  return failures;
+}
+
+export function formatCoverageSummary(
+  averages: CoverageAverages,
+  thresholds: CoverageThresholds,
+  label = 'Coverage ratchet',
+): string {
+  return [
+    `${label} (${averages.files} files):`,
+    `functions ${formatPercentage(averages.functions)} >= ${formatThreshold(thresholds.functions)}`,
+    `lines ${formatPercentage(averages.lines)} >= ${formatThreshold(thresholds.lines)}`,
+  ].join(' ');
+}
+
+function formatPercentage(value: number): string {
+  return `${value.toFixed(2)}%`;
+}
+
+function formatThreshold(value: number): string {
+  return formatPercentage(value * 100);
+}
+
+/**
+ * The unhit line numbers of every in-scope file that has at least one, keyed by
+ * the same scope filters the ratchet aggregates over. A bare "runtime lines
+ * 99.88% < 100%" failure is otherwise un-actionable in CI, where the coverage
+ * environment (which tests run, which modules load) can differ from a local
+ * build and the offending lines are invisible in the logs.
+ */
+export function uncoveredLineReport(
+  source: string,
+  scope: CoverageScope,
+  packageRoot: string,
+): { file: string; unhitLines: number[] }[] {
+  const report: { file: string; unhitLines: number[] }[] = [];
+  for (const rawRecord of source.split('end_of_record')) {
+    const lines = rawRecord.split(/\r?\n/);
+    const sourceFile = lines.find((line) => line.startsWith('SF:'))?.slice('SF:'.length);
+    if (sourceFile === undefined || sourceFile === '') continue;
+    if (
+      isTransientTestArtifact(sourceFile, packageRoot) ||
+      isOutsidePackageRootSourceMap(sourceFile, packageRoot) ||
+      isOutsideCoverageScope(sourceFile, scope, packageRoot)
+    ) {
+      continue;
+    }
+    const absoluteFilePath = isAbsolute(sourceFile) ? sourceFile : resolve(packageRoot, sourceFile);
+    const sourceLines = readSourceFileLines(absoluteFilePath);
+    const unhitLines: number[] = [];
+    for (const line of lines) {
+      if (!line.startsWith('DA:')) continue;
+      const [lineNumber, hitCount] = line.slice('DA:'.length).split(',');
+      if (hitCount !== '0' || lineNumber === undefined) continue;
+      const lineNumberValue = Number(lineNumber);
+      if (sourceLines[lineNumberValue - 1]?.includes(UNREACHABLE_LINE_MARKER)) continue;
+      unhitLines.push(lineNumberValue);
+    }
+    if (unhitLines.length > 0) {
+      report.push({ file: toPackageRootRelativePath(sourceFile, packageRoot), unhitLines });
+    }
+  }
+  return report;
+}
+
+/** Condense a sorted line-number list into compact ranges: `[1,2,3,7] → "1-3, 7"`. */
+export function formatLineRanges(lineNumbers: number[]): string {
+  const sorted = [...new Set(lineNumbers)].toSorted((a, b) => a - b);
+  const ranges: string[] = [];
+  let start: number | undefined;
+  let previous: number | undefined;
+  for (const line of sorted) {
+    if (start === undefined || previous === undefined) {
+      start = line;
+      previous = line;
+    } else if (line === previous + 1) {
+      previous = line;
+    } else {
+      ranges.push(start === previous ? `${start}` : `${start}-${previous}`);
+      start = line;
+      previous = line;
+    }
+  }
+  if (start !== undefined && previous !== undefined) {
+    ranges.push(start === previous ? `${start}` : `${start}-${previous}`);
+  }
+  return ranges.join(', ');
+}

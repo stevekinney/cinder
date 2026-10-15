@@ -22,6 +22,7 @@
 
   import type { JsonSchemaValidationError } from './json-schema-editor-types.ts';
   import { tryParseJson, validateMetaSchema } from './json-schema-validator.ts';
+  import { jsonViewHighlighter } from './json-view-highlighter.ts';
 
   // Aliased to `editorState`, not `state` — a local variable literally named
   // `state` shadows the `$state` rune identifier, so `$state(...)` below
@@ -291,6 +292,7 @@
       <CodeBlock
         code={displayedJson}
         language="json"
+        highlighter={jsonViewHighlighter}
         highlight={syntaxHighlightingEnabled}
         languageLabelVisible={false}
         class="cinder-jse-json-view__code-block"

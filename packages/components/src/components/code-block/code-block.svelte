@@ -3,7 +3,7 @@
    * @cinder
    * @category data-display
    * @status stable
-   * @purpose Block container for multi-line source code with automatic syntax highlighting and a copy-to-clipboard control.
+   * @purpose Block container for multi-line source code with optional syntax highlighting and a copy-to-clipboard control.
    * @tag code
    * @tag snippet
    * @useWhen Displaying a multi-line code sample or terminal transcript inside documentation or chat.
@@ -17,7 +17,7 @@
 
 <script lang="ts">
   import type { Attachment } from 'svelte/attachments';
-  import { loadDefaultHighlighter } from './code-block-default-highlighter.ts';
+  import { getCodeHighlighterContext } from '../../_internal/code-highlighter-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { overflowFadeEdges } from '../../utilities/attachments.ts';
@@ -38,6 +38,12 @@
   const noopScrollFadeAttachment: Attachment<HTMLElement> = () => {};
   const viewportScrollFadeAttachment = overflowFadeEdges('inline');
 
+  // CodeBlock imports no highlighter of its own. It highlights with its
+  // `highlighter` prop, else with the one an ancestor published through
+  // `setCodeHighlighterContext`, else not at all. Context is read once, during
+  // initialization, as Svelte requires.
+  const contextHighlighter = getCodeHighlighterContext();
+
   let highlighted = $state<string | null>(null);
 
   // Two-phase render contract: the server (and the first client paint) emits
@@ -45,14 +51,14 @@
   // The effect below — client-only by definition — enhances the block to the
   // highlighted HTML once the highlighter resolves. The outer viewport stays
   // mounted across both phases so syntax colorization cannot move surrounding
-  // layout. Keeping the Shiki boundary a dynamic import inside this effect is
-  // what keeps Shiki out of the SSR bundle and the consumer's entry chunk.
+  // layout.
   $effect(() => {
     // `highlight={false}` is an absolute off switch: it disables ALL
-    // highlighting — including an explicit `highlighter` prop — and triggers
-    // NO default-highlighter import. The block stays the escaped plain
-    // fallback. (Default when unset: highlight whenever `language` is set.)
-    if (highlight === false || !language) {
+    // highlighting — including an explicit `highlighter` prop or a context
+    // highlighter. The block stays the escaped plain fallback. (Default when
+    // unset: highlight whenever `language` is set and a highlighter resolves.)
+    const resolvedHighlighter = highlighter ?? contextHighlighter;
+    if (highlight === false || !language || resolvedHighlighter === undefined) {
       highlighted = null;
       return;
     }
@@ -60,11 +66,9 @@
     // Snapshot the inputs this run highlights so a later `code`/`language`/
     // `highlighter` change can't let a stale (and `{@html}`-trusted) result
     // overwrite a newer state. The cleanup flips `cancelled`, which gates
-    // EVERY assignment below — including the one after the async default
-    // load resolves.
+    // EVERY assignment below.
     const pendingCode = code;
     const pendingLanguage = language;
-    const explicitHighlighter = highlighter;
 
     // Drop any stale highlighted output before starting a new request so a
     // change can't leave the previous render visible while the new request
@@ -72,16 +76,10 @@
     highlighted = null;
     let cancelled = false;
 
-    // The highlighter may throw synchronously OR reject, and resolving the
-    // default highlighter is itself async — wrap everything in one async IIFE
-    // so all failure modes hit the same `catch`.
+    // The highlighter may throw synchronously OR reject — wrap the call in one
+    // async IIFE so both failure modes hit the same `catch`.
     void (async () => {
       try {
-        // An explicit `highlighter` bypasses the default entirely: the default
-        // loader is never imported, so its Shiki load + factory side effects
-        // never fire (asserted in the unit tests).
-        const resolvedHighlighter = explicitHighlighter ?? (await loadDefaultHighlighter());
-        if (cancelled) return;
         const html = await resolvedHighlighter(pendingCode, pendingLanguage);
         if (!cancelled) highlighted = html === '' ? null : html;
       } catch (error) {
