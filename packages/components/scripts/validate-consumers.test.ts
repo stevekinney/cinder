@@ -4,15 +4,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { getPackFileName } from './publish-release.ts';
-import { packageTarballPath } from './report-package-weight.ts';
 import {
   assertALaCarteCssContract,
   assertSvelteKitHydrationRouteContent,
   boundedDiagnosticSnapshot,
-  bumpPackageVersion,
   captureSvelteKitHydrationRouteFailureSnapshot,
-  chatPeerValidationTarballPath,
   createBoundedDiagnosticCollection,
   diagnosticSnapshotFromValues,
   EXAMPLES_CONSUMER_READINESS_PATH,
@@ -22,19 +18,14 @@ import {
   isSupportedViteNodeVersion,
   parseHydrationBrowserProcessIds,
   pinFirstPartyFixtureOverrides,
-  preoptimizeSvelteKitChatHydration,
-  prepareSvelteKitChatHydrationDevServer,
   recordBoundedDiagnostic,
   removeFixtureEntries,
-  resolveChatFixtureCinderVersion,
   runBoundedHydrationTeardown,
-  startSvelteKitChatHydrationDevServer,
   stopDevelopmentServer,
   SVELTEKIT_HYDRATION_ROUTES,
   unreclaimedTeardownFailures,
   wrapSvelteKitHydrationRouteFailure,
   type CssArtifact,
-  type SvelteKitChatHydrationDevServerOptions,
   type SvelteKitHydrationRouteDomObservation,
   type SvelteKitHydrationRouteFailureSnapshot,
 } from './validate-consumers.ts';
@@ -53,14 +44,13 @@ describe('first-party fixture overrides', () => {
     });
   });
 
-  test('pins chat too, so its cinder peer cannot resolve from the registry', () => {
-    // The CIN-504 regression: chat declares `"@lostgradient/cinder": "^0.25.0"`
-    // as a peer. A direct file: dependency does not constrain that peer edge, so
-    // once 0.25.0 existed on the registry the install resolved it from the
-    // network and hung. Both first-party packages must be pinned.
+  test('pins cinder even when a workspace dependency is already pinned', () => {
+    // The CIN-504 regression: a package that declares a peer on
+    // `@lostgradient/cinder` resolved it from the registry once a matching
+    // version existed, because a direct file: dependency does not constrain a
+    // transitive peer edge. The cinder tarball under test must be pinned.
     const dependencies: Record<string, unknown> = {
       '@lostgradient/cinder': 'file:/tmp/lostgradient-cinder-0.25.0.tgz',
-      '@lostgradient/chat': 'file:/tmp/lostgradient-chat-0.13.1.tgz',
       '@lostgradient/markdown': 'file:/tmp/lostgradient-markdown-0.4.0.tgz',
     };
     const overrides: Record<string, unknown> = {
@@ -70,7 +60,7 @@ describe('first-party fixture overrides', () => {
     pinFirstPartyFixtureOverrides(dependencies, overrides);
 
     expect(overrides['@lostgradient/cinder']).toBe('file:/tmp/lostgradient-cinder-0.25.0.tgz');
-    expect(overrides['@lostgradient/chat']).toBe('file:/tmp/lostgradient-chat-0.13.1.tgz');
+    expect(overrides['@lostgradient/markdown']).toBe('file:/tmp/lostgradient-markdown-0.4.0.tgz');
   });
 
   test('preserves unrelated overrides already present', () => {
@@ -161,8 +151,8 @@ describe('consumer fixture cleanup', () => {
   });
 });
 
-describe('SvelteKit Chat hydration optimizer preflight', () => {
-  test('eagerly optimizes the Chat SSR dependency in the hydration fixture', async () => {
+describe('SvelteKit consumer fixture Vite configuration', () => {
+  test('disables dependency discovery for the dev SSR fixture', () => {
     const fixtureDirectory = join(import.meta.dir, '../fixtures/sveltekit-consumer');
     const isolatedDirectory = mkdtempSync(join(tmpdir(), 'cinder-vite-config-'));
     try {
@@ -193,169 +183,32 @@ describe('SvelteKit Chat hydration optimizer preflight', () => {
         readFileSync(join(fixtureDirectory, 'vite.config.ts')),
       );
       const configurationUrl = pathToFileURL(join(isolatedDirectory, 'vite.config.ts')).href;
-      for (const [hydration, expected] of [
-        ['1', { ssr: { optimizeDeps: { include: ['@lostgradient/chat'] } } }],
-        ['', { optimizeDeps: { holdUntilCrawlEnd: false, noDiscovery: true } }],
-      ] as const) {
-        const result = Bun.spawnSync(
-          [
-            process.execPath,
-            '-e',
-            `const { default: configuration } = await import(${JSON.stringify(configurationUrl)}); process.stdout.write(JSON.stringify(configuration));`,
-          ],
-          {
-            cwd: isolatedDirectory,
-            env: { ...Bun.env, CINDER_CHAT_DEV_HYDRATION: hydration },
-            stdout: 'pipe',
-            stderr: 'pipe',
-          },
-        );
-        expect(result.exitCode).toBe(0);
-        expect(JSON.parse(result.stdout.toString())).toMatchObject(expected);
-      }
+      const result = Bun.spawnSync(
+        [
+          process.execPath,
+          '-e',
+          `const { default: configuration } = await import(${JSON.stringify(configurationUrl)}); process.stdout.write(JSON.stringify(configuration));`,
+        ],
+        {
+          cwd: isolatedDirectory,
+          env: Bun.env,
+          stdout: 'pipe',
+          stderr: 'pipe',
+        },
+      );
+      expect(result.exitCode).toBe(0);
+      expect(JSON.parse(result.stdout.toString())).toMatchObject({
+        optimizeDeps: { holdUntilCrawlEnd: false, noDiscovery: true },
+      });
     } finally {
       rmSync(isolatedDirectory, { recursive: true, force: true });
     }
-  });
-
-  test('forces dependency optimization under the Chat hydration environment', async () => {
-    const runCommand = mock(async () => ({ exitCode: 0, stdout: 'optimized', stderr: '' }));
-
-    await preoptimizeSvelteKitChatHydration('/fixture', runCommand, undefined, '/validated/node');
-
-    expect(runCommand).toHaveBeenCalledWith(
-      '/validated/node',
-      ['/fixture/node_modules/vite/bin/vite.js', 'optimize', '--force'],
-      {
-        cwd: '/fixture',
-        stdout: 'pipe',
-        stderr: 'pipe',
-        environment: {
-          CINDER_CHAT_DEV_HYDRATION: '1',
-          LANG: 'en_US.UTF-8',
-          TZ: 'UTC',
-        },
-      },
-    );
-  });
-
-  test('stops before route readiness when dependency optimization fails', async () => {
-    const runCommand = mock(async () => ({
-      exitCode: 1,
-      stdout: 'optimizer output',
-      stderr: 'optimizer failure',
-    }));
-
-    await expect(preoptimizeSvelteKitChatHydration('/fixture', runCommand)).rejects.toThrow(
-      'Vite dependency optimization failed before Chat hydration readiness:\noptimizer output\noptimizer failure',
-    );
-  });
-
-  test('reports a shared-readiness-budget abort without starting Vite', async () => {
-    const controller = new AbortController();
-    controller.abort();
-    const runCommand = mock(async () => ({ exitCode: 130, stdout: '', stderr: '' }));
-
-    await expect(
-      preoptimizeSvelteKitChatHydration(
-        '/fixture',
-        runCommand,
-        controller.signal,
-        '/validated/node',
-      ),
-    ).rejects.toThrow(
-      'Vite dependency optimization exceeded the shared Chat hydration readiness budget',
-    );
-    expect(runCommand).toHaveBeenCalledWith(
-      '/validated/node',
-      ['/fixture/node_modules/vite/bin/vite.js', 'optimize', '--force'],
-      expect.objectContaining({ signal: controller.signal }),
-    );
-  });
-
-  test('rejects published-package source-map warnings from successful optimization', async () => {
-    const runCommand = mock(async () => ({
-      exitCode: 0,
-      stdout: 'warning: @lostgradient/cinder/dist/index.js.map points to missing source',
-      stderr: '',
-    }));
-
-    await expect(preoptimizeSvelteKitChatHydration('/fixture', runCommand)).rejects.toThrow(
-      'Vite dependency optimization emitted source-map warnings for published package artifacts',
-    );
-  });
-
-  test('starts Vite dev without forced reoptimization', () => {
-    const fakeServer = {} as Bun.ReadableSubprocess;
-    const startServer = mock(
-      (_command: string[], _options: SvelteKitChatHydrationDevServerOptions) => {
-        return fakeServer;
-      },
-    );
-
-    const server = startSvelteKitChatHydrationDevServer('/fixture', 4_321, {
-      nodeBinaryPath: '/validated/node',
-      startServer,
-    });
-
-    expect(server).toBe(fakeServer);
-    expect(startServer).toHaveBeenCalledWith(
-      [
-        '/validated/node',
-        '/fixture/node_modules/vite/bin/vite.js',
-        'dev',
-        '--host',
-        '127.0.0.1',
-        '--port',
-        '4321',
-        '--strictPort',
-      ],
-      expect.objectContaining({
-        cwd: '/fixture',
-        detached: true,
-        env: expect.objectContaining({
-          CINDER_CHAT_DEV_HYDRATION: '1',
-          LANG: 'en_US.UTF-8',
-          TZ: 'UTC',
-        }),
-        stderr: 'pipe',
-        stdout: 'pipe',
-      }),
-    );
-    expect(startServer.mock.calls[0]?.[0]).not.toContain('--force');
-    expect(startServer.mock.calls[0]?.[0]).not.toContain('bunx');
-    expect(
-      startServer.mock.calls[0]?.[0]?.some((argument) => argument.includes('node_modules/.bin')),
-    ).toBe(false);
-  });
-
-  test('does not reserve a port or start Vite when optimization fails', async () => {
-    const optimizerError = new Error('optimizer failed');
-    const preoptimize = mock(async () => {
-      throw optimizerError;
-    });
-    const pickPort = mock(async () => 4_321);
-    const startServer = mock(
-      (_command: string[], _options: SvelteKitChatHydrationDevServerOptions) =>
-        ({}) as Bun.ReadableSubprocess,
-    );
-
-    await expect(
-      prepareSvelteKitChatHydrationDevServer('/fixture', 'latest', {
-        pickPort,
-        preoptimize,
-        startServer,
-      }),
-    ).rejects.toBe(optimizerError);
-    expect(pickPort).not.toHaveBeenCalled();
-    expect(startServer).not.toHaveBeenCalled();
   });
 });
 
 describe('SvelteKit hydration route matrix', () => {
   test('uses focused feature routes instead of the monolithic dev SSR fixture', () => {
     expect(SVELTEKIT_HYDRATION_ROUTES).toEqual([
-      '/chat-layout',
       '/dev-ssr-dialog',
       '/dev-ssr-navigation',
       '/dev-ssr-tabs',
@@ -468,11 +321,11 @@ describe('SvelteKit hydration route failure diagnostics', () => {
     await assertSvelteKitHydrationRouteContent(
       page as never,
       createBoundedDiagnosticCollection(),
-      '/chat-layout',
+      '/dev-ssr-navigation',
       domObservation,
     );
 
-    expect(page.locator).toHaveBeenCalledWith('[data-chat-layout-hydrated="true"]');
+    expect(page.locator).toHaveBeenCalledWith('[data-dev-ssr-hydrated="true"]');
     expect(markerWaitFor).toHaveBeenCalledWith({ state: 'attached', timeout: 5_000 });
     expect(rawElementLookup).not.toHaveBeenCalled();
     expect(domObservation.hydrationMarkerPresent).toBe(true);
@@ -993,65 +846,5 @@ describe('examples consumer readiness', () => {
   test('polls a static build asset instead of repeatedly rendering every example', () => {
     expect(EXAMPLES_CONSUMER_READINESS_PATH).toBe('/_app/version.json');
     expect(EXAMPLES_CONSUMER_READINESS_PATH).not.toBe('/');
-  });
-});
-
-describe('Chat peer-compatible Cinder fixture artifact', () => {
-  test('uses the exact publish artifact once Cinder satisfies the Chat peer', () => {
-    expect(
-      resolveChatFixtureCinderVersion({
-        currentVersion: '0.16.0',
-        peerRange: '^0.16.0',
-        pendingReleaseType: 'minor',
-      }),
-    ).toEqual({ version: '0.16.0', requiresValidationOnlyRepack: false });
-  });
-
-  test('stages only the pending minor version before the Version Packages pull request', () => {
-    expect(
-      resolveChatFixtureCinderVersion({
-        currentVersion: '0.15.0',
-        peerRange: '^0.16.0',
-        pendingReleaseType: 'minor',
-      }),
-    ).toEqual({ version: '0.16.0', requiresValidationOnlyRepack: true });
-  });
-
-  test('keeps the canonical tarball filename below a fixture-only directory', () => {
-    const packageRoot = '/workspace/packages/components';
-    const identity = {
-      name: '@lostgradient/cinder',
-      version: '0.16.0',
-    };
-    const validationPath = chatPeerValidationTarballPath(packageRoot, identity);
-    const publishPath = join(packageRoot, getPackFileName(identity));
-
-    expect(validationPath).toBe(
-      '/workspace/packages/components/tmp/chat-peer-validation/lostgradient-cinder-0.16.0.tgz',
-    );
-    expect(packageTarballPath(packageRoot, identity)).toBe(publishPath);
-    expect(validationPath).not.toBe(publishPath);
-  });
-
-  test('rejects an incompatible pair without an exact pending changeset bridge', () => {
-    expect(() =>
-      resolveChatFixtureCinderVersion({
-        currentVersion: '0.15.0',
-        peerRange: '^0.16.0',
-      }),
-    ).toThrow('no pending Cinder changeset');
-    expect(() =>
-      resolveChatFixtureCinderVersion({
-        currentVersion: '0.15.0',
-        peerRange: '^0.16.0',
-        pendingReleaseType: 'patch',
-      }),
-    ).toThrow('pending Cinder 0.15.1 does not satisfy');
-  });
-
-  test('applies plain semantic-version bumps deterministically', () => {
-    expect(bumpPackageVersion('0.15.0', 'patch')).toBe('0.15.1');
-    expect(bumpPackageVersion('0.15.0', 'minor')).toBe('0.16.0');
-    expect(bumpPackageVersion('0.15.0', 'major')).toBe('1.0.0');
   });
 });

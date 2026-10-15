@@ -93,8 +93,8 @@ function tarballFileName(manifest: Pick<PackageManifest, 'name' | 'version'>): s
 }
 
 /**
- * `@lostgradient/markdown` is headless (no Svelte), so unlike `@lostgradient/chat` it declares
- * real `dependencies` (remark/rehype/unified/shiki/etc) rather than routing
+ * `@lostgradient/markdown` is headless (no Svelte), so it declares real
+ * `dependencies` (remark/rehype/unified/shiki/etc) rather than routing
  * everything through peers. The only thing the source manifest must NOT
  * contain is a leftover `workspace:*` protocol reference.
  */

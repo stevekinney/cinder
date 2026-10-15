@@ -2,7 +2,7 @@
 
 Components for product interfaces.
 
-The core package is `@lostgradient/cinder`: accessible primitives, domain-suite components, design-system tokens, per-component CSS, generated prop schemas, and examples that can be read by people or tooling. The Chat domain suite is published separately as `@lostgradient/chat`, with Cinder and Svelte supplied by the consuming application as peer dependencies. Chat's own conversation-model dependency (`conversationalist`) ships with it — the consuming application never installs that directly.
+The core package is `@lostgradient/cinder`: accessible primitives, domain-suite components, design-system tokens, per-component CSS, generated prop schemas, and examples that can be read by people or tooling. The Editor domain suite is published separately as `@lostgradient/editor`. `@lostgradient/chat` stopped publishing on 2026-10-14; its last release, 0.16.0, remains on npm.
 
 Use Cinder when you want UI building blocks without adopting a framework-level router, form-state manager, data fetching layer, global state provider, or theme provider. The package is SSR-safe.
 
@@ -20,14 +20,6 @@ different `lucide-svelte` version on the client than the one baked into that bun
 structurally different markup for the same icon and a `hydration_mismatch` on first load. Cinder
 uses Lucide for its own component chrome and does not provide a general icon library for your
 application-specific icons — install Lucide yourself if you want it for your own components.
-
-Install the Chat domain suite separately when you need it, alongside the Cinder install above:
-
-```bash
-bun add @lostgradient/chat @lostgradient/markdown
-```
-
-`@lostgradient/markdown` is a required peer of Chat — its `markdown-preview` component dynamically imports `@lostgradient/markdown/rendering` to render message bodies, so it must be installed alongside Chat itself, not treated as optional. Chat's `conversationalist` conversation model (and its `zod` dependency) ships as a regular dependency of `@lostgradient/chat` — it installs automatically and you never add it yourself.
 
 Install the Editor domain suite separately for `MarkdownEditor`, `ReviewEditor`, and `DiffViewer`:
 
@@ -206,8 +198,6 @@ bun run --filter=@lostgradient/cinder components:check
 bun run --filter=@lostgradient/cinder components:generate
 bun run --filter=@lostgradient/cinder exports:check
 bun run --filter=@lostgradient/cinder validate:consumer
-bun run --filter=@lostgradient/chat build
-bun run --filter=@lostgradient/chat validate:consumer
 ```
 
 When adding or changing core components, update files under `packages/components/src/components/<component-id>/`, then run:
@@ -218,21 +208,22 @@ bun run --filter=@lostgradient/cinder components:generate
 
 That regenerates schemas, variables, examples, constraints, the manifest, generated README sections, package exports, and related artifacts.
 
-Chat and Editor component artifacts are emitted by Corvidae's mirror sync; do not generate them here.
+Editor component artifacts are emitted by Corvidae's mirror sync; do not generate them here.
 
 ## Release
 
-`@lostgradient/cinder` and `@lostgradient/chat` publish to npm. The `@cinder/*` workspaces remain private implementation packages that are packed into Cinder's published artifact when needed.
+`@lostgradient/markdown`, `@lostgradient/cinder`, `@lostgradient/editor` and `@lostgradient/cinder-mcp` publish to npm. `@lostgradient/chat` stopped publishing on 2026-10-14; its last release is 0.16.0. The `@cinder/*` workspaces remain private implementation packages that are packed into Cinder's published artifact when needed.
 
-Each public package owns its packed artifact. Consumer validation, release dry runs, and the Changesets publish path build and inspect both tarballs before publishing Cinder first and Chat second.
+Each public package owns its packed artifact. Consumer validation, release dry runs, and the Changesets publish path build and inspect every tarball before publishing Markdown, Cinder, Editor, then cinder-mcp.
 
-Before a release, run:
+Before a release, run the same gates `release.yaml` runs: consumer validation for all four packages in publish order, then each package's weight budget against the tarball that validation staged.
 
 ```bash
-bun run --filter=@lostgradient/cinder validate:consumer
+bun run validate:consumer
+bun run --filter=@lostgradient/markdown package:weight:check -- --existing-tarball
 bun run --filter=@lostgradient/cinder package:weight:check -- --existing-tarball
-bun run --filter=@lostgradient/chat validate:consumer
-bun run --filter=@lostgradient/chat package:weight:check -- --existing-tarball
+bun run --filter=@lostgradient/editor package:weight:check -- --existing-tarball
+bun run --filter=@lostgradient/cinder-mcp package:weight:check -- --existing-tarball
 ```
 
 ## Repository

@@ -702,9 +702,8 @@ export function expandToDependents(
  * no retained cinder source imports `@lostgradient/editor` at all, so it
  * drops out of cinder's own build order (editor still builds independently;
  * it just isn't an upstream input to cinder's build anymore).
- * `@lostgradient/testing` and `@cinder/playground` have no `build` script; `@lostgradient/chat`
- * has a `build` script but no `scripts/lib/build-cache.ts` (not
- * hash-skippable) — both stay excluded from this specific list.
+ * `@lostgradient/testing` and `@cinder/playground` have no `build` script, so
+ * both stay excluded from this specific list.
  * `@lostgradient/cinder-mcp` is appended after `@lostgradient/cinder`: its
  * `server.ts` imports `@lostgradient/cinder/knowledge`, which resolves (via
  * the `node`/`import`/`default` export conditions) to cinder's own built

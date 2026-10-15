@@ -67,7 +67,7 @@ pull-request discussion alone is not the record.
 
 ```bash
 bun install              # Install workspace dependencies
-bun run build            # Build @lostgradient/cinder, @lostgradient/cinder-mcp, @lostgradient/editor, then @lostgradient/chat
+bun run build            # Build @lostgradient/cinder, @lostgradient/cinder-mcp, then @lostgradient/editor
 ```
 
 ### Testing
@@ -102,8 +102,6 @@ bun run --filter=@lostgradient/cinder components:check
 bun run --filter=@lostgradient/cinder exports:check
 bun run --filter=@lostgradient/cinder validate:consumer
 bun run --filter=@lostgradient/cinder package:weight:check
-bun run --filter=@lostgradient/chat validate:consumer
-bun run --filter=@lostgradient/chat package:weight:check
 bun run --filter=@lostgradient/cinder-mcp build
 bun run --filter=@lostgradient/cinder-mcp test
 bun run --filter=@lostgradient/cinder-mcp validate:consumer
@@ -117,7 +115,6 @@ Run `components:generate` after changing component source metadata, examples, co
 | Workspace             | Purpose                                                                                                                |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `packages/components` | Published `@lostgradient/cinder` package.                                                                              |
-| `packages/chat`       | Published `@lostgradient/chat` domain package.                                                                         |
 | `packages/testing`    | Private Playwright, axe, and visual-regression harness.                                                                |
 | `packages/markdown`   | Published `@lostgradient/markdown` package (headless Markdown pipeline, rendering, diffing, templating).               |
 | `packages/mcp`        | Published `@lostgradient/cinder-mcp` package (Node-only Model Context Protocol server for Cinder component discovery). |
@@ -126,7 +123,7 @@ Run `components:generate` after changing component source metadata, examples, co
 ## Architecture Notes
 
 - **Bun workspace:** Use `bun` commands and the root `bun.lock`; do not introduce npm or Yarn lockfiles.
-- **Published packages:** `@lostgradient/cinder` lives in `packages/components`; `@lostgradient/chat` lives in `packages/chat` and declares Cinder plus its runtime libraries as peers.
+- **Published packages:** `@lostgradient/cinder` lives in `packages/components`; `@lostgradient/editor` lives in `packages/editor`. `@lostgradient/chat` stopped publishing on 2026-10-14.
 - **Private packages:** `@cinder/*` packages are private implementation workspaces. Some are packed into the published artifact through `packages/components/scripts/pack-for-publish.ts`.
 - **Svelte 5:** The public peer range is `svelte >=5.56.0 <6`.
 - **Styles:** The base stylesheet is `@lostgradient/cinder/styles`; component CSS is opt-in through `@lostgradient/cinder/<component>/styles`, or all-in through `@lostgradient/cinder/styles/all`.
@@ -138,7 +135,6 @@ Run `components:generate` after changing component source metadata, examples, co
 - Root consumer/developer overview: [`README.md`](./README.md)
 - Long-form docs index: [`docs/README.md`](./docs/README.md)
 - Published package README: [`packages/components/README.md`](./packages/components/README.md)
-- Chat package README: [`packages/chat/README.md`](./packages/chat/README.md)
 - MCP package README: [`packages/mcp/README.md`](./packages/mcp/README.md)
 - Package contribution guidance: [`packages/components/AGENTS.md`](./packages/components/AGENTS.md)
 

@@ -83,12 +83,6 @@ const budgetsByPackage: Record<string, PackageWeightBudgets> = {
     fileCount: 6_900,
     largestEntrypointBytes: 2_500_000,
   },
-  '@lostgradient/chat': {
-    packedBytes: 2_000_000,
-    unpackedBytes: 8_000_000,
-    fileCount: 500,
-    largestEntrypointBytes: 1_500_000,
-  },
   // The 0.15.0 artifact has 482 files after removing private golden fixtures.
   // Diff Review adds two public components plus their source, declarations,
   // metadata, and plain-Node server entries. Keep file-count headroom near 14%.
@@ -161,8 +155,8 @@ async function extractTarball(tarballPath: string, inspectionDirectory: string):
  * `assertBudgets` can flag any single entrypoint that's grown too large —
  * not just the package's aggregate weight.
  *
- * Two dist layouts exist across the three published packages:
- *   - Cinder and Chat group every file for one component under
+ * Two dist layouts exist across the published packages:
+ *   - Cinder and Editor group every file for one component under
  *     `dist/components/<name>/**` (or `dist/components/experimental/<name>/**`)
  *     — one entrypoint per component, several files each (`.js`, `.svelte.js`,
  *     `.css`, `.d.ts`, ...). Everything else under `dist/` for these two

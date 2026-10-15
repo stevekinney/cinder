@@ -5,6 +5,7 @@ import { join } from 'node:path';
 
 import {
   reconcileInternalPeers,
+  releaseInternalPeers,
   type ReconcileInternalPeersOptions,
 } from './reconcile-internal-peers.ts';
 
@@ -139,5 +140,21 @@ describe('reconcileInternalPeers', () => {
     await expect(reconcileInternalPeers(fixture)).rejects.toThrow(
       /The Cinder manifest .* is not valid JSON/,
     );
+  });
+});
+
+describe('the manifests changeset:version reconciles', () => {
+  // `changeset:version` runs this script on every versioning pass, so a manifest it names that no
+  // longer exists blocks the next Version Packages pull request. `packages/chat` was such a
+  // manifest once @lostgradient/chat stopped publishing.
+  test('every manifest it names exists', async () => {
+    const manifests = [...releaseInternalPeers.dependencies, ...releaseInternalPeers.dependents];
+    expect(manifests.length).toBeGreaterThan(0);
+    for (const { label, manifestPath } of manifests) {
+      expect({ label, exists: await Bun.file(manifestPath).exists() }).toEqual({
+        label,
+        exists: true,
+      });
+    }
   });
 });

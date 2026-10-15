@@ -31,7 +31,6 @@ const repositoryRoot = resolve(componentsRoot, '..', '..');
 const DEFAULT_PACKAGE_NAME = '@lostgradient/cinder';
 const PUBLIC_PACKAGE_DIRECTORIES = [
   'packages/components',
-  'packages/chat',
   'packages/markdown',
   'packages/editor',
   'packages/mcp',

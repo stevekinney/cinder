@@ -14,7 +14,6 @@ import { createServer } from 'node:net';
 import { dirname, join, relative, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import parseChangeset from '@changesets/parse';
 import type { Browser, BrowserContext, Page } from '@playwright/test';
 import { parse } from 'postcss';
 
@@ -33,7 +32,7 @@ import {
   type CommentScanState,
 } from './lib/cinder-specifier-residue.ts';
 import { discoverComponents } from './lib/discover-components.ts';
-import { parseJsonFile, readJsonFile } from './lib/read-json-file.ts';
+import { parseJsonFile } from './lib/read-json-file.ts';
 import { getSourceMapReferences, packForPublish } from './pack-for-publish.ts';
 import { sveltePeerContract } from './validate-svelte-peer-contract.ts';
 import { isObjectRecord } from './validation-utilities.ts';
@@ -71,14 +70,6 @@ function getPackFileName(identity: PackageIdentity): string {
   return `${packageFileNamePrefix}-${identity.version}.tgz`;
 }
 
-/** A fixture-only path outside the package root's publish/weight selection seam. */
-export function chatPeerValidationTarballPath(
-  packageRoot: string,
-  identity: PackageIdentity,
-): string {
-  return join(packageRoot, 'tmp', 'chat-peer-validation', getPackFileName(identity));
-}
-
 /** Derive the tarball filename from package.json so version bumps don't silently break validation. */
 function readPackageIdentity(packageDirectory = repositoryRoot): PackageIdentity {
   const parsed: unknown = JSON.parse(readFileSync(join(packageDirectory, 'package.json'), 'utf8'));
@@ -95,11 +86,6 @@ function readPackageIdentity(packageDirectory = repositoryRoot): PackageIdentity
 const packageIdentity = readPackageIdentity();
 const tarballFileName = getPackFileName(packageIdentity);
 const tarballFilePath = join(repositoryRoot, tarballFileName);
-const chatPackageDirectory = join(workspaceRoot, 'packages', 'chat');
-const chatPackageIdentity = readPackageIdentity(chatPackageDirectory);
-const chatTarballFileName = getPackFileName(chatPackageIdentity);
-const chatTarballFilePath = join(chatPackageDirectory, chatTarballFileName);
-let chatFixtureCinderTarballFilePath = tarballFilePath;
 const workspaceDependencyPackages = ['markdown'].map(
   (packageDirectoryName): WorkspaceDependencyPackage => {
     const packageDirectory = join(workspaceRoot, 'packages', packageDirectoryName);
@@ -142,24 +128,20 @@ function fail(message: string): never {
  * Package names whose fixture dependency edges must always resolve to the
  * locally packed tarball rather than to whatever the registry happens to hold.
  */
-const FIRST_PARTY_FIXTURE_PACKAGE_NAMES = ['@lostgradient/cinder', '@lostgradient/chat'] as const;
+const FIRST_PARTY_FIXTURE_PACKAGE_NAMES = ['@lostgradient/cinder'] as const;
 
 /**
  * Pins first-party packages in `overrides` as well as in `dependencies`.
  *
  * A direct `file:` dependency constrains only the top-level edge. It does NOT
- * constrain a transitive *peer* range: `@lostgradient/chat` declares a peer on
- * `@lostgradient/cinder`, so the moment a version satisfying that range exists
- * on the registry, `bun install` resolves the peer from the network instead of
- * the tarball under test. That is wrong on its own terms — the fixture would be
+ * constrain a transitive *peer* range: a package that declares a peer on
+ * `@lostgradient/cinder` resolves it from the network, instead of from the
+ * tarball under test, the moment a version satisfying that range exists on the
+ * registry. That is wrong on its own terms — the fixture would be
  * validating published bytes rather than the staged ones this run just packed —
  * and in CI it hung, consuming release.yaml's entire 45-minute job budget (see
  * CIN-504; onset matched the 0.25.0 publish to the second, because `^0.25.0`
  * had no published match until that moment).
- *
- * The neighbouring chat-peer loop already guards the mirror-image case, where
- * the peer range names a version that does not exist *yet* during a same-train
- * release. This closes the opposite case: the version now existing.
  *
  * Only `file:` specifiers are pinned, so a fixture that intentionally resolves
  * a first-party package from the registry is left alone.
@@ -339,14 +321,6 @@ async function runBuild(): Promise<void> {
   process.stdout.write('[validate-consumers] step 1: building cinder…\n');
   const result = await runHookCommand('bun', ['run', 'build'], { cwd: repositoryRoot });
   if (result.exitCode !== 0) fail(`bun run build failed with exit ${result.exitCode}`);
-
-  process.stdout.write('[validate-consumers] building @lostgradient/chat…\n');
-  const chatBuildResult = await runHookCommand('bun', ['run', 'build'], {
-    cwd: chatPackageDirectory,
-  });
-  if (chatBuildResult.exitCode !== 0) {
-    fail(`@lostgradient/chat build failed with exit ${chatBuildResult.exitCode}`);
-  }
 }
 
 async function packWorkspaceDependencyTarballs(): Promise<void> {
@@ -387,168 +361,6 @@ async function packTarball(): Promise<void> {
     fail(`pack-for-publish failed: ${error instanceof Error ? error.message : String(error)}`);
   }
   if (!existsSync(tarballFilePath)) fail(`Tarball not at ${tarballFilePath} after pack.`);
-}
-
-async function packChatTarball(): Promise<void> {
-  process.stdout.write(
-    `[validate-consumers] staged Chat pack-for-publish → ${chatTarballFileName}…\n`,
-  );
-  if (existsSync(chatTarballFilePath)) {
-    await Bun.file(chatTarballFilePath).delete();
-  }
-  const result = await runHookCommand('bun', ['run', 'pack:publish'], {
-    cwd: chatPackageDirectory,
-    stdout: 'pipe',
-    stderr: 'pipe',
-  });
-  if (result.exitCode !== 0) {
-    fail(`@lostgradient/chat pack:publish failed:\n${result.stdout}\n${result.stderr}`);
-  }
-  if (!existsSync(chatTarballFilePath)) {
-    fail(`Chat tarball not at ${chatTarballFilePath} after pack:publish.`);
-  }
-}
-
-type ReleaseType = 'patch' | 'minor' | 'major';
-
-const releasePriority: Record<ReleaseType, number> = { patch: 0, minor: 1, major: 2 };
-
-/** Apply a Changesets release type to a plain semantic version. */
-export function bumpPackageVersion(version: string, releaseType: ReleaseType): string {
-  const match = /^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)$/u.exec(version);
-  if (match?.groups === undefined) {
-    throw new Error(`cannot apply a pending changeset to non-plain version ${version}`);
-  }
-  const major = Number(match.groups['major']);
-  const minor = Number(match.groups['minor']);
-  const patch = Number(match.groups['patch']);
-  if (releaseType === 'major') return `${major + 1}.0.0`;
-  if (releaseType === 'minor') return `${major}.${minor + 1}.0`;
-  return `${major}.${minor}.${patch + 1}`;
-}
-
-async function pendingReleaseTypeForPackage(packageName: string): Promise<ReleaseType | undefined> {
-  const changesetDirectory = join(workspaceRoot, '.changeset');
-  const changesetGlob = new Glob('*.md');
-  let highestReleaseType: ReleaseType | undefined;
-  for await (const relativePath of changesetGlob.scan({ cwd: changesetDirectory })) {
-    if (relativePath === 'README.md') continue;
-    const source = await Bun.file(join(changesetDirectory, relativePath)).text();
-    const release = parseChangeset(source).releases.find((entry) => entry.name === packageName);
-    if (
-      release === undefined ||
-      (release.type !== 'patch' && release.type !== 'minor' && release.type !== 'major')
-    ) {
-      continue;
-    }
-    if (
-      highestReleaseType === undefined ||
-      releasePriority[release.type] > releasePriority[highestReleaseType]
-    ) {
-      highestReleaseType = release.type;
-    }
-  }
-  return highestReleaseType;
-}
-
-/**
- * Determine the Cinder version Chat's fixture must install. Before the Version
- * Packages pull request, Chat already declares its future Cinder peer range but
- * Cinder's source manifest still has the previous version. A pending changeset
- * is the only authorized bridge; release branches use the exact source version.
- */
-export function resolveChatFixtureCinderVersion(options: {
-  currentVersion: string;
-  peerRange: string;
-  pendingReleaseType?: ReleaseType;
-}): { version: string; requiresValidationOnlyRepack: boolean } {
-  if (Bun.semver.satisfies(options.currentVersion, options.peerRange)) {
-    return { version: options.currentVersion, requiresValidationOnlyRepack: false };
-  }
-  if (options.pendingReleaseType === undefined) {
-    throw new Error(
-      `Cinder ${options.currentVersion} does not satisfy Chat peer ${options.peerRange}, and no pending Cinder changeset can reconcile them`,
-    );
-  }
-  const pendingVersion = bumpPackageVersion(options.currentVersion, options.pendingReleaseType);
-  if (!Bun.semver.satisfies(pendingVersion, options.peerRange)) {
-    throw new Error(
-      `pending Cinder ${pendingVersion} does not satisfy Chat peer ${options.peerRange}`,
-    );
-  }
-  return { version: pendingVersion, requiresValidationOnlyRepack: true };
-}
-
-async function stageChatFixtureCinderArtifact(): Promise<{
-  tarballPath: string;
-  cleanup: () => Promise<void>;
-}> {
-  const chatManifest = await readJsonFile<{
-    peerDependencies?: Record<string, string>;
-  }>(join(chatPackageDirectory, 'package.json'));
-  const cinderPeerRange = chatManifest.peerDependencies?.['@lostgradient/cinder'];
-  if (cinderPeerRange === undefined) {
-    fail('@lostgradient/chat must declare @lostgradient/cinder as a required peer dependency');
-  }
-  const pendingReleaseType = await pendingReleaseTypeForPackage(packageIdentity.name);
-  const resolution = resolveChatFixtureCinderVersion({
-    currentVersion: packageIdentity.version,
-    peerRange: cinderPeerRange,
-    ...(pendingReleaseType === undefined ? {} : { pendingReleaseType }),
-  });
-  if (!resolution.requiresValidationOnlyRepack) {
-    return { tarballPath: tarballFilePath, cleanup: async () => {} };
-  }
-
-  const validationDirectory = join(repositoryRoot, 'tmp', 'chat-peer-validation');
-  const stagingDirectory = join(validationDirectory, 'staging');
-  await rm(validationDirectory, { recursive: true, force: true });
-  await mkdir(stagingDirectory, { recursive: true });
-  if (tarBinaryPath === null) fail('tar is required to stage the pending Cinder peer artifact');
-  const extractResult = await runHookCommand(
-    tarBinaryPath,
-    ['-xzf', tarballFilePath, '-C', stagingDirectory],
-    { stdout: 'pipe', stderr: 'pipe' },
-  );
-  if (extractResult.exitCode !== 0) {
-    fail(`could not extract Cinder tarball for Chat peer validation: ${extractResult.stderr}`);
-  }
-
-  const stagedPackageRoot = join(stagingDirectory, 'package');
-  const stagedManifestPath = join(stagedPackageRoot, 'package.json');
-  const stagedManifest = await readJsonFile<Record<string, unknown>>(stagedManifestPath);
-  stagedManifest['version'] = resolution.version;
-  writeFileSync(stagedManifestPath, `${JSON.stringify(stagedManifest, null, 2)}\n`);
-  const validationIdentity = { ...packageIdentity, version: resolution.version };
-  const validationTarballPath = chatPeerValidationTarballPath(repositoryRoot, validationIdentity);
-  try {
-    const packResult = await runHookCommand(
-      'bun',
-      ['pm', 'pack', '--destination', validationDirectory],
-      {
-        cwd: stagedPackageRoot,
-        stdout: 'pipe',
-        stderr: 'pipe',
-      },
-    );
-    if (packResult.exitCode !== 0 || !existsSync(validationTarballPath)) {
-      fail(
-        `could not create validation-only Cinder ${resolution.version} tarball:\n${packResult.stdout}\n${packResult.stderr}`,
-      );
-    }
-    process.stdout.write(
-      `[validate-consumers] using validation-only Cinder ${resolution.version} tarball for Chat's pending ${cinderPeerRange} peer contract.\n`,
-    );
-    return {
-      tarballPath: validationTarballPath,
-      cleanup: async () => {
-        await rm(validationDirectory, { recursive: true, force: true });
-      },
-    };
-  } catch (error) {
-    await rm(validationDirectory, { recursive: true, force: true });
-    throw error;
-  }
 }
 
 /**
@@ -990,7 +802,6 @@ function injectTarballIntoFixture(
     svelteVersion?: string;
     typescriptVersion?: string;
     includeWorkspaceDependencyPackages?: boolean;
-    includeChatPackage?: boolean;
   } = {},
 ): () => void {
   const manifestPath = join(fixtureDirectory, 'package.json');
@@ -1040,25 +851,6 @@ function injectTarballIntoFixture(
       const fileSpecifier = `file:${dependencyPackage.tarballFilePath}`;
       dependencies[dependencyPackage.name] = fileSpecifier;
       overrides[dependencyPackage.name] = fileSpecifier;
-    }
-  }
-  if (options.includeChatPackage === true) {
-    const chatPeerDependencies = parseJsonFile<{
-      peerDependencies?: Record<string, string>;
-    }>(readFileSync(join(chatPackageDirectory, 'package.json'), 'utf8')).peerDependencies;
-    dependencies['@lostgradient/cinder'] = `file:${chatFixtureCinderTarballFilePath}`;
-    dependencies['@lostgradient/chat'] = `file:${chatTarballFilePath}`;
-    for (const [dependencyName, version] of Object.entries(chatPeerDependencies ?? {})) {
-      if (dependencyName === '@lostgradient/cinder' || dependencyName === 'svelte') continue;
-      // A workspace dependency package (e.g. @lostgradient/markdown) is already
-      // pinned to its locally packed `file:` tarball above. Do not overwrite it
-      // with the peer *range* — chat's `^0.1.0` peer would send `bun install` to
-      // the registry for a version that may not exist yet (same-train release),
-      // and leaving the direct dependency as the local tarball keeps resolution
-      // local without relying on the `overrides` entry to win.
-      const existing = dependencies[dependencyName];
-      if (typeof existing === 'string' && existing.startsWith('file:')) continue;
-      dependencies[dependencyName] = version;
     }
   }
   pinFirstPartyFixtureOverrides(dependencies, overrides);
@@ -1287,11 +1079,9 @@ const SVELTEKIT_DEV_SSR_ROUTES = [
   },
 ] as const;
 
-export type SvelteKitHydrationRoute =
-  '/chat-layout' | '/dev-ssr-dialog' | '/dev-ssr-navigation' | '/dev-ssr-tabs';
+export type SvelteKitHydrationRoute = '/dev-ssr-dialog' | '/dev-ssr-navigation' | '/dev-ssr-tabs';
 
 export const SVELTEKIT_HYDRATION_ROUTES = [
-  '/chat-layout',
   '/dev-ssr-dialog',
   '/dev-ssr-navigation',
   '/dev-ssr-tabs',
@@ -1399,7 +1189,7 @@ function extractPublishedPackageSourceMapWarnings(logOutput: string): string[] {
   const warningLines = logOutput
     .split('\n')
     .map((line) => line.trim())
-    .filter((line) => /@lostgradient\/(?:cinder|chat)\/dist\//u.test(line))
+    .filter((line) => /@lostgradient\/cinder\/dist\//u.test(line))
     .filter((line) => /(sourcemap|source map|\.js\.map)/i.test(line))
     .filter((line) =>
       /(missing|not found|can't resolve|could not read|enoent|points to missing)/i.test(line),
@@ -1456,34 +1246,6 @@ function formatServerOutput(stdout: string, stderr: string): string {
   return `:\n${formatStreamTail('stdout', stdout)}\n${formatStreamTail('stderr', stderr)}`;
 }
 
-const svelteKitChatHydrationEnvironment = {
-  CINDER_CHAT_DEV_HYDRATION: '1',
-  TZ: 'UTC',
-  LANG: 'en_US.UTF-8',
-};
-
-export type SvelteKitChatHydrationDevServerOptions = {
-  cwd: string;
-  detached: true;
-  stdout: 'pipe';
-  stderr: 'pipe';
-  env: Record<string, string | undefined>;
-};
-
-type SvelteKitChatHydrationDevServerDependencies = {
-  nodeBinaryPath?: string;
-  startServer?: (
-    command: string[],
-    options: SvelteKitChatHydrationDevServerOptions,
-  ) => Bun.ReadableSubprocess;
-};
-
-type SvelteKitChatHydrationPreparationDependencies = SvelteKitChatHydrationDevServerDependencies & {
-  now?: () => number;
-  pickPort?: () => Promise<number>;
-  preoptimize?: (fixtureDirectory: string, signal: AbortSignal) => Promise<void>;
-};
-
 function buildViteDevCommand(
   resolvedNodeBinaryPath: string,
   fixtureDirectory: string,
@@ -1499,177 +1261,6 @@ function buildViteDevCommand(
     String(httpPort),
     '--strictPort',
   ];
-}
-
-export function startSvelteKitChatHydrationDevServer(
-  fixtureDirectory: string,
-  httpPort: number,
-  dependencies: SvelteKitChatHydrationDevServerDependencies = {},
-): Bun.ReadableSubprocess {
-  const startServer =
-    dependencies.startServer ??
-    ((command: string[], options: SvelteKitChatHydrationDevServerOptions) =>
-      Bun.spawn(command, options));
-  return startServer(
-    buildViteDevCommand(dependencies.nodeBinaryPath ?? nodeBinaryPath, fixtureDirectory, httpPort),
-    {
-      cwd: fixtureDirectory,
-      detached: true,
-      stdout: 'pipe',
-      stderr: 'pipe',
-      env: {
-        ...Bun.env,
-        ...svelteKitChatHydrationEnvironment,
-      },
-    },
-  );
-}
-
-export async function prepareSvelteKitChatHydrationDevServer(
-  fixtureDirectory: string,
-  label: string,
-  dependencies: SvelteKitChatHydrationPreparationDependencies = {},
-): Promise<{
-  devServer: Bun.ReadableSubprocess;
-  httpPort: number;
-  remainingReadinessBudget: number;
-}> {
-  const now = dependencies.now ?? Date.now;
-  const readinessDeadline = now() + SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS;
-  const optimizationSignal = AbortSignal.timeout(SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS);
-  const preoptimize =
-    dependencies.preoptimize ??
-    ((directory: string, signal: AbortSignal) =>
-      preoptimizeSvelteKitChatHydration(directory, undefined, signal));
-  await preoptimize(fixtureDirectory, optimizationSignal);
-
-  const remainingReadinessBudget = readinessDeadline - now();
-  if (remainingReadinessBudget <= 0) {
-    fail(
-      `sveltekit-consumer ${label} /chat-layout dependency optimization exhausted its shared ${SVELTEKIT_DEV_SSR_READINESS_TIMEOUT_MS}ms readiness budget`,
-    );
-  }
-
-  // Reserve a port only after pre-optimization, so another process cannot
-  // claim this short-lived probe reservation while Vite is still working.
-  const httpPort = await (dependencies.pickPort ?? pickEphemeralPort)();
-  const devServer = startSvelteKitChatHydrationDevServer(fixtureDirectory, httpPort, {
-    ...(dependencies.startServer === undefined ? {} : { startServer: dependencies.startServer }),
-    nodeBinaryPath: dependencies.nodeBinaryPath ?? nodeBinaryPath,
-  });
-  return { devServer, httpPort, remainingReadinessBudget };
-}
-
-async function assertSvelteKitDevChatHydrationRoute(
-  fixtureDirectory: string,
-  label: string,
-): Promise<void> {
-  let hydrationAssertionsPassed = false;
-  const { devServer, httpPort, remainingReadinessBudget } =
-    await prepareSvelteKitChatHydrationDevServer(fixtureDirectory, label);
-  const unregisterDevServerProcessGroup = registerHookProcessGroup(devServer.pid);
-  const devServerStdout = devServer.stdout
-    ? new Response(devServer.stdout).text()
-    : Promise.resolve('');
-  const devServerStderr = devServer.stderr
-    ? new Response(devServer.stderr).text()
-    : Promise.resolve('');
-
-  try {
-    const routeUrl = `http://127.0.0.1:${httpPort}/chat-layout`;
-    // Elapsed, not allocated — see the dev-SSR readiness failure below.
-    const chatLayoutStartedAt = Date.now();
-    await waitForReadyHtml({
-      url: routeUrl,
-      timeoutMs: remainingReadinessBudget,
-      pollIntervalMs: SVELTEKIT_DEV_SSR_POLL_INTERVAL_MS,
-      runningServer: devServer,
-      isReady: (html) => html.includes('Empty Chat hydration') && html.includes('No messages yet'),
-    }).catch(async (error) => {
-      const message = error instanceof Error ? error.message : String(error);
-      // Same reasoning as the dev-SSR readiness failure below: surface the
-      // server's own output, since "we stopped waiting" says nothing about why.
-      const waitedMs = Date.now() - chatLayoutStartedAt;
-      const teardownError = await developmentServerTeardownError(devServer);
-      const devServerOutput =
-        teardownError === undefined
-          ? formatServerOutput(await devServerStdout, await devServerStderr)
-          : `: unavailable because teardown failed: ${teardownError.message}`;
-      fail(
-        `sveltekit-consumer ${label} /chat-layout dev readiness failed: ${message}\n` +
-          `(waited ${waitedMs}ms; port ${httpPort})\n` +
-          `dev server output${devServerOutput}`,
-      );
-    });
-
-    // This server deliberately uses Vite's default dependency optimizer. The
-    // published Chat regression only exists when dev SSR and the optimized
-    // browser graph resolve different package export conditions; the broad
-    // /dev-ssr fixture above disables discovery to keep its hundreds of source
-    // transforms deterministic, so it cannot own this assertion.
-    await assertSvelteKitClientRoutesHydrate(httpPort, `${label} dev`, ['/chat-layout']);
-    hydrationAssertionsPassed = true;
-  } finally {
-    const teardownError = await developmentServerTeardownError(devServer);
-    if (teardownError === undefined) unregisterDevServerProcessGroup();
-    if (teardownError !== undefined) {
-      if (!hydrationAssertionsPassed) {
-        process.stderr.write(
-          `[validate-consumers] sveltekit-consumer ${label} dev hydration teardown also failed: ${teardownError.message}\n`,
-        );
-      } else {
-        fail(`sveltekit-consumer ${label} dev hydration teardown failed: ${teardownError.message}`);
-      }
-    }
-    if (devServer.exitCode !== null) {
-      const devServerOutput = `${await devServerStdout}\n${await devServerStderr}`;
-      const sourceMapWarnings = extractPublishedPackageSourceMapWarnings(devServerOutput);
-      if (sourceMapWarnings.length > 0) {
-        const warningMessage =
-          `sveltekit-consumer ${label} dev hydration emitted source-map warnings for published package artifacts:\n` +
-          sourceMapWarnings.map((warning) => `  ${warning}`).join('\n');
-        if (!hydrationAssertionsPassed) {
-          process.stderr.write(`[validate-consumers] ${warningMessage}\n`);
-        } else {
-          fail(warningMessage);
-        }
-      }
-    }
-  }
-}
-
-export async function preoptimizeSvelteKitChatHydration(
-  fixtureDirectory: string,
-  runCommand: typeof runHookCommand = runHookCommand,
-  signal?: AbortSignal,
-  resolvedNodeBinaryPath: string = nodeBinaryPath || resolveRealNodeBinary(),
-): Promise<void> {
-  const result = await runCommand(
-    resolvedNodeBinaryPath,
-    [resolvePath(fixtureDirectory, 'node_modules/vite/bin/vite.js'), 'optimize', '--force'],
-    {
-      cwd: fixtureDirectory,
-      stdout: 'pipe',
-      stderr: 'pipe',
-      environment: svelteKitChatHydrationEnvironment,
-      ...(signal === undefined ? {} : { signal }),
-    },
-  );
-  const sourceMapWarnings = extractPublishedPackageSourceMapWarnings(
-    `${result.stdout}\n${result.stderr}`,
-  );
-  if (sourceMapWarnings.length > 0) {
-    fail(
-      `Vite dependency optimization emitted source-map warnings for published package artifacts:\n` +
-        sourceMapWarnings.map((warning) => `  ${warning}`).join('\n'),
-    );
-  }
-  if (result.exitCode !== 0) {
-    const failurePrefix = signal?.aborted
-      ? 'Vite dependency optimization exceeded the shared Chat hydration readiness budget'
-      : 'Vite dependency optimization failed before Chat hydration readiness';
-    fail(`${failurePrefix}:\n${result.stdout}\n${result.stderr}`);
-  }
 }
 
 async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: string): Promise<void> {
@@ -1801,9 +1392,7 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
     // output the failure handlers now attach.
     //
     // Deliberately NO client-hydration assertion for these focused dev routes.
-    // This phase owns only their transform-on-request SSR HTML; the focused
-    // /chat-layout helper above owns dev-mode browser hydration against the
-    // default dependency optimizer.
+    // This phase owns only their transform-on-request SSR HTML.
     //
     // Client hydration MUST NOT be asserted against this `vite dev` server. The
     // fixture sets `optimizeDeps: { noDiscovery: true, holdUntilCrawlEnd: false
@@ -1864,12 +1453,10 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
     svelteVersion === undefined
       ? injectTarballIntoFixture(fixtureDirectory, {
           includeWorkspaceDependencyPackages: true,
-          includeChatPackage: true,
         })
       : injectTarballIntoFixture(fixtureDirectory, {
           svelteVersion,
           includeWorkspaceDependencyPackages: true,
-          includeChatPackage: true,
         });
 
   try {
@@ -1918,7 +1505,6 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
     process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: types checked.\n`);
 
     await assertSvelteKitDevSsrRoute(fixtureDirectory, label);
-    await assertSvelteKitDevChatHydrationRoute(fixtureDirectory, label);
 
     process.stdout.write(`[validate-consumers] sveltekit-consumer ${label}: building…\n`);
     const viteBuildResult = await runHookCommand('bun', ['x', 'vite', 'build'], {
@@ -1994,27 +1580,6 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
     // (the tokens/foundation base), which the /no-styles route does not import.
     // So the auto-CSS contract here is exactly "the component's own selectors
     // arrive", which is what proves the import pulled the sidecar.
-
-    const chatLayoutCss = await readRouteCssArtifacts(
-      fixtureDirectory,
-      'src/routes/chat-layout/+page.svelte',
-    );
-    const chatLayoutDeclarations: Array<[string, string, string]> = [
-      ['.chat-container', 'display', 'flex'],
-      ['.chat-container', 'flex-direction', 'column'],
-      ['.chat-container', 'height', '100%'],
-      ['.chat-container', 'min-height', '0'],
-      ['.chat-timeline', 'flex', '1'],
-      ['.chat-timeline', 'min-height', '0'],
-      ['.chat-timeline', 'overflow-y', 'auto'],
-    ];
-    for (const [selectorFragment, prop, value] of chatLayoutDeclarations) {
-      if (!hasDeclaration(chatLayoutCss, selectorFragment, prop, value)) {
-        fail(
-          `/chat-layout route CSS missing ${selectorFragment} { ${prop}: ${value} } — the exported Chat consumer build lost its internal scroll layout contract`,
-        );
-      }
-    }
 
     // Always-rendered components (not lazy-mount): their root class MUST appear in SSR HTML.
     // Modal, Dropdown, Tooltip are lazy-mount — they render only the trigger surface at open=false.
@@ -2699,7 +2264,7 @@ async function assertSvelteKitHydrationRoute(
       });
     } catch (captureError) {
       failureSnapshot = {
-        ...unknownSvelteKitHydrationRouteFailureSnapshot(routePath),
+        ...unknownSvelteKitHydrationRouteFailureSnapshot(),
         browserEvents: diagnosticSnapshotFromValues(
           browserEvents.filter((event) => !event.startsWith('requestfailed ')),
         ),
@@ -2730,7 +2295,7 @@ async function assertSvelteKitHydrationRoute(
       cause: bodyError,
       label,
       routePath,
-      snapshot: failureSnapshot ?? fallbackSvelteKitHydrationRouteFailureSnapshot(routePath),
+      snapshot: failureSnapshot ?? fallbackSvelteKitHydrationRouteFailureSnapshot(),
     });
   }
 }
@@ -2741,19 +2306,6 @@ export async function assertSvelteKitHydrationRouteContent(
   routePath: SvelteKitHydrationRoute,
   domObservation: SvelteKitHydrationRouteDomObservation,
 ): Promise<void> {
-  if (routePath === '/chat-layout') {
-    await page
-      .locator('[data-chat-layout-hydrated="true"]')
-      .waitFor({ state: 'attached', timeout: 5_000 });
-    domObservation.hydrationMarkerPresent = true;
-    domObservation.hydrationMarkerValue = 'true';
-    await page.getByRole('heading', { name: 'Empty Chat hydration' }).waitFor({ timeout: 5_000 });
-    await page.getByText('No messages yet').waitFor({ timeout: 5_000 });
-    await page.getByRole('textbox', { name: 'Message' }).waitFor({ timeout: 5_000 });
-    await page.getByText('0 messages in conversation').waitFor({ timeout: 5_000 });
-    return;
-  }
-
   await page
     .locator('[data-dev-ssr-hydrated="true"]')
     .waitFor({ state: 'attached', timeout: 5_000 });
@@ -2855,25 +2407,11 @@ type SvelteKitHydrationRouteFailureInput = {
   snapshot: SvelteKitHydrationRouteFailureSnapshot;
 };
 
-function hydrationMarkerForRoute(routePath: SvelteKitHydrationRoute): { selector: string } {
-  if (routePath === '/chat-layout') {
-    return {
-      selector: '[data-chat-layout-hydrated]',
-    };
-  }
-  return {
-    selector: '[data-dev-ssr-hydrated]',
-  };
-}
-
-function unknownSvelteKitHydrationRouteFailureSnapshot(
-  routePath: SvelteKitHydrationRoute,
-): SvelteKitHydrationRouteFailureSnapshot {
-  const marker = hydrationMarkerForRoute(routePath);
+function unknownSvelteKitHydrationRouteFailureSnapshot(): SvelteKitHydrationRouteFailureSnapshot {
   return {
     currentUrl: 'unknown',
     documentReadyState: 'unknown',
-    hydrationMarkerSelector: marker.selector,
+    hydrationMarkerSelector: '[data-dev-ssr-hydrated]',
     hydrationMarkerPresent: 'unknown',
     hydrationMarkerValue: 'unknown',
     nonOkResponses: diagnosticSnapshotFromValues([]),
@@ -2883,11 +2421,9 @@ function unknownSvelteKitHydrationRouteFailureSnapshot(
   };
 }
 
-function fallbackSvelteKitHydrationRouteFailureSnapshot(
-  routePath: SvelteKitHydrationRoute,
-): SvelteKitHydrationRouteFailureSnapshot {
+function fallbackSvelteKitHydrationRouteFailureSnapshot(): SvelteKitHydrationRouteFailureSnapshot {
   return {
-    ...unknownSvelteKitHydrationRouteFailureSnapshot(routePath),
+    ...unknownSvelteKitHydrationRouteFailureSnapshot(),
     diagnosticCaptureError: 'route diagnostics were not captured before failure handling completed',
   };
 }
@@ -2903,7 +2439,7 @@ export function captureSvelteKitHydrationRouteFailureSnapshot(
     routePath: SvelteKitHydrationRoute;
   },
 ): SvelteKitHydrationRouteFailureSnapshot {
-  const snapshot = unknownSvelteKitHydrationRouteFailureSnapshot(options.routePath);
+  const snapshot = unknownSvelteKitHydrationRouteFailureSnapshot();
 
   try {
     snapshot.currentUrl = page.url();
@@ -3149,22 +2685,6 @@ export function assertALaCarteCssContract(artifacts: CssArtifact[]): void {
   if (hasSelectorContaining(artifacts, '.cinder-accordion')) {
     fail(`/a-la-carte route CSS leaked .cinder-accordion selector (à la carte absence)`);
   }
-}
-
-function hasDeclaration(
-  artifacts: CssArtifact[],
-  selectorFragment: string,
-  prop: string,
-  value: string,
-): boolean {
-  return artifacts.some((artifact) =>
-    artifact.declarations.some(
-      (declaration) =>
-        declaration.selector.includes(selectorFragment) &&
-        declaration.prop === prop &&
-        declaration.value === value,
-    ),
-  );
 }
 
 function verifyNodeExportConditionPrecedence(fixtureDirectory: string): void {
@@ -3619,7 +3139,6 @@ async function main(): Promise<void> {
   await runBuild();
   await packWorkspaceDependencyTarballs();
   await packTarball();
-  await packChatTarball();
   await inspectTarball();
 
   // PR 1 publish-path gates: assert the staged pack produced a self-contained
@@ -3646,25 +3165,18 @@ async function main(): Promise<void> {
   // → node-consumer (tsc + SSR render) → typescript-consumer (tsc + svelte-check)
   // → sveltekit-consumer (full Vite build) → examples-consumer (SvelteKit build +
   // SSR over every example, slowest).
-  const chatFixtureCinderArtifact = await stageChatFixtureCinderArtifact();
-  chatFixtureCinderTarballFilePath = chatFixtureCinderArtifact.tarballPath;
-  try {
-    await runStylesConsumerFixture();
-    await runManifestConsumerFixture();
-    await runTokensConsumerFixture();
-    await runNodeFixture();
-    await runTypescriptConsumerFixture();
-    await runTypescriptCompatibilityFixture('latest TypeScript 6', '^6.0.3');
-    await runSveltePeerCompatibilityFixture('minimum', sveltePeerContract.minimum);
-    await runSveltePeerCompatibilityFixture('latest tested Svelte 5', sveltePeerContract.latest);
-    await runSveltekitFixture('minimum', sveltePeerContract.minimum);
-    await runSveltekitFixture('latest tested Svelte 5', sveltePeerContract.latest);
-    await runExamplesConsumerFixture();
-    process.stdout.write('[validate-consumers] all checks passed.\n');
-  } finally {
-    await chatFixtureCinderArtifact.cleanup();
-    chatFixtureCinderTarballFilePath = tarballFilePath;
-  }
+  await runStylesConsumerFixture();
+  await runManifestConsumerFixture();
+  await runTokensConsumerFixture();
+  await runNodeFixture();
+  await runTypescriptConsumerFixture();
+  await runTypescriptCompatibilityFixture('latest TypeScript 6', '^6.0.3');
+  await runSveltePeerCompatibilityFixture('minimum', sveltePeerContract.minimum);
+  await runSveltePeerCompatibilityFixture('latest tested Svelte 5', sveltePeerContract.latest);
+  await runSveltekitFixture('minimum', sveltePeerContract.minimum);
+  await runSveltekitFixture('latest tested Svelte 5', sveltePeerContract.latest);
+  await runExamplesConsumerFixture();
+  process.stdout.write('[validate-consumers] all checks passed.\n');
 }
 
 /**
@@ -3672,7 +3184,7 @@ async function main(): Promise<void> {
  * pre-publish since the release path waits for the same-SHA main-green run).
  * It exercises the exact browser hydration path — `runSveltekitFixture` →
  * `launchHydrationChromium` → `assertSvelteKitClientRoutesHydrate`, including
- * the crash-prone `/chat-layout` and `/dev-ssr` routes — that only ran in the
+ * the crash-prone `/dev-ssr` routes — that only ran in the
  * release path before, so a Chromium-launch regression is caught on Linux CI
  * every merge instead of first surfacing as a blocked release. It packs only
  * the tarballs the SvelteKit fixture needs and runs a single Svelte version
@@ -3686,17 +3198,9 @@ async function hydrationSmoke(): Promise<void> {
   await runBuild();
   await packWorkspaceDependencyTarballs();
   await packTarball();
-  await packChatTarball();
 
-  const chatFixtureCinderArtifact = await stageChatFixtureCinderArtifact();
-  chatFixtureCinderTarballFilePath = chatFixtureCinderArtifact.tarballPath;
-  try {
-    await runSveltekitFixture('hydration smoke');
-    process.stdout.write('[validate-consumers] hydration smoke passed.\n');
-  } finally {
-    await chatFixtureCinderArtifact.cleanup();
-    chatFixtureCinderTarballFilePath = tarballFilePath;
-  }
+  await runSveltekitFixture('hydration smoke');
+  process.stdout.write('[validate-consumers] hydration smoke passed.\n');
 }
 
 /**

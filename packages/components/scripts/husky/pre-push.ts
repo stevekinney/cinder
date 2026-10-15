@@ -161,7 +161,6 @@ try {
       const files = diff.stdout.toString().split('\n').filter(Boolean);
       const publishedPackageSourceDirectories = [
         'packages/components/src/',
-        'packages/chat/src/',
         'packages/editor/src/',
         'packages/markdown/src/',
         'packages/mcp/src/',

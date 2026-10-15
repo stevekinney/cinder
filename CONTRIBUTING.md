@@ -78,7 +78,7 @@ The component playground and the cinder.website deployment now live in the priva
 
 ## Changesets
 
-Five workspaces publish to npm under the `@lostgradient` scope: `markdown` (`packages/markdown/`), `cinder` (`packages/components/`), `cinder-mcp` (`packages/mcp/`), `editor` (`packages/editor/`), and `chat` (`packages/chat/`). If your pull request changes anything that ships in one of these, add a changeset:
+Four workspaces publish to npm under the `@lostgradient` scope: `markdown` (`packages/markdown/`), `cinder` (`packages/components/`), `cinder-mcp` (`packages/mcp/`), and `editor` (`packages/editor/`). `@lostgradient/chat` stopped publishing on 2026-10-14. If your pull request changes anything that ships in one of these, add a changeset:
 
 ```bash
 bun x changeset
@@ -90,9 +90,9 @@ Every public package is pre-1.0 — every changeset for one of them must use `mi
 
 `@lostgradient/cinder-mcp` depends on `@lostgradient/cinder`'s `./knowledge` export (published `dist/cli/knowledge.js`) rather than owning any component metadata itself. A change to Cinder's knowledge service (`packages/components/src/cli/knowledge.ts` and friends) that could affect `cinder-mcp`'s behavior should carry a changeset for both packages, not just Cinder.
 
-Each npm artifact has one staged-pack source of truth: `packages/components/scripts/pack-for-publish.ts` for Cinder, `packages/markdown/scripts/pack-for-publish.ts` for Markdown, `packages/mcp/scripts/pack-for-publish.ts` for cinder-mcp, `packages/editor/scripts/pack-for-publish.ts` for Editor, and `packages/chat/scripts/pack-for-publish.ts` for Chat. Consumer validation, release dry-runs, and both publish paths use those exact tarballs. Do not publish directly from any source manifest; workspace-only development dependencies and scripts are intentionally stripped from released artifacts. `cinder-mcp`'s packer additionally rewrites its `@lostgradient/cinder: workspace:*` dependency to a concrete `^<Cinder version>` range in the staged manifest.
+Each npm artifact has one staged-pack source of truth: `packages/components/scripts/pack-for-publish.ts` for Cinder, `packages/markdown/scripts/pack-for-publish.ts` for Markdown, `packages/mcp/scripts/pack-for-publish.ts` for cinder-mcp and `packages/editor/scripts/pack-for-publish.ts` for Editor. Consumer validation, release dry-runs, and both publish paths use those exact tarballs. Do not publish directly from any source manifest; workspace-only development dependencies and scripts are intentionally stripped from released artifacts. `cinder-mcp`'s packer additionally rewrites its `@lostgradient/cinder: workspace:*` dependency to a concrete `^<Cinder version>` range in the staged manifest.
 
-Before a release, Corvidae validates the source revision and the public mirror checks the target artifact in its generated workflow. The release workflow validates every artifact before publishing any of them: each package's `validate:consumer` command installs staged tarballs into consumer fixtures, and each `package:weight:check -- --existing-tarball` command applies a package-specific budget. `cinder-mcp`'s `validate:consumer` installs BOTH its own and Cinder's staged tarballs via npm (never the workspace source, and never a registry-resolved Cinder — an `overrides` entry forces resolution to the staged tarball), then runs a full MCP handshake through `npx --no-install cinder-mcp` under plain Node with Bun made unresolvable in the child environment. Publish order follows the dependency DAG — markdown → cinder → cinder-mcp → editor → chat — and every publisher skips idempotently when the exact registry version already exists.
+Before a release, Corvidae validates the source revision and the public mirror checks the target artifact in its generated workflow. The release workflow validates every artifact before publishing any of them: each package's `validate:consumer` command installs staged tarballs into consumer fixtures, and each `package:weight:check -- --existing-tarball` command applies a package-specific budget. `cinder-mcp`'s `validate:consumer` installs BOTH its own and Cinder's staged tarballs via npm (never the workspace source, and never a registry-resolved Cinder — an `overrides` entry forces resolution to the staged tarball), then runs a full MCP handshake through `npx --no-install cinder-mcp` under plain Node with Bun made unresolvable in the child environment. Publish order follows the dependency DAG — markdown → cinder → editor → cinder-mcp — and every publisher skips idempotently when the exact registry version already exists.
 
 Changes confined to `@lostgradient/testing` do not need a changeset — those workspaces are private and never publish. Changes to other private workspaces bundled by Cinder generally require a Cinder changeset because their output ships in its artifact.
 
@@ -102,7 +102,7 @@ The primary release workflow (`.github/workflows/release.yaml`) uses **npm Trust
 
 #### One-time registry configuration (a maintainer must do this once in the npm web UI)
 
-npm Trusted Publishing must be configured independently on each of the five package pages ([`@lostgradient/cinder`](https://www.npmjs.com/package/@lostgradient%2Fcinder), [`@lostgradient/cinder-mcp`](https://www.npmjs.com/package/@lostgradient%2Fcinder-mcp), [`@lostgradient/chat`](https://www.npmjs.com/package/@lostgradient%2Fchat), [`@lostgradient/markdown`](https://www.npmjs.com/package/@lostgradient%2Fmarkdown), and [`@lostgradient/editor`](https://www.npmjs.com/package/@lostgradient%2Feditor)):
+npm Trusted Publishing must be configured independently on each of the four package pages ([`@lostgradient/cinder`](https://www.npmjs.com/package/@lostgradient%2Fcinder), [`@lostgradient/cinder-mcp`](https://www.npmjs.com/package/@lostgradient%2Fcinder-mcp), [`@lostgradient/markdown`](https://www.npmjs.com/package/@lostgradient%2Fmarkdown), and [`@lostgradient/editor`](https://www.npmjs.com/package/@lostgradient%2Feditor)):
 
 1. Navigate to each package → **Settings** → **Publishing** → **Add a publisher**.
 2. Select **GitHub Actions** as the provider.
@@ -117,17 +117,17 @@ npm Trusted Publishing must be configured independently on each of the five pack
 
 4. Save. The registry will now accept OIDC tokens from that workflow without a static secret.
 
-Until this is configured for a given package, its OIDC publishes will be rejected even though the workflow is otherwise correct. **A package must exist on npm before its Trusted Publisher can be configured** — npm Trusted Publishing cannot mint a brand-new package name — so every package's very first release requires a one-time manual bootstrap: publish it via `release-manual.yaml`'s token path (a narrowly scoped `NPM_TOKEN`), verify with `npm view <package>@<version>`, then configure its Trusted Publisher so `release.yaml` can publish future versions through OIDC. This has already happened for Markdown, Cinder, Editor, and Chat; `@lostgradient/cinder-mcp` still needs it for its first `0.1.0` release (see `release-manual.yaml`'s `mcp` package selection and `mcp-v<version>` tag contract). A downstream package's manual bootstrap also verifies its required upstream version already exists on npm first (e.g. cinder-mcp's bootstrap checks for a published Cinder version satisfying its pinned `^<version>` range) — publish upstream first.
+Until this is configured for a given package, its OIDC publishes will be rejected even though the workflow is otherwise correct. **A package must exist on npm before its Trusted Publisher can be configured** — npm Trusted Publishing cannot mint a brand-new package name — so every package's very first release requires a one-time manual bootstrap: publish it via `release-manual.yaml`'s token path (a narrowly scoped `NPM_TOKEN`), verify with `npm view <package>@<version>`, then configure its Trusted Publisher so `release.yaml` can publish future versions through OIDC. This has already happened for Markdown, Cinder, and Editor; `@lostgradient/cinder-mcp` still needs it for its first `0.1.0` release (see `release-manual.yaml`'s `mcp` package selection and `mcp-v<version>` tag contract). A downstream package's manual bootstrap also verifies its required upstream version already exists on npm first (e.g. cinder-mcp's bootstrap checks for a published Cinder version satisfying its pinned `^<version>` range) — publish upstream first.
 
 #### The workflow validation guard
 
-`bun run --filter=@lostgradient/cinder validate:workflow` includes a check that asserts `release.yaml` does not contain `NODE_AUTH_TOKEN` or `NPM_TOKEN` anywhere outside comments — not in the publish step's `env:`, and not in a job-level or workflow-level `env:` block that the publish step would silently inherit. The primary release workflow also runs `bun run --filter=@lostgradient/cinder validate:release-workflow` directly on every push so token regressions and ignored-package changesets fail before Changesets opens or updates a release pull request. The guard lives at `packages/components/scripts/validate-release-workflow.ts` and asserts the full five-package publish order.
+`bun run --filter=@lostgradient/cinder validate:workflow` includes a check that asserts `release.yaml` does not contain `NODE_AUTH_TOKEN` or `NPM_TOKEN` anywhere outside comments — not in the publish step's `env:`, and not in a job-level or workflow-level `env:` block that the publish step would silently inherit. The primary release workflow also runs `bun run --filter=@lostgradient/cinder validate:release-workflow` directly on every push so token regressions and ignored-package changesets fail before Changesets opens or updates a release pull request. The guard lives at `packages/components/scripts/validate-release-workflow.ts` and asserts the full four-package publish order.
 
 #### Break-glass fallback
 
 If the Changesets/OIDC path fails and a release is urgent, `.github/workflows/release-manual.yaml` is the documented fallback. It:
 
-- Requires a package selection (`cinder`, `mcp`, `chat`, `markdown`, or `editor`) and a package-qualified version tag such as `cinder-v0.16.0` or `mcp-v0.1.0`.
+- Requires a package selection (`cinder`, `mcp`, `markdown`, or `editor`) and a package-qualified version tag such as `cinder-v0.16.0` or `mcp-v0.1.0`.
 - Uses `NPM_TOKEN` (a Granular Access Token scoped only to the public packages this workflow can select, stored in repository secrets).
 - Uses the same staged tarball validation as the primary workflow and disables provenance until the publish runtime can sign cleanly.
 
@@ -136,5 +136,5 @@ If the Changesets/OIDC path fails and a release is urgent, `.github/workflows/re
 Token hygiene for the break-glass secret:
 
 - Rotate `NPM_TOKEN` at least every 90 days.
-- Use a Granular Access Token scoped only to the five public `@lostgradient/*` packages — never a full-access automation token.
+- Use a Granular Access Token scoped only to the four public `@lostgradient/*` packages — never a full-access automation token.
 - After a break-glass publish, investigate and restore the primary OIDC path before the next release.

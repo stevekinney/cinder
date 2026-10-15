@@ -14,18 +14,18 @@ describe('package-weight artifact selection', () => {
     ).toBe('/workspace/packages/components/lostgradient-cinder-0.15.0.tgz');
   });
 
-  test('derives the Chat artifact independently', () => {
+  test('derives the Editor artifact independently', () => {
     expect(
-      packageTarballPath('/workspace/packages/chat', {
-        name: '@lostgradient/chat',
+      packageTarballPath('/workspace/packages/editor', {
+        name: '@lostgradient/editor',
         version: '0.1.0',
       }),
-    ).toBe('/workspace/packages/chat/lostgradient-chat-0.1.0.tgz');
+    ).toBe('/workspace/packages/editor/lostgradient-editor-0.1.0.tgz');
   });
 });
 
 describe('recordEntrypointSize', () => {
-  describe('components-layout packages (Cinder, Chat)', () => {
+  describe('components-layout packages (Cinder, Editor)', () => {
     test('groups component files under dist/components/<name>', () => {
       const sizes = new Map<string, number>();
       recordEntrypointSize(sizes, 'dist/components/button/index.js', 100, true);
@@ -105,13 +105,13 @@ describe('recordEntrypointSize', () => {
 });
 
 describe('package-weight budget gates', () => {
-  test('the Chat check script enables budget assertions', () => {
+  test('the Editor check script enables budget assertions', () => {
     const workspaceRoot = resolve(import.meta.dirname, '../../..');
     const manifest = JSON.parse(
-      readFileSync(resolve(workspaceRoot, 'packages/chat/package.json'), 'utf8'),
+      readFileSync(resolve(workspaceRoot, 'packages/editor/package.json'), 'utf8'),
     ) as { scripts: Record<string, string> };
     const weightCheckScript = manifest.scripts['package:weight:check'];
-    if (weightCheckScript === undefined) throw new Error('Chat package weight check is missing');
+    if (weightCheckScript === undefined) throw new Error('Editor package weight check is missing');
 
     expect(weightCheckScript.split(/\s+/)).toContain('--check');
   });
@@ -131,7 +131,7 @@ describe('package-weight budget gates', () => {
   test('cinder-mcp has an active weight budget and uses headless entrypoint grouping', async () => {
     // cinder-mcp ships no `dist/components/` directory (once built) —
     // recordEntrypointSize must therefore group it like Markdown (headless),
-    // not like Cinder/Chat. Skip this specific check when dist doesn't exist
+    // not like Cinder/Editor. Skip this specific check when dist doesn't exist
     // yet (a fresh checkout before the first build) rather than asserting a
     // false negative for the wrong reason.
     const workspaceRoot = resolve(import.meta.dirname, '../../..');
