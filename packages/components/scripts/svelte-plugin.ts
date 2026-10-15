@@ -21,11 +21,9 @@ export type ServerComponentBoundary = {
  * under `packages/components/src/components` — `allowsStyleBlock`'s path
  * match is package-agnostic (it matches the first path segment under any
  * `.../components/<name>/` directory), and this file is imported
- * cross-package by `packages/chat/scripts/{build,preload,validate-consumer}.ts`
- * and `packages/editor/scripts/{build,preload,validate-consumer}.ts`. So these
- * names protect live components in THOSE packages' own `src/lib/components/`
- * trees: `packages/chat/src/lib/components/chat/**` (e.g. `chat.svelte`,
- * `chat-message.svelte`) and `packages/editor/src/lib/components/
+ * cross-package by `packages/editor/scripts/{build,preload,validate-consumer}.ts`.
+ * So these names protect live components in that package's own
+ * `src/lib/components/` tree: `packages/editor/src/lib/components/
  * {diff-viewer,diff-review,diff-review-comments,markdown-editor,review-editor}/**` (e.g. `diff-viewer.svelte`,
  * `review-editor-impl.svelte`) — dozens of files, confirmed non-empty
  * `<style>` blocks as of this comment. `source-diff-viewer`, the surviving
@@ -33,7 +31,6 @@ export type ServerComponentBoundary = {
  * it has no `<style>` block.
  */
 const DOMAIN_SUITE_STYLE_COMPONENTS = new Set([
-  'chat',
   'diff-viewer',
   'diff-review',
   'diff-review-comments',
@@ -57,10 +54,6 @@ const PUBLISHED_PACKAGE_SOURCE_MAPPINGS = [
   {
     publishedSourcePrefix: 'node_modules/@lostgradient/cinder/',
     workspaceSourceMarker: '/packages/components/',
-  },
-  {
-    publishedSourcePrefix: 'node_modules/@lostgradient/chat/dist/',
-    workspaceSourceMarker: '/packages/chat/src/lib/',
   },
   {
     publishedSourcePrefix: 'node_modules/@lostgradient/editor/dist/',
