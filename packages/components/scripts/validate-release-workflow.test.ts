@@ -16,6 +16,7 @@ import {
   parseChangesetPackageNames,
   publicPackagePublishOrderIsValid,
   releaseUsesMirrorVerification,
+  RETIRED_PACKAGE_NAMES,
   rootPublishScriptUsesStagedPackers,
   rootValidationSeparatesSourceAndConsumerGates,
   workflowDeclaresPermission,
@@ -739,6 +740,38 @@ Public package release note.
       expect(findIgnoredPackageChangesets(changesetDirectory, ['@cinder/ignored-example'])).toEqual(
         [],
       );
+    } finally {
+      rmSync(temporaryDirectory, { recursive: true, force: true });
+    }
+  });
+  // @lostgradient/chat stopped publishing on 2026-10-14. A changeset naming it, whether written
+  // here or carried in by a sync, must stop the release workflow rather than plan a Chat release.
+  test('finds a changeset that names a retired package', () => {
+    const temporaryDirectory = mkdtempSync(join(tmpdir(), 'cinder-release-workflow-'));
+    const changesetDirectory = join(temporaryDirectory, '.changeset');
+
+    try {
+      mkdirSync(changesetDirectory);
+      writeFileSync(
+        join(changesetDirectory, 'retired-chat.md'),
+        `---
+'@lostgradient/cinder': patch
+'@lostgradient/chat': minor
+---
+
+A release note that still names Chat.
+`,
+      );
+
+      expect(RETIRED_PACKAGE_NAMES).toContain('@lostgradient/chat');
+      expect(
+        findIgnoredPackageChangesets(changesetDirectory, RETIRED_PACKAGE_NAMES).map(
+          (changeset) => ({
+            fileName: basename(changeset.filePath),
+            packages: changeset.packages,
+          }),
+        ),
+      ).toEqual([{ fileName: 'retired-chat.md', packages: ['@lostgradient/chat'] }]);
     } finally {
       rmSync(temporaryDirectory, { recursive: true, force: true });
     }

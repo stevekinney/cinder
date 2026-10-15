@@ -79,6 +79,15 @@ const PUBLIC_PACKAGE_NAMES = [
   '@lostgradient/editor',
   '@lostgradient/cinder-mcp',
 ] as const;
+/**
+ * Packages this repository no longer publishes. `@lostgradient/chat` stopped on 2026-10-14, and
+ * its source stays here until the corvidae sync deletes `packages/chat`. Until then Changesets
+ * would still plan a release for it, and once the directory is gone a changeset naming it fails
+ * `changeset version`. Either way a changeset for it is an error, rejected below. It is not put
+ * in `.changeset/config.json`'s `ignore`, because Changesets rejects an ignored name that no
+ * workspace carries, which this one will soon be.
+ */
+export const RETIRED_PACKAGE_NAMES = ['@lostgradient/chat'] as const;
 const REQUIRED_RELEASE_SCRIPTS = [
   'validate:consumer',
   'package:weight:check',
@@ -733,6 +742,29 @@ function runValidation(): void {
   }
 
   pass('No pending changesets target ignored packages');
+
+  let retiredPackageChangesets: IgnoredPackageChangeset[];
+  try {
+    retiredPackageChangesets = findIgnoredPackageChangesets(
+      changesetDirectoryPath,
+      RETIRED_PACKAGE_NAMES,
+    );
+  } catch (error) {
+    fail(errorMessageFrom(error));
+  }
+  if (retiredPackageChangesets.length > 0) {
+    fail(
+      'Changesets name a package this repository no longer publishes:\n' +
+        retiredPackageChangesets
+          .map(
+            (changeset) =>
+              `  - ${relative(workspaceRoot, changeset.filePath)}: ${changeset.packages.join(', ')}`,
+          )
+          .join('\n') +
+        '\n\nRemove the changeset files; a retired package is never released again.',
+    );
+  }
+  pass('No pending changesets target retired packages');
   pass('release.yaml is correctly configured for npm Trusted Publishing');
 
   validateWorkflowLevelEnvironmentContexts();
