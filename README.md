@@ -216,11 +216,14 @@ Editor component artifacts are emitted by Corvidae's mirror sync; do not generat
 
 Each public package owns its packed artifact. Consumer validation, release dry runs, and the Changesets publish path build and inspect every tarball before publishing Markdown, Cinder, Editor, then cinder-mcp.
 
-Before a release, run:
+Before a release, run the same gates `release.yaml` runs: consumer validation for all four packages in publish order, then each package's weight budget against the tarball that validation staged.
 
 ```bash
-bun run --filter=@lostgradient/cinder validate:consumer
+bun run validate:consumer
+bun run --filter=@lostgradient/markdown package:weight:check -- --existing-tarball
 bun run --filter=@lostgradient/cinder package:weight:check -- --existing-tarball
+bun run --filter=@lostgradient/editor package:weight:check -- --existing-tarball
+bun run --filter=@lostgradient/cinder-mcp package:weight:check -- --existing-tarball
 ```
 
 ## Repository
