@@ -1,15 +1,15 @@
 name: release
 
 # Changesets-driven release pipeline for the public `@lostgradient/markdown`,
-# `@lostgradient/cinder`, `@lostgradient/cinder-mcp`, `@lostgradient/editor`,
-# and `@lostgradient/chat` npm packages. Publish order is
-# markdown → cinder → editor → chat → cinder-mcp (markdown has no peers on the
-# others; editor peers on cinder and markdown; chat peers on cinder and markdown).
+# `@lostgradient/cinder`, `@lostgradient/cinder-mcp` and `@lostgradient/editor`
+# npm packages. Publish order is markdown → cinder → editor → cinder-mcp
+# (markdown has no peers on the others; editor peers on cinder and markdown).
+# `@lostgradient/chat` stopped publishing on 2026-10-14; its last release is 0.16.0.
 #
 # That is the peer/dependency DAG with one deliberate exception: cinder-mcp is a
 # leaf — it consumes cinder's `./knowledge` export, so it must follow cinder, but
 # nothing depends on it — and it publishes LAST rather than in DAG position, so a
-# failure on it cannot abort the other four. See #1207.
+# failure on it cannot abort the other three. See #1207.
 #
 # On every push to `main`:
 #   - If unreleased changesets exist, the action opens (or updates) a
@@ -167,10 +167,6 @@ jobs:
         if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
         run: bun run --filter=@lostgradient/editor validate:consumer
 
-      - name: Validate Chat package artifact
-        if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
-        run: bun run --filter=@lostgradient/chat validate:consumer
-
       - name: Validate cinder-mcp package artifact
         if: github.event_name != 'push' || steps.pending-changesets.outputs.pending == 'false'
         run: bun run --filter=@lostgradient/cinder-mcp validate:consumer
@@ -199,10 +195,6 @@ jobs:
         if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/editor package:weight:check -- --existing-tarball
 
-      - name: Check validated Chat package artifact budget
-        if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'
-        run: bun run --filter=@lostgradient/chat package:weight:check -- --existing-tarball
-
       - name: Check validated cinder-mcp package artifact budget
         if: github.event_name != 'push' || steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/cinder-mcp package:weight:check -- --existing-tarball
@@ -218,8 +210,7 @@ jobs:
       # If this path breaks and a token-based emergency publish is required, use
       # .github/workflows/release-manual.yaml instead (see CONTRIBUTING.md).
       # Publish order follows the peer DAG: Markdown has no internal peers and
-      # publishes first; Cinder next (Chat's peer contract starts at the
-      # Cinder minor released by the same Version Packages pull request).
+      # publishes first; Cinder next, then Editor, which peers on both.
       #
       # NOTE: the FIRST publish of @lostgradient/markdown requires a one-time manual
       # bootstrap — npm Trusted Publishing cannot mint a brand-new package name
@@ -246,13 +237,6 @@ jobs:
       - name: Publish validated Editor package artifact to npm
         if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
         run: bun run --filter=@lostgradient/editor publish:release -- --skip-validation
-        env:
-          NPM_CONFIG_PROVENANCE: 'true'
-          NODE_OPTIONS: --openssl-legacy-provider
-
-      - name: Publish validated Chat package artifact to npm
-        if: github.event_name == 'push' && steps.changesets.outputs.hasChangesets == 'false'
-        run: bun run --filter=@lostgradient/chat publish:release -- --skip-validation
         env:
           NPM_CONFIG_PROVENANCE: 'true'
           NODE_OPTIONS: --openssl-legacy-provider
@@ -289,10 +273,6 @@ jobs:
       - name: Publish Editor (dry-run)
         if: github.event_name == 'workflow_dispatch'
         run: bun run --filter=@lostgradient/editor publish:release -- --dry-run --skip-validation
-
-      - name: Publish Chat (dry-run)
-        if: github.event_name == 'workflow_dispatch'
-        run: bun run --filter=@lostgradient/chat publish:release -- --dry-run --skip-validation
 
       # Mirrors the push path above: cinder-mcp is a leaf and goes last, so a
       # dry-run failure on it still exercises every other package's tarball.

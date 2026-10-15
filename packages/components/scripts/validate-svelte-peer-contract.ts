@@ -36,7 +36,6 @@ function fail(message: string): never {
 async function assertDocumentationMentionsContract(): Promise<void> {
   const requiredDocumentationFiles = [
     'README.md',
-    'packages/chat/README.md',
     'packages/components/AGENTS.md',
     'docs/theming.md',
   ] as const;
@@ -54,9 +53,7 @@ async function assertDocumentationMentionsContract(): Promise<void> {
     }
   }
 
-  const documentationGlob = new Glob(
-    '{README.md,docs/**/*.md,packages/chat/README.md,packages/components/AGENTS.md}',
-  );
+  const documentationGlob = new Glob('{README.md,docs/**/*.md,packages/components/AGENTS.md}');
   for await (const relativePath of documentationGlob.scan({ cwd: workspaceRoot })) {
     const content = await Bun.file(join(workspaceRoot, relativePath)).text();
     if (content.includes(sveltePeerContract.legacyPeerRange)) {
@@ -69,7 +66,6 @@ async function assertDocumentationMentionsContract(): Promise<void> {
 
 async function main(): Promise<void> {
   const packageManifestPaths = [
-    'packages/chat/package.json',
     'packages/components/package.json',
     'packages/editor/package.json',
   ] as const;

@@ -10,7 +10,6 @@ import {
   findIgnoredPackageChangesets,
   findMissingPublicPackageReleaseCommands,
   findOutdatedWorkflowActions,
-  manualChatBootstrapHasPeerRegistryPreflight,
   manualCinderBootstrapHasMarkdownRegistryPreflight,
   manualMcpBootstrapHasCinderRegistryPreflight,
   manualReleaseVerifiesDispatchShaMatchesTag,
@@ -306,10 +305,7 @@ describe('validate-release-workflow changeset guards', () => {
                 'bun run --filter=@lostgradient/cinder-mcp package:weight:check -- --existing-tarball',
                 'bun run --filter=@lostgradient/cinder-mcp publish:release -- --skip-validation',
                 'bun run --filter=@lostgradient/editor validate:consumer',
-                'bun run --filter=@lostgradient/editor package:weight:check -- --existing-tarball',
                 'bun run --filter=@lostgradient/editor publish:release -- --skip-validation',
-                'bun run --filter=@lostgradient/chat validate:consumer',
-                'bun run --filter=@lostgradient/chat publish:release -- --skip-validation',
               ].join('\n'),
             },
           ],
@@ -318,11 +314,11 @@ describe('validate-release-workflow changeset guards', () => {
     };
 
     expect(findMissingPublicPackageReleaseCommands(workflow)).toEqual([
-      'bun run --filter=@lostgradient/chat package:weight:check',
+      'bun run --filter=@lostgradient/editor package:weight:check',
     ]);
   });
 
-  test('requires Markdown to publish before Cinder before Editor before Chat before cinder-mcp', () => {
+  test('requires Markdown to publish before Cinder before Editor before cinder-mcp', () => {
     const workflow = (commands: string[]) => ({
       jobs: { release: { steps: commands.map((run) => ({ run })) } },
     });
@@ -330,33 +326,23 @@ describe('validate-release-workflow changeset guards', () => {
     const cinder = 'bun run --filter=@lostgradient/cinder publish:release -- --skip-validation';
     const mcp = 'bun run --filter=@lostgradient/cinder-mcp publish:release -- --skip-validation';
     const editor = 'bun run --filter=@lostgradient/editor publish:release -- --skip-validation';
-    const chat = 'bun run --filter=@lostgradient/chat publish:release -- --skip-validation';
 
-    expect(publicPackagePublishOrderIsValid(workflow([markdown, cinder, editor, chat, mcp]))).toBe(
-      true,
-    );
-    expect(publicPackagePublishOrderIsValid(workflow([mcp, chat, editor, cinder, markdown]))).toBe(
-      false,
-    );
-    expect(publicPackagePublishOrderIsValid(workflow([markdown, chat, cinder, editor, mcp]))).toBe(
-      false,
-    );
-    expect(publicPackagePublishOrderIsValid(workflow([cinder, markdown, editor, chat, mcp]))).toBe(
-      false,
-    );
-    expect(publicPackagePublishOrderIsValid(workflow([markdown, cinder, chat, editor, mcp]))).toBe(
-      false,
-    );
+    expect(publicPackagePublishOrderIsValid(workflow([markdown, cinder, editor, mcp]))).toBe(true);
+    expect(publicPackagePublishOrderIsValid(workflow([mcp, editor, cinder, markdown]))).toBe(false);
+    expect(publicPackagePublishOrderIsValid(workflow([markdown, editor, cinder, mcp]))).toBe(false);
+    expect(publicPackagePublishOrderIsValid(workflow([cinder, markdown, editor, mcp]))).toBe(false);
     // cinder-mcp is a leaf and publishes last, but it still consumes cinder's
     // `./knowledge` export — publishing it before cinder must fail even when
     // every other pair is in order.
-    expect(publicPackagePublishOrderIsValid(workflow([markdown, mcp, cinder, editor, chat]))).toBe(
-      false,
-    );
-    // The old DAG-position ordering (mcp third) is now explicitly rejected, so a
-    // revert of #1207's reorder cannot land silently.
-    expect(publicPackagePublishOrderIsValid(workflow([markdown, cinder, mcp, editor, chat]))).toBe(
-      false,
+    expect(publicPackagePublishOrderIsValid(workflow([markdown, mcp, cinder, editor]))).toBe(false);
+    // The old DAG-position ordering (mcp before editor) is now explicitly
+    // rejected, so a revert of #1207's reorder cannot land silently.
+    expect(publicPackagePublishOrderIsValid(workflow([markdown, cinder, mcp, editor]))).toBe(false);
+    // Chat stopped publishing on 2026-10-14; a workflow that still publishes it
+    // in between is not missing anything this guard requires.
+    const chat = 'bun run --filter=@lostgradient/chat publish:release -- --skip-validation';
+    expect(publicPackagePublishOrderIsValid(workflow([markdown, cinder, editor, chat, mcp]))).toBe(
+      true,
     );
   });
 
@@ -374,14 +360,14 @@ describe('validate-release-workflow changeset guards', () => {
     const dry = (packageName: string) =>
       `bun run --filter=@lostgradient/${packageName} publish:release -- --dry-run --skip-validation`;
 
-    const correctPush = ['markdown', 'cinder', 'editor', 'chat', 'cinder-mcp'].map(push);
-    const correctDry = ['markdown', 'cinder', 'editor', 'chat', 'cinder-mcp'].map(dry);
-    const driftedDry = ['markdown', 'cinder', 'cinder-mcp', 'editor', 'chat'].map(dry);
+    const correctPush = ['markdown', 'cinder', 'editor', 'cinder-mcp'].map(push);
+    const correctDry = ['markdown', 'cinder', 'editor', 'cinder-mcp'].map(dry);
+    const driftedDry = ['markdown', 'cinder', 'cinder-mcp', 'editor'].map(dry);
 
     expect(publicPackagePublishOrderIsValid(workflow([...correctPush, ...correctDry]))).toBe(true);
     expect(publicPackagePublishOrderIsValid(workflow([...correctPush, ...driftedDry]))).toBe(false);
     // …and the mirror case: a correct dry-run path must not excuse a drifted push path.
-    const driftedPush = ['markdown', 'cinder', 'cinder-mcp', 'editor', 'chat'].map(push);
+    const driftedPush = ['markdown', 'cinder', 'cinder-mcp', 'editor'].map(push);
     expect(publicPackagePublishOrderIsValid(workflow([...driftedPush, ...correctDry]))).toBe(false);
   });
 
@@ -407,21 +393,20 @@ describe('validate-release-workflow changeset guards', () => {
     const cinder = 'bun run --filter=@lostgradient/cinder publish:release';
     const mcp = 'bun run --filter=@lostgradient/cinder-mcp publish:release';
     const editor = 'bun run --filter=@lostgradient/editor publish:release';
-    const chat = 'bun run --filter=@lostgradient/chat publish:release';
 
     expect(
       rootPublishScriptUsesStagedPackers(
-        manifest(`${markdown} && ${cinder} && ${editor} && ${chat} && ${mcp}`),
+        manifest(`${markdown} && ${cinder} && ${editor} && ${mcp}`),
       ),
     ).toBe(true);
     expect(rootPublishScriptUsesStagedPackers(manifest('changeset publish'))).toBe(false);
     expect(
       rootPublishScriptUsesStagedPackers(
-        manifest(`${mcp} && ${chat} && ${editor} && ${cinder} && ${markdown}`),
+        manifest(`${mcp} && ${editor} && ${cinder} && ${markdown}`),
       ),
     ).toBe(false);
     expect(
-      rootPublishScriptUsesStagedPackers(manifest(`${cinder} && ${mcp} && ${editor} && ${chat}`)), // missing markdown
+      rootPublishScriptUsesStagedPackers(manifest(`${cinder} && ${mcp} && ${editor}`)), // missing markdown
     ).toBe(false);
   });
 
@@ -432,9 +417,8 @@ describe('validate-release-workflow changeset guards', () => {
     const markdown = 'bun run --filter=@lostgradient/markdown validate:consumer';
     const cinder = 'bun run --filter=@lostgradient/cinder validate:consumer';
     const editor = 'bun run --filter=@lostgradient/editor validate:consumer';
-    const chat = 'bun run --filter=@lostgradient/chat validate:consumer';
     const mcp = 'bun run --filter=@lostgradient/cinder-mcp validate:consumer';
-    const complete = `${markdown} && ${cinder} && ${editor} && ${chat} && ${mcp}`;
+    const complete = `${markdown} && ${cinder} && ${editor} && ${mcp}`;
     expect(rootValidationSeparatesSourceAndConsumerGates(manifest(complete))).toBe(true);
     expect(
       rootValidationSeparatesSourceAndConsumerGates(manifest(complete, 'turbo run validate')),
@@ -442,31 +426,7 @@ describe('validate-release-workflow changeset guards', () => {
     expect(rootValidationSeparatesSourceAndConsumerGates(manifest(cinder))).toBe(false);
     expect(
       rootValidationSeparatesSourceAndConsumerGates(
-        manifest(`${cinder} && ${markdown} && ${editor} && ${chat} && ${mcp}`),
-      ),
-    ).toBe(false);
-  });
-
-  test('requires the manual Chat bootstrap to preflight its Cinder and Markdown peers', () => {
-    const workflow = (run: string) => ({
-      jobs: {
-        publish: {
-          steps: [{ if: "inputs.package == 'chat'", run }],
-        },
-      },
-    });
-    const peerLookup = [
-      "for peer in '@lostgradient/cinder' '@lostgradient/markdown'; do",
-      'peer_range="$(jq -er --arg peer "$peer" \'.peerDependencies[$peer]\' packages/chat/package.json)"',
-      'npm view "${peer}@${peer_range}" version --json',
-      'echo "::error::Publish ${peer} first"',
-    ].join('\n');
-
-    expect(manualChatBootstrapHasPeerRegistryPreflight(workflow(peerLookup))).toBe(true);
-    // Rejects the old single-inline-peer shape that only checked Cinder.
-    expect(
-      manualChatBootstrapHasPeerRegistryPreflight(
-        workflow('npm view "@lostgradient/cinder@${cinder_peer_range}" version --json'),
+        manifest(`${cinder} && ${markdown} && ${editor} && ${mcp}`),
       ),
     ).toBe(false);
   });

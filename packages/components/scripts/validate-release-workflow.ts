@@ -12,7 +12,7 @@
  *   - Release waits for the generated mirror verifier.
  *   - Workflow actions use Node 24-compatible majors instead of deprecated
  *     Node 20 action runtimes.
- *   - Every public package (markdown, cinder, editor, chat, then the cinder-mcp
+ *   - Every public package (markdown, cinder, editor, then the cinder-mcp
  *     leaf, in publish order) has consumer validation, package-weight, and
  *     publish commands,
  *     and no publish step has
@@ -62,9 +62,9 @@ const changesetsConfigurationPath = join(workspaceRoot, '.changeset/config.json'
 const changesetDirectoryPath = join(workspaceRoot, '.changeset');
 /**
  * Every published package, in required publish order: markdown has no internal
- * peer contract with the other four and publishes first; cinder next; editor and
- * chat each peer on BOTH cinder and markdown (see
- * docs/decisions/package-boundaries.md).
+ * peer contract with the other three and publishes first; cinder next; editor
+ * peers on BOTH cinder and markdown (see docs/decisions/package-boundaries.md).
+ * `@lostgradient/chat` stopped publishing on 2026-10-14.
  *
  * cinder-mcp publishes LAST rather than in strict DAG position. It consumes
  * cinder's `./knowledge` export, so it must follow cinder — but nothing peers on
@@ -77,7 +77,6 @@ const PUBLIC_PACKAGE_NAMES = [
   '@lostgradient/markdown',
   '@lostgradient/cinder',
   '@lostgradient/editor',
-  '@lostgradient/chat',
   '@lostgradient/cinder-mcp',
 ] as const;
 const REQUIRED_RELEASE_SCRIPTS = [
@@ -232,36 +231,6 @@ function workflowRunScripts(workflow: unknown): string[] {
 }
 
 /**
- * The Chat bootstrap path must prove BOTH its required peers — Cinder and
- * Markdown — exist on npm before publishing. Chat gained a required
- * `@lostgradient/markdown` peer when its markdown-preview started importing
- * `@lostgradient/markdown/rendering` directly, so (like Editor) its preflight
- * loops over `['@lostgradient/cinder', '@lostgradient/markdown']` rather than
- * checking a single inline peer.
- */
-export function manualChatBootstrapHasPeerRegistryPreflight(workflow: unknown): boolean {
-  if (!isObjectRecord(workflow) || !isObjectRecord(workflow['jobs'])) return false;
-
-  return Object.values(workflow['jobs']).some((job) => {
-    if (!isObjectRecord(job) || !Array.isArray(job['steps'])) return false;
-    return job['steps'].some((step) => {
-      if (!isObjectRecord(step)) return false;
-      const condition = step['if'];
-      const run = step['run'];
-      return (
-        typeof condition === 'string' &&
-        condition.includes("inputs.package == 'chat'") &&
-        typeof run === 'string' &&
-        run.includes("'@lostgradient/cinder' '@lostgradient/markdown'") &&
-        run.includes("'.peerDependencies[$peer]' packages/chat/package.json") &&
-        run.includes('npm view "${peer}@${peer_range}" version --json') &&
-        run.includes('Publish ${peer} first')
-      );
-    });
-  });
-}
-
-/**
  * The Cinder bootstrap path must prove its required Markdown release exists on
  * npm. Cinder gained a real runtime dependency on `@lostgradient/markdown`
  * (two retained cinder files import its pipeline); pack-for-publish rewrites
@@ -319,10 +288,9 @@ export function manualMcpBootstrapHasCinderRegistryPreflight(workflow: unknown):
 
 /**
  * The Editor bootstrap path must prove BOTH its required peers — Cinder and
- * Markdown — exist on npm before publishing. Unlike Chat (a single peer,
- * checked inline), Editor's preflight loops over `['@lostgradient/cinder',
- * '@lostgradient/markdown']`, so this checks for the loop shape and each
- * peer name rather than one inline peer check.
+ * Markdown — exist on npm before publishing. Editor's preflight loops over
+ * `['@lostgradient/cinder', '@lostgradient/markdown']`, so this checks for the
+ * loop shape and each peer name rather than one inline peer check.
  */
 export function manualEditorBootstrapHasPeerRegistryPreflight(workflow: unknown): boolean {
   if (!isObjectRecord(workflow) || !isObjectRecord(workflow['jobs'])) return false;
@@ -418,7 +386,7 @@ function isStrictlyIncreasing(indices: readonly number[]): boolean {
 }
 
 /**
- * Markdown, Cinder, Editor, Chat, then the cinder-mcp leaf — see
+ * Markdown, Cinder, Editor, then the cinder-mcp leaf — see
  * PUBLIC_PACKAGE_NAMES.
  *
  * Checks the real publish path and the `workflow_dispatch` dry-run path
@@ -588,7 +556,7 @@ function runValidation(): void {
   pass('Every public package has validation, weight, and publish gates');
   if (!publicPackagePublishOrderIsValid(parsedWorkflow)) {
     fail(
-      'release.yaml must publish markdown, then cinder, then editor, then chat, then cinder-mcp (the peer/vendoring order, with the cinder-mcp leaf last).',
+      'release.yaml must publish markdown, then cinder, then editor, then cinder-mcp (the peer/vendoring order, with the cinder-mcp leaf last).',
     );
   }
   pass('Public packages publish in the required order, cinder-mcp last');
@@ -601,7 +569,7 @@ function runValidation(): void {
   }
   if (!rootPublishScriptUsesStagedPackers(rootManifest)) {
     fail(
-      'package.json#scripts.changeset:publish must publish Markdown, Cinder, Editor, Chat, then cinder-mcp ' +
+      'package.json#scripts.changeset:publish must publish Markdown, Cinder, Editor, then cinder-mcp ' +
         'through their publish:release staged-artifact commands, in that publish order; direct ' +
         '`changeset publish` is unsafe.',
     );
@@ -610,7 +578,7 @@ function runValidation(): void {
   if (!rootValidationSeparatesSourceAndConsumerGates(rootManifest)) {
     fail(
       'Source validation belongs in Corvidae; this mirror must not define a root validate script. ' +
-        'The explicit validate:consumer release gate must validate Markdown, Cinder, Editor, Chat, then cinder-mcp, ' +
+        'The explicit validate:consumer release gate must validate Markdown, Cinder, Editor, then cinder-mcp, ' +
         'in that publish order.',
     );
   }
@@ -622,14 +590,6 @@ function runValidation(): void {
   } catch (error) {
     fail(`release-manual.yaml is missing or invalid YAML: ${errorMessageFrom(error)}`);
   }
-  if (!manualChatBootstrapHasPeerRegistryPreflight(parsedManualReleaseWorkflow)) {
-    fail(
-      "release-manual.yaml must derive Chat's Cinder AND Markdown peer ranges and verify " +
-        'satisfying versions of both exist on npm before bootstrapping Chat.',
-    );
-  }
-  pass('Manual Chat bootstrap requires its Cinder and Markdown peers on npm');
-
   if (!manualEditorBootstrapHasPeerRegistryPreflight(parsedManualReleaseWorkflow)) {
     fail(
       "release-manual.yaml must derive Editor's Cinder AND Markdown peer ranges and verify " +
@@ -768,7 +728,7 @@ function runValidation(): void {
         `${formattedChangesets}\n\n` +
         'changesets/action treats these files as pending release work, but `changeset version` ' +
         'does not consume ignored packages. Remove the changeset files, or retarget them to ' +
-        '@lostgradient/cinder or @lostgradient/chat if a public package should release.',
+        '@lostgradient/cinder or @lostgradient/editor if a public package should release.',
     );
   }
 

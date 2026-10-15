@@ -124,10 +124,6 @@ async function main(): Promise<void> {
     changesetDirectory: join(workspaceRoot, '.changeset'),
     dependents: [
       {
-        name: '@lostgradient/chat',
-        manifestPath: join(workspaceRoot, 'packages', 'chat', 'package.json'),
-      },
-      {
         name: '@lostgradient/editor',
         manifestPath: join(workspaceRoot, 'packages', 'editor', 'package.json'),
       },

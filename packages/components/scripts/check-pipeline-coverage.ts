@@ -12,7 +12,6 @@ export const RELEASE_WORKFLOW = 'release.yaml';
 export const MIRROR_PACKAGES = [
   '@lostgradient/markdown',
   '@lostgradient/cinder',
-  '@lostgradient/chat',
   '@lostgradient/editor',
 ] as const;
 export const PUBLISHED_PACKAGES = [...MIRROR_PACKAGES, '@lostgradient/cinder-mcp'] as const;
