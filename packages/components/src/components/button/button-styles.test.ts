@@ -196,3 +196,30 @@ describe('Button secondary surface states', () => {
     );
   });
 });
+
+describe('the pressed state of a toggle button', () => {
+  test('a pressed button takes the filled accent face, with the filled focus gap and forced-colors fallback', () => {
+    const source = readButtonSource();
+    const [face] = readCssRuleBlocks(
+      source,
+      ".cinder-button[aria-pressed='true']:not([data-cinder-variant='primary']):not(\n      [data-cinder-variant='danger']\n    ):not(:disabled):not([aria-disabled='true'])",
+    );
+    expect(face).toContain('background: var(--cinder-accent-solid);');
+    expect(face).toContain('color: var(--cinder-accent-contrast);');
+    expect(face).toContain('--_cinder-button-ring: var(--cinder-ring-color);');
+    expect(source).toContain('background: Highlight;');
+    expect(source).toContain('color: HighlightText;');
+    expect(source).toMatch(
+      /aria-pressed='true'\][^{]*:focus-visible[^{]*\{\s*box-shadow: var\(--_cinder-focus-ring-filled-shadow\)/s,
+    );
+  });
+
+  test('the pressed attribute reaches the button and its name does not change', () => {
+    const { getByRole, rerender } = render(Button, {
+      props: { label: 'Capture', 'aria-pressed': 'true' },
+    });
+    expect(getByRole('button', { name: 'Capture' }).getAttribute('aria-pressed')).toBe('true');
+    void rerender({ label: 'Capture', 'aria-pressed': 'false' });
+    expect(getByRole('button', { name: 'Capture' }).getAttribute('aria-pressed')).toBe('false');
+  });
+});

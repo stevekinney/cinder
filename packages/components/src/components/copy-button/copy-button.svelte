@@ -18,8 +18,8 @@
 <script lang="ts">
   import type { CopyButtonProps } from './copy-button.types.ts';
 
-  import Check from 'lucide-svelte/icons/check';
-  import Copy from 'lucide-svelte/icons/copy';
+  import Check from '@lucide/svelte/icons/check';
+  import Copy from '@lucide/svelte/icons/copy';
   import { copyToClipboard } from '../../utilities/clipboard.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';

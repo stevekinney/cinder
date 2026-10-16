@@ -18,10 +18,10 @@
 <script lang="ts">
   import { onDestroy, untrack } from 'svelte';
 
-  import Check from 'lucide-svelte/icons/check';
-  import Copy from 'lucide-svelte/icons/copy';
-  import Eye from 'lucide-svelte/icons/eye';
-  import EyeOff from 'lucide-svelte/icons/eye-off';
+  import Check from '@lucide/svelte/icons/check';
+  import Copy from '@lucide/svelte/icons/copy';
+  import Eye from '@lucide/svelte/icons/eye';
+  import EyeOff from '@lucide/svelte/icons/eye-off';
 
   import type { SecretValueFieldProps } from './secret-value-field.types.ts';
   import { copyToClipboard } from '../../utilities/clipboard.ts';

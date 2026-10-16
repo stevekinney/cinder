@@ -22,7 +22,7 @@
 </script>
 
 <script lang="ts">
-  import CalendarDays from 'lucide-svelte/icons/calendar-days';
+  import CalendarDays from '@lucide/svelte/icons/calendar-days';
   import type { Attachment } from 'svelte/attachments';
   import type {
     DateRangeDatePreset,

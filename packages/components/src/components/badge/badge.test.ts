@@ -198,13 +198,13 @@ describe('Badge — subscription state preset', () => {
     expect(container.querySelector('.cinder-badge svg')?.getAttribute('aria-hidden')).toBe('true');
   });
 
-  test('subscription state icons are sourced from lucide-svelte, not hand-copied path data', async () => {
+  test('subscription state icons are sourced from @lucide/svelte, not hand-copied path data', async () => {
     const source = await Bun.file(new URL('./badge.svelte', import.meta.url)).text();
     // The hand-copied path-data lookup must be gone entirely — the identifier
     // shouldn't exist to import, let alone be reachable.
     expect(source).not.toContain('subscriptionStateIconPaths');
     expect(source).toMatch(
-      /import\s+CircleCheck\s+from\s+['"]lucide-svelte\/icons\/circle-check['"]/,
+      /import\s+CircleCheck\s+from\s+['"]@lucide\/svelte\/icons\/circle-check['"]/,
     );
   });
 });

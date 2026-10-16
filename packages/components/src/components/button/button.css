@@ -502,6 +502,54 @@
     }
   }
 
+  /* Pressed — a toggle button that is on (`aria-pressed='true'`) takes the filled accent face,
+   * the same pressed look SegmentedControl gives an option in multiple mode. Primary and danger
+   * are already filled, so the state is for the outline, soft and ghost faces. Colour alone is
+   * not the signal: the name stays the same and `aria-pressed` carries the state to assistive
+   * technology, while under forced colors the face is Highlight on HighlightText. */
+  .cinder-button[aria-pressed='true']:not([data-cinder-variant='primary']):not(
+      [data-cinder-variant='danger']
+    ):not(:disabled):not([aria-disabled='true']) {
+    --_cinder-button-ring: var(--cinder-ring-color);
+    background: var(--cinder-accent-solid);
+    color: var(--cinder-accent-contrast);
+    border-color: transparent;
+  }
+
+  /* A filled face gets the page-coloured gap between fill and ring, as primary and danger do. */
+  .cinder-button[aria-pressed='true']:not([data-cinder-variant='primary']):not(
+      [data-cinder-variant='danger']
+    ):focus-visible:not(:disabled):not([aria-disabled='true']) {
+    box-shadow: var(--_cinder-focus-ring-filled-shadow);
+  }
+
+  @media (hover: hover) {
+    .cinder-button[aria-pressed='true']:not([data-cinder-variant='primary']):not(
+        [data-cinder-variant='danger']
+      ):hover:not(:disabled):not([aria-disabled='true']) {
+      background: var(--cinder-accent-solid-hover);
+      color: var(--cinder-accent-contrast);
+      border-color: transparent;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .cinder-button[aria-pressed='true']:not([data-cinder-variant='primary']):not(
+        [data-cinder-variant='danger']
+      ):not(:disabled):not([aria-disabled='true']) {
+      background: Highlight;
+      color: HighlightText;
+      border: 1px solid ButtonBorder;
+    }
+
+    .cinder-button[aria-pressed='true']:not([data-cinder-variant='primary']):not(
+        [data-cinder-variant='danger']
+      ):focus-visible:not(:disabled):not([aria-disabled='true']) {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 3px;
+    }
+  }
+
   @media (forced-colors: active) {
     .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost'] {
       background: ButtonFace;

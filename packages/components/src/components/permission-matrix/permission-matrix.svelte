@@ -27,9 +27,9 @@
   lang="ts"
   generics="TRow extends PermissionMatrixAxisItem = PermissionMatrixAxisItem, TColumn extends PermissionMatrixAxisItem = PermissionMatrixAxisItem"
 >
-  import Check from 'lucide-svelte/icons/check';
-  import LockKeyhole from 'lucide-svelte/icons/lock-keyhole';
-  import Minus from 'lucide-svelte/icons/minus';
+  import Check from '@lucide/svelte/icons/check';
+  import LockKeyhole from '@lucide/svelte/icons/lock-keyhole';
+  import Minus from '@lucide/svelte/icons/minus';
 
   import { classNames } from '../../utilities/class-names.ts';
   import { overflowShadow } from '../../utilities/attachments.ts';

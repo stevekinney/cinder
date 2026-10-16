@@ -16,7 +16,7 @@
 </script>
 
 <script lang="ts">
-  import CalendarDays from 'lucide-svelte/icons/calendar-days';
+  import CalendarDays from '@lucide/svelte/icons/calendar-days';
   import type { DatePickerProps } from './date-picker.types.ts';
   import { normalizeDateValue as normalizeValue } from '../../_internal/date-value.ts';
   import FormFieldFrame from '../../_internal/form-field-frame.svelte';

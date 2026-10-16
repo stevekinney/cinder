@@ -16,11 +16,13 @@
      * whatever the browser picks as its own anchor moves only because the
      * component moved it.
      *
-     * Native anchoring then fights it. A sticky row leaves flow as its index
-     * leaves the window and it pins (`position: absolute`), the rows after it shift
-     * up by its size, and the browser pulls the scroll offset back by the same
-     * amount to hold its anchor still — so the list scrolls a row backwards by
-     * itself, and a keyboard press that had just landed is undone.
+     * Native anchoring can then only fight it. It once did: under reduced motion
+     * the window's inset landed a frame after a pinning sticky row left flow, and
+     * the browser scrolled the list back a row to hold its anchor, undoing a
+     * keyboard press that had just landed (COR-1523). The geometry no longer lags
+     * (see the `transition-property` rule below, COR-1535), but nothing inside
+     * this container needs the browser's anchor, so any later shift of the same
+     * kind cannot turn into the list scrolling itself.
      *
      * `windowScroll` gives that back below: there the page scrolls, not the list.
      */
@@ -57,18 +59,6 @@
     block-size: auto;
     overflow: visible;
     overflow-anchor: auto;
-  }
-
-  /*
-   * Except with sticky rows. As a window-scrolled list's active header pins on
-   * leaving the rendered window, the page's anchoring pulls the window back a row,
-   * so a keyboard step that had just landed is undone, and nothing re-issues the
-   * press. Measured in Chromium: ten ArrowDown presses advanced nine rows. This
-   * combination gives up page anchoring for layout shifts above the list instead,
-   * as a `dynamicSize` list already does.
-   */
-  .cinder-virtual-list[data-cinder-window-scroll='true'][data-cinder-sticky-rows='true'] {
-    overflow-anchor: none;
   }
 
   /*
@@ -146,6 +136,29 @@
   /* Rows are sized along the inline axis; flex must not shrink them to fit. */
   .cinder-virtual-list[data-cinder-orientation='horizontal'] .cinder-virtual-list__row {
     flex: 0 0 auto;
+  }
+
+  /*
+   * The elements whose geometry the component writes inline never transition it.
+   *
+   * Reduced motion (`foundation.css`) sets every element's `transition-duration` to
+   * 0.01ms and leaves `transition-property` at its initial `all`, so an element that
+   * declared no transition animates every property change anyway — and a running
+   * transition holds the old computed value until the next frame samples it. Here
+   * that held the window's inset, the pinned row's inset and the spacer's size a
+   * frame behind each scroll, while `position`, which cannot animate, changed at
+   * once: as the active sticky row pinned and left flow, every row sat a header
+   * higher for a frame, and the page's native scroll anchoring scrolled back by
+   * that much to compensate (COR-1535). Every window advance painted a row off,
+   * sticky rows or not.
+   *
+   * Only `transition-property` is set. The duration stays the reduced-motion rule's
+   * to force; with no property to apply it to, nothing here animates.
+   */
+  .cinder-virtual-list__spacer,
+  .cinder-virtual-list__window,
+  .cinder-virtual-list__row {
+    transition-property: none;
   }
 
   .cinder-virtual-list__spacer {

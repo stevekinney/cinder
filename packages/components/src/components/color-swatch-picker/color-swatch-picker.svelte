@@ -22,7 +22,7 @@
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { hasAlpha, pickContrastColor } from '../../utilities/color-luminance.ts';
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
-  import Check from 'lucide-svelte/icons/check';
+  import Check from '@lucide/svelte/icons/check';
 
   let {
     value = $bindable(''),

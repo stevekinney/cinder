@@ -19,8 +19,8 @@
 
 <script lang="ts">
   import { untrack } from 'svelte';
-  import Check from 'lucide-svelte/icons/check';
-  import X from 'lucide-svelte/icons/x';
+  import Check from '@lucide/svelte/icons/check';
+  import X from '@lucide/svelte/icons/x';
   import { classNames } from '../../utilities/class-names.ts';
   import Spinner from '../spinner/spinner.svelte';
   import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';

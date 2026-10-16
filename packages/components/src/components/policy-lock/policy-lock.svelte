@@ -14,7 +14,7 @@
 </script>
 
 <script lang="ts">
-  import { Lock } from 'lucide-svelte';
+  import { Lock } from '@lucide/svelte';
   import Badge from '../badge/badge.svelte';
   import Tooltip from '../tooltip/tooltip.svelte';
   import { classNames } from '../../utilities/class-names.ts';
