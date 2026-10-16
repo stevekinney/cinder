@@ -43,7 +43,6 @@
         "esm-env": "^1.2.0",
         "json-schema-library": "catalog:",
         "libphonenumber-js": "^1.13.3",
-        "lucide-svelte": "0.503.0",
         "qrcode": "^1.5.4",
         "shiki": "^3.21.0",
       },
@@ -1286,8 +1285,6 @@
     "lodash.truncate": ["lodash.truncate@4.4.2", "", {}, "sha512-jttmRe7bRse52OsWIMDLaXxWqRAmtIUccAQ3garviCqJjafXOfNMO0yMfNpdD6zbGaTU0P5Nz7e7gAT6cKmJRw=="],
 
     "longest-streak": ["longest-streak@3.1.0", "", {}, "sha512-9Ri+o0JYgehTaVBBDoMqIl8GXtbWg711O3srftcHhZ0dqnETqLaoIK0x17fUw9rFSlK/0NlsKe0Ahhyl5pXE2g=="],
-
-    "lucide-svelte": ["lucide-svelte@0.503.0", "", { "peerDependencies": { "svelte": "^3 || ^4 || ^5.0.0-next.42" } }, "sha512-oT1idMbgJKCCLWI4U7bdUYUZqxS78fiTGJuKGZ5u0NJNyuiUErDu3G7sXkYpfDwwspeid7gZSjrlJbTINEfErw=="],
 
     "lz-string": ["lz-string@1.5.0", "", { "bin": { "lz-string": "bin/bin.js" } }, "sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ=="],
 

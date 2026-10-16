@@ -6542,7 +6542,6 @@
     "esm-env": "^1.2.0",
     "json-schema-library": "catalog:",
     "libphonenumber-js": "^1.13.3",
-    "lucide-svelte": "0.503.0",
     "qrcode": "^1.5.4",
     "shiki": "^3.21.0"
   },
