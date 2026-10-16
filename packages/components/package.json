@@ -6530,6 +6530,7 @@
   "dependencies": {
     "@floating-ui/dom": "1.7.6",
     "@lostgradient/markdown": "workspace:*",
+    "@lucide/svelte": "catalog:",
     "@shikijs/engine-oniguruma": "^3.21.0",
     "@shikijs/langs": "catalog:",
     "@shikijs/themes": "catalog:",

@@ -16,7 +16,7 @@
 </script>
 
 <script lang="ts">
-  import { Lock } from 'lucide-svelte';
+  import { Lock } from '@lucide/svelte';
   import type { Attachment } from 'svelte/attachments';
 
   import { classNames } from '../../utilities/class-names.ts';

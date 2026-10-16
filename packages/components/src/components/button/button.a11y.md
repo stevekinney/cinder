@@ -51,6 +51,10 @@ The focus ring uses `outline: var(--cinder-ring-width) solid ButtonText` under `
 
 `soft` and `soft-danger` variants add `border: 1px solid ButtonBorder` under forced-colors so they remain visually distinct. Verify in Windows High Contrast emulator before shipping.
 
+## Toggle buttons
+
+A button that is a toggle carries `aria-pressed="true"` or `"false"` and keeps the same accessible name in both states. While pressed, every variant except `primary` and `danger` (already filled) takes the filled accent face with the accent contrast color, the look `SegmentedControl` uses for a pressed option in multiple mode. The focus ring keeps the page-coloured gap that filled faces get, and under forced colors the pressed face is `Highlight` on `HighlightText` with a `ButtonBorder` border. The state is not signaled by color alone for assistive technology: `aria-pressed` is what it reads. A disabled pressed button keeps its disabled look.
+
 ## Soft variant contrast
 
 `soft` uses `color-mix(in oklch, var(--cinder-accent-solid), transparent 88%)` as the background, and `soft-danger` uses `color-mix(in oklch, var(--cinder-status-danger-solid), transparent 88%)`. Contrast ratios must be verified mechanically before shipping: compute the resolved hex values via browser devtools Computed panel for both light and dark themes, then run through the [WebAIM contrast checker](https://webaim.org/resources/contrastchecker/). Record the numeric ratios in the PR description. If either theme falls below 4.5:1 for normal text, introduce per-theme `--cinder-accent-soft-background`/`--cinder-accent-soft-text` tokens with explicit values that meet the threshold. (Names follow the CIN-33 rules that `check:token-naming` enforces: no `color.*` namespace and no `bg`/`fg` abbreviations.)

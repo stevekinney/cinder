@@ -32,9 +32,9 @@
 </script>
 
 <script lang="ts">
-  import SignalHigh from 'lucide-svelte/icons/signal-high';
-  import SignalLow from 'lucide-svelte/icons/signal-low';
-  import SignalMedium from 'lucide-svelte/icons/signal-medium';
+  import SignalHigh from '@lucide/svelte/icons/signal-high';
+  import SignalLow from '@lucide/svelte/icons/signal-low';
+  import SignalMedium from '@lucide/svelte/icons/signal-medium';
 
   import { classNames } from '../../utilities/class-names.ts';
   import Badge from '../badge/badge.svelte';

@@ -20,12 +20,12 @@
 </script>
 
 <script lang="ts">
-  import Archive from 'lucide-svelte/icons/archive';
-  import CircleCheck from 'lucide-svelte/icons/circle-check';
-  import CircleX from 'lucide-svelte/icons/circle-x';
-  import Clock from 'lucide-svelte/icons/clock';
-  import TriangleAlert from 'lucide-svelte/icons/triangle-alert';
-  import Undo2 from 'lucide-svelte/icons/undo-2';
+  import Archive from '@lucide/svelte/icons/archive';
+  import CircleCheck from '@lucide/svelte/icons/circle-check';
+  import CircleX from '@lucide/svelte/icons/circle-x';
+  import Clock from '@lucide/svelte/icons/clock';
+  import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
+  import Undo2 from '@lucide/svelte/icons/undo-2';
 
   import { classNames } from '../../utilities/class-names.ts';
 

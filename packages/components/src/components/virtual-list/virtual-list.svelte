@@ -2500,7 +2500,6 @@
   data-cinder-dynamic-size={dynamicSize ? 'true' : undefined}
   data-cinder-orientation={isHorizontal ? 'horizontal' : undefined}
   data-cinder-window-scroll={windowScroll ? 'true' : undefined}
-  data-cinder-sticky-rows={stickyIndexes.length > 0 ? 'true' : undefined}
   style:--cinder-virtual-list-height={windowScroll ? undefined : height}
   onscroll={handleScroll}
   onwheel={handleWheel}

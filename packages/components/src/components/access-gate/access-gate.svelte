@@ -18,7 +18,7 @@
 </script>
 
 <script lang="ts">
-  import { Lock } from 'lucide-svelte';
+  import { Lock } from '@lucide/svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
 

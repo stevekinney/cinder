@@ -32,6 +32,11 @@ jobs:
       - name: Prepare mirror-verify scratch directories
         run: mkdir -p '${{ runner.temp }}/mirror-verify/tarballs' '${{ runner.temp }}/mirror-verify/consumer'
 
+      - name: check that @lostgradient/cinder exports its manifest version
+        working-directory: packages/components
+        run: |
+          bun -e 'const file = process.argv.at(-1); const { existsSync, readFileSync } = require("node:fs"); const { name, version } = JSON.parse(readFileSync("package.json", "utf8")); const remedy = "Run the mirror sync for this target, which rewrites the constant to the manifest version, or update the constant in the same commit as the version bump."; if (!existsSync(file)) { console.error(name + " declares " + file + " as its version constant, but it does not exist. " + remedy); process.exit(1); } const quote = String.fromCharCode(39); const shape = new RegExp("^[^]*?export const VERSION = " + quote + "([^" + quote + "]*)" + quote + ";" + String.fromCharCode(10) + "$"); const match = shape.exec(readFileSync(file, "utf8")); if (!match) { console.error(name + ": " + file + " is not shaped as export const VERSION = <version>; after an optional comment."); process.exit(1); } if (match[1] !== version) { console.error(name + " exports VERSION " + match[1] + " from " + file + ", but package.json is version " + version + ". " + remedy); process.exit(1); } console.log(name + " exports VERSION " + version + ", matching package.json");' src/tokens/runtime/package-version.generated.ts
+
       - name: build @lostgradient/markdown
         working-directory: packages/markdown
         run: |
@@ -156,11 +161,6 @@ jobs:
         working-directory: .
         run: |
           bunx --bun @arethetypeswrong/cli@0.18.5 ${{ runner.temp }}/mirror-verify/tarballs/lostgradient-editor.tgz --no-definitely-typed --format ascii --ignore-rules cjs-resolves-to-esm no-resolution
-
-      - name: typecheck @lostgradient/weft-ui
-        working-directory: packages/weft-ui
-        run: |
-          bun run typecheck
 
       - name: typecheck @lostgradient/testing
         working-directory: packages/testing

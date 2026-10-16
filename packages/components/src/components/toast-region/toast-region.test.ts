@@ -1184,7 +1184,7 @@ describe('toast variant icons', () => {
     });
   });
 
-  test('source contains no hand-rolled variant icon <svg> markup — variant icons are lucide-svelte components', async () => {
+  test('source contains no hand-rolled variant icon <svg> markup — variant icons are @lucide/svelte components', async () => {
     // The four hand-rolled Heroicons-style variant icons shared this exact opening
     // tag (no `aria-hidden` on the `<svg>` itself — that lived on the wrapper div).
     // The unrelated dismiss-button "X" icon is out of scope for this item and keeps
@@ -1193,7 +1193,7 @@ describe('toast variant icons', () => {
     const source = await Bun.file(new URL('./toast-region.svelte', import.meta.url)).text();
     expect(source).not.toContain('<svg viewBox="0 0 20 20" fill="currentColor">');
     expect(source).toMatch(
-      /import\s+CircleCheck\s+from\s+['"]lucide-svelte\/icons\/circle-check['"]/,
+      /import\s+CircleCheck\s+from\s+['"]@lucide\/svelte\/icons\/circle-check['"]/,
     );
   });
 

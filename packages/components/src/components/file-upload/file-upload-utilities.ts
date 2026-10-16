@@ -1,7 +1,7 @@
-import FileIcon from 'lucide-svelte/icons/file';
-import FileTextIcon from 'lucide-svelte/icons/file-text';
-import ImageIcon from 'lucide-svelte/icons/image';
-import TableIcon from 'lucide-svelte/icons/table';
+import FileIcon from '@lucide/svelte/icons/file';
+import FileTextIcon from '@lucide/svelte/icons/file-text';
+import ImageIcon from '@lucide/svelte/icons/image';
+import TableIcon from '@lucide/svelte/icons/table';
 
 import type { FileUploadEntry } from './file-upload.types.ts';
 

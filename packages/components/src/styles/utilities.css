@@ -51,7 +51,7 @@
   z-index: var(--cinder-z-focused-affordance);
 }
 
-/* Namespaced icon size utilities. lucide-svelte and most icon libraries default
+/* Namespaced icon size utilities. @lucide/svelte and most icon libraries default
  * to a 24px viewBox with no inline width/height. These classes force a
  * consistent size across Cinder components without colliding with consumer app
  * utilities. Apply directly to the icon element (e.g.

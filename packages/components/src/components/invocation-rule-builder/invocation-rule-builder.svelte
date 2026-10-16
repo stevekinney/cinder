@@ -28,7 +28,7 @@
 </script>
 
 <script lang="ts">
-  import Plus from 'lucide-svelte/icons/plus';
+  import Plus from '@lucide/svelte/icons/plus';
   import { tick } from 'svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import Combobox from '../combobox/combobox.svelte';

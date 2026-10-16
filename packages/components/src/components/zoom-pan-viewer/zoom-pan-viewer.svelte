@@ -13,9 +13,9 @@
 
 <script lang="ts">
   import { default as Button } from '../button/index.ts';
-  import Plus from 'lucide-svelte/icons/plus';
-  import Minus from 'lucide-svelte/icons/minus';
-  import RotateCcw from 'lucide-svelte/icons/rotate-ccw';
+  import Plus from '@lucide/svelte/icons/plus';
+  import Minus from '@lucide/svelte/icons/minus';
+  import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
   import { classNames } from '../../utilities/class-names.ts';
   import type { ZoomPanViewerProps } from './zoom-pan-viewer.types.ts';
   let {

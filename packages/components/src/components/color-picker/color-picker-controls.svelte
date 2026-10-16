@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Copy from 'lucide-svelte/icons/copy';
+  import Copy from '@lucide/svelte/icons/copy';
   import { default as CopyButton } from '../copy-button/index.ts';
 
   import { isOpaqueForFormat, type ColorOutputFormat } from '../../utilities/color-format.ts';

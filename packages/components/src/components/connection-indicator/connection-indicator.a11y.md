@@ -26,7 +26,7 @@ The root element carries `role="status"`, `aria-live="polite"`, and `aria-atomic
 
 Status is never conveyed by color alone (WCAG 1.4.1):
 
-- Every state renders its own lucide-svelte icon (marked `aria-hidden="true"` — it is decorative; the label text carries the meaning) alongside a visible text label.
+- Every state renders its own @lucide/svelte icon (marked `aria-hidden="true"` — it is decorative; the label text carries the meaning) alongside a visible text label.
 - `live` additionally renders a small pulsing dot span. The dot is `aria-hidden="true"`; it is a supplementary visual cue, not an independent source of meaning.
 - `polling` is deliberately quieter than `live`: no motion, a lighter (`--cinder-font-normal`) label weight, and its own icon (`RefreshCcwDot` vs. `live`'s `Wifi`) — so it reads as distinct even in grayscale or forced-colors rendering where the color difference between `polling` and other muted states disappears.
 
