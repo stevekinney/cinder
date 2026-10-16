@@ -6,4 +6,4 @@
  * the published version when it composes the package.
  * Regenerate: bun run --filter=@lostgradient/cinder tokens:generate
  */
-export const VERSION = '0.27.1';
+export const VERSION = '0.28.1';
