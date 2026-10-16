@@ -394,6 +394,12 @@ export const PUBLISHED_SOURCE_FILES_GLOBS: readonly string[] = [
   // the JSON exactly as the highlighters and `base-guard` sources are.
   'src/tokens/**/*.json',
   'src/tokens/registry.generated.ts',
+  // The token runtime (`./tokens/runtime`) resolves its `browser`/`svelte`/`import`
+  // conditions to source the same way, and its generated Ajv validators are `.js` beside it.
+  'src/tokens/runtime/**/*.ts',
+  'src/tokens/runtime/**/*.js',
+  '!src/tokens/runtime/**/*.test.ts',
+  '!src/tokens/runtime/**/*.test-support.ts',
   'src/styles/**/*.css',
   // Type stubs for the reserved `./styles*` subpaths. The `types` condition
   // in each export entry points at `./src/styles/<name>.css.d.ts`; without

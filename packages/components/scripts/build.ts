@@ -297,6 +297,12 @@ const staticSubpathEntrypoints = [
   // static subpath. Without it those conditions resolve to a file that was
   // never built.
   `${sourceRoot}/tokens/registry.generated.ts`,
+  // The token runtime (`@lostgradient/cinder/tokens/runtime`): its `node` and `default`
+  // conditions point into dist the same way, so it is a static subpath entrypoint too. It is
+  // listed only once the synced source carries it, so a tree without it still builds.
+  ...(existsSync(`${sourceRoot}/tokens/runtime/index.ts`)
+    ? [`${sourceRoot}/tokens/runtime/index.ts`]
+    : []),
   `${sourceRoot}/components/icons/index.ts`,
   `${sourceRoot}/highlighters/shiki/index.ts`,
   `${sourceRoot}/highlighters/shiki/default.ts`,
@@ -900,6 +906,13 @@ const expectedPaths: string[] = [
   `${distributionDirectory}/tokens/registry.generated.js`,
   `${distributionDirectory}/tokens/registry.generated.d.ts`,
   `${distributionDirectory}/server/tokens/registry.generated.js`,
+  ...(existsSync(`${sourceRoot}/tokens/runtime/index.ts`)
+    ? [
+        `${distributionDirectory}/tokens/runtime/index.js`,
+        `${distributionDirectory}/tokens/runtime/index.d.ts`,
+        `${distributionDirectory}/server/tokens/runtime/index.js`,
+      ]
+    : []),
   `${distributionDirectory}/components/icons/index.js`,
   `${distributionDirectory}/components/icons/index.d.ts`,
   `${distributionDirectory}/server/components/icons/index.js`,
