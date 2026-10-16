@@ -1,5 +1,40 @@
 # @lostgradient/cinder
 
+## 0.28.0
+
+### Minor Changes
+
+- [#1611](https://github.com/stevekinney/cinder/pull/1611) [`baba4cf`](https://github.com/stevekinney/cinder/commit/baba4cf10e6e6dea4c58e8485575a3e12d069f86) Thanks [@lost-gradient-mirror-sync](https://github.com/apps/lost-gradient-mirror-sync)! - `CodeBlock` no longer bundles Shiki's full grammar and theme registries. It used to fall back to a lazily imported default highlighter, and that `import()` made every consumer's bundler emit all of Shiki's grammars and themes, even when the consumer passed its own `highlighter`. `CodeBlock` now imports no highlighter: it highlights with its `highlighter` prop, then with a highlighter an ancestor publishes through the new `setCodeHighlighterContext(highlighter)`, and otherwise renders unhighlighted.
+
+  To keep automatic highlighting of every language Shiki ships, publish the full-registry highlighter, now exported as `fullShikiHighlighter`, near your application's root with `setCodeHighlighterContext(fullShikiHighlighter())`. An application that knows its languages should build a `shikiHighlighter` with explicit `languageLoaders` and `themeLoaders` instead, so its bundle carries only those grammars and themes. `ApprovalCard` and `RunStepTimeline` highlight through the context highlighter; the JSON Schema editor's JSON view highlights with its own JSON-only highlighter.
+
+- [#1615](https://github.com/stevekinney/cinder/pull/1615) [`2c0babf`](https://github.com/stevekinney/cinder/commit/2c0babf725e38b8bf35ba1b7fa3e6559834b1f88) Thanks [@lost-gradient-mirror-sync](https://github.com/apps/lost-gradient-mirror-sync)! - Add the `@lostgradient/cinder/tokens/runtime` subpath. It holds the pure token kernel that the Cinder generator and the theme builder share, so generated CSS and in-browser evaluation can no longer drift apart. It runs in memory and fetches nothing.
+
+  - `evaluateTheme` and `evaluateThemeProperties` validate a DTCG 2025.10 theme and evaluate all six light/dark and motion contexts. They return one public `--cinder-*` property map per context, revision-tagged diagnostics, and evaluated provenance (winning source, effective type origin, dependencies and dependents). `validateThemeSources` runs the same validation without evaluating.
+  - Browser validation uses standalone, eval-free DTCG schema validators.
+  - `CINDER_BASE` carries the shipped resolver and documents, the package version and a source digest. `AUTHORING_CATALOGUE` describes every public token's usage profile and its edit, CSS-export and DTCG-portability disposition.
+  - A WCAG contrast module (relative luminance, alpha compositing and the token pairing table) lets builder checks reuse Cinder's own contrast rules.
+  - `renderThemeStylesheet` emits a deployment stylesheet in a `cinder-theme` layer.
+
+  Other changes:
+
+  - The resolved token JSON now carries value-neutral `com.lostgradient.cinder` metadata: `scale` membership on the spacing and radius members, and `palette` family, role and anchor on color roles. No token value changes, and `tokens-base.css` is unchanged.
+  - Colors authored in Display P3 and other CSS Color 4 spaces now serialize as `color(<space> …)` instead of failing.
+  - `evaluateTheme` no longer crashes on a layer that `$extends` a group it also restates.
+  - `StylesheetError` now reports `name` as `'StylesheetError'`.
+  - The color picker's copy-format buttons now meet the 24 px minimum target size (WCAG 2.5.8).
+
+### Patch Changes
+
+- [#1615](https://github.com/stevekinney/cinder/pull/1615) [`2c0babf`](https://github.com/stevekinney/cinder/commit/2c0babf725e38b8bf35ba1b7fa3e6559834b1f88) Thanks [@lost-gradient-mirror-sync](https://github.com/apps/lost-gradient-mirror-sync)! - `VirtualList` with `stickyItems` no longer scrolls itself back a row, and no longer fights a scroll it did not make after an arrow key.
+
+  When the active sticky row's index left the rendered window, the row pinned and left flow, and the browser's native scroll anchoring pulled the scroll offset back by the row's size. A keyboard step that had just landed was undone, so a held arrow key dropped rows. A list that scrolls its own container now sets `overflow-anchor: none`, not only under `dynamicSize`, because it positions its rows from that container's scroll offset itself. A `windowScroll` list with `stickyItems` opts out of the page's anchoring for the same reason, as a `dynamicSize` list already did. A `windowScroll` list without sticky rows leaves the page's anchoring as it was.
+
+  A keyboard workaround for that jump is gone as well. It re-issued an arrow press whenever the position settled back where the press began, so a consumer setting `scrollTop`, or a fragment link, that returned the list to that offset within a few frames was overwritten. An instant write to fixed-height rows (no `smoothScroll`, or reduced motion) also no longer keeps its destination pending once it lands, so a press right after another scroll steps from the live position instead of a stale row.
+
+- Updated dependencies [[`2c0babf`](https://github.com/stevekinney/cinder/commit/2c0babf725e38b8bf35ba1b7fa3e6559834b1f88)]:
+  - @lostgradient/markdown@0.6.2
+
 ## 0.27.1
 
 ### Patch Changes
