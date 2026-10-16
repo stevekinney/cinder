@@ -1,5 +1,25 @@
 # @lostgradient/cinder
 
+## 0.29.0
+
+### Minor Changes
+
+- [#1623](https://github.com/stevekinney/cinder/pull/1623) [`7904900`](https://github.com/stevekinney/cinder/commit/7904900c2b99e99f5b9686582b9c5a9a8871bec0) Thanks [@lost-gradient-mirror-sync](https://github.com/apps/lost-gradient-mirror-sync)! - A `Button` with `aria-pressed="true"` now shows that it is on.
+
+  Until now a toggle button that was pressed looked the same as one that was not, so the state reached assistive technology and nobody else. A pressed `Button` takes the filled accent face that `SegmentedControl` gives a pressed option, with the page-coloured gap before the focus ring that filled faces get, a hover face, and `Highlight` on `HighlightText` under forced colors. `primary` and `danger` are already filled and are unchanged, and a disabled pressed button keeps its disabled look.
+
+  The style applies to every `Button` that carries `aria-pressed="true"`, including your own. Cinder's own `KanbanBoard` sets it on a column's reorder handle while that column is lifted, so a lifted column's handle now takes the filled face. A `Button` with `aria-pressed="false"` or without the attribute is unchanged.
+
+- [#1623](https://github.com/stevekinney/cinder/pull/1623) [`7904900`](https://github.com/stevekinney/cinder/commit/7904900c2b99e99f5b9686582b9c5a9a8871bec0) Thanks [@lost-gradient-mirror-sync](https://github.com/apps/lost-gradient-mirror-sync)! - Cinder's icons now come from `@lucide/svelte`, which replaces Lucide's deprecated Svelte package as a dependency.
+
+  `@lucide/svelte` icons are Svelte 5 function components, so `IconComponent` is now `Component<IconProps>` instead of the legacy class-component `ComponentType`, and `IconProps` is `@lucide/svelte`'s `LucideProps`: the size, color, stroke width, and SVG attributes every icon accepts. Every icon keeps its export name. `MoreHorizontal` and `Trash2` render Lucide's renamed `ellipsis` and `trash` icons, whose artwork is unchanged. Lucide redrew three icons Cinder renders: `circle-check` (in `Badge` and `ToastRegion`), `calendar-days` (in `DatePicker` and `DateRangeField`), and the exported `CircleDot`. Every icon now also carries a `lucide-icon` class and sets `aria-hidden="true"` unless it is given an `aria-*` attribute, a `role`, a `title`, or children.
+
+### Patch Changes
+
+- [#1623](https://github.com/stevekinney/cinder/pull/1623) [`7904900`](https://github.com/stevekinney/cinder/commit/7904900c2b99e99f5b9686582b9c5a9a8871bec0) Thanks [@lost-gradient-mirror-sync](https://github.com/apps/lost-gradient-mirror-sync)! - `VirtualList` no longer draws its rows a frame late under reduced motion, and a `windowScroll` list with `stickyItems` keeps the page's native scroll anchoring again.
+
+  Reduced motion shortens every transition to 0.01ms without narrowing which properties transition, so the list's window offset, pinned row offset, and spacer size each held their previous value for a frame after every scroll. Each time the window advanced, the rows painted one row off for that frame. When a sticky header pinned, it left flow at once while the window offset lagged, so the rows shifted up by the header's height and the page's scroll anchoring scrolled back to compensate. The list's own geometry no longer transitions, so neither happens, and the `windowScroll` opt-out from page anchoring for sticky rows is gone.
+
 ## 0.28.1
 
 ### Patch Changes

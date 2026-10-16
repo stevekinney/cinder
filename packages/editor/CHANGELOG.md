@@ -1,5 +1,16 @@
 # @lostgradient/editor
 
+## 0.18.0
+
+### Minor Changes
+
+- [#1330](https://github.com/stevekinney/cinder/pull/1330) [`b86a1c9`](https://github.com/stevekinney/cinder/commit/b86a1c97d384b4657aefb85705038696bd3ee314) Thanks [@stevekinney](https://github.com/stevekinney)! - Widen internal peer ranges to follow the coordinated release.
+
+### Patch Changes
+
+- Updated dependencies [[`7904900`](https://github.com/stevekinney/cinder/commit/7904900c2b99e99f5b9686582b9c5a9a8871bec0), [`7904900`](https://github.com/stevekinney/cinder/commit/7904900c2b99e99f5b9686582b9c5a9a8871bec0), [`7904900`](https://github.com/stevekinney/cinder/commit/7904900c2b99e99f5b9686582b9c5a9a8871bec0)]:
+  - @lostgradient/cinder@0.29.0
+
 ## 0.17.0
 
 ### Minor Changes
