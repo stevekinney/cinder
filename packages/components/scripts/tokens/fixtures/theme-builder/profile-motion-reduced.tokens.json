@@ -1,0 +1,6 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "motion": {
+    "fast": { "$value": { "value": 0, "unit": "ms" } }
+  }
+}

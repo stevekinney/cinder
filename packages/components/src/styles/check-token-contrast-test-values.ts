@@ -1,13 +1,9 @@
 import * as fixture from './check-token-contrast-test-fixtures.ts';
 
-export type Lab = fixture.Lab;
-export type OklchColor = fixture.OklchColor;
 export type TokenArms = fixture.TokenArms;
 export type TranslucentTokenArms = fixture.TranslucentTokenArms;
 
 export const {
-  AA_TEXT,
-  NON_TEXT,
   accent,
   accentContrast,
   accentText,
@@ -18,9 +14,6 @@ export const {
   borderMuted,
   borderStrong,
   chartSeries,
-  ciede2000,
-  compositeOver,
-  contrastRatio,
   css,
   cssPropertyToPath,
   danger,
@@ -31,7 +24,6 @@ export const {
   dangerFg,
   dangerHover,
   deriveFromAccent,
-  deriveStatusTier,
   info,
   infoActive,
   infoBg,
@@ -39,10 +31,7 @@ export const {
   infoContrast,
   infoFg,
   infoHover,
-  isInSrgbGamut,
-  mixOklch,
   neutralBg,
-  oklchToLinearSrgb,
   opacityDisabled,
   opacityFaint,
   opacityMuted,
@@ -54,7 +43,6 @@ export const {
   readResolvedValue,
   readTokenValue,
   readTranslucentToken,
-  simulateCvd,
   success,
   successActive,
   successBg,
@@ -66,7 +54,6 @@ export const {
   surfaceInset,
   surfaceRaised,
   text,
-  toCieLab,
   translucentContrastOn,
   warning,
   warningActive,
@@ -75,5 +62,4 @@ export const {
   warningContrast,
   warningFg,
   warningHover,
-  wcagLuminance,
 } = fixture;

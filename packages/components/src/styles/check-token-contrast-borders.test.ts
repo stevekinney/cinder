@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'bun:test';
-import type { OklchColor } from './color-contrast-utilities.ts';
+import type { OklchColor } from '../tokens/runtime/contrast/index.ts';
 import type { TranslucentColor } from './token-contrast-test-readers.ts';
 
+import {
+  AA_TEXT,
+  NON_TEXT,
+  contrastRatio,
+  wcagLuminance,
+} from '../tokens/runtime/contrast/index.ts';
 import * as values from './check-token-contrast-test-values.ts';
 
 const {
-  AA_TEXT,
-  NON_TEXT,
   accent,
   bg,
   border,
@@ -14,7 +18,6 @@ const {
   borderInk,
   borderMuted,
   borderStrong,
-  contrastRatio,
   css,
   polarityInk,
   readAllTokenValues,
@@ -23,7 +26,6 @@ const {
   surfaceInset,
   surfaceRaised,
   translucentContrastOn,
-  wcagLuminance,
 } = values;
 describe('focus ring contrast (WCAG 1.4.11)', () => {
   // --cinder-ring-color light arm = oklch(from accent 0.55 0.16 h); dark arm = 0.7 0.14 h.

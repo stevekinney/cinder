@@ -1,0 +1,13 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "alpha": {
+    "none": {
+      "$type": "color",
+      "$value": { "colorSpace": "oklch", "components": [0.5, 0.1, 255], "alpha": "none" }
+    },
+    "out-of-range": {
+      "$type": "color",
+      "$value": { "colorSpace": "oklch", "components": [0.5, 0.1, 255], "alpha": 1.5 }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "cycle": {
+    "$type": "color",
+    "a": { "$value": "{cycle.b}" },
+    "b": { "$value": "{cycle.a}" }
+  }
+}

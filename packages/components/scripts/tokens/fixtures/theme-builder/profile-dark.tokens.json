@@ -1,0 +1,10 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "palette": {
+    "$type": "color",
+    "ink": { "$value": { "colorSpace": "srgb", "components": [0.95, 0.95, 0.95] } },
+    "paper": { "$value": { "colorSpace": "srgb", "components": [0.1, 0.1, 0.1] } },
+    "accent": { "$value": { "colorSpace": "srgb", "components": [0.2, 0.2, 0.8] } },
+    "halo": { "$value": { "colorSpace": "srgb", "components": [0.4, 0.4, 0.4] } }
+  }
+}

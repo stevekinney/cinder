@@ -92,7 +92,7 @@ Fourteen sites are a real area rather than a hairline. All fourteen now carry th
 
 Four of those do not reach the tier through `background` at all, which is how two earlier passes of this document missed them: `color-field` uses `background-image`, `resizable-panels` uses `color`, and `rating` and `status-dot` hop through a component token (`--_cinder-rating-empty`, `--cinder-status-dot-color`). `status-dot` borrows a border tier because every other status maps to a `*-solid` and neutral has none.
 
-This list is no longer prose that has to be re-derived. `src/styles/border-tier-non-border-uses.test.ts` enumerates every use of a structural tier outside a `border`/`outline` declaration — in `.css` and in `.svelte` `<style>` blocks, across `components/cinder`, `components/chat`, `components/editor`, and `packages/playground` — requires each to be classified as a hairline, area, mix, occlusion, or alias, and requires every `area` to be named in this document. An unclassified site fails the suite.
+This list is no longer prose that has to be re-derived. `src/styles/border-tier-non-border-uses.test.ts` enumerates every use of a structural tier outside a `border`/`outline` declaration — in `.css` and in `.svelte` `<style>` blocks, across `components/cinder`, `components/chat`, `components/editor`, and `applications/playground` — requires each to be classified as a hairline, area, mix, occlusion, or alias, and requires every `area` to be named in this document. An unclassified site fails the suite.
 
 It scans the token corpus too, for the case no stylesheet sweep can reach: a component-facing token whose `$value` or `cssRecipe` resolves to a tier, which arrives through the generated `tokens-base.css` rather than through any file a grep would find. That is how the Toggle hover track was missed here until the guard went looking — `toggle.track.off-hover-resting` aliases `border.control` in its light arm, exactly as the resting track aliases `border.muted`.
 
@@ -323,7 +323,7 @@ Chip's `brandColor` mix pulls `border.control` in at 65%. The tier is now 48% al
 
 ### Playground placeholder hatching — intentional
 
-Ten `packages/playground/src/examples/card/*.example.svelte` files and `examples/aspect-ratio/embedded-media.example.svelte` build a diagonal placeholder hatch out of `color-mix(in oklch, var(--cinder-border-muted), transparent 70%)`. Double dilution makes the hatch fainter than before (19% × 30% ≈ 6% alpha).
+Ten `applications/playground/src/examples/card/*.example.svelte` files and `examples/aspect-ratio/embedded-media.example.svelte` build a diagonal placeholder hatch out of `color-mix(in oklch, var(--cinder-border-muted), transparent 70%)`. Double dilution makes the hatch fainter than before (19% × 30% ≈ 6% alpha).
 
 Left as authored. These are the grey "your content goes here" boxes inside documentation examples — a fainter hatch is if anything a better placeholder, they are not part of the shipped component surface, and re-tuning eleven example files to chase an intentional dilution would be noise in a token PR. Flagged here so the next person who looks at those examples knows the value moved and why.
 

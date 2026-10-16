@@ -65,6 +65,16 @@ test('format controls keep their intended styling after copy-button styles load'
   expect(colorPickerCss).toContain('.cinder-color-picker .cinder-color-picker__format');
 });
 
+test('format controls are at least 24 CSS px tall (WCAG 2.5.8 target size)', () => {
+  let minimum: string | undefined;
+  parse(colorPickerCss).walkRules('.cinder-color-picker .cinder-color-picker__format', (rule) => {
+    rule.walkDecls('min-block-size', (declaration) => {
+      minimum = declaration.value;
+    });
+  });
+  expect(minimum).toBe('24px');
+});
+
 test('composed color controls aggregate their dependency styles for à-la-carte consumers', () => {
   expect(colorFieldCss).toContain("@import '../button/button.css'");
   expect(colorFieldCss).toContain("@import '../color-picker/color-picker.css'");

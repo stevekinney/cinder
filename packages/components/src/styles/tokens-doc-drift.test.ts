@@ -21,15 +21,15 @@ import { join } from 'node:path';
 import { describe, expect, test } from 'bun:test';
 
 import { loadCorpus } from '../../scripts/tokens/generate.ts';
+import { readRootTokenValues } from '../test/token-introspection.ts';
 import {
   buildBaseDocuments,
   buildBaseIndex,
   buildTokenRegistryFromIndexes,
   themeAwarePaths,
-} from '../../scripts/tokens/registry.ts';
-import { createValueResolver } from '../../scripts/tokens/resolve.ts';
-import { serializeEntryValue } from '../../scripts/tokens/value-entry.ts';
-import { readRootTokenValues } from '../test/token-introspection.ts';
+} from '../tokens/runtime/registry.ts';
+import { createValueResolver } from '../tokens/runtime/resolve.ts';
+import { serializeEntryValue } from '../tokens/runtime/value-entry.ts';
 
 const PACKAGE_ROOT = join(import.meta.dir, '..', '..');
 const TOKENS_CSS = join(PACKAGE_ROOT, 'src', 'styles', 'tokens-base.css');

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/resolver.json",
+  "version": "2025.10",
+  "sets": {
+    "foundation": { "sources": [{ "$ref": "../profile-base.tokens.json" }] }
+  },
+  "modifiers": {},
+  "resolutionOrder": [{ "$ref": "#/sets/missing" }]
+}

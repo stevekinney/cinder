@@ -252,6 +252,8 @@ Dark mode is the headline use of the token system, but the same mechanism themes
 }
 ```
 
+To author a complete theme instead of hand-writing overrides, use the [theme builder](#the-theme-builder), which edits the whole public registry and exports a stylesheet that does this for every context.
+
 ### No migration-alias namespace
 
 Cinder deliberately does not ship a second namespace of legacy, product-specific, or migration-only token aliases. The documented `--cinder-*` design tokens are the contract. A permanent alias layer obscures which values are live, lets stale mappings survive indefinitely, and turns another product's historical vocabulary into Cinder API.
@@ -294,6 +296,128 @@ When you fix debt (replace a raw color with a token, rename a stale reference), 
 ### Proving it at paint time
 
 The static guards catch leaks in source. A leak that only manifests when styles cascade is caught by the [`alternate-theme.playwright.ts`](../../../scripts/browser-fixtures/tests/alternate-theme.playwright.ts) browser fixture: it loads a real component, overrides documented `:root` tokens to deliberately distinct values, and asserts the component's _computed_ style changes. If a component hard-codes a value instead of consuming the token, the override is inert, the computed style doesn't move, and the test fails. Add a case here whenever you migrate a component family to tokens, so its themeability is locked in.
+
+## The theme builder
+
+The theme builder is the `/theme-builder` route of the playground application (`applications/playground`, package `@lostgradient/playground`). From the repository root, `bun run --filter=@lostgradient/playground dev` serves it, preferring port 5555; the application's static export (`bun run --filter=@lostgradient/playground build`) includes the route as well. The builder belongs to that private application. Cinder itself ships no builder component.
+
+In the builder you browse every public token, edit it for the context you are previewing (light or dark crossed with default, reduced, or forced reduced motion), and watch Cinder components restyle in an isolated preview. The registry it edits, and how each token may be edited, is described in [Editing the full registry in the theme builder](./tokens.md#editing-the-full-registry-in-the-theme-builder). Your work is a draft saved in the browser (the toolbar shows Saved locally or Unsaved locally), edits are undoable, and a Checks pane reports on the current revision. The interaction and layout contract is [`theme-builder.md`](./theme-builder.md).
+
+### Export formats
+
+Export opens a dialog that takes one snapshot of the current revision, so every file in it describes the same revision. It offers five artifacts:
+
+| Artifact                 | File name                                                                    | What it is                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------ | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cinder Theme v1 source   | `<name>-<id>.cinder-theme.json`                                              | The lossless envelope (`format: "com.lostgradient.cinder.theme"`, `version: 1`): the embedded Cinder base, your overrides in five trees (`shared`, `light`, `dark`, `reduced`, `forcedReduced`), and per-context CSS-only edits, aliases intact. It is a Cinder format, not a standard DTCG document. Import it to get the theme back exactly. |
+| Deployment CSS           | `<name>-<id>.cinder-theme.css`                                               | A standalone stylesheet in the `cinder-theme` cascade layer covering all six contexts. It holds no reset and no component rules.                                                                                                                                                                                                               |
+| Portable DTCG (complete) | `<name>-<light\|dark>-<default\|reduced\|forced-reduced-motion>.tokens.json` | Six [DTCG 2025.10](https://www.designtokens.org/tr/2025.10/format/) token documents, one per concrete context. Cinder-only metadata (CSS bindings, trusted CSS recipes, usage categories) is removed. Blocked when any token has no faithful DTCG form.                                                                                        |
+| Portable subset          | the same six files plus `<name>-<id>.portability-report.json`                | The same documents without the tokens that have no faithful DTCG form. The report lists each omitted token and the reason, and nothing stands in for an omitted value.                                                                                                                                                                         |
+| Validation report        | `<name>-<id>.validation-report.json`                                         | The exact Cinder base (package version and source digest) and revision checked, a findings summary, and the limitations that remain. It contains no timestamp.                                                                                                                                                                                 |
+
+`<name>` is a slug of the theme's name and `<id>` is the first eight characters of its id.
+
+Import ends in exactly one of four outcomes before it can touch your draft: a Cinder Theme v1 envelope, a DTCG token document (laid over the open theme's shared overrides), an unsupported profile, or invalid input. A standalone resolver or another token dialect is recognized and reported as unsupported rather than guessed at; the builder never converts it and never fetches anything it references. A failed import leaves your draft unchanged.
+
+These gates apply to the exports that need a checked theme:
+
+- An invalid source blocks the CSS and both portable exports. The source envelope stays available and is labeled Unvalidated.
+- A theme written against a different Cinder base than the build ships cannot be evaluated, so only its source can leave.
+- Accessibility errors block the CSS and both portable exports until you fix them in Checks.
+- Needs review and Advisory findings hold those exports until you acknowledge them in the dialog. Acknowledging does not turn a finding into a pass, and the validation report keeps listing it.
+
+### Example: export a theme and consume its CSS
+
+This example is checked against the consumer fixture in [`fixtures/tokens-consumer/`](../fixtures/tokens-consumer/). The fixture loads a saved Cinder Theme v1 envelope, produces the deployment CSS through the public `@lostgradient/cinder/tokens/runtime` subpath, and compares the computed styles of a clean page that loads only Cinder's token stylesheet and the exported file against the builder's preview.
+
+1. In the builder, make your edits, open Export, and download the Deployment CSS. Also download the Cinder Theme v1 source if you want to keep editing later.
+2. Load the file in your application after Cinder's styles:
+
+```html
+<style>
+  @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+  @import url('/tokens.css') layer(cinder.tokens);
+</style>
+<link rel="stylesheet" href="/theme.css" />
+```
+
+The `<style>` block is the fixture's stand-in for Cinder's own styles, which `@lostgradient/cinder` loads into the `cinder.tokens` layer; `/theme.css` is the exported file. In an application that imports Cinder through a bundler, import the exported `.css` file after the module that imports `@lostgradient/cinder`.
+
+The exported file begins with its own layer declaration, so it does not depend on the order your tooling parses stylesheets in:
+
+```css
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities, cinder-theme;
+
+@layer cinder-theme {
+  :root {
+    /* ... every public --cinder-* property ... */
+  }
+}
+```
+
+That order places `cinder-theme` after every Cinder layer, so its custom properties win over `cinder.tokens` whichever file is parsed first. Your own unlayered CSS still beats both, because unlayered rules outrank layered ones. The file sets `color-scheme: light dark` on `:root` and covers `[data-theme='light']` and `[data-theme='dark']` on the root or any descendant (including a portal container), the `prefers-reduced-motion` media query, and `data-reduced-motion="on"` for forced reduced motion. Fonts are exported as `font-family` stacks and are never fetched or bundled, so the rendered result depends on the fonts the browser has.
+
+To produce the same file without the UI, for example in a build script, run the saved envelope through the runtime, the way the fixture's `check.mjs` does:
+
+```ts
+import { readFileSync, writeFileSync } from 'node:fs';
+
+import {
+  CINDER_BASE,
+  applyCssOnlyOverrides,
+  buildThemeSources,
+  evaluateThemeProperties,
+  renderThemeStylesheet,
+  validateThemeSources,
+} from '@lostgradient/cinder/tokens/runtime';
+
+const envelope = JSON.parse(readFileSync('brand.cinder-theme.json', 'utf8'));
+if (envelope.base.sourceDigest !== CINDER_BASE.sourceDigest) {
+  throw new Error('The envelope was written against a different Cinder base.');
+}
+
+const sources = buildThemeSources(envelope, 1);
+const { diagnostics } = validateThemeSources(sources);
+if (diagnostics.length > 0) throw new Error(JSON.stringify(diagnostics.slice(0, 3)));
+
+const evaluation = evaluateThemeProperties(sources);
+if (!evaluation.ok) throw new Error('The theme does not evaluate.');
+
+const maps = Object.fromEntries(
+  evaluation.contexts.map(({ id }) => [
+    id,
+    applyCssOnlyOverrides(evaluation.properties[id], envelope.cssOverrides, id),
+  ]),
+);
+writeFileSync('brand.css', renderThemeStylesheet(maps, { identity: envelope.name }));
+```
+
+This path skips the builder's export gates. It validates and evaluates the source but runs no accessibility checks, so run them in the builder or treat the result as unchecked. `bun run --filter=@lostgradient/cinder validate:consumer` runs the fixture's browserless check and its Chromium computed-style comparison; the browserless half also runs in `bun run test`.
+
+### What the accessibility checks cover
+
+The Checks pane and the validation report give scoped results for one revision of one theme across its six contexts. They are evidence about specific color pairings and Cinder's own guardrails. They do not certify a theme, a component, or an application as conforming to WCAG, and the builder never describes a theme as "Accessible" or "WCAG certified". The report states this itself.
+
+What the builder measures from tokens, in every context:
+
+- **Source validity.** The token runtime validates the source against DTCG 2025.10 and Cinder's semantic rules. An invalid source is reported first, and the other checks produce no results for that revision.
+- **Text contrast, WCAG 2.2 1.4.3.** The unrounded contrast ratio of each text pairing over its composited background must be at least 4.5:1. A pairing is held to the 3:1 large-text threshold only when its rendered size and weight are known, and no pairing records one, so every text pairing is held to 4.5:1.
+- **Non-text contrast, WCAG 2.2 1.4.11.** Control boundaries, focus indicators, and essential graphics must reach 3:1 against the adjacent color. Purely decorative separators are classified apart and are not held to 3:1. A disabled foreground has its ratio recorded with no threshold, because WCAG exempts inactive components.
+
+A failed text or non-text measurement is an **accessibility error**, and it blocks the CSS and portable exports. Checks can propose a deterministic fix for a failing foreground color. The fix changes only that color, shows every value it would change before you apply it, and applies as one undoable step.
+
+What is advisory or needs review:
+
+- **Needs review.** A pairing that reaches a gradient, an image, an unknown or translucent background with no known backdrop, a missing value, or color syntax the evaluator does not support cannot be reduced to a ratio. It is reported as Needs review with no ratio. It blocks a passing report, and you can acknowledge it to release the exports.
+- **Advisory.** Findings from Cinder's stricter guardrails, which are not WCAG requirements: numeric values outside their usage-profile range (for example opacity outside 0 to 1); perceptible floors for muted, faint, and status borders; consistent and ordered border tiers; chart-series distinguishability (chroma, CIEDE2000 distance, and lightness separation, which is a diagnostic and not a color-vision-deficiency proof); polarity ink contrast; APCA lightness contrast against Lc 60; and a note when a color lies outside sRGB and was clamped to be measured. You can acknowledge them, and they never change a result.
+
+What the report does not cover, and says so in its limitations:
+
+- Rendered criteria are not measured from your theme. Text resize (1.4.4), reflow (1.4.10), text spacing (1.4.12), focus visibility and focus not obscured (2.4.7, 2.4.11), target size (2.5.8), forced colors, and reduced motion are checked by the playground's browser suite (`applications/playground/tests/theme-builder-accessibility.playwright.ts`) against the builder and its reference scenes, not against your exported stylesheet. The builder's rule ledger lists them so the gap is visible.
+- Keyboard operation end to end, error wording and labels (3.3.1, 3.3.2), and name, role, and value with assistive technology (4.1.2) need a person. Automated checks cover only part of them. The human accessibility review of the builder's own interface is recorded separately in [`theme-builder.a11y.md`](./theme-builder.a11y.md).
+- Only the listed reference scenes and pairings are covered. Passing them does not prove every component combination in your application.
+- Font availability and glyph metrics depend on the environment, and CSS parity is promised only against the exact Cinder base named in the report and the fonts available to the browser.
+- Portable DTCG documents omit Cinder-only metadata, and the Cinder Theme v1 envelope is not a standard DTCG document.
 
 [mdn-light-dark]: https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/light-dark
 [mdn-color-scheme]: https://developer.mozilla.org/en-US/docs/Web/CSS/color-scheme

@@ -169,6 +169,14 @@
       "import": "./src/tokens/resolved/light.json",
       "default": "./src/tokens/resolved/light.json"
     },
+    "./tokens/runtime": {
+      "types": "./dist/tokens/runtime/index.d.ts",
+      "browser": "./src/tokens/runtime/index.ts",
+      "svelte": "./src/tokens/runtime/index.ts",
+      "node": "./dist/server/tokens/runtime/index.js",
+      "import": "./src/tokens/runtime/index.ts",
+      "default": "./dist/tokens/runtime/index.js"
+    },
     "./tokens/registry": {
       "types": "./dist/tokens/registry.generated.d.ts",
       "browser": "./src/tokens/registry.generated.ts",

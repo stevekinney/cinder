@@ -1,0 +1,147 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "palette": {
+    "$type": "color",
+    "ink": {
+      "$value": { "colorSpace": "srgb", "components": [0, 0, 0] },
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-palette-ink",
+          "public": true,
+          "category": "color"
+        }
+      }
+    },
+    "paper": {
+      "$value": { "colorSpace": "srgb", "components": [1, 1, 1] },
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-palette-paper",
+          "public": true,
+          "category": "color"
+        }
+      }
+    },
+    "accent": {
+      "$value": "{palette.paper}",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-palette-accent",
+          "public": true,
+          "category": "color"
+        }
+      }
+    },
+    "accent-strong": {
+      "$value": "{palette.accent}",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-palette-accent-strong",
+          "public": true,
+          "category": "color"
+        }
+      }
+    },
+    "halo": {
+      "$type": "color",
+      "$value": { "colorSpace": "srgb", "components": [0.5, 0.5, 0.5] },
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-palette-halo",
+          "public": true,
+          "category": "color",
+          "cssRecipe": "color-mix(in oklch, var(--cinder-palette-ink), transparent 50%)"
+        }
+      }
+    }
+  },
+  "space": {
+    "$type": "dimension",
+    "one": {
+      "$value": { "value": 0.25, "unit": "rem" },
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-1",
+          "public": true,
+          "category": "spacing",
+          "scale": "spacing"
+        }
+      }
+    },
+    "two": {
+      "$value": { "value": 0.5, "unit": "rem" },
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-2",
+          "public": true,
+          "category": "spacing",
+          "scale": "spacing"
+        }
+      }
+    }
+  },
+  "motion": {
+    "$type": "duration",
+    "fast": {
+      "$value": { "value": 200, "unit": "ms" },
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-motion-fast",
+          "public": true,
+          "category": "motion"
+        }
+      }
+    },
+    "normal": {
+      "$value": "{motion.fast}",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-motion-normal",
+          "public": true,
+          "category": "motion"
+        }
+      }
+    }
+  },
+  "card": {
+    "background": {
+      "$type": "color",
+      "$value": "{palette.paper}",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-card-background",
+          "public": true,
+          "category": "color",
+          "component": "card"
+        }
+      }
+    },
+    "padding": {
+      "$type": "dimension",
+      "$value": "{space.two}",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-card-padding",
+          "public": true,
+          "category": "spacing",
+          "component": "card"
+        }
+      }
+    }
+  },
+  "card-compact": {
+    "$extends": "{card}",
+    "padding": {
+      "$type": "dimension",
+      "$value": "{space.one}",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-card-compact-padding",
+          "public": true,
+          "category": "spacing",
+          "component": "card"
+        }
+      }
+    }
+  }
+}

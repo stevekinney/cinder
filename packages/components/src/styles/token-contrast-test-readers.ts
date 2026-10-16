@@ -4,12 +4,12 @@ import { fileURLToPath } from 'node:url';
 
 import {
   type OklchColor,
-  type Rgb,
   clampRgb,
   compositeOver,
   contrastRatio,
   oklchToLinearSrgb,
-} from './color-contrast-utilities.ts';
+  relativeLuminance,
+} from '../tokens/runtime/contrast/index.ts';
 
 const TOKENS_DIRECTORY = join(dirname(fileURLToPath(import.meta.url)), '..', 'tokens');
 
@@ -24,10 +24,6 @@ export function readJsonRecord(...pathSegments: readonly string[]): Record<strin
     throw new Error(`${filePath} is not a JSON object`);
   }
   return parsed;
-}
-
-function luminance(rgb: Rgb): number {
-  return 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
 }
 
 /** The registry's `cssProperty -> corpus path` map, validated at load. */
@@ -190,7 +186,7 @@ export function translucentContrastOn(ink: TranslucentColor, ground: OklchColor)
     groundRgb,
     ink.alpha,
   );
-  return contrastRatio(luminance(painted), luminance(groundRgb));
+  return contrastRatio(relativeLuminance(painted), relativeLuminance(groundRgb));
 }
 
 /**

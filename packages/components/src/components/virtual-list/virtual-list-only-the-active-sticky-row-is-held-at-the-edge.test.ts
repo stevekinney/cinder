@@ -126,4 +126,39 @@ describe('VirtualList — only the active sticky row is held at the edge', () =>
     // And not on the bare sticky attribute, which every mounted header carries.
     expect(source).not.toContain("[data-cinder-sticky='true'] {\n    position: sticky;");
   });
+
+  test('turns native scroll anchoring off where the list owns the scroll, and only there', async () => {
+    // A row pinning leaves flow, and native anchoring then scrolls the list back by
+    // its size (COR-1523), so a list scrolling its own container opts out. Under
+    // `windowScroll` the page owns the scroll and keeps its anchoring, except with
+    // sticky rows, and under `dynamicSize`, whose rule must come later to win at
+    // equal specificity. The
+    // container case is also asserted on the computed value in a real browser, in
+    // `scripts/browser-fixtures/tests/virtual-list-sticky.playwright.ts`.
+    const source = await Bun.file(new URL('./virtual-list.css', import.meta.url).pathname).text();
+    const ruleBody = (selector: string): string => {
+      const start = source.indexOf(`${selector} {`);
+      expect(start).toBeGreaterThanOrEqual(0);
+      return source.slice(start, source.indexOf('\n  }', start));
+    };
+    const ruleStart = (selector: string): number => source.indexOf(`${selector} {`);
+
+    expect(ruleBody('  .cinder-virtual-list')).toContain('overflow-anchor: none;');
+    expect(ruleBody(".cinder-virtual-list[data-cinder-window-scroll='true']")).toContain(
+      'overflow-anchor: auto;',
+    );
+    expect(ruleBody(".cinder-virtual-list[data-cinder-dynamic-size='true']")).toContain(
+      'overflow-anchor: none;',
+    );
+    // A window-scrolled list with sticky rows opts out too, since a header pinning
+    // would otherwise anchor the page back a row; it outranks the plain rule above.
+    expect(
+      ruleBody(
+        ".cinder-virtual-list[data-cinder-window-scroll='true'][data-cinder-sticky-rows='true']",
+      ),
+    ).toContain('overflow-anchor: none;');
+    expect(ruleStart(".cinder-virtual-list[data-cinder-dynamic-size='true']")).toBeGreaterThan(
+      ruleStart(".cinder-virtual-list[data-cinder-window-scroll='true']"),
+    );
+  });
 });

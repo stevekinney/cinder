@@ -1,0 +1,105 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "carousel": {
+    "slide-size": {
+      "$type": "number",
+      "$value": 100,
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-carousel-slide-size",
+          "public": true,
+          "category": "layout",
+          "component": "carousel",
+          "nonRepresentableValue": true,
+          "cssRecipe": "100%"
+        },
+        "com.lostgradient.cinder.fixture": {
+          "expectedByContext": {
+            "light/default": "100%",
+            "light/reduced": "100%",
+            "light/forced-reduced-motion": "100%",
+            "dark/default": "100%",
+            "dark/reduced": "100%",
+            "dark/forced-reduced-motion": "100%"
+          }
+        }
+      }
+    },
+    "aspect-ratio": {
+      "$type": "number",
+      "$value": 1.7778,
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-carousel-aspect-ratio",
+          "public": true,
+          "category": "layout",
+          "component": "carousel",
+          "nonRepresentableValue": true,
+          "cssRecipe": "16 / 9"
+        },
+        "com.lostgradient.cinder.fixture": {
+          "expectedByContext": {
+            "light/default": "16 / 9",
+            "light/reduced": "16 / 9",
+            "light/forced-reduced-motion": "16 / 9",
+            "dark/default": "16 / 9",
+            "dark/reduced": "16 / 9",
+            "dark/forced-reduced-motion": "16 / 9"
+          }
+        }
+      }
+    }
+  },
+  "code-block": {
+    "height": {
+      "$type": "dimension",
+      "$value": { "value": 0, "unit": "rem" },
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-code-block-height",
+          "public": true,
+          "category": "size",
+          "component": "code-block",
+          "nonRepresentableValue": true,
+          "cssRecipe": "auto"
+        },
+        "com.lostgradient.cinder.fixture": {
+          "expectedByContext": {
+            "light/default": "auto",
+            "light/reduced": "auto",
+            "light/forced-reduced-motion": "auto",
+            "dark/default": "auto",
+            "dark/reduced": "auto",
+            "dark/forced-reduced-motion": "auto"
+          }
+        }
+      }
+    }
+  },
+  "spinner": {
+    "indicator": {
+      "$type": "color",
+      "$value": { "colorSpace": "srgb", "components": [0, 0, 0] },
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-spinner-indicator",
+          "public": true,
+          "category": "color",
+          "component": "spinner",
+          "nonRepresentableValue": true,
+          "cssRecipe": "currentColor"
+        },
+        "com.lostgradient.cinder.fixture": {
+          "expectedByContext": {
+            "light/default": "currentColor",
+            "light/reduced": "currentColor",
+            "light/forced-reduced-motion": "currentColor",
+            "dark/default": "currentColor",
+            "dark/reduced": "currentColor",
+            "dark/forced-reduced-motion": "currentColor"
+          }
+        }
+      }
+    }
+  }
+}

@@ -15,6 +15,11 @@ export type AxeViolation = {
   nodes: Array<{ target: Array<string | string[]>; html: string; failureSummary?: string }>;
 };
 export type AxeBuckets = Record<AxeImpact, AxeViolation[]>;
+/** The Axe rule tags every component run uses: WCAG 2.0 and 2.1, levels A and AA. */
+export const WCAG_21_AA_TAGS: readonly string[] = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
+/** The component tags plus the WCAG 2.2 AA rules. The theme builder's browser checks run these. */
+export const WCAG_22_AA_TAGS: readonly string[] = [...WCAG_21_AA_TAGS, 'wcag22aa'];
+
 export type AxeOptions = {
   include?: string | string[];
 };
@@ -32,7 +37,7 @@ export async function runAxe(
   key: ArtifactKey,
   options?: AxeOptions,
 ): Promise<AxeBuckets> {
-  let builder = new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']);
+  let builder = new AxeBuilder({ page }).withTags([...WCAG_21_AA_TAGS]);
   const includeSelectors =
     typeof options?.include === 'string' ? [options.include] : (options?.include ?? []);
 
