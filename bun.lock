@@ -24,7 +24,7 @@
     },
     "packages/components": {
       "name": "@lostgradient/cinder",
-      "version": "0.28.0",
+      "version": "0.28.1",
       "bin": {
         "cinder": "./dist/cli/index.js",
       },
@@ -176,7 +176,7 @@
     },
     "packages/mcp": {
       "name": "@lostgradient/cinder-mcp",
-      "version": "0.1.22",
+      "version": "0.1.23",
       "bin": {
         "cinder-mcp": "./dist/bin.js",
       },
@@ -220,7 +220,7 @@
     },
     "packages/weft-ui": {
       "name": "@lostgradient/weft-ui",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "dependencies": {
         "@lostgradient/cinder": "workspace:*",
         "@lostgradient/markdown": "workspace:*",
