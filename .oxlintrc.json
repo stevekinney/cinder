@@ -6,17 +6,8 @@
     "suspicious": "warn"
   },
   "rules": {
-    "no-restricted-syntax": [
-      "error",
-      {
-        "selector": "WithStatement",
-        "message": "With statements are not allowed."
-      },
-      {
-        "selector": "LabeledStatement",
-        "message": "Labeled statements are not allowed."
-      }
-    ],
+    "no-with": "error",
+    "no-labels": "error",
     "no-console": "off",
     "no-unused-vars": [
       "warn",
