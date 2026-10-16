@@ -1,0 +1,31 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/resolver.json",
+  "version": "2025.10",
+  "sets": {
+    "foundation": {
+      "sources": [{ "$ref": "profile-base.tokens.json" }]
+    }
+  },
+  "modifiers": {
+    "theme": {
+      "contexts": {
+        "light": [{ "$ref": "profile-light.tokens.json" }],
+        "dark": [{ "$ref": "profile-dark.tokens.json" }]
+      },
+      "default": "light"
+    },
+    "motion": {
+      "contexts": {
+        "default": [{ "$ref": "profile-motion-default.tokens.json" }],
+        "reduced": [{ "$ref": "profile-motion-reduced.tokens.json" }],
+        "forced-reduced-motion": [{ "$ref": "profile-motion-forced.tokens.json" }]
+      },
+      "default": "default"
+    }
+  },
+  "resolutionOrder": [
+    { "$ref": "#/sets/foundation" },
+    { "$ref": "#/modifiers/theme" },
+    { "$ref": "#/modifiers/motion" }
+  ]
+}

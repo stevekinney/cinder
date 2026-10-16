@@ -1,17 +1,22 @@
 import { describe, expect, it } from 'bun:test';
 import type { TokenArms, TranslucentTokenArms } from './token-contrast-test-readers.ts';
 
+import {
+  AA_TEXT,
+  compositeOver,
+  contrastRatio,
+  mixOklch,
+  oklchToLinearSrgb,
+  wcagLuminance,
+} from '../tokens/runtime/contrast/index.ts';
 import * as values from './check-token-contrast-test-values.ts';
 
 const {
-  AA_TEXT,
   accent,
   accentContrast,
   accentText,
   bg,
   border,
-  compositeOver,
-  contrastRatio,
   css,
   danger,
   dangerActive,
@@ -28,9 +33,7 @@ const {
   infoContrast,
   infoFg,
   infoHover,
-  mixOklch,
   neutralBg,
-  oklchToLinearSrgb,
   opacityDisabled,
   opacityFaint,
   opacityMuted,
@@ -55,7 +58,6 @@ const {
   warningContrast,
   warningFg,
   warningHover,
-  wcagLuminance,
 } = values;
 describe('CSS shape reader', () => {
   // Retained for the assertions that are about the emitted CSS text rather than

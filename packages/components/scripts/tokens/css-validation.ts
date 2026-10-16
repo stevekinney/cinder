@@ -1,9 +1,9 @@
-import type { CssPreparation } from './css-preparation.ts';
+import { scopeIndexFromDocuments } from '../../src/tokens/runtime/context-order.ts';
 import {
   assertOverrideScopeConsistency,
   assertUniqueOverrideCssProperties,
-} from './css-support.ts';
-import { scopeIndexFromDocuments } from './resolved-contexts.ts';
+} from '../../src/tokens/runtime/css-support.ts';
+import type { CssPreparation } from './css-preparation.ts';
 
 export function validateCssScopes(context: CssPreparation): void {
   const {

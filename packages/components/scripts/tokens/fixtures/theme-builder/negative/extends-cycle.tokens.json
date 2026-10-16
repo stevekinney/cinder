@@ -1,0 +1,5 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "one": { "$extends": "{two}" },
+  "two": { "$extends": "{one}" }
+}

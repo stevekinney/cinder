@@ -1,0 +1,9 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "motion": {
+    "fast": { "$value": { "value": 1, "unit": "ms" } }
+  },
+  "palette": {
+    "halo": { "$value": { "colorSpace": "srgb", "components": [0.7, 0.7, 0.7] } }
+  }
+}

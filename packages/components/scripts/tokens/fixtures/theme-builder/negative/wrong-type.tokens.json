@@ -1,0 +1,7 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "wrong": {
+    "dimension-as-string": { "$type": "dimension", "$value": "12px" },
+    "color-as-number": { "$type": "color", "$value": 255 }
+  }
+}

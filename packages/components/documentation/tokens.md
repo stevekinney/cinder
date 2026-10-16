@@ -8,6 +8,37 @@ Root-declared tokens are emitted in [`tokens-base.css`](../src/styles/tokens-bas
 
 > [!NOTE] Color tokens use [`light-dark()`](https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/light-dark) keyed off `color-scheme`. The default `:root` sets `color-scheme: light dark`, which means the browser picks based on the user's OS preference. Force a whole-page scheme with `data-theme="light"` or `data-theme="dark"` on `:root`. For scoped theme islands, put `[data-theme='light']` or `[data-theme='dark']` on the subtree; cinder redeclares the core semantic surface, text, border, overlay, interaction, status, and control tokens there so components inherit concrete local values instead of requiring consumer token pinning.
 
+## Editing the full registry in the theme builder
+
+The tables below are a reference: they show what Cinder ships. The [theme builder](./theming.md#the-theme-builder) is where you change it. It is the `/theme-builder` route of the playground application, and it exposes the whole public token registry for editing, not a curated subset. Every public `--cinder-*` token in the registry has a row in the builder's catalogue, and the catalogue is built from the same generated data as the registry, so a token added to the corpus appears in the builder when `tokens:generate` runs. Nothing in the builder or in this section carries a hand-written count. Derive the current number from the data:
+
+```ts
+import { AUTHORING_CATALOGUE } from '@lostgradient/cinder/tokens/runtime';
+import { TOKEN_REGISTRY } from '@lostgradient/cinder';
+
+AUTHORING_CATALOGUE.records.length; // one record per public token
+TOKEN_REGISTRY.entries.length; // the same set, from the registry
+```
+
+How the two views differ:
+
+| Aspect           | Reference tables (this page)                                      | Theme builder                                                                                               |
+| ---------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Source           | Generated from the DTCG corpus by `tokens:generate`               | The same corpus, through the authoring catalogue in `@lostgradient/cinder/tokens/runtime`                   |
+| Shows            | Shipped value, description, and usage per token, grouped by topic | Shipped and Draft values for the active context, where each value comes from, and which tokens depend on it |
+| Contexts         | One table per concern                                             | All six: light or dark crossed with default, reduced, and forced reduced motion                             |
+| Changes anything | No                                                                | Yes, in a locally saved draft                                                                               |
+
+The catalogue groups every token as Foundations (spacing, radii, typography, motion, and the other non-color tokens), Semantic (color), or Components (tokens a component owns). Each record carries a disposition that says how that token can be edited and exported:
+
+- **Edit `supported`:** you edit the token's DTCG `$value`, and the CSS follows from it.
+- **Edit `recipe`:** a trusted CSS recipe writes the CSS, for example a `color-mix()` or `calc()` derived from other tokens. The builder lists the recipe's inputs so you can edit those, or you can give the token a complete CSS value for a context. A recipe is trusted only when the theme's embedded base matches the Cinder build and the recipe text is one the shipped corpus declares for that token. An imported recipe that fails that test stays in the draft as inert, unverified metadata. The portable DTCG export carries the token's DTCG value and reports that the recipe is not part of DTCG.
+- **Edit `css-only`:** the token has no portable DTCG value. You edit its CSS value for a context, and it is left out of portable DTCG exports. The builder labels these and lists them in its portability report.
+
+Every public token is emitted into the deployment CSS. DTCG export is `complete`, `subset` (the DTCG value without the CSS recipe), or `none`. A theme's source can also hold tokens that are not in the registry, for example in an imported Cinder Theme v1 file. The builder lists them in a Source group. They have no CSS binding, so they appear in the portable DTCG documents and emit no CSS.
+
+The row-by-row rules, with the clause of the DTCG 2025.10 specification that defines each one and the fixtures that pin it, are in [Theme builder token capabilities](./theme-builder-token-capabilities.md). The runtime that evaluates and validates an edited theme is documented in [`src/tokens/runtime/README.md`](../src/tokens/runtime/README.md).
+
 ## Spacing
 
 Rem-based spacing scale. Use these for padding, gap, margin — anywhere you'd otherwise hardcode a pixel value.

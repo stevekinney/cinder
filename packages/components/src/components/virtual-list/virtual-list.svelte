@@ -180,12 +180,6 @@
    */
   const KEYBOARD_DESTINATION_STABLE_INTERVALS = 3;
   /**
-   * COR-1518: how many times the keyboard-destination watch re-issues a write
-   * that settled with no net movement before it lets the destination go. Bounded
-   * because a list already at its end legitimately never moves.
-   */
-  const KEYBOARD_DESTINATION_LOST_WRITE_RETRIES = 2;
-  /**
    * How long after the last scroll event adaptive overscan returns to its floor.
    * Comfortably past a fling's own event cadence, so it never fires mid-gesture.
    */
@@ -1902,10 +1896,12 @@
    * genuinely settled at that threshold. Requiring more consecutive stable
    * intervals is what tells the two apart.
    *
-   * Runs unconditionally, in fixed-height mode too. `runScrollToIndex` skips
-   * its own settle-and-retry pass there because fixed rows never need a
-   * second write, but this needs the same motion signal regardless of
-   * sizing mode to know when the destination has stopped being meaningful.
+   * Issues the press's write itself, and waits only when that write animates.
+   * An instant write needs no motion signal: it has arrived when it returns.
+   * An animated one waits in fixed-height mode too — `runScrollToIndex` skips
+   * its own settle-and-retry pass there because fixed rows never need a second
+   * write, but this needs the same motion signal regardless of sizing mode to
+   * know when the destination has stopped being meaningful.
    *
    * Correct under `windowScroll` with no special case: `waitForScrollSettled`
    * reads through `readScrollOffset`, which already resolves to
@@ -1916,27 +1912,50 @@
   async function watchPendingKeyboardIndex(index: number): Promise<void> {
     const element = scrollElement;
     if (!element) return;
-    const startedAt = readScrollOffset(element);
     pendingKeyboardIndex = index;
     const token = (pendingKeyboardIndexToken += 1);
-    for (let attempt = 0; ; attempt += 1) {
+    // Through the normal path, which applies the header inset and keeps the settle
+    // loop. An earlier version wrote the offset directly to apply that inset, and in
+    // doing so skipped the loop — so under `dynamicSize` an End or Page jump into rows
+    // whose estimates changed as they mounted stopped wherever the first write
+    // happened to land.
+    scrollToIndex(index, { align: 'start' });
+    // An instant write has already arrived by the time it returns, so the live
+    // position IS the destination and there is nothing left to track: the next press
+    // resolves from it like any other. Waiting out the settle window anyway left the
+    // destination alive past a write this list did not issue — a consumer setting
+    // `scrollTop`, a fragment link — so a press right after one stepped from the
+    // stale row instead of the one the reader was looking at.
+    //
+    // Two writes are not final when they return. An animated one has not moved yet,
+    // and under `dynamicSize` the first write lands on an ESTIMATE that the settle
+    // loop in `runScrollToIndex` goes on correcting as the destination's rows mount
+    // and measure, so the live position can name a different row until it finishes.
+    // Both keep the destination until the scroll settles.
+    if (dynamicSize || isKeyboardScrollAnimated(element)) {
       await waitForScrollSettled(element, KEYBOARD_DESTINATION_STABLE_INTERVALS);
       // Superseded by a newer press or an explicit retirement while this was
-      // waiting — either already holds whatever destination is now correct,
-      // so clearing it here would erase one this call does not own.
+      // waiting — either already holds whatever destination is now correct, so
+      // clearing it here would erase one this call does not own.
       if (isDestroyed || pendingKeyboardIndexToken !== token) return;
-      // The position settled exactly where this press began: the write made no
-      // net progress. Measured in real Chromium, a retargeted smooth scroll can
-      // reach the destination and then be rolled back to its start by the
-      // previous animation finishing late. Expiring here would leave the next
-      // press stepping from the lagging row and drop one. Any other settled
-      // position (arrived, or moved elsewhere by something this list did not
-      // issue) is not a lost write, and expires the destination below.
-      if (attempt >= KEYBOARD_DESTINATION_LOST_WRITE_RETRIES) break;
-      if (readScrollOffset(element) !== startedAt) break;
-      scrollToIndex(index, { align: 'start' });
     }
     pendingKeyboardIndex = null;
+  }
+
+  /**
+   * Whether a keyboard write animates rather than landing at once: the
+   * `smoothScroll` prop for a reader who has not asked for less motion, or a
+   * `scroll-behavior: smooth` on the scrolling box, which the browser applies to
+   * a plain `scrollTop` assignment too. Under `windowScroll` that box is the
+   * document's scrolling element, not this list's container.
+   */
+  function isKeyboardScrollAnimated(element: HTMLElement): boolean {
+    if (smoothScroll && !reducedMotion.current) return true;
+    const scrollingBox = windowScroll
+      ? (element.ownerDocument.scrollingElement ?? element.ownerDocument.documentElement)
+      : element;
+    const view = scrollingBox.ownerDocument.defaultView;
+    return view?.getComputedStyle(scrollingBox).scrollBehavior === 'smooth';
   }
 
   function handleWheel(event: WheelEvent & { currentTarget: EventTarget & HTMLDivElement }): void {
@@ -2111,18 +2130,12 @@
     }
     event.preventDefault();
 
-    // Tracked BEFORE issuing the scroll, so a second press landing in the same
-    // synchronous turn (impossible from real input, but not from a test or a
-    // scripted key-repeat) already sees the new destination rather than a
-    // one-tick-stale `null`.
+    // Issues the scroll as well as tracking it, because whether the write landed is
+    // read back the moment it returns. The destination is still tracked BEFORE the
+    // write, so a second press landing in the same synchronous turn (impossible from
+    // real input, but not from a test or a scripted key-repeat) already sees the new
+    // destination rather than a one-tick-stale `null`.
     void watchPendingKeyboardIndex(target);
-
-    // Through the normal path, which applies the header inset and keeps the settle
-    // loop. An earlier version wrote the offset directly here to apply that inset, and
-    // in doing so skipped the loop — so under `dynamicSize` an End or Page jump into
-    // rows whose estimates changed as they mounted stopped wherever the first write
-    // happened to land.
-    scrollToIndex(target, { align: 'start' });
   }
 
   function maxScrollOffset(totalSize: number, axisHeight: number): number {
@@ -2487,6 +2500,7 @@
   data-cinder-dynamic-size={dynamicSize ? 'true' : undefined}
   data-cinder-orientation={isHorizontal ? 'horizontal' : undefined}
   data-cinder-window-scroll={windowScroll ? 'true' : undefined}
+  data-cinder-sticky-rows={stickyIndexes.length > 0 ? 'true' : undefined}
   style:--cinder-virtual-list-height={windowScroll ? undefined : height}
   onscroll={handleScroll}
   onwheel={handleWheel}

@@ -13,6 +13,7 @@
           "cssProperty": "--cinder-space-0",
           "public": true,
           "category": "spacing",
+          "scale": "spacing",
           "cssRecipe": null
         }
       }
@@ -28,6 +29,7 @@
           "cssProperty": "--cinder-space-0-5",
           "public": true,
           "category": "spacing",
+          "scale": "spacing",
           "cssRecipe": null
         }
       }
@@ -43,6 +45,7 @@
           "cssProperty": "--cinder-space-1",
           "public": true,
           "category": "spacing",
+          "scale": "spacing",
           "cssRecipe": null
         }
       }
@@ -58,6 +61,7 @@
           "cssProperty": "--cinder-space-1-5",
           "public": true,
           "category": "spacing",
+          "scale": "spacing",
           "cssRecipe": null
         }
       }
@@ -73,6 +77,7 @@
           "cssProperty": "--cinder-space-2",
           "public": true,
           "category": "spacing",
+          "scale": "spacing",
           "cssRecipe": null
         }
       }
@@ -88,6 +93,7 @@
           "cssProperty": "--cinder-space-2-5",
           "public": true,
           "category": "spacing",
+          "scale": "spacing",
           "cssRecipe": null
         }
       }
@@ -103,6 +109,7 @@
           "cssProperty": "--cinder-space-3",
           "public": true,
           "category": "spacing",
+          "scale": "spacing",
           "cssRecipe": null
         }
       }
@@ -118,6 +125,7 @@
           "cssProperty": "--cinder-space-3-5",
           "public": true,
           "category": "spacing",
+          "scale": "spacing",
           "cssRecipe": null
         }
       }
@@ -133,6 +141,7 @@
           "cssProperty": "--cinder-space-4",
           "public": true,
           "category": "spacing",
+          "scale": "spacing",
           "cssRecipe": null
         }
       }
@@ -148,6 +157,7 @@
           "cssProperty": "--cinder-space-5",
           "public": true,
           "category": "spacing",
+          "scale": "spacing",
           "cssRecipe": null
         }
       }
@@ -163,6 +173,7 @@
           "cssProperty": "--cinder-space-6",
           "public": true,
           "category": "spacing",
+          "scale": "spacing",
           "cssRecipe": null
         }
       }
@@ -178,6 +189,7 @@
           "cssProperty": "--cinder-space-7",
           "public": true,
           "category": "spacing",
+          "scale": "spacing",
           "cssRecipe": null
         }
       }
@@ -193,6 +205,7 @@
           "cssProperty": "--cinder-space-8",
           "public": true,
           "category": "spacing",
+          "scale": "spacing",
           "cssRecipe": null
         }
       }
@@ -208,6 +221,7 @@
           "cssProperty": "--cinder-space-10",
           "public": true,
           "category": "spacing",
+          "scale": "spacing",
           "cssRecipe": null
         }
       }
@@ -223,6 +237,7 @@
           "cssProperty": "--cinder-space-12",
           "public": true,
           "category": "spacing",
+          "scale": "spacing",
           "cssRecipe": null
         }
       }
@@ -238,6 +253,7 @@
           "cssProperty": "--cinder-space-16",
           "public": true,
           "category": "spacing",
+          "scale": "spacing",
           "cssRecipe": null
         }
       }
@@ -253,6 +269,7 @@
           "cssProperty": "--cinder-space-20",
           "public": true,
           "category": "spacing",
+          "scale": "spacing",
           "cssRecipe": null
         }
       }
@@ -268,6 +285,7 @@
           "cssProperty": "--cinder-space-24",
           "public": true,
           "category": "spacing",
+          "scale": "spacing",
           "cssRecipe": null
         }
       }
@@ -283,6 +301,7 @@
           "cssProperty": "--cinder-space-32",
           "public": true,
           "category": "spacing",
+          "scale": "spacing",
           "cssRecipe": null
         }
       }
@@ -302,6 +321,7 @@
           "cssProperty": "--cinder-radius-sm",
           "public": true,
           "category": "radius",
+          "scale": "radius",
           "cssRecipe": null
         }
       }
@@ -317,6 +337,7 @@
           "cssProperty": "--cinder-radius-md",
           "public": true,
           "category": "radius",
+          "scale": "radius",
           "cssRecipe": null
         }
       }
@@ -332,6 +353,7 @@
           "cssProperty": "--cinder-radius-lg",
           "public": true,
           "category": "radius",
+          "scale": "radius",
           "cssRecipe": null
         }
       }
@@ -347,6 +369,7 @@
           "cssProperty": "--cinder-radius-full",
           "public": true,
           "category": "radius",
+          "scale": "radius",
           "cssRecipe": null
         }
       }

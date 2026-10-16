@@ -8,7 +8,6 @@ import {
   readTranslucentToken,
 } from './token-contrast-test-readers.ts';
 
-export * from './color-contrast-utilities.ts';
 export * from './token-contrast-test-readers.ts';
 
 export const css = readFileSync(
@@ -64,6 +63,3 @@ export const opacityFaint = readNumberToken('--cinder-opacity-faint');
 export const chartSeries = Array.from({ length: 8 }, (_, i) =>
   readOklchToken(`--cinder-chart-series-${i + 1}`),
 );
-
-export const AA_TEXT = 4.5;
-export const NON_TEXT = 3.0;

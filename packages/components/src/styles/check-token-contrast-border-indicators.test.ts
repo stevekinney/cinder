@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { NON_TEXT } from '../tokens/runtime/contrast/index.ts';
 import * as values from './check-token-contrast-test-values.ts';
 import type { TranslucentColor, TranslucentTokenArms } from './token-contrast-test-readers.ts';
 
@@ -22,7 +23,6 @@ function ruleOpacity(body: string): number {
 }
 
 const {
-  NON_TEXT,
   bg,
   border,
   borderMuted,

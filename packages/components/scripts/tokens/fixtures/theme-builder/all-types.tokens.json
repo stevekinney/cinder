@@ -1,0 +1,137 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "specimen": {
+    "color": {
+      "srgb": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "srgb",
+          "components": [0.2, 0.4, 0.6],
+          "alpha": 0.5,
+          "hex": "#336699"
+        }
+      },
+      "oklch-none": {
+        "$type": "color",
+        "$value": { "colorSpace": "oklch", "components": [0.5, "none", 255], "alpha": 0.25 }
+      }
+    },
+    "dimension": {
+      "$type": "dimension",
+      "rem": { "$value": { "value": 1, "unit": "rem" } },
+      "px": { "$value": { "value": 2, "unit": "px" } }
+    },
+    "scale": {
+      "$type": "dimension",
+      "$root": { "$value": { "value": 1, "unit": "rem" } },
+      "large": { "$value": { "value": 2, "unit": "rem" } }
+    },
+    "extended": {
+      "$type": "dimension",
+      "$extends": "{specimen.dimension}",
+      "extra": { "$value": { "value": 3, "unit": "px" } }
+    },
+    "pointer": {
+      "$type": "dimension",
+      "alias": { "$ref": "#/specimen/dimension/rem" }
+    },
+    "metadata": {
+      "$type": "number",
+      "old": {
+        "$value": 2,
+        "$description": "Carries documentation, deprecation, and vendor extension data.",
+        "$deprecated": "Use specimen.number.one.",
+        "$extensions": { "com.example.vendor": { "anything": true } }
+      }
+    },
+    "fontFamily": {
+      "$type": "fontFamily",
+      "stack": { "$value": ["Inter", "sans-serif"] }
+    },
+    "fontWeight": {
+      "$type": "fontWeight",
+      "numeric": { "$value": 600 },
+      "named": { "$value": "bold" }
+    },
+    "duration": {
+      "$type": "duration",
+      "ms": { "$value": { "value": 150, "unit": "ms" } },
+      "s": { "$value": { "value": 0.2, "unit": "s" } }
+    },
+    "cubicBezier": {
+      "$type": "cubicBezier",
+      "standard": { "$value": [0.2, 0, 0, 1] }
+    },
+    "number": {
+      "$type": "number",
+      "one": { "$value": 1 }
+    },
+    "strokeStyle": {
+      "$type": "strokeStyle",
+      "named": { "$value": "dashed" },
+      "custom": {
+        "$value": {
+          "dashArray": [
+            { "value": 4, "unit": "px" },
+            { "value": 2, "unit": "px" }
+          ],
+          "lineCap": "round"
+        }
+      }
+    },
+    "border": {
+      "$type": "border",
+      "hairline": {
+        "$value": {
+          "color": "{specimen.color.srgb}",
+          "width": "{specimen.dimension.px}",
+          "style": "solid"
+        }
+      }
+    },
+    "transition": {
+      "$type": "transition",
+      "standard": {
+        "$value": {
+          "duration": "{specimen.duration.ms}",
+          "delay": { "value": 0, "unit": "ms" },
+          "timingFunction": "{specimen.cubicBezier.standard}"
+        }
+      }
+    },
+    "shadow": {
+      "$type": "shadow",
+      "raised": {
+        "$value": {
+          "color": "{specimen.color.srgb}",
+          "offsetX": { "value": 0, "unit": "px" },
+          "offsetY": "{specimen.dimension.px}",
+          "blur": { "value": 4, "unit": "px" },
+          "spread": { "value": 0, "unit": "px" },
+          "inset": false
+        }
+      }
+    },
+    "gradient": {
+      "$type": "gradient",
+      "fade": {
+        "$value": [
+          { "color": "{specimen.color.srgb}", "position": 0 },
+          { "color": "{specimen.color.oklch-none}", "position": 1 }
+        ]
+      }
+    },
+    "typography": {
+      "$type": "typography",
+      "body": {
+        "$value": {
+          "fontFamily": "{specimen.fontFamily.stack}",
+          "fontSize": "{specimen.dimension.rem}",
+          "fontWeight": "{specimen.fontWeight.numeric}",
+          "letterSpacing": { "value": 0, "unit": "px" },
+          "lineHeight": 1.5
+        }
+      }
+    }
+  }
+}

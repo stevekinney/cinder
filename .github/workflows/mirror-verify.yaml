@@ -1159,109 +1159,110 @@ jobs:
           import * as module940 from '@lostgradient/cinder/tokens/resolved/light' with { type: 'json' };
           import * as module941 from '@lostgradient/cinder/tokens/resolved/light-reduced-motion' with { type: 'json' };
           import * as module942 from '@lostgradient/cinder/tokens/resolver' with { type: 'json' };
-          import * as module943 from '@lostgradient/cinder/tokens/sets/colors' with { type: 'json' };
-          import * as module944 from '@lostgradient/cinder/tokens/sets/components' with { type: 'json' };
-          import * as module945 from '@lostgradient/cinder/tokens/sets/foundation' with { type: 'json' };
-          import * as module946 from '@lostgradient/cinder/tokens/sets/semantic' with { type: 'json' };
-          import * as module947 from '@lostgradient/cinder/tokens/themes/dark' with { type: 'json' };
-          import * as module948 from '@lostgradient/cinder/tokens/themes/light' with { type: 'json' };
-          import * as module949 from '@lostgradient/cinder/toolbar';
-          import * as module950 from '@lostgradient/cinder/toolbar/examples' with { type: 'json' };
-          import * as module951 from '@lostgradient/cinder/toolbar/schema';
-          import * as module952 from '@lostgradient/cinder/toolbar/styles';
-          import * as module953 from '@lostgradient/cinder/toolbar/variables';
-          import * as module954 from '@lostgradient/cinder/tooltip';
-          import * as module955 from '@lostgradient/cinder/tooltip/examples' with { type: 'json' };
-          import * as module956 from '@lostgradient/cinder/tooltip/schema';
-          import * as module957 from '@lostgradient/cinder/tooltip/styles';
-          import * as module958 from '@lostgradient/cinder/tooltip/variables';
-          import * as module959 from '@lostgradient/cinder/transfer-list';
-          import * as module960 from '@lostgradient/cinder/transfer-list/examples' with { type: 'json' };
-          import * as module961 from '@lostgradient/cinder/transfer-list/schema';
-          import * as module962 from '@lostgradient/cinder/transfer-list/styles';
-          import * as module963 from '@lostgradient/cinder/transfer-list/variables';
-          import * as module964 from '@lostgradient/cinder/tree';
-          import * as module965 from '@lostgradient/cinder/tree-item';
-          import * as module966 from '@lostgradient/cinder/tree-item/schema';
-          import * as module967 from '@lostgradient/cinder/tree-item/variables';
-          import * as module968 from '@lostgradient/cinder/tree/examples' with { type: 'json' };
-          import * as module969 from '@lostgradient/cinder/tree/schema';
-          import * as module970 from '@lostgradient/cinder/tree/styles';
-          import * as module971 from '@lostgradient/cinder/tree/variables';
-          import * as module972 from '@lostgradient/cinder/virtual-list';
-          import * as module973 from '@lostgradient/cinder/virtual-list/examples' with { type: 'json' };
-          import * as module974 from '@lostgradient/cinder/virtual-list/schema';
-          import * as module975 from '@lostgradient/cinder/virtual-list/styles';
-          import * as module976 from '@lostgradient/cinder/virtual-list/variables';
-          import * as module977 from '@lostgradient/cinder/visually-hidden';
-          import * as module978 from '@lostgradient/cinder/visually-hidden/examples' with { type: 'json' };
-          import * as module979 from '@lostgradient/cinder/visually-hidden/schema';
-          import * as module980 from '@lostgradient/cinder/visually-hidden/variables';
-          import * as module981 from '@lostgradient/cinder/waveform';
-          import * as module982 from '@lostgradient/cinder/waveform/examples' with { type: 'json' };
-          import * as module983 from '@lostgradient/cinder/waveform/schema';
-          import * as module984 from '@lostgradient/cinder/waveform/styles';
-          import * as module985 from '@lostgradient/cinder/waveform/variables';
-          import * as module986 from '@lostgradient/cinder/zoom-pan-viewer';
-          import * as module987 from '@lostgradient/cinder/zoom-pan-viewer/examples' with { type: 'json' };
-          import * as module988 from '@lostgradient/cinder/zoom-pan-viewer/schema';
-          import * as module989 from '@lostgradient/cinder/zoom-pan-viewer/styles';
-          import * as module990 from '@lostgradient/cinder/zoom-pan-viewer/variables';
-          import * as module991 from '@lostgradient/editor';
-          import * as module992 from '@lostgradient/editor/anchor-decorations';
-          import * as module993 from '@lostgradient/editor/anchoring';
-          import * as module994 from '@lostgradient/editor/comments';
-          import * as module995 from '@lostgradient/editor/comments/types';
-          import * as module996 from '@lostgradient/editor/diff-review';
-          import * as module997 from '@lostgradient/editor/diff-review-comments';
-          import * as module998 from '@lostgradient/editor/diff-review-comments/examples' with { type: 'json' };
-          import * as module999 from '@lostgradient/editor/diff-review-comments/schema';
-          import * as module1000 from '@lostgradient/editor/diff-review-comments/styles';
-          import * as module1001 from '@lostgradient/editor/diff-review-comments/variables';
-          import * as module1002 from '@lostgradient/editor/diff-review-state';
-          import * as module1003 from '@lostgradient/editor/diff-review/examples' with { type: 'json' };
-          import * as module1004 from '@lostgradient/editor/diff-review/schema';
-          import * as module1005 from '@lostgradient/editor/diff-review/styles';
-          import * as module1006 from '@lostgradient/editor/diff-review/variables';
-          import * as module1007 from '@lostgradient/editor/diff-viewer';
-          import * as module1008 from '@lostgradient/editor/diff-viewer/examples' with { type: 'json' };
-          import * as module1009 from '@lostgradient/editor/diff-viewer/schema';
-          import * as module1010 from '@lostgradient/editor/diff-viewer/variables';
-          import * as module1011 from '@lostgradient/editor/editor';
-          import * as module1012 from '@lostgradient/editor/editor/component-runtime';
-          import * as module1013 from '@lostgradient/editor/editor/test-utilities';
-          import * as module1014 from '@lostgradient/editor/export';
-          import * as module1015 from '@lostgradient/editor/export/types';
-          import * as module1016 from '@lostgradient/editor/manifest' with { type: 'json' };
-          import * as module1017 from '@lostgradient/editor/markdown-editor';
-          import * as module1018 from '@lostgradient/editor/markdown-editor/examples' with { type: 'json' };
-          import * as module1019 from '@lostgradient/editor/markdown-editor/schema';
-          import * as module1020 from '@lostgradient/editor/markdown-editor/variables';
-          import * as module1021 from '@lostgradient/editor/review-editor';
-          import * as module1022 from '@lostgradient/editor/review-editor/examples' with { type: 'json' };
-          import * as module1023 from '@lostgradient/editor/review-editor/schema';
-          import * as module1024 from '@lostgradient/editor/review-editor/styles';
-          import * as module1025 from '@lostgradient/editor/review-editor/variables';
-          import * as module1026 from '@lostgradient/editor/session';
-          import * as module1027 from '@lostgradient/editor/session/types';
-          import * as module1028 from '@lostgradient/editor/shared/anchor-types';
-          import * as module1029 from '@lostgradient/markdown';
-          import * as module1030 from '@lostgradient/markdown/diff';
-          import * as module1031 from '@lostgradient/markdown/diff/line-diff';
-          import * as module1032 from '@lostgradient/markdown/diff/types';
-          import * as module1033 from '@lostgradient/markdown/pipeline';
-          import * as module1034 from '@lostgradient/markdown/rendering';
-          import * as module1035 from '@lostgradient/markdown/rendering/async';
-          import * as module1036 from '@lostgradient/markdown/rendering/highlighter';
-          import * as module1037 from '@lostgradient/markdown/rendering/mermaid-cache';
-          import * as module1038 from '@lostgradient/markdown/rendering/types';
-          import * as module1039 from '@lostgradient/markdown/templates/placeholder-security';
-          import * as module1040 from '@lostgradient/markdown/templates/sanitize-html';
-          import * as module1041 from '@lostgradient/markdown/templates/template-placeholders';
-          import * as module1042 from '@lostgradient/markdown/templates/template-render';
-          import * as module1043 from '@lostgradient/markdown/templates/types';
-          import * as module1044 from '@lostgradient/markdown/utilities/safe-url';
-          import * as module1045 from '@lostgradient/markdown/utilities/sort-keys';
+          import * as module943 from '@lostgradient/cinder/tokens/runtime';
+          import * as module944 from '@lostgradient/cinder/tokens/sets/colors' with { type: 'json' };
+          import * as module945 from '@lostgradient/cinder/tokens/sets/components' with { type: 'json' };
+          import * as module946 from '@lostgradient/cinder/tokens/sets/foundation' with { type: 'json' };
+          import * as module947 from '@lostgradient/cinder/tokens/sets/semantic' with { type: 'json' };
+          import * as module948 from '@lostgradient/cinder/tokens/themes/dark' with { type: 'json' };
+          import * as module949 from '@lostgradient/cinder/tokens/themes/light' with { type: 'json' };
+          import * as module950 from '@lostgradient/cinder/toolbar';
+          import * as module951 from '@lostgradient/cinder/toolbar/examples' with { type: 'json' };
+          import * as module952 from '@lostgradient/cinder/toolbar/schema';
+          import * as module953 from '@lostgradient/cinder/toolbar/styles';
+          import * as module954 from '@lostgradient/cinder/toolbar/variables';
+          import * as module955 from '@lostgradient/cinder/tooltip';
+          import * as module956 from '@lostgradient/cinder/tooltip/examples' with { type: 'json' };
+          import * as module957 from '@lostgradient/cinder/tooltip/schema';
+          import * as module958 from '@lostgradient/cinder/tooltip/styles';
+          import * as module959 from '@lostgradient/cinder/tooltip/variables';
+          import * as module960 from '@lostgradient/cinder/transfer-list';
+          import * as module961 from '@lostgradient/cinder/transfer-list/examples' with { type: 'json' };
+          import * as module962 from '@lostgradient/cinder/transfer-list/schema';
+          import * as module963 from '@lostgradient/cinder/transfer-list/styles';
+          import * as module964 from '@lostgradient/cinder/transfer-list/variables';
+          import * as module965 from '@lostgradient/cinder/tree';
+          import * as module966 from '@lostgradient/cinder/tree-item';
+          import * as module967 from '@lostgradient/cinder/tree-item/schema';
+          import * as module968 from '@lostgradient/cinder/tree-item/variables';
+          import * as module969 from '@lostgradient/cinder/tree/examples' with { type: 'json' };
+          import * as module970 from '@lostgradient/cinder/tree/schema';
+          import * as module971 from '@lostgradient/cinder/tree/styles';
+          import * as module972 from '@lostgradient/cinder/tree/variables';
+          import * as module973 from '@lostgradient/cinder/virtual-list';
+          import * as module974 from '@lostgradient/cinder/virtual-list/examples' with { type: 'json' };
+          import * as module975 from '@lostgradient/cinder/virtual-list/schema';
+          import * as module976 from '@lostgradient/cinder/virtual-list/styles';
+          import * as module977 from '@lostgradient/cinder/virtual-list/variables';
+          import * as module978 from '@lostgradient/cinder/visually-hidden';
+          import * as module979 from '@lostgradient/cinder/visually-hidden/examples' with { type: 'json' };
+          import * as module980 from '@lostgradient/cinder/visually-hidden/schema';
+          import * as module981 from '@lostgradient/cinder/visually-hidden/variables';
+          import * as module982 from '@lostgradient/cinder/waveform';
+          import * as module983 from '@lostgradient/cinder/waveform/examples' with { type: 'json' };
+          import * as module984 from '@lostgradient/cinder/waveform/schema';
+          import * as module985 from '@lostgradient/cinder/waveform/styles';
+          import * as module986 from '@lostgradient/cinder/waveform/variables';
+          import * as module987 from '@lostgradient/cinder/zoom-pan-viewer';
+          import * as module988 from '@lostgradient/cinder/zoom-pan-viewer/examples' with { type: 'json' };
+          import * as module989 from '@lostgradient/cinder/zoom-pan-viewer/schema';
+          import * as module990 from '@lostgradient/cinder/zoom-pan-viewer/styles';
+          import * as module991 from '@lostgradient/cinder/zoom-pan-viewer/variables';
+          import * as module992 from '@lostgradient/editor';
+          import * as module993 from '@lostgradient/editor/anchor-decorations';
+          import * as module994 from '@lostgradient/editor/anchoring';
+          import * as module995 from '@lostgradient/editor/comments';
+          import * as module996 from '@lostgradient/editor/comments/types';
+          import * as module997 from '@lostgradient/editor/diff-review';
+          import * as module998 from '@lostgradient/editor/diff-review-comments';
+          import * as module999 from '@lostgradient/editor/diff-review-comments/examples' with { type: 'json' };
+          import * as module1000 from '@lostgradient/editor/diff-review-comments/schema';
+          import * as module1001 from '@lostgradient/editor/diff-review-comments/styles';
+          import * as module1002 from '@lostgradient/editor/diff-review-comments/variables';
+          import * as module1003 from '@lostgradient/editor/diff-review-state';
+          import * as module1004 from '@lostgradient/editor/diff-review/examples' with { type: 'json' };
+          import * as module1005 from '@lostgradient/editor/diff-review/schema';
+          import * as module1006 from '@lostgradient/editor/diff-review/styles';
+          import * as module1007 from '@lostgradient/editor/diff-review/variables';
+          import * as module1008 from '@lostgradient/editor/diff-viewer';
+          import * as module1009 from '@lostgradient/editor/diff-viewer/examples' with { type: 'json' };
+          import * as module1010 from '@lostgradient/editor/diff-viewer/schema';
+          import * as module1011 from '@lostgradient/editor/diff-viewer/variables';
+          import * as module1012 from '@lostgradient/editor/editor';
+          import * as module1013 from '@lostgradient/editor/editor/component-runtime';
+          import * as module1014 from '@lostgradient/editor/editor/test-utilities';
+          import * as module1015 from '@lostgradient/editor/export';
+          import * as module1016 from '@lostgradient/editor/export/types';
+          import * as module1017 from '@lostgradient/editor/manifest' with { type: 'json' };
+          import * as module1018 from '@lostgradient/editor/markdown-editor';
+          import * as module1019 from '@lostgradient/editor/markdown-editor/examples' with { type: 'json' };
+          import * as module1020 from '@lostgradient/editor/markdown-editor/schema';
+          import * as module1021 from '@lostgradient/editor/markdown-editor/variables';
+          import * as module1022 from '@lostgradient/editor/review-editor';
+          import * as module1023 from '@lostgradient/editor/review-editor/examples' with { type: 'json' };
+          import * as module1024 from '@lostgradient/editor/review-editor/schema';
+          import * as module1025 from '@lostgradient/editor/review-editor/styles';
+          import * as module1026 from '@lostgradient/editor/review-editor/variables';
+          import * as module1027 from '@lostgradient/editor/session';
+          import * as module1028 from '@lostgradient/editor/session/types';
+          import * as module1029 from '@lostgradient/editor/shared/anchor-types';
+          import * as module1030 from '@lostgradient/markdown';
+          import * as module1031 from '@lostgradient/markdown/diff';
+          import * as module1032 from '@lostgradient/markdown/diff/line-diff';
+          import * as module1033 from '@lostgradient/markdown/diff/types';
+          import * as module1034 from '@lostgradient/markdown/pipeline';
+          import * as module1035 from '@lostgradient/markdown/rendering';
+          import * as module1036 from '@lostgradient/markdown/rendering/async';
+          import * as module1037 from '@lostgradient/markdown/rendering/highlighter';
+          import * as module1038 from '@lostgradient/markdown/rendering/mermaid-cache';
+          import * as module1039 from '@lostgradient/markdown/rendering/types';
+          import * as module1040 from '@lostgradient/markdown/templates/placeholder-security';
+          import * as module1041 from '@lostgradient/markdown/templates/sanitize-html';
+          import * as module1042 from '@lostgradient/markdown/templates/template-placeholders';
+          import * as module1043 from '@lostgradient/markdown/templates/template-render';
+          import * as module1044 from '@lostgradient/markdown/templates/types';
+          import * as module1045 from '@lostgradient/markdown/utilities/safe-url';
+          import * as module1046 from '@lostgradient/markdown/utilities/sort-keys';
           const loaded = [
             module0,
             module1,
@@ -1467,17 +1468,17 @@ jobs:
             module201,
             module202,
             module203,
-            module204,
-            module205,
-            module206,
-            module207,
-            module208,
           MIRROR_VERIFY_EOF
 
       - name: write the consumer smoke-test project (smoke.mjs, part 6)
         working-directory: ${{ runner.temp }}/mirror-verify/consumer
         run: |
           cat >> smoke.mjs <<'MIRROR_VERIFY_EOF'
+            module204,
+            module205,
+            module206,
+            module207,
+            module208,
             module209,
             module210,
             module211,
@@ -2314,7 +2315,8 @@ jobs:
             module1042,
             module1043,
             module1044,
-            module1045
+            module1045,
+            module1046
           ];
           const specifierNames = [
             "@lostgradient/cinder",
@@ -2431,14 +2433,14 @@ jobs:
             "@lostgradient/cinder/card",
             "@lostgradient/cinder/card/examples",
             "@lostgradient/cinder/card/schema",
-            "@lostgradient/cinder/card/styles",
-            "@lostgradient/cinder/card/variables",
           MIRROR_VERIFY_EOF
 
       - name: write the consumer smoke-test project (smoke.mjs, part 7)
         working-directory: ${{ runner.temp }}/mirror-verify/consumer
         run: |
           cat >> smoke.mjs <<'MIRROR_VERIFY_EOF'
+            "@lostgradient/cinder/card/styles",
+            "@lostgradient/cinder/card/variables",
             "@lostgradient/cinder/carousel",
             "@lostgradient/cinder/carousel/examples",
             "@lostgradient/cinder/carousel/schema",
@@ -2790,13 +2792,13 @@ jobs:
             "@lostgradient/cinder/key-value-editor/variables",
             "@lostgradient/cinder/keyboard-shortcuts",
             "@lostgradient/cinder/keyboard-shortcuts/examples",
-            "@lostgradient/cinder/keyboard-shortcuts/schema",
           MIRROR_VERIFY_EOF
 
       - name: write the consumer smoke-test project (smoke.mjs, part 8)
         working-directory: ${{ runner.temp }}/mirror-verify/consumer
         run: |
           cat >> smoke.mjs <<'MIRROR_VERIFY_EOF'
+            "@lostgradient/cinder/keyboard-shortcuts/schema",
             "@lostgradient/cinder/keyboard-shortcuts/styles",
             "@lostgradient/cinder/keyboard-shortcuts/variables",
             "@lostgradient/cinder/knowledge",
@@ -3151,13 +3153,13 @@ jobs:
             "@lostgradient/cinder/statistic-group/styles",
             "@lostgradient/cinder/statistic-group/variables",
             "@lostgradient/cinder/statistic/schema",
-            "@lostgradient/cinder/statistic/styles",
           MIRROR_VERIFY_EOF
 
       - name: write the consumer smoke-test project (smoke.mjs, part 9)
         working-directory: ${{ runner.temp }}/mirror-verify/consumer
         run: |
           cat >> smoke.mjs <<'MIRROR_VERIFY_EOF'
+            "@lostgradient/cinder/statistic/styles",
             "@lostgradient/cinder/statistic/variables",
             "@lostgradient/cinder/status-dot",
             "@lostgradient/cinder/status-dot/examples",
@@ -3278,6 +3280,7 @@ jobs:
             "@lostgradient/cinder/tokens/resolved/light",
             "@lostgradient/cinder/tokens/resolved/light-reduced-motion",
             "@lostgradient/cinder/tokens/resolver",
+            "@lostgradient/cinder/tokens/runtime",
             "@lostgradient/cinder/tokens/sets/colors",
             "@lostgradient/cinder/tokens/sets/components",
             "@lostgradient/cinder/tokens/sets/foundation",
@@ -4174,106 +4177,107 @@ jobs:
           import * as module760 from '@lostgradient/cinder/tokens/resolved/light' with { type: 'json' };
           import * as module761 from '@lostgradient/cinder/tokens/resolved/light-reduced-motion' with { type: 'json' };
           import * as module762 from '@lostgradient/cinder/tokens/resolver' with { type: 'json' };
-          import * as module763 from '@lostgradient/cinder/tokens/sets/colors' with { type: 'json' };
-          import * as module764 from '@lostgradient/cinder/tokens/sets/components' with { type: 'json' };
-          import * as module765 from '@lostgradient/cinder/tokens/sets/foundation' with { type: 'json' };
-          import * as module766 from '@lostgradient/cinder/tokens/sets/semantic' with { type: 'json' };
-          import * as module767 from '@lostgradient/cinder/tokens/themes/dark' with { type: 'json' };
-          import * as module768 from '@lostgradient/cinder/tokens/themes/light' with { type: 'json' };
-          import * as module769 from '@lostgradient/cinder/toolbar';
-          import * as module770 from '@lostgradient/cinder/toolbar/examples' with { type: 'json' };
-          import * as module771 from '@lostgradient/cinder/toolbar/schema';
-          import * as module772 from '@lostgradient/cinder/toolbar/variables';
-          import * as module773 from '@lostgradient/cinder/tooltip';
-          import * as module774 from '@lostgradient/cinder/tooltip/examples' with { type: 'json' };
-          import * as module775 from '@lostgradient/cinder/tooltip/schema';
-          import * as module776 from '@lostgradient/cinder/tooltip/variables';
-          import * as module777 from '@lostgradient/cinder/transfer-list';
-          import * as module778 from '@lostgradient/cinder/transfer-list/examples' with { type: 'json' };
-          import * as module779 from '@lostgradient/cinder/transfer-list/schema';
-          import * as module780 from '@lostgradient/cinder/transfer-list/variables';
-          import * as module781 from '@lostgradient/cinder/tree';
-          import * as module782 from '@lostgradient/cinder/tree-item';
-          import * as module783 from '@lostgradient/cinder/tree-item/schema';
-          import * as module784 from '@lostgradient/cinder/tree-item/variables';
-          import * as module785 from '@lostgradient/cinder/tree/examples' with { type: 'json' };
-          import * as module786 from '@lostgradient/cinder/tree/schema';
-          import * as module787 from '@lostgradient/cinder/tree/variables';
-          import * as module788 from '@lostgradient/cinder/virtual-list';
-          import * as module789 from '@lostgradient/cinder/virtual-list/examples' with { type: 'json' };
-          import * as module790 from '@lostgradient/cinder/virtual-list/schema';
-          import * as module791 from '@lostgradient/cinder/virtual-list/variables';
-          import * as module792 from '@lostgradient/cinder/visually-hidden';
-          import * as module793 from '@lostgradient/cinder/visually-hidden/examples' with { type: 'json' };
-          import * as module794 from '@lostgradient/cinder/visually-hidden/schema';
-          import * as module795 from '@lostgradient/cinder/visually-hidden/variables';
-          import * as module796 from '@lostgradient/cinder/waveform';
-          import * as module797 from '@lostgradient/cinder/waveform/examples' with { type: 'json' };
-          import * as module798 from '@lostgradient/cinder/waveform/schema';
-          import * as module799 from '@lostgradient/cinder/waveform/variables';
-          import * as module800 from '@lostgradient/cinder/zoom-pan-viewer';
-          import * as module801 from '@lostgradient/cinder/zoom-pan-viewer/examples' with { type: 'json' };
-          import * as module802 from '@lostgradient/cinder/zoom-pan-viewer/schema';
-          import * as module803 from '@lostgradient/cinder/zoom-pan-viewer/variables';
-          import * as module804 from '@lostgradient/editor';
-          import * as module805 from '@lostgradient/editor/anchor-decorations';
-          import * as module806 from '@lostgradient/editor/anchoring';
-          import * as module807 from '@lostgradient/editor/comments';
-          import * as module808 from '@lostgradient/editor/comments/types';
-          import * as module809 from '@lostgradient/editor/diff-review';
-          import * as module810 from '@lostgradient/editor/diff-review-comments';
-          import * as module811 from '@lostgradient/editor/diff-review-comments/examples' with { type: 'json' };
-          import * as module812 from '@lostgradient/editor/diff-review-comments/schema';
-          import * as module813 from '@lostgradient/editor/diff-review-comments/variables';
-          import * as module814 from '@lostgradient/editor/diff-review-state';
-          import * as module815 from '@lostgradient/editor/diff-review/examples' with { type: 'json' };
-          import * as module816 from '@lostgradient/editor/diff-review/schema';
-          import * as module817 from '@lostgradient/editor/diff-review/variables';
-          import * as module818 from '@lostgradient/editor/diff-viewer';
-          import * as module819 from '@lostgradient/editor/diff-viewer/examples' with { type: 'json' };
-          import * as module820 from '@lostgradient/editor/diff-viewer/schema';
-          import * as module821 from '@lostgradient/editor/diff-viewer/variables';
-          import * as module822 from '@lostgradient/editor/editor';
-          import * as module823 from '@lostgradient/editor/editor/component-runtime';
-          import * as module824 from '@lostgradient/editor/editor/test-utilities';
-          import * as module825 from '@lostgradient/editor/export';
-          import * as module826 from '@lostgradient/editor/export/types';
-          import * as module827 from '@lostgradient/editor/manifest' with { type: 'json' };
-          import * as module828 from '@lostgradient/editor/markdown-editor';
-          import * as module829 from '@lostgradient/editor/markdown-editor/examples' with { type: 'json' };
-          import * as module830 from '@lostgradient/editor/markdown-editor/schema';
-          import * as module831 from '@lostgradient/editor/markdown-editor/variables';
-          import * as module832 from '@lostgradient/editor/review-editor';
-          import * as module833 from '@lostgradient/editor/review-editor/examples' with { type: 'json' };
-          import * as module834 from '@lostgradient/editor/review-editor/schema';
-          import * as module835 from '@lostgradient/editor/review-editor/variables';
-          import * as module836 from '@lostgradient/editor/session';
-          import * as module837 from '@lostgradient/editor/session/types';
-          import * as module838 from '@lostgradient/editor/shared/anchor-types';
-          import * as module839 from '@lostgradient/markdown';
-          import * as module840 from '@lostgradient/markdown/diff';
-          import * as module841 from '@lostgradient/markdown/diff/line-diff';
-          import * as module842 from '@lostgradient/markdown/diff/types';
-          import * as module843 from '@lostgradient/markdown/pipeline';
-          import * as module844 from '@lostgradient/markdown/rendering';
-          import * as module845 from '@lostgradient/markdown/rendering/async';
-          import * as module846 from '@lostgradient/markdown/rendering/highlighter';
-          import * as module847 from '@lostgradient/markdown/rendering/mermaid-cache';
-          import * as module848 from '@lostgradient/markdown/rendering/types';
-          import * as module849 from '@lostgradient/markdown/templates/placeholder-security';
-          import * as module850 from '@lostgradient/markdown/templates/sanitize-html';
-          import * as module851 from '@lostgradient/markdown/templates/template-placeholders';
-          import * as module852 from '@lostgradient/markdown/templates/template-render';
-          import * as module853 from '@lostgradient/markdown/templates/types';
-          import * as module854 from '@lostgradient/markdown/utilities/safe-url';
-          import * as module855 from '@lostgradient/markdown/utilities/sort-keys';
-          const loaded = [
+          import * as module763 from '@lostgradient/cinder/tokens/runtime';
+          import * as module764 from '@lostgradient/cinder/tokens/sets/colors' with { type: 'json' };
+          import * as module765 from '@lostgradient/cinder/tokens/sets/components' with { type: 'json' };
+          import * as module766 from '@lostgradient/cinder/tokens/sets/foundation' with { type: 'json' };
+          import * as module767 from '@lostgradient/cinder/tokens/sets/semantic' with { type: 'json' };
+          import * as module768 from '@lostgradient/cinder/tokens/themes/dark' with { type: 'json' };
+          import * as module769 from '@lostgradient/cinder/tokens/themes/light' with { type: 'json' };
+          import * as module770 from '@lostgradient/cinder/toolbar';
+          import * as module771 from '@lostgradient/cinder/toolbar/examples' with { type: 'json' };
+          import * as module772 from '@lostgradient/cinder/toolbar/schema';
+          import * as module773 from '@lostgradient/cinder/toolbar/variables';
+          import * as module774 from '@lostgradient/cinder/tooltip';
+          import * as module775 from '@lostgradient/cinder/tooltip/examples' with { type: 'json' };
+          import * as module776 from '@lostgradient/cinder/tooltip/schema';
+          import * as module777 from '@lostgradient/cinder/tooltip/variables';
+          import * as module778 from '@lostgradient/cinder/transfer-list';
+          import * as module779 from '@lostgradient/cinder/transfer-list/examples' with { type: 'json' };
+          import * as module780 from '@lostgradient/cinder/transfer-list/schema';
+          import * as module781 from '@lostgradient/cinder/transfer-list/variables';
+          import * as module782 from '@lostgradient/cinder/tree';
+          import * as module783 from '@lostgradient/cinder/tree-item';
+          import * as module784 from '@lostgradient/cinder/tree-item/schema';
+          import * as module785 from '@lostgradient/cinder/tree-item/variables';
+          import * as module786 from '@lostgradient/cinder/tree/examples' with { type: 'json' };
+          import * as module787 from '@lostgradient/cinder/tree/schema';
+          import * as module788 from '@lostgradient/cinder/tree/variables';
+          import * as module789 from '@lostgradient/cinder/virtual-list';
+          import * as module790 from '@lostgradient/cinder/virtual-list/examples' with { type: 'json' };
+          import * as module791 from '@lostgradient/cinder/virtual-list/schema';
+          import * as module792 from '@lostgradient/cinder/virtual-list/variables';
+          import * as module793 from '@lostgradient/cinder/visually-hidden';
+          import * as module794 from '@lostgradient/cinder/visually-hidden/examples' with { type: 'json' };
+          import * as module795 from '@lostgradient/cinder/visually-hidden/schema';
+          import * as module796 from '@lostgradient/cinder/visually-hidden/variables';
+          import * as module797 from '@lostgradient/cinder/waveform';
+          import * as module798 from '@lostgradient/cinder/waveform/examples' with { type: 'json' };
+          import * as module799 from '@lostgradient/cinder/waveform/schema';
+          import * as module800 from '@lostgradient/cinder/waveform/variables';
+          import * as module801 from '@lostgradient/cinder/zoom-pan-viewer';
+          import * as module802 from '@lostgradient/cinder/zoom-pan-viewer/examples' with { type: 'json' };
+          import * as module803 from '@lostgradient/cinder/zoom-pan-viewer/schema';
+          import * as module804 from '@lostgradient/cinder/zoom-pan-viewer/variables';
+          import * as module805 from '@lostgradient/editor';
+          import * as module806 from '@lostgradient/editor/anchor-decorations';
+          import * as module807 from '@lostgradient/editor/anchoring';
+          import * as module808 from '@lostgradient/editor/comments';
+          import * as module809 from '@lostgradient/editor/comments/types';
+          import * as module810 from '@lostgradient/editor/diff-review';
+          import * as module811 from '@lostgradient/editor/diff-review-comments';
+          import * as module812 from '@lostgradient/editor/diff-review-comments/examples' with { type: 'json' };
+          import * as module813 from '@lostgradient/editor/diff-review-comments/schema';
+          import * as module814 from '@lostgradient/editor/diff-review-comments/variables';
+          import * as module815 from '@lostgradient/editor/diff-review-state';
+          import * as module816 from '@lostgradient/editor/diff-review/examples' with { type: 'json' };
+          import * as module817 from '@lostgradient/editor/diff-review/schema';
+          import * as module818 from '@lostgradient/editor/diff-review/variables';
+          import * as module819 from '@lostgradient/editor/diff-viewer';
+          import * as module820 from '@lostgradient/editor/diff-viewer/examples' with { type: 'json' };
+          import * as module821 from '@lostgradient/editor/diff-viewer/schema';
+          import * as module822 from '@lostgradient/editor/diff-viewer/variables';
+          import * as module823 from '@lostgradient/editor/editor';
+          import * as module824 from '@lostgradient/editor/editor/component-runtime';
+          import * as module825 from '@lostgradient/editor/editor/test-utilities';
+          import * as module826 from '@lostgradient/editor/export';
+          import * as module827 from '@lostgradient/editor/export/types';
+          import * as module828 from '@lostgradient/editor/manifest' with { type: 'json' };
+          import * as module829 from '@lostgradient/editor/markdown-editor';
+          import * as module830 from '@lostgradient/editor/markdown-editor/examples' with { type: 'json' };
+          import * as module831 from '@lostgradient/editor/markdown-editor/schema';
+          import * as module832 from '@lostgradient/editor/markdown-editor/variables';
+          import * as module833 from '@lostgradient/editor/review-editor';
+          import * as module834 from '@lostgradient/editor/review-editor/examples' with { type: 'json' };
+          import * as module835 from '@lostgradient/editor/review-editor/schema';
+          import * as module836 from '@lostgradient/editor/review-editor/variables';
+          import * as module837 from '@lostgradient/editor/session';
+          import * as module838 from '@lostgradient/editor/session/types';
+          import * as module839 from '@lostgradient/editor/shared/anchor-types';
+          import * as module840 from '@lostgradient/markdown';
+          import * as module841 from '@lostgradient/markdown/diff';
+          import * as module842 from '@lostgradient/markdown/diff/line-diff';
+          import * as module843 from '@lostgradient/markdown/diff/types';
+          import * as module844 from '@lostgradient/markdown/pipeline';
+          import * as module845 from '@lostgradient/markdown/rendering';
+          import * as module846 from '@lostgradient/markdown/rendering/async';
+          import * as module847 from '@lostgradient/markdown/rendering/highlighter';
+          import * as module848 from '@lostgradient/markdown/rendering/mermaid-cache';
+          import * as module849 from '@lostgradient/markdown/rendering/types';
+          import * as module850 from '@lostgradient/markdown/templates/placeholder-security';
+          import * as module851 from '@lostgradient/markdown/templates/sanitize-html';
+          import * as module852 from '@lostgradient/markdown/templates/template-placeholders';
+          import * as module853 from '@lostgradient/markdown/templates/template-render';
+          import * as module854 from '@lostgradient/markdown/templates/types';
+          import * as module855 from '@lostgradient/markdown/utilities/safe-url';
           MIRROR_VERIFY_EOF
 
       - name: write the consumer smoke-test project (smoke-node.mjs, part 5)
         working-directory: ${{ runner.temp }}/mirror-verify/consumer
         run: |
           cat >> smoke-node.mjs <<'MIRROR_VERIFY_EOF'
+          import * as module856 from '@lostgradient/markdown/utilities/sort-keys';
+          const loaded = [
             module0,
             module1,
             module2,
@@ -5129,7 +5133,8 @@ jobs:
             module852,
             module853,
             module854,
-            module855
+            module855,
+            module856
           ];
           const specifierNames = [
             "@lostgradient/cinder",
@@ -5244,14 +5249,14 @@ jobs:
             "@lostgradient/cinder/choice-grid",
             "@lostgradient/cinder/choice-grid-item",
             "@lostgradient/cinder/choice-grid-item/schema",
-            "@lostgradient/cinder/choice-grid-item/variables",
-            "@lostgradient/cinder/choice-grid/examples",
           MIRROR_VERIFY_EOF
 
       - name: write the consumer smoke-test project (smoke-node.mjs, part 6)
         working-directory: ${{ runner.temp }}/mirror-verify/consumer
         run: |
           cat >> smoke-node.mjs <<'MIRROR_VERIFY_EOF'
+            "@lostgradient/cinder/choice-grid-item/variables",
+            "@lostgradient/cinder/choice-grid/examples",
             "@lostgradient/cinder/choice-grid/schema",
             "@lostgradient/cinder/choice-grid/variables",
             "@lostgradient/cinder/citation",
@@ -5606,14 +5611,14 @@ jobs:
             "@lostgradient/cinder/pagination/examples",
             "@lostgradient/cinder/pagination/schema",
             "@lostgradient/cinder/pagination/variables",
-            "@lostgradient/cinder/parameter-field",
-            "@lostgradient/cinder/parameter-field/examples",
           MIRROR_VERIFY_EOF
 
       - name: write the consumer smoke-test project (smoke-node.mjs, part 7)
         working-directory: ${{ runner.temp }}/mirror-verify/consumer
         run: |
           cat >> smoke-node.mjs <<'MIRROR_VERIFY_EOF'
+            "@lostgradient/cinder/parameter-field",
+            "@lostgradient/cinder/parameter-field/examples",
             "@lostgradient/cinder/parameter-field/schema",
             "@lostgradient/cinder/parameter-field/variables",
             "@lostgradient/cinder/payload-inspector",
@@ -5907,6 +5912,7 @@ jobs:
             "@lostgradient/cinder/tokens/resolved/light",
             "@lostgradient/cinder/tokens/resolved/light-reduced-motion",
             "@lostgradient/cinder/tokens/resolver",
+            "@lostgradient/cinder/tokens/runtime",
             "@lostgradient/cinder/tokens/sets/colors",
             "@lostgradient/cinder/tokens/sets/components",
             "@lostgradient/cinder/tokens/sets/foundation",
@@ -5967,15 +5973,15 @@ jobs:
             "@lostgradient/editor/diff-viewer/schema",
             "@lostgradient/editor/diff-viewer/variables",
             "@lostgradient/editor/editor",
-            "@lostgradient/editor/editor/component-runtime",
-            "@lostgradient/editor/editor/test-utilities",
-            "@lostgradient/editor/export",
           MIRROR_VERIFY_EOF
 
       - name: write the consumer smoke-test project (smoke-node.mjs, part 8)
         working-directory: ${{ runner.temp }}/mirror-verify/consumer
         run: |
           cat >> smoke-node.mjs <<'MIRROR_VERIFY_EOF'
+            "@lostgradient/editor/editor/component-runtime",
+            "@lostgradient/editor/editor/test-utilities",
+            "@lostgradient/editor/export",
             "@lostgradient/editor/export/types",
             "@lostgradient/editor/manifest",
             "@lostgradient/editor/markdown-editor",
@@ -6019,12 +6025,12 @@ jobs:
         run: |
           bun install
 
-      - name: import 1046 specifier(s) from the packed tarballs
+      - name: import 1047 specifier(s) from the packed tarballs
         working-directory: ${{ runner.temp }}/mirror-verify/consumer
         run: |
           bun run smoke.mjs
 
-      - name: import 856 specifier(s) from the packed tarballs under node
+      - name: import 857 specifier(s) from the packed tarballs under node
         working-directory: ${{ runner.temp }}/mirror-verify/consumer
         run: |
           node smoke-node.mjs

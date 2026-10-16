@@ -18,7 +18,11 @@
             "cssProperty": "--cinder-status-success-background",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(94.5% 0.045 145), oklch(28% 0.07 145))"
+            "cssRecipe": "light-dark(oklch(94.5% 0.045 145), oklch(28% 0.07 145))",
+            "palette": {
+              "family": "success",
+              "role": "background"
+            }
           }
         }
       },
@@ -34,7 +38,11 @@
             "cssProperty": "--cinder-status-success-text",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(40% 0.127 145), oklch(88% 0.11 145))"
+            "cssRecipe": "light-dark(oklch(40% 0.127 145), oklch(88% 0.11 145))",
+            "palette": {
+              "family": "success",
+              "role": "text"
+            }
           }
         }
       },
@@ -50,7 +58,11 @@
             "cssProperty": "--cinder-status-success-border",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(80% 0.05 145), oklch(45% 0.09 145))"
+            "cssRecipe": "light-dark(oklch(80% 0.05 145), oklch(45% 0.09 145))",
+            "palette": {
+              "family": "success",
+              "role": "border"
+            }
           }
         }
       },
@@ -100,7 +112,11 @@
             "cssProperty": "--cinder-status-warning-background",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(94.5% 0.042 75), oklch(28% 0.06 75))"
+            "cssRecipe": "light-dark(oklch(94.5% 0.042 75), oklch(28% 0.06 75))",
+            "palette": {
+              "family": "warning",
+              "role": "background"
+            }
           }
         }
       },
@@ -116,7 +132,11 @@
             "cssProperty": "--cinder-status-warning-text",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(40% 0.085 75), oklch(90% 0.08 75))"
+            "cssRecipe": "light-dark(oklch(40% 0.085 75), oklch(90% 0.08 75))",
+            "palette": {
+              "family": "warning",
+              "role": "text"
+            }
           }
         }
       },
@@ -132,7 +152,11 @@
             "cssProperty": "--cinder-status-warning-border",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(80% 0.06 75), oklch(50% 0.1 75))"
+            "cssRecipe": "light-dark(oklch(80% 0.06 75), oklch(50% 0.1 75))",
+            "palette": {
+              "family": "warning",
+              "role": "border"
+            }
           }
         }
       },
@@ -182,7 +206,11 @@
             "cssProperty": "--cinder-status-neutral-background",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(94.5% 0.004 255), oklch(28% 0.04 245))"
+            "cssRecipe": "light-dark(oklch(94.5% 0.004 255), oklch(28% 0.04 245))",
+            "palette": {
+              "family": "neutral",
+              "role": "status-neutral-background"
+            }
           }
         }
       },
@@ -226,7 +254,11 @@
             "cssProperty": "--cinder-status-danger-background",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(94.5% 0.026 25), oklch(28% 0.09 25))"
+            "cssRecipe": "light-dark(oklch(94.5% 0.026 25), oklch(28% 0.09 25))",
+            "palette": {
+              "family": "danger",
+              "role": "background"
+            }
           }
         }
       },
@@ -242,7 +274,11 @@
             "cssProperty": "--cinder-status-danger-text",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(42% 0.16 25), oklch(90% 0.05 25))"
+            "cssRecipe": "light-dark(oklch(42% 0.16 25), oklch(90% 0.05 25))",
+            "palette": {
+              "family": "danger",
+              "role": "text"
+            }
           }
         }
       },
@@ -258,7 +294,11 @@
             "cssProperty": "--cinder-status-danger-border",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25))"
+            "cssRecipe": "light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25))",
+            "palette": {
+              "family": "danger",
+              "role": "border"
+            }
           }
         }
       },
@@ -308,7 +348,11 @@
             "cssProperty": "--cinder-status-info-background",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(94.5% 0.03 230), oklch(28% 0.057 230))"
+            "cssRecipe": "light-dark(oklch(94.5% 0.03 230), oklch(28% 0.057 230))",
+            "palette": {
+              "family": "info",
+              "role": "background"
+            }
           }
         }
       },
@@ -324,7 +368,11 @@
             "cssProperty": "--cinder-status-info-text",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(40% 0.079 230), oklch(88% 0.071 230))"
+            "cssRecipe": "light-dark(oklch(40% 0.079 230), oklch(88% 0.071 230))",
+            "palette": {
+              "family": "info",
+              "role": "text"
+            }
           }
         }
       },
@@ -340,7 +388,11 @@
             "cssProperty": "--cinder-status-info-border",
             "public": true,
             "category": "color",
-            "cssRecipe": "light-dark(oklch(80% 0.05 230), oklch(45% 0.08 230))"
+            "cssRecipe": "light-dark(oklch(80% 0.05 230), oklch(45% 0.08 230))",
+            "palette": {
+              "family": "info",
+              "role": "border"
+            }
           }
         }
       },

@@ -41,10 +41,10 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, test } from 'bun:test';
 
 import { readRootTokenNames } from '../../src/test/token-introspection.ts';
-import { isRootDeclaredEntry } from './css-support.ts';
+import { isRootDeclaredEntry } from '../../src/tokens/runtime/css-support.ts';
+import { buildBaseIndex } from '../../src/tokens/runtime/registry.ts';
 import { loadCorpus } from './generate.ts';
 import { tokensBaseCssPath } from './generator-configuration.ts';
-import { buildBaseIndex } from './registry.ts';
 
 describe('tokens-base.css / corpus completeness', () => {
   test('every :root declaration has a matching corpus entry, and vice versa', async () => {

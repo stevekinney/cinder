@@ -32,12 +32,13 @@
  */
 
 import { join } from 'node:path';
+import { validateLoadedTokenDocuments } from '../../src/tokens/runtime/corpus-documents.ts';
+import { normalizedDocumentsByPath } from '../../src/tokens/runtime/resolver-order.ts';
+import type { ResolverDocument, TokenDocument } from '../../src/tokens/runtime/types.ts';
 import { buildTokensBaseCss } from './css-generator.ts';
 import { resolvedDirectory, tokensBaseCssPath } from './generator-configuration.ts';
 import { loadRawTokenDocuments, loadResolverDocument } from './load.ts';
 import { buildResolvedContexts } from './resolved-contexts.ts';
-import type { ResolverDocument, TokenDocument } from './types.ts';
-import { normalizedDocumentsByPath, validateLoadedTokenDocuments } from './validate-corpus.ts';
 
 // Entry point.
 // ---------------------------------------------------------------------------

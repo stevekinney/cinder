@@ -200,6 +200,8 @@
     justify-content: space-between;
     gap: var(--cinder-space-2);
     min-width: 0;
+    /* WCAG 2.5.8: the three stacked format buttons are 24 CSS px tall at least. */
+    min-block-size: 24px;
     padding: 0;
     border: 0;
     background: transparent;

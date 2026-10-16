@@ -9,6 +9,22 @@
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     contain: layout paint;
+
+    /*
+     * A list that owns its scroll container owns its scroll anchor too: the
+     * rendered window is positioned from the container's scroll offset, so
+     * whatever the browser picks as its own anchor moves only because the
+     * component moved it.
+     *
+     * Native anchoring then fights it. A sticky row leaves flow as its index
+     * leaves the window and it pins (`position: absolute`), the rows after it shift
+     * up by its size, and the browser pulls the scroll offset back by the same
+     * amount to hold its anchor still — so the list scrolls a row backwards by
+     * itself, and a keyboard press that had just landed is undone.
+     *
+     * `windowScroll` gives that back below: there the page scrolls, not the list.
+     */
+    overflow-anchor: none;
   }
 
   /*
@@ -29,25 +45,42 @@
    * establishes the scroll container that subtree's offsets are positioned
    * within a document sense of "contained," and dropping it here would cost
    * nothing this mode needs.
+   *
+   * Native anchoring stays available to the page. The document's scroll
+   * position is not this component's: when content above the list changes
+   * height, the browser's anchor is what keeps the reader on the same rows, and
+   * the component's `documentOffset` is only re-measured on a window scroll or
+   * resize, so excluding the list's rows from anchor selection could jump the
+   * viewport with nothing here to notice. Dynamic sizing still opts out below.
    */
   .cinder-virtual-list[data-cinder-window-scroll='true'] {
     block-size: auto;
     overflow: visible;
+    overflow-anchor: auto;
   }
 
   /*
-   * Dynamic sizing anchors the viewport itself: when a measured row above the
-   * fold turns out to differ from its estimate, the component adds that delta to
-   * the scroll offset before paint.
-   *
-   * A browser with native scroll anchoring would ALSO adjust scrollTop to hold
-   * its own anchor when that row resizes, and the manual correction then applies
-   * the same delta on top of the browser's — over-scrolling by the row's size
+   * Except with sticky rows. As a window-scrolled list's active header pins on
+   * leaving the rendered window, the page's anchoring pulls the window back a row,
+   * so a keyboard step that had just landed is undone, and nothing re-issues the
+   * press. Measured in Chromium: ten ArrowDown presses advanced nine rows. This
+   * combination gives up page anchoring for layout shifts above the list instead,
+   * as a `dynamicSize` list already does.
+   */
+  .cinder-virtual-list[data-cinder-window-scroll='true'][data-cinder-sticky-rows='true'] {
+    overflow-anchor: none;
+  }
+
+  /*
+   * Dynamic sizing anchors the viewport itself, in either mode: when a measured
+   * row above the fold turns out to differ from its estimate, the component adds
+   * that delta to the scroll offset before paint. A browser anchoring natively
+   * would apply the same delta on top, over-scrolling by the row's size
    * difference every time an image loads or a line wraps. Only one of the two can
    * own the anchor, and this component owns it.
    *
-   * Scoped to dynamic mode: fixed-height rows never resize, so native anchoring
-   * has nothing to act on there and the default is left alone.
+   * Written after the `windowScroll` rule at the same specificity, so a
+   * window-scrolled list with dynamic sizing still opts out.
    */
   .cinder-virtual-list[data-cinder-dynamic-size='true'] {
     overflow-anchor: none;

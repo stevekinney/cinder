@@ -2,12 +2,12 @@ import { format } from 'prettier';
 import markdownPlugin from 'prettier/plugins/markdown';
 import { assertPrettierResolvesToRoot } from '../lib/prettier-resolution.ts';
 
-import { type CorpusEntry } from './corpus.ts';
+import { type CorpusEntry } from '../../src/tokens/runtime/corpus.ts';
+import type { TokenRegistry } from '../../src/tokens/runtime/registry.ts';
+import type { ValueResolver } from '../../src/tokens/runtime/resolve.ts';
+import { serializeEntryValue } from '../../src/tokens/runtime/value-entry.ts';
 import { DOC_SECTIONS, type DocSection } from './docs-sections.ts';
 import { PRETTIER_OPTIONS } from './generator-configuration.ts';
-import type { TokenRegistry } from './registry.ts';
-import type { ValueResolver } from './resolve.ts';
-import { serializeEntryValue } from './value-entry.ts';
 
 const MARKDOWN_PLUGINS = [markdownPlugin];
 // The root `.prettierrc` overrides `*.md` with `proseWrap: 'never'`. Without the

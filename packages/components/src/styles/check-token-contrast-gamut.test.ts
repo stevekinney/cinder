@@ -1,18 +1,25 @@
 import { describe, expect, it } from 'bun:test';
 
+import {
+  AA_TEXT,
+  NON_TEXT,
+  ciede2000,
+  contrastRatio,
+  deriveStatusTier,
+  isInSrgbGamut,
+  simulateCvd,
+  toCieLab,
+  wcagLuminance,
+} from '../tokens/runtime/contrast/index.ts';
 import * as values from './check-token-contrast-test-values.ts';
 import type { TokenArms } from './token-contrast-test-readers.ts';
 
 const {
-  AA_TEXT,
-  NON_TEXT,
   accent,
   accentContrast,
   accentText,
   borderInk,
   chartSeries,
-  ciede2000,
-  contrastRatio,
   css,
   danger,
   dangerActive,
@@ -22,7 +29,6 @@ const {
   dangerFg,
   dangerHover,
   deriveFromAccent,
-  deriveStatusTier,
   info,
   infoActive,
   infoBg,
@@ -30,10 +36,8 @@ const {
   infoContrast,
   infoFg,
   infoHover,
-  isInSrgbGamut,
   readOklchToken,
   readTokenValue,
-  simulateCvd,
   success,
   successActive,
   successBg,
@@ -43,7 +47,6 @@ const {
   successHover,
   surface,
   text,
-  toCieLab,
   warning,
   warningActive,
   warningBg,
@@ -51,7 +54,6 @@ const {
   warningContrast,
   warningFg,
   warningHover,
-  wcagLuminance,
 } = values;
 describe('sRGB gamut integrity (no silent chroma clamping)', () => {
   // SCOPE: this is a TARGETED gamut gate over the palette tokens this design system's

@@ -4,11 +4,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readCssPropertyToPath, readJsonRecord } from './token-contrast-test-readers.ts';
 
+import { ciede2000 } from '../tokens/runtime/contrast/index.ts';
 import * as values from './check-token-contrast-test-values.ts';
-type Lab = values.Lab;
+type Lab = Parameters<typeof ciede2000>[0];
 
 const {
-  ciede2000,
   css,
   cssPropertyToPath,
   parseResolvedColor,

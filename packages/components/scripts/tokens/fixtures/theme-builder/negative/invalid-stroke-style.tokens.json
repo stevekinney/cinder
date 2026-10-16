@@ -1,0 +1,13 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "stroke": {
+    "$type": "strokeStyle",
+    "none": { "$value": "none" },
+    "hidden": { "$value": "hidden" },
+    "unknown": { "$value": "banana" },
+    "empty-dash-array": { "$value": { "dashArray": [], "lineCap": "butt" } },
+    "bad-line-cap": {
+      "$value": { "dashArray": [{ "value": 1, "unit": "px" }], "lineCap": "bevel" }
+    }
+  }
+}
