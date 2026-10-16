@@ -42,7 +42,7 @@ checklist:
 - [ ] Check docs/component-api-conventions.md before adding or naming a public prop. (#922)
 - [ ] Name a curated collection `<Singular>Group`, never a bare plural of an existing singular component; a bare plural is legal only as a domain mass noun that composes no matching singular (see docs/component-api-conventions.md, "\*Group versus plural component names"). `check:prop-conventions` rejects a new bare-plural name that shadows an existing singular. (#1416)
 - [ ] Apply the `cinder-_floating-surface` class to floating panels (defined in `_floating-surface.css`), and compose form controls from `Input` and `FormField`. (#921, #923)
-- [ ] Use a rotating chevron for disclosure controls that render an indicator; use direction-aware lateral chevrons for nested submenus, keep intentionally text-only disclosures icon-free, and use icons from the lucide-svelte set. (#957)
+- [ ] Use a rotating chevron for disclosure controls that render an indicator; use direction-aware lateral chevrons for nested submenus, keep intentionally text-only disclosures icon-free, and use icons from the @lucide/svelte set. (#957)
 - [ ] Add tests for resulting state and resting appearance, not only transitions. (#931)
 - [ ] For every leaf, add a substantive test, README skeleton, stylesheet registration in src/styles/components.css, generated exports, and the sidebar count-gate update. (#310)
 - [ ] For every new token, add check-token-contrast.test.ts coverage and its docs/tokens.md entry; tokens-doc-drift.test.ts must stay green. (#310)
