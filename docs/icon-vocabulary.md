@@ -1,6 +1,6 @@
 # Icon vocabulary
 
-Cinder uses [`lucide-svelte`](https://lucide.dev/) for component affordances. A
+Cinder uses [`@lucide/svelte`](https://lucide.dev/) for component affordances. A
 visible icon is supplementary to the control's accessible name or state; it
 must not be the only way to communicate what an interactive element does.
 

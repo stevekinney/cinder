@@ -10,14 +10,14 @@ Use cinder when you want UI building blocks without adopting a framework-level r
 bun add @lostgradient/cinder svelte
 ```
 
-`svelte` is a required peer dependency. Cinder uses Lucide (`lucide-svelte`) for
-its own component chrome, but bundles its own pinned copy as a regular
-dependency rather than a peer, so Cinder's own server-rendered icon markup
-stays consistent with its own client build without depending on which
-`lucide-svelte` version — if any — your application installs for its own
-icons. (If your bundler's deduplication collapses Cinder's pinned copy onto a
-different version your app requests, the two can still diverge; see the
-`@lostgradient/cinder` changeset for that edge case.) Cinder does not provide
+`svelte` is a required peer dependency. Cinder uses Lucide (`@lucide/svelte`) for
+its own component chrome, but declares it as a regular dependency rather
+than a peer, so Cinder's own server-rendered icon markup stays consistent
+with its own client build without depending on which Lucide version — if
+any — your application installs for its own icons. (If your bundler's
+deduplication collapses Cinder's copy onto a different version your app
+requests, the two can still diverge; see the `@lostgradient/cinder`
+changeset for that edge case.) Cinder does not provide
 a general icon library for your application-specific icons. The Chat domain
 suite is published separately as `@lostgradient/chat`.
 

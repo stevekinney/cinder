@@ -24,9 +24,9 @@ export const ALLOWED_EXAMPLE_PACKAGES: readonly string[] = [
  * packages whose public API is a family of per-module subpaths that cannot be
  * enumerated exactly.
  *
- * `lucide-svelte/icons/<name>` is cinder's own icon vocabulary
+ * `@lucide/svelte/icons/<name>` is cinder's own icon vocabulary
  * (docs/icon-vocabulary.md): components import icons this way, so realistic
  * consumer apps have the package installed and examples may demonstrate
  * icon-bearing snippets with real icons rather than text glyphs.
  */
-export const ALLOWED_EXAMPLE_PACKAGE_PREFIXES: readonly string[] = ['lucide-svelte/icons/'];
+export const ALLOWED_EXAMPLE_PACKAGE_PREFIXES: readonly string[] = ['@lucide/svelte/icons/'];
