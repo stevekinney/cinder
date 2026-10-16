@@ -41,7 +41,7 @@
   import { default as Button } from '../button/index.ts';
   import { default as ColorPicker } from '../color-picker/index.ts';
   import { default as Popover } from '../popover/index.ts';
-  import Pipette from 'lucide-svelte/icons/pipette';
+  import Pipette from '@lucide/svelte/icons/pipette';
   import type {
     ColorFieldFormat,
     ColorFieldOutputFormat,

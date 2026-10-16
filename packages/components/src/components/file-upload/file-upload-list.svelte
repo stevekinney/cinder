@@ -1,7 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
-  import RotateCcwIcon from 'lucide-svelte/icons/rotate-ccw';
-  import XIcon from 'lucide-svelte/icons/x';
+  import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
+  import XIcon from '@lucide/svelte/icons/x';
 
   import { formatBytes } from '../../utilities/format-bytes.ts';
   import { fileTypeIcon } from './file-upload-utilities.ts';

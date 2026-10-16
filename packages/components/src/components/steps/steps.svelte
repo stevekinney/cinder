@@ -20,7 +20,7 @@
 
   import type { StepItemState, StepsProps } from './steps.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import Check from 'lucide-svelte/icons/check';
+  import Check from '@lucide/svelte/icons/check';
 
   let {
     steps,

@@ -17,8 +17,8 @@
 <script lang="ts">
   import type { Attachment } from 'svelte/attachments';
 
-  import Search from 'lucide-svelte/icons/search';
-  import X from 'lucide-svelte/icons/x';
+  import Search from '@lucide/svelte/icons/search';
+  import X from '@lucide/svelte/icons/x';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import type { SearchFieldProps } from './search-field.types.ts';
   import { getFormFieldContext } from '../../_internal/form-field-context.ts';

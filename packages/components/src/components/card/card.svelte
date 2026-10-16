@@ -24,7 +24,7 @@
 </script>
 
 <script lang="ts">
-  import CircleAlert from 'lucide-svelte/icons/circle-alert';
+  import CircleAlert from '@lucide/svelte/icons/circle-alert';
   import type { HTMLAnchorAttributes, HTMLAttributes, HTMLButtonAttributes } from 'svelte/elements';
 
   import type { CardProps } from './card.types.ts';

@@ -20,7 +20,7 @@
 </script>
 
 <script lang="ts">
-  import ChevronDown from 'lucide-svelte/icons/chevron-down';
+  import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import { onDestroy, tick } from 'svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import Alert from '../alert/alert.svelte';

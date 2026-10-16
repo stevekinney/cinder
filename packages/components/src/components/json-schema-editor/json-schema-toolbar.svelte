@@ -13,10 +13,10 @@
 </script>
 
 <script lang="ts">
-  import ClipboardCopy from 'lucide-svelte/icons/clipboard-copy';
-  import Redo2 from 'lucide-svelte/icons/redo-2';
-  import RotateCcw from 'lucide-svelte/icons/rotate-ccw';
-  import Undo2 from 'lucide-svelte/icons/undo-2';
+  import ClipboardCopy from '@lucide/svelte/icons/clipboard-copy';
+  import Redo2 from '@lucide/svelte/icons/redo-2';
+  import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
+  import Undo2 from '@lucide/svelte/icons/undo-2';
   import { untrack } from 'svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';

@@ -28,7 +28,7 @@
 
 <script lang="ts">
   import { tick, untrack } from 'svelte';
-  import ChevronRight from 'lucide-svelte/icons/chevron-right';
+  import ChevronRight from '@lucide/svelte/icons/chevron-right';
 
   import { getLocaleContext } from '../../_internal/locale-context.ts';
   import { observeTextDirection, resolveTextDirection } from '../../_internal/text-direction.ts';

@@ -4,6 +4,8 @@
 
 Use `TerminalOutput` for read-only ANSI streams. Use `TerminalFrame` when the child content is an interactive terminal implementation whose backend needs `{ cols, rows }` resize updates.
 
+For a hosted terminal that is already wired to a pseudo-terminal, use `@lostgradient/terminal`, the private browser terminal workspace in the corvidae repository. Its `Terminal` component composes `TerminalFrame`, mounts the terminal engine inside it, and owns the fitting, input, paste review and recovery that this component leaves to the consumer.
+
 ## Usage
 
 ```svelte

@@ -32,4 +32,12 @@ export default [
     },
     interact: [{ action: 'hover', target: { role: 'button', name: 'Delete project' } }],
   },
+  {
+    name: 'pressed',
+    props: {
+      label: 'Capture terminal keys',
+      variant: 'secondary',
+      'aria-pressed': 'true',
+    },
+  },
 ];

@@ -25,10 +25,10 @@
   import { onDestroy, onMount } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
 
-  import CircleCheck from 'lucide-svelte/icons/circle-check';
-  import CircleX from 'lucide-svelte/icons/circle-x';
-  import Info from 'lucide-svelte/icons/info';
-  import TriangleAlert from 'lucide-svelte/icons/triangle-alert';
+  import CircleCheck from '@lucide/svelte/icons/circle-check';
+  import CircleX from '@lucide/svelte/icons/circle-x';
+  import Info from '@lucide/svelte/icons/info';
+  import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
 
   import { setToastContext } from '../../_internal/toast-context.ts';
   import { pushEscapeHandler } from '../../_internal/overlay.ts';

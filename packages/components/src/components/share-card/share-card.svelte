@@ -18,9 +18,9 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
 
-  import Check from 'lucide-svelte/icons/check';
-  import Copy from 'lucide-svelte/icons/copy';
-  import Share2 from 'lucide-svelte/icons/share-2';
+  import Check from '@lucide/svelte/icons/check';
+  import Copy from '@lucide/svelte/icons/copy';
+  import Share2 from '@lucide/svelte/icons/share-2';
 
   import { default as Input } from '../input/index.ts';
   import { classNames } from '../../utilities/class-names.ts';

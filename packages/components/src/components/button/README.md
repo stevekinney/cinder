@@ -34,6 +34,10 @@ When `href` is set, the component renders as `<a>`; otherwise it renders as `<bu
 
 <!-- generated:props:end -->
 
+### Toggle buttons
+
+Pass `aria-pressed="true"` or `"false"` to make a button a toggle. A pressed button takes the filled accent face (every variant except `primary` and `danger`, which are already filled); see `button.a11y.md`. This applies to every `Button` that carries `aria-pressed="true"`, including a consumer's own: for example, `kanban-board.svelte` sets it on a column's drag handle while that column is lifted, so a lifted column's handle now takes the filled face. No committed Cinder baseline shows a pressed `Button` at rest besides the new `button/*-pressed` images, which the baseline refresh confirmed.
+
 ## CSS Variables
 
 <!-- generated:variables:start -->

@@ -22,7 +22,7 @@
 </script>
 
 <script lang="ts" generics="T extends string = string">
-  import ChevronDown from 'lucide-svelte/icons/chevron-down';
+  import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import { tick, untrack } from 'svelte';
 
   import CheckboxIndicatorShell from '../_internal/checkbox-indicator-shell.svelte';

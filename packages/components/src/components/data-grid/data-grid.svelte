@@ -43,10 +43,10 @@
   import { tick, untrack } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
 
-  import ChevronLeft from 'lucide-svelte/icons/chevron-left';
-  import ChevronRight from 'lucide-svelte/icons/chevron-right';
-  import ZoomIn from 'lucide-svelte/icons/zoom-in';
-  import ZoomOut from 'lucide-svelte/icons/zoom-out';
+  import ChevronLeft from '@lucide/svelte/icons/chevron-left';
+  import ChevronRight from '@lucide/svelte/icons/chevron-right';
+  import ZoomIn from '@lucide/svelte/icons/zoom-in';
+  import ZoomOut from '@lucide/svelte/icons/zoom-out';
   import { classNames } from '../../utilities/class-names.ts';
   import { copyToClipboard } from '../../utilities/clipboard.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';

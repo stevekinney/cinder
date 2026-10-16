@@ -23,12 +23,12 @@
 </script>
 
 <script lang="ts">
-  import Loader from 'lucide-svelte/icons/loader';
-  import RefreshCcwDot from 'lucide-svelte/icons/refresh-ccw-dot';
-  import RefreshCw from 'lucide-svelte/icons/refresh-cw';
-  import TriangleAlert from 'lucide-svelte/icons/triangle-alert';
-  import Wifi from 'lucide-svelte/icons/wifi';
-  import WifiOff from 'lucide-svelte/icons/wifi-off';
+  import Loader from '@lucide/svelte/icons/loader';
+  import RefreshCcwDot from '@lucide/svelte/icons/refresh-ccw-dot';
+  import RefreshCw from '@lucide/svelte/icons/refresh-cw';
+  import TriangleAlert from '@lucide/svelte/icons/triangle-alert';
+  import Wifi from '@lucide/svelte/icons/wifi';
+  import WifiOff from '@lucide/svelte/icons/wifi-off';
   import { classNames } from '../../utilities/class-names.ts';
   import type {
     ConnectionIndicatorProps,
